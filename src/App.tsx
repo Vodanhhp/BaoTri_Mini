@@ -6,6 +6,19 @@ import { db, now, uid, type Asset, type AssetStatus } from './db'
 import { supabase } from './lib/supabase'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý']
+
+const ASSET_CATEGORY_GROUPS = [
+ {label:'Điện – điện tử – tự động hóa',items:['Thiết bị điện','Tủ điện','Tủ điện tổng','Tủ điện phân phối','Tủ điều khiển','Biến tần','UPS','Máy biến áp','Thiết bị đo lường','Động cơ điện','Bộ chuyển nguồn ATS','Tủ tụ bù','PLC','HMI','Cảm biến','Bộ nguồn điện','Thiết bị điện tử','Bo mạch điện tử','Rơ le – contactor']},
+ {label:'Cơ khí – máy móc – truyền động',items:['Máy bơm','Thiết bị xưởng','Thang máy','Hộp giảm tốc','Băng tải','Máy tiện','Máy phay','Máy khoan bàn','Máy cưa','Máy ép','Máy dập','Máy CNC','Máy nén thủy lực','Hệ thống thủy lực','Thiết bị nâng hạ','Pa lăng – tời','Cầu trục','Xe nâng']},
+ {label:'Công cụ – dụng cụ điện',items:['Công cụ điện cầm tay','Máy khoan cầm tay','Máy mài','Máy cắt','Máy siết bu lông','Máy chà nhám','Máy thổi bụi','Máy hút bụi công nghiệp','Dụng cụ đo điện','Dụng cụ cơ khí']},
+ {label:'Hàn – cắt – gia công',items:['Máy hàn','Máy hàn xung','Máy hàn MIG/MAG','Máy hàn TIG','Máy hàn que','Máy cắt plasma','Máy cắt gas','Máy cắt kim loại','Máy uốn','Máy đột lỗ']},
+ {label:'Quạt công nghiệp',items:['Quạt công nghiệp','Quạt hút','Quạt cấp','Quạt thông gió','Quạt làm mát','Quạt hướng trục','Quạt ly tâm']},
+ {label:'Khí nén – nhiệt – lạnh – HVAC',items:['Máy nén khí','Máy sấy khí','Bộ lọc khí nén','Khí nén','Kho lạnh','Điều hòa thông gió','Chiller','Tháp giải nhiệt','Nồi hơi','Nồi hấp','Máy lạnh','Máy hút ẩm','Máy sưởi','Hệ thống HVAC']},
+ {label:'Nguồn điện – an toàn – PCCC',items:['Máy phát điện','Phòng cháy chữa cháy','Hệ thống tiếp địa','Chống sét','Đèn chiếu sáng','Thiết bị an toàn']},
+ {label:'Thiết bị sản xuất – đóng gói – phụ trợ',items:['Máy đóng gói','Máy chiết rót','Máy dán nhãn','Máy in công nghiệp','Máy trộn','Máy nghiền','Máy sàng','Máy sấy công nghiệp','Máy ép nhựa','Robot công nghiệp','Thiết bị xử lý nước','Hệ thống lọc bụi']},
+ {label:'Nhóm khác',items:['Khác']}
+] as const
+const ASSET_CYCLES = ['Hàng ngày','Hàng tuần','Hàng tháng','Hàng quý','Hàng năm'] as const
 const emptyAsset = (): Asset => ({
   id: uid(), code: '', name: '', category: '', brand: '', model: '', serial: '',
   location: '', commissionedAt: '', power: '', cycle: '', transferredFromOtherFacility: false,
@@ -97,8 +110,8 @@ export default function App() {
     if (!editing || !files?.length) return
     setError('')
     try {
-      const remaining = 6 - (editing.images?.length || 0)
-      if (remaining <= 0) throw new Error('Mỗi thiết bị được lưu tối đa 6 ảnh.')
+      const remaining = 8 - (editing.images?.length || 0)
+      if (remaining <= 0) throw new Error('Mỗi thiết bị được lưu tối đa 8 ảnh.')
       const converted = await Promise.all(Array.from(files).slice(0, remaining).map(imageToDataUrl))
       setEditing({ ...editing, images: [...(editing.images || []), ...converted] })
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
@@ -163,18 +176,18 @@ export default function App() {
       <form className="form-grid" onSubmit={saveAsset}>
         <label className="field">Mã quản lý thiết bị *<input required value={editing.code} onChange={event=>setEditing({...editing,code:event.target.value})} placeholder="Nhập mã quản lý"/></label>
         <label className="field">Tên thiết bị *<input required value={editing.name} onChange={event=>setEditing({...editing,name:event.target.value})} placeholder="Tên thiết bị"/></label>
-        <label className="field">Nhóm thiết bị *<input required value={editing.category} onChange={event=>setEditing({...editing,category:event.target.value})} placeholder="VD: Máy bơm"/></label>
+        <label className="field">Nhóm thiết bị *<select required value={editing.category} onChange={event=>setEditing({...editing,category:event.target.value})}><option value="">-- Chọn nhóm thiết bị --</option>{ASSET_CATEGORY_GROUPS.map(group=><optgroup key={group.label} label={group.label}>{group.items.map(item=><option key={item} value={item}>{item}</option>)}</optgroup>)}{editing.category&&!ASSET_CATEGORY_GROUPS.some(group=>group.items.some(item=>item===editing.category))&&<option value={editing.category}>{editing.category} · danh mục cũ</option>}</select></label>
         <label className="field">Vị trí lắp đặt<input value={editing.location} onChange={event=>setEditing({...editing,location:event.target.value})} placeholder="Tầng / khu vực"/></label>
         <label className="field">Hãng sản xuất<input value={editing.brand} onChange={event=>setEditing({...editing,brand:event.target.value})}/></label>
         <label className="field">Model<input value={editing.model} onChange={event=>setEditing({...editing,model:event.target.value})}/></label>
         <label className="field">Số serial<input value={editing.serial} onChange={event=>setEditing({...editing,serial:event.target.value})}/></label>
         <label className="field">Công suất / thông số<input value={editing.power} onChange={event=>setEditing({...editing,power:event.target.value})}/></label>
         <label className="field">Ngày đưa vào sử dụng<input type="date" value={editing.commissionedAt} onChange={event=>setEditing({...editing,commissionedAt:event.target.value})}/></label>
-        <label className="field">Chu kỳ bảo trì<input value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})} placeholder="VD: Hàng quý"/></label>
+        <label className="field">Chu kỳ bảo trì<select value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})}><option value="">Chưa thiết lập</option>{ASSET_CYCLES.map(item=><option key={item} value={item}>{item}</option>)}{editing.cycle&&!ASSET_CYCLES.includes(editing.cycle as typeof ASSET_CYCLES[number])&&<option value={editing.cycle}>{editing.cycle} · giá trị cũ</option>}</select></label>
         <label className="field">Trạng thái<select value={editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
-        <label className="field"><span>Thiết bị chuyển từ cơ sở khác</span><select value={editing.transferredFromOtherFacility?'yes':'no'} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.value==='yes'})}><option value="no">Không</option><option value="yes">Có</option></select></label>
+        <label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked})}/> Thiết bị được chuyển từ cơ sở khác đến</span></label>
         <label className="field full-field">Ghi chú<textarea rows={3} value={editing.notes} onChange={event=>setEditing({...editing,notes:event.target.value})}/></label>
-        <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/6)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=6} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
+        <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/8)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=8} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
         {error&&<div className="auth-error full-field">{error}</div>}
         <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setShowForm(false);setEditing(null)}}>Hủy</button><button type="submit" className="primary-btn" disabled={busy}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
