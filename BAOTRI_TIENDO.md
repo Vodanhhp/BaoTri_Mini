@@ -99,3 +99,27 @@ Các quyết định dưới đây do người dùng chốt cho repository mới
 - Không xây dựng Vật tư, Checklist hoặc các phân hệ khác trước khi Thiết bị hoàn thiện.
 - Dự án mới độc lập; không sửa hoặc xóa repository gốc.
 - Bản mã khởi tạo hiện tại mới là khung chức năng ban đầu. Chưa được xác nhận tương đương 1:1 với phân hệ Thiết bị gốc và chưa được nghiệm thu.
+
+
+## 9. Cập nhật 21/11/2026 – hoàn thiện bước đầu nghiệp vụ Thiết bị
+
+Đã cập nhật trực tiếp trên nhánh main:
+
+- `src/db.ts`: bổ sung AssetStatus theo mô hình tham chiếu gồm Đang hoạt động, Đang sửa chữa, Ngừng sử dụng, Thanh lý; bổ sung cycle, cycleStartedAt, transferredFromOtherFacility, images và archivedAt.
+- Dexie nâng từ version 1 lên version 2; migration bổ sung trường mặc định cho dữ liệu Local cũ và ánh xạ trạng thái cũ Hỏng/Tạm dừng sang Đang sửa chữa.
+- `src/App.tsx`: bổ sung lọc kết hợp nhóm/vị trí/trạng thái, sắp xếp theo cập nhật/mã/tên/ngày sử dụng, nút đặt lại bộ lọc.
+- Tách Lưu kho khỏi trạng thái vận hành bằng archivedAt; có danh sách Lưu kho và thao tác Khôi phục.
+- Bỏ thao tác xóa cứng khỏi giao diện để tránh mất hồ sơ thiết bị; mã thiết bị vẫn phải duy nhất kể cả khi hồ sơ đang lưu kho.
+- Biểu mẫu bổ sung chu kỳ bảo trì và cờ thiết bị chuyển từ cơ sở khác.
+- Đối chiếu mã nguồn gốc xác nhận mô hình vòng đời dùng Đang hoạt động/Đang sửa chữa/Ngừng sử dụng/Thanh lý, còn Lưu kho là cờ lưu trữ riêng. Quy ước mã quản lý có cấu trúc ABC-ABXY-xxx-BB-MM-YY; chưa tự động sinh mã vì danh mục mã loại, cơ sở và vị trí cần cấu hình/được chốt trước.
+
+Commit cập nhật:
+- `5efe31e73505b5a5d714ddf8e833331db09df09f` – mô hình dữ liệu và migration.
+- `a95a71cb344b5db2950d7eddd30a8c031d9e196e` – giao diện danh mục, bộ lọc và lưu kho/khôi phục.
+
+### Việc còn lại / giới hạn kiểm thử
+- Chưa xác nhận build TypeScript/Vite. Đã thử clone repo để chạy build trong môi trường hiện tại nhưng không truy cập được github.com do DNS/network; GitHub commit status hiện trả danh sách statuses rỗng. Không đánh dấu build PASS.
+- Chưa chạy kiểm thử trực tiếp trên trình duyệt PC/mobile.
+- Chưa có trang chi tiết thiết bị, quản lý ảnh, QR/in tem, Excel/in danh sách.
+- Chưa triển khai bộ danh mục ABC/ABXY/BB và cơ chế sinh mã; không được hard-code các ví dụ HP01/BB demo thành cấu hình thật.
+- Chưa cấu hình Supabase riêng; dữ liệu Local vẫn chưa phân vùng theo user và chưa đồng bộ Cloud.
