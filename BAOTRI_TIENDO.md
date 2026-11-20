@@ -123,3 +123,24 @@ Commit cập nhật:
 - Chưa có trang chi tiết thiết bị, quản lý ảnh, QR/in tem, Excel/in danh sách.
 - Chưa triển khai bộ danh mục ABC/ABXY/BB và cơ chế sinh mã; không được hard-code các ví dụ HP01/BB demo thành cấu hình thật.
 - Chưa cấu hình Supabase riêng; dữ liệu Local vẫn chưa phân vùng theo user và chưa đồng bộ Cloud.
+
+
+## 10. Cập nhật 21/11/2026 – chi tiết hồ sơ và ảnh thiết bị
+
+Đã cập nhật trực tiếp trên nhánh `main`:
+
+- `src/App.tsx`: nhấp vào mã/tên thiết bị trong danh sách để mở cửa sổ Chi tiết thiết bị.
+- Cửa sổ chi tiết hiển thị mã, tên, nhóm, vị trí, hãng, model, serial, công suất/thông số, ngày sử dụng, chu kỳ bảo trì, thông tin chuyển cơ sở, trạng thái, ngày lưu kho và ghi chú.
+- Có thao tác đi từ chi tiết sang chỉnh sửa hồ sơ.
+- Biểu mẫu thêm/sửa hỗ trợ tối đa 6 ảnh cho mỗi thiết bị; ảnh được thu nhỏ về cạnh dài tối đa 1400px, chuyển JPEG và lưu dạng data URL trong IndexedDB trên trình duyệt hiện tại.
+- Có xem ảnh lớn bằng cách mở ảnh trong tab mới; có thể xóa ảnh khỏi biểu mẫu trước khi lưu.
+- `src/style.css`: bổ sung bố cục chi tiết, lưới ảnh và CSS responsive cho màn hình nhỏ.
+
+Commit:
+- `d01ed6f5affac0a0c849d0ff89c7222fd042b67f` – cửa sổ chi tiết và quản lý ảnh.
+- `0e21272b5f33404776bac7c4b83351dfb674cdca` – giao diện chi tiết và thư viện ảnh.
+
+### Giới hạn cần nhớ
+- Ảnh hiện lưu Local trong IndexedDB, không đồng bộ sang máy khác và có thể bị mất nếu người dùng xóa dữ liệu trình duyệt. Chưa dùng Supabase Storage.
+- Chưa có kiểm thử build hoặc trình duyệt được xác nhận trong phiên này; chưa đánh dấu nghiệm thu.
+- Chưa làm QR, in tem, Excel, cấp mã tự động hoặc cấu hình danh mục mã.
