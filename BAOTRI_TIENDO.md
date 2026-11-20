@@ -188,3 +188,15 @@ Giới hạn:
 Commit:
 - `03e531d6076608187a9810090ad23c9e7806bdcf` – thêm dependency QR.
 - `1bc2f79c2fd852794ad8e381640948423d40d93f` – thêm QR và in chi tiết/tem trong cửa sổ hồ sơ.
+
+
+## 13. Cập nhật 21/11/2026 – bổ sung người tạo hồ sơ
+
+- Đối chiếu cửa sổ chi tiết gốc cho thấy còn trường “Người thêm”.
+- Bổ sung `createdByLabel` dạng tùy chọn vào kiểu Asset; dữ liệu Local cũ không có trường này vẫn đọc bình thường.
+- Khi tạo hồ sơ mới, ứng dụng ghi email tài khoản đang đăng nhập làm người thêm; khi sửa hồ sơ, giữ nguyên người tạo ban đầu.
+- Cửa sổ Chi tiết thiết bị hiển thị trường Người thêm.
+
+Commit:
+- `92a26aca3242a678aa3ee5b0486b264be3e30978` – bổ sung metadata người tạo.
+- `7db24870ae888a5defe15907ed10af3618f9992b` – hiển thị người thêm trong chi tiết.
