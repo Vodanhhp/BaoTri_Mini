@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, UserRound, Wrench, X, RotateCcw } from 'lucide-react'
+import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, UserRound, Wrench, X, RotateCcw, ImagePlus } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import { db, now, uid, type Asset, type AssetStatus } from './db'
 import { supabase } from './lib/supabase'
@@ -12,6 +12,25 @@ const emptyAsset = (): Asset => ({
   status: 'Đang hoạt động', notes: '', images: [], createdAt: now(), updatedAt: now()
 })
 const dateText = (value: string) => value ? new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('vi-VN') : '—'
+const imageToDataUrl = async (file: File): Promise<string> => {
+  if (!file.type.startsWith('image/')) throw new Error('Chỉ chấp nhận tệp hình ảnh.')
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Không thể xử lý hình ảnh trên trình duyệt này.')
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return await new Promise((resolve, reject) => canvas.toBlob(blob => {
+    if (!blob) return reject(new Error('Không thể nén hình ảnh.'))
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Không đọc được hình ảnh.'))
+    reader.readAsDataURL(blob)
+  }, 'image/jpeg', 0.78))
+}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -24,6 +43,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState('updatedAt')
   const [editing, setEditing] = useState<Asset | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [detailAsset, setDetailAsset] = useState<Asset | null>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
@@ -73,6 +93,16 @@ export default function App() {
     finally { setBusy(false) }
   }
 
+  const addImages = async (files: FileList | null) => {
+    if (!editing || !files?.length) return
+    setError('')
+    try {
+      const remaining = 6 - (editing.images?.length || 0)
+      if (remaining <= 0) throw new Error('Mỗi thiết bị được lưu tối đa 6 ảnh.')
+      const converted = await Promise.all(Array.from(files).slice(0, remaining).map(imageToDataUrl))
+      setEditing({ ...editing, images: [...(editing.images || []), ...converted] })
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
+  }
   const archiveAsset = async (asset: Asset) => {
     if (!window.confirm('Đưa thiết bị ' + asset.code + ' – ' + asset.name + ' vào Lưu kho? Hồ sơ sẽ được giữ lại và có thể khôi phục.')) return
     await db.assets.update(asset.id, { archivedAt: now(), updatedAt: now() })
@@ -123,7 +153,7 @@ export default function App() {
             <button className="soft-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
           </div>
           <div className="table-wrap"><table><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-            {visibleAssets.map(asset=><tr key={asset.id}><td><b>{asset.code}</b><small>{asset.name}</small></td><td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td><td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td><td className="actions">{showArchived?<button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button>:<><button className="text-btn" onClick={()=>{setEditing({...asset});setError('');setShowForm(true)}}>Sửa</button><button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button></>}</td></tr>)}
+            {visibleAssets.map(asset=><tr key={asset.id}><td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{asset.name}</small></button></td><td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td><td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td><td className="actions">{showArchived?<button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button>:<><button className="text-btn" onClick={()=>{setEditing({...asset});setError('');setShowForm(true)}}>Sửa</button><button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button></>}</td></tr>)}
           </tbody></table>{visibleAssets.length===0&&<div className="empty"><Building2 size={25}/>{assets.length?'Không tìm thấy thiết bị phù hợp.':'Chưa có thiết bị. Hãy thêm hồ sơ đầu tiên.'}</div>}</div>
         </div>
         <div className="footnote"><ShieldCheck size={15}/> Dữ liệu thiết bị lưu trên trình duyệt này. Chưa bật đồng bộ Cloud hoặc chia sẻ giữa nhiều thiết bị. Xóa vĩnh viễn chưa được cung cấp để tránh mất hồ sơ.</div>
@@ -144,9 +174,17 @@ export default function App() {
         <label className="field">Trạng thái<select value={editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
         <label className="field"><span>Thiết bị chuyển từ cơ sở khác</span><select value={editing.transferredFromOtherFacility?'yes':'no'} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.value==='yes'})}><option value="no">Không</option><option value="yes">Có</option></select></label>
         <label className="field full-field">Ghi chú<textarea rows={3} value={editing.notes} onChange={event=>setEditing({...editing,notes:event.target.value})}/></label>
+        <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/6)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=6} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
         {error&&<div className="auth-error full-field">{error}</div>}
         <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setShowForm(false);setEditing(null)}}>Hủy</button><button type="submit" className="primary-btn" disabled={busy}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
+    </section></div>}
+    {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{detailAsset.name}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
+      <div className="detail-status-row"><span className={'status '+(detailAsset.archivedAt?'gray':detailAsset.status==='Đang hoạt động'?'green':detailAsset.status==='Đang sửa chữa'?'orange':detailAsset.status==='Thanh lý'?'red':'gray')}>{detailAsset.archivedAt?'Đã lưu kho':detailAsset.status}</span><span className="muted">Cập nhật: {dateText(detailAsset.updatedAt.slice(0,10))}</span></div>
+      <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
+      <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
+      <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><a href={src} target="_blank" rel="noreferrer" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></a>)}</div>:<p className="muted">Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.</p>}</div>
+      <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button><button className="primary-btn" onClick={()=>{setEditing({...detailAsset});setDetailAsset(null);setError('');setShowForm(true)}}>Chỉnh sửa hồ sơ</button></div>
     </section></div>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>
