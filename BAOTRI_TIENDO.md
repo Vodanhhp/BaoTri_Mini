@@ -144,3 +144,28 @@ Commit:
 - Ảnh hiện lưu Local trong IndexedDB, không đồng bộ sang máy khác và có thể bị mất nếu người dùng xóa dữ liệu trình duyệt. Chưa dùng Supabase Storage.
 - Chưa có kiểm thử build hoặc trình duyệt được xác nhận trong phiên này; chưa đánh dấu nghiệm thu.
 - Chưa làm QR, in tem, Excel, cấp mã tự động hoặc cấu hình danh mục mã.
+
+
+## 11. Cập nhật 21/11/2026 – đối chiếu và hoàn thiện biểu mẫu thiết bị
+
+Đã đối chiếu trực tiếp component `AssetModal` trong repository gốc với biểu mẫu của repository mới.
+
+Đã bổ sung vào biểu mẫu dự án mới:
+- Nhóm thiết bị chuyển từ ô nhập tự do sang danh mục chọn theo các nhóm ngành giống danh mục chuẩn trong bản gốc; hồ sơ cũ có tên nhóm ngoài danh mục vẫn được giữ và hiển thị như giá trị cũ để không làm mất dữ liệu.
+- Chu kỳ bảo trì chuyển sang danh sách chọn: Hàng ngày, Hàng tuần, Hàng tháng, Hàng quý, Hàng năm; giá trị cũ ngoài danh sách vẫn được giữ.
+- Cờ thiết bị chuyển từ cơ sở khác chuyển sang checkbox, thao tác gần với biểu mẫu gốc.
+- Giới hạn ảnh tăng từ 6 lên 8 ảnh/hồ sơ, khớp giới hạn của bản gốc. Cơ chế nén ảnh và lưu Local hiện tại vẫn được giữ.
+
+Chưa triển khai trong lượt này:
+- Tạo nhóm/loại thiết bị tùy chỉnh và lưu danh mục riêng.
+- Tự động cấp mã theo ABC-ABXY-xxx-BB-MM-YY, vì danh mục mã loại/cơ sở/vị trí và quy tắc cấp mã phải được chốt riêng; không tự suy diễn mã cơ sở.
+- Chọn danh mục vị trí có mã BB.
+- In chi tiết thiết bị, in tem QR, quét QR, xuất Excel và in danh sách.
+- Chuyển ảnh lên Supabase Storage.
+
+Commit:
+- `df24bd36e4391e96236a7aaa64b49e969ae26152` – đồng bộ danh mục nhóm, chu kỳ và giới hạn ảnh theo biểu mẫu gốc.
+
+Kiểm thử:
+- Đã ghi thay đổi lên GitHub nhánh `main`.
+- Chưa xác nhận build TypeScript/Vite hoặc kiểm thử trình duyệt. Không đánh dấu PASS/nghiệm thu cho đến khi có kết quả CI hoặc chạy thực tế.
