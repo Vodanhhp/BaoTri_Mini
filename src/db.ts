@@ -19,6 +19,7 @@ export type Asset = {
   status: AssetStatus
   notes: string
   images: string[]
+  createdByLabel?: string
   archivedAt?: string
   createdAt: string
   updatedAt: string
