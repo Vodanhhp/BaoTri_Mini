@@ -169,3 +169,22 @@ Commit:
 Kiểm thử:
 - Đã ghi thay đổi lên GitHub nhánh `main`.
 - Chưa xác nhận build TypeScript/Vite hoặc kiểm thử trình duyệt. Không đánh dấu PASS/nghiệm thu cho đến khi có kết quả CI hoặc chạy thực tế.
+
+
+## 12. Cập nhật 21/11/2026 – QR và in hồ sơ thiết bị
+
+Đã bổ sung bước đầu chức năng QR/in trực tiếp trong cửa sổ Chi tiết thiết bị:
+- Hiển thị QR được tạo từ mã quản lý hiện có; không tự sinh hoặc thay đổi mã quản lý.
+- Có nút In tem QR theo kích thước tem 50 × 30 mm đã có CSS in của giao diện tham chiếu.
+- Có nút In chi tiết thiết bị, gồm thông tin nhận diện, kỹ thuật, trạng thái và QR.
+- Bổ sung dependency `qrcode.react` trong `package.json`.
+
+Giới hạn:
+- QR hiện mã hóa trực tiếp chuỗi mã quản lý; chưa phải luồng QR định danh bằng UUID hoặc URL tra cứu có xác thực.
+- Chưa có chức năng quét QR trong dự án mới.
+- Chưa có cơ chế cấp mã quản lý tự động; mã hiện vẫn do người dùng nhập.
+- Chưa kiểm thử bản in thực tế trên máy in tem; cần kiểm tra kích thước, lề và độ nét sau khi chạy ứng dụng.
+
+Commit:
+- `03e531d6076608187a9810090ad23c9e7806bdcf` – thêm dependency QR.
+- `1bc2f79c2fd852794ad8e381640948423d40d93f` – thêm QR và in chi tiết/tem trong cửa sổ hồ sơ.
