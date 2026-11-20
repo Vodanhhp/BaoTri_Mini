@@ -4,6 +4,7 @@ import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Sea
 import AuthScreen from './AuthScreen'
 import { db, now, uid, type Asset, type AssetStatus } from './db'
 import { supabase } from './lib/supabase'
+import { QRCodeSVG } from 'qrcode.react'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý']
 
@@ -57,6 +58,7 @@ export default function App() {
   const [editing, setEditing] = useState<Asset | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [detailAsset, setDetailAsset] = useState<Asset | null>(null)
+  const [printAssetMode, setPrintAssetMode] = useState<null | 'sticker' | 'detail'>(null)
   const [showArchived, setShowArchived] = useState(false)
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
@@ -126,6 +128,7 @@ export default function App() {
     await loadAssets(); notify('Đã khôi phục thiết bị khỏi Lưu kho.')
   }
   const signOut = async () => { await supabase?.auth.signOut(); setSession(null) }
+  const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if (!session) return <AuthScreen client={supabase}/>
@@ -197,8 +200,14 @@ export default function App() {
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><a href={src} target="_blank" rel="noreferrer" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></a>)}</div>:<p className="muted">Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.</p>}</div>
+      <div className="asset-qr-panel"><div><small>MÃ QR THIẾT BỊ</small><b>{detailAsset.code || 'Chưa có mã quản lý'}</b><span>QR hiện mã hóa trực tiếp mã quản lý thiết bị</span></div>{detailAsset.code&&<QRCodeSVG value={detailAsset.code} size={104} level="M" includeMargin/>}</div>
+      <div className="asset-photo-actions"><button className="soft-btn" disabled={!detailAsset.code} onClick={()=>printAsset('sticker')}>In tem QR</button><button className="soft-btn" onClick={()=>printAsset('detail')}>In chi tiết</button></div>
       <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button><button className="primary-btn" onClick={()=>{setEditing({...detailAsset});setDetailAsset(null);setError('');setShowForm(true)}}>Chỉnh sửa hồ sơ</button></div>
     </section></div>}
+    {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
+      {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><strong>{detailAsset.code}</strong></div>}
+      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{detailAsset.name}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',detailAsset.name],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
+    </div>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>
 }
