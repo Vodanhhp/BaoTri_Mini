@@ -265,3 +265,11 @@ Permission catalog hiện có 26 code:
 - Chỉ dùng membership/RLS và role grants hiện có; **không thay đổi schema, migration, Auth flow hoặc Edge Functions** trong phạm vi giao diện này.
 - Bổ sung an toàn khi đổi tài khoản: xóa ngay organization contexts và organizationId của phiên trước khi tải context cho user mới, tránh hiển thị tạm dữ liệu/tenant cũ nếu tài khoản mới đang tải hoặc truy vấn lỗi.
 - CI build/validate, kiểm thử chọn một tổ chức/nhiều tổ chức, kiểm tra membership suspended và kiểm tra tenant isolation còn chờ.
+
+## Chuyển Cài đặt vào thanh menu bên trái (21/11/2026)
+- Theo yêu cầu đã thống nhất, chuyển điểm truy cập **Cài đặt** khỏi topbar sang thanh điều hướng bên trái, đặt cùng nhóm với các mục Thiết bị để tạo cấu trúc mở rộng cho các chức năng cài đặt về sau.
+- Cài đặt hiện mở nhóm mục con: **Quản lý tài khoản** (chỉ Admin của tổ chức hiện tại) và **Quản trị nền tảng** (chỉ Super Admin theo allowlist hiện có).
+- Không thay đổi component quản trị, backend authorization, RBAC hoặc Supabase schema; chỉ thay đổi vị trí và cách mở các mục quản trị.
+- Thanh sidebar và mục quản trị tiếp tục không hiển thị trên giao diện mobile theo quy tắc responsive hiện có; backend vẫn là lớp bảo vệ quyền thực tế.
+- Đã triển khai trên branch `feature/settings-sidebar-menu`: cập nhật `src/App.tsx`, `src/style.css`.
+- CI, kiểm tra giao diện PC/mobile và xác nhận Pages deploy còn chờ.

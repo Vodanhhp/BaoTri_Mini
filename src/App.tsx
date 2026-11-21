@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, UserRound, Wrench, X, RotateCcw, ImagePlus } from 'lucide-react'
+import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
@@ -310,12 +310,19 @@ export default function App() {
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
       <button className="nav-item active"><LayoutDashboard size={17}/><span>Tổng quan thiết bị</span></button>
       <button className="nav-item"><Building2 size={17}/><span>Danh mục thiết bị</span></button>
+      {session&&(currentOrganization?.isAdmin||session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com')&&<div className="sidebar-settings">
+        <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
+        {settingsOpen&&<div className="sidebar-settings-submenu">
+          {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
+          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
+        </div>}
+      </div>}
       <div className="sidebar-bottom"><ShieldCheck size={15}/> Dữ liệu thiết bị Local</div>
     </aside>
     <main className="main">
       <header className="topbar">
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
-        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}{session&&(currentOrganization?.isAdmin||session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com')&&<div className="settings-menu desktop-settings"><button className="soft-btn settings-trigger" aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><SlidersHorizontal size={15}/> Cài đặt</button>{settingsOpen&&<div className="settings-dropdown">{currentOrganization?.isAdmin&&<button onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/> Quản lý tài khoản</button>}{session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/> Quản trị nền tảng</button>}</div>}</div>}<span className="sync-status"><i/>Đang lưu Local</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p></div><div className="welcome-icon"><Wrench size={42}/></div></section>
