@@ -395,7 +395,9 @@ export default function App() {
         const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,value.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
         let mutationId:string
         if(pending){
-          if(pending.status==='conflict'||JSON.stringify(pending.payload)!==JSON.stringify(payload))throw new Error('Có mutation chưa xác nhận với snapshot khác. Chỉ retry đúng snapshot cũ.')
+          const pendingPayload=pending.payload as AssetMutationPayload
+          const comparablePending=('category' in pendingPayload)?pendingPayload:{...pendingPayload,category:previous?.category??value.category}
+          if(pending.status==='conflict'||JSON.stringify(comparablePending)!==JSON.stringify(payload))throw new Error('Có mutation chưa xác nhận với snapshot khác. Chỉ retry đúng snapshot cũ.')
           mutationId=pending.mutationId
         }else{
           mutationId=uid()
