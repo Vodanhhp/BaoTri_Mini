@@ -284,6 +284,7 @@ export default function App() {
         setReservationReleaseBusy(false)
       }
     }
+    setError('')
     setEditing(current=>current?{...current,...patch,idReservationId:undefined}:current)
     afterChange?.()
   }
