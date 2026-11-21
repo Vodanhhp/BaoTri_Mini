@@ -279,7 +279,7 @@ export default function App() {
   const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
-  if(passwordRecovery&&session&&supabase)return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
+  if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
   if (!session && !localPreview) return <AuthScreen client={supabase} onLocalPreview={() => setLocalPreview(true)}/>
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
