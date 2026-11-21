@@ -237,7 +237,7 @@ Groups are filtered by `availableFromPlan`. Dictionary entries remain searchable
 
 ### Additional Supabase migrations on BAOTRI-Mini-New
 - 20261121120907_platform_customer_provisioning_idempotency: private request ledger, RLS enabled, no direct browser/service_role table grants, private SECURITY DEFINER implementation and public SECURITY INVOKER wrapper.
-- 20261121120908_grant_service_role_customer_provisioning_idempotency: EXECUTE grant for service_role on the private implementation, required because the public wrapper is SECURITY INVOKER.
+- 20261121120954_grant_service_role_customer_provisioning_idempotency: EXECUTE grant for service_role on the private implementation, required because the public wrapper is SECURITY INVOKER.
 - The public wrapper is executable by service_role only; authenticated cannot execute it. The private table remains inaccessible directly.
 - Rollback-only verification through the public wrapper with role service_role called the same request twice and returned the same organizationId and Plan A snapshot metadata. Reusing the request UUID with a different payload is rejected. The transaction was rolled back.
 
