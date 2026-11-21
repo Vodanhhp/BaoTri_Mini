@@ -66,3 +66,8 @@ Permission catalog hiện có 26 code:
 - Đã kiểm thử trong transaction rollback-only: Auth user trigger tạo profile; tạo organization trigger sinh đúng 3 role; counts Admin=27, Technician=17, Viewer=10; Admin helper xác nhận `admin`, `users.manage`, `assets.import`. Toàn bộ test fixture đã ROLLBACK; database không lưu user/org thử nghiệm.
 - Đã chạy Supabase Security Advisor sau migration: không có lints.
 - Đã thêm template bootstrap first Admin + organization; chưa chạy và chưa tạo tài khoản thật.
+
+## Commit tham chiếu
+- Migration 007 source: `83b87a691a1008d1ebd6050f65db72c70a63eef3`.
+- Bootstrap script: `c1a581d4535645012903428479f9f76cc9457deb`.
+- TIENDO được tạo và cập nhật trong các commit: `136f3601d5f4fe9a0d40deb0f5af61371b3ebe9`, `0a4eb71f1e7906676097311d1856d8e7646c725b`, `0da54a671c870f181f2d8e53c7787f1b2fe85fda`.
