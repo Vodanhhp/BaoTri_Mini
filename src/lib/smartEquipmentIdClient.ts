@@ -126,13 +126,21 @@ export async function confirmSmartEquipmentIdReservation(
     reservationId: string
     assetId: string
     equipmentId: string
+    originalName: string
+    normalizedNameAtCreation: string
+    equipmentTypeCode: string
+    components: EquipmentIdComponentsSnapshot
   }
 ): Promise<void> {
   const { data, error } = await client.rpc('confirm_asset_id_sequence_reservation', {
     p_organization_id: input.organizationId,
     p_reservation_id: input.reservationId,
     p_asset_id: input.assetId,
-    p_equipment_id: input.equipmentId
+    p_equipment_id: input.equipmentId,
+    p_original_name: input.originalName,
+    p_normalized_name_at_creation: input.normalizedNameAtCreation,
+    p_equipment_type_code: input.equipmentTypeCode,
+    p_id_components_snapshot: input.components
   })
   if (error) throw new Error('Local đã lưu thiết bị nhưng Cloud chưa xác nhận số thứ tự: ' + error.message)
   const result = data as { reservation_id?: string; status?: string } | null
