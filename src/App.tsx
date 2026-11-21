@@ -271,9 +271,17 @@ export default function App() {
   },[cloudLease?.assetId,cloudLease?.token,cloudLease?.lost,organizationId])
 
   const closeEditor=()=>{
+    const draft=editing
     setShowForm(false);setEditing(null);setError('')
     const lease=cloudLease;setCloudLease(null)
     if(lease&&supabase&&!lease.lost)void releaseCloudAssetLock(supabase,organizationId,lease.assetId,lease.token).catch(()=>false)
+    // Release a sequence reserved for an unsaved draft. A Local asset that was
+    // already persisted keeps its reservation for the confirmation retry path.
+    if(draft?.idReservationId&&supabase&&organizationId){
+      void db.assets.get(draft.id).then(existing=>{
+        if(!existing)return releaseSmartEquipmentIdReservation(supabase,organizationId,draft.idReservationId!)
+      }).catch(()=>false)
+    }
   }
 
   const saveAsset = async (event: FormEvent<HTMLFormElement>) => {
@@ -313,7 +321,10 @@ export default function App() {
         const selectedGroup=plan==='A'?undefined:smartAvailableGroups.find(group=>group.code===smartGroupChoice)
         if(plan!=='A'&&!selectedGroup)throw new Error('Bạn cần chọn và xác nhận nhóm thiết bị trước khi lưu.')
         if((plan==='C'||plan==='D')&&!editing.commissionedAt)throw new Error('Plan C/D yêu cầu ngày đưa vào sử dụng.')
-        const reservationId=uid()
+        // Keep the same reservation key while the form remains open. If the
+        // request reaches Cloud but its response is lost, retrying is idempotent.
+        const reservationId=editing.idReservationId||uid()
+        if(!editing.idReservationId)setEditing({...editing,idReservationId:reservationId})
         const issuance=await reserveSmartEquipmentId(supabase,{
           organizationId,
           reservationId,
@@ -345,13 +356,23 @@ export default function App() {
         }
         const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
         if(duplicate&&duplicate.id!==value.id){
-          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          try{
+            await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
+          }catch{
+            // Keep the reservation key so a later retry can safely reconcile it.
+          }
           throw new Error('Mã vừa được giữ đã tồn tại trong Local. Không lưu hồ sơ; hãy thử lại để nhận số khác.')
         }
         try{
           await db.assets.add(value)
         }catch(localError){
-          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          try{
+            await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
+          }catch{
+            // Keep the reservation key if Cloud could not confirm its release.
+          }
           throw localError
         }
         try{
@@ -579,7 +600,10 @@ export default function App() {
     {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor}><X size={17}/></button></div>
       <form className="form-grid" onSubmit={saveAsset}>
         {isNewSmartAsset ? <>
-          <label className="field full-field">Tên thiết bị *<input required value={editing.name} onChange={event=>{setEditing({...editing,name:event.target.value});setSmartEquipmentChoice('');setSmartGroupChoice('')}} placeholder="Ví dụ: Máy bơm nước làm mát"/></label>
+          <label className="field full-field">Tên thiết bị *<input required value={editing.name} onChange={event=>{
+            if(editing.idReservationId&&supabase&&organizationId)void releaseSmartEquipmentIdReservation(supabase,organizationId,editing.idReservationId).catch(()=>false)
+            setEditing({...editing,name:event.target.value,idReservationId:undefined});setSmartEquipmentChoice('');setSmartGroupChoice('')
+          }} placeholder="Ví dụ: Máy bơm nước làm mát"/></label>
           {equipmentCatalogLoading&&<div className="field full-field muted">Đang tải danh mục thiết bị của tổ chức…</div>}
           {equipmentCatalogError&&<div className="auth-error full-field">{equipmentCatalogError}</div>}
           {!equipmentCatalogLoading&&!equipmentCatalog&&<div className="auth-error full-field">Tổ chức chưa được khởi tạo Plan và Catalog Snapshot. Chưa thể cấp mã thiết bị.</div>}
@@ -588,9 +612,15 @@ export default function App() {
             {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>setSmartEquipmentChoice(event.target.value)}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
             {smartAnalysis?.status==='matched'&&<div className="field full-field"><span>Loại chuẩn đề xuất</span><b>{smartAnalysis.normalizedName} · {smartAnalysis.equipmentCode}</b></div>}
             {smartAnalysis&&smartAnalysis.status!=='matched'&&smartAnalysis.status!=='ambiguous'&&<div className="auth-error full-field">{smartAnalysis.message}</div>}
-            {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required value={smartGroupChoice} onChange={event=>setSmartGroupChoice(event.target.value)}><option value="">-- Chọn / xác nhận nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select>{smartAnalysis?.group&&<small>Gợi ý từ điển: {smartAnalysis.group.name}. Hãy chọn nhóm trong danh sách để xác nhận.</small>}</label>}
+            {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required value={smartGroupChoice} onChange={event=>{
+              if(editing.idReservationId&&supabase&&organizationId)void releaseSmartEquipmentIdReservation(supabase,organizationId,editing.idReservationId).catch(()=>false)
+              setEditing({...editing,idReservationId:undefined});setSmartGroupChoice(event.target.value)
+            }}><option value="">-- Chọn / xác nhận nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select>{smartAnalysis?.group&&<small>Gợi ý từ điển: {smartAnalysis.group.name}. Hãy chọn nhóm trong danh sách để xác nhận.</small>}</label>}
             {equipmentCatalog.plan_code==='A'&&<div className="field"><span>Nhóm thiết bị</span><b>Không áp dụng trong Plan A</b></div>}
-            {(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')&&<label className="field">Mã cơ sở (2 chữ số) *<input required inputMode="numeric" maxLength={2} pattern="[0-9]{2}" value={smartSiteCode} onChange={event=>setSmartSiteCode(event.target.value)}/></label>}
+            {(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')&&<label className="field">Mã cơ sở (2 chữ số) *<input required inputMode="numeric" maxLength={2} pattern="[0-9]{2}" value={smartSiteCode} onChange={event=>{
+              if(editing.idReservationId&&supabase&&organizationId)void releaseSmartEquipmentIdReservation(supabase,organizationId,editing.idReservationId).catch(()=>false)
+              setEditing({...editing,idReservationId:undefined});setSmartSiteCode(event.target.value)
+            }}/></label>}
             <div className="field full-field"><span>Mã quản lý dự kiến</span><b>{smartAnalysis?.status==='matched'?'Sẽ được Local ghép sau khi giữ số thứ tự':'Chờ xác nhận loại và nhóm thiết bị'}</b><small>Cloud chỉ cấp số thứ tự; mã hoàn chỉnh được tạo và lưu tại Local.</small></div>
           </>}
         </> : <>
@@ -603,7 +633,10 @@ export default function App() {
         <label className="field">Model<input value={editing.model} onChange={event=>setEditing({...editing,model:event.target.value})}/></label>
         <label className="field">Số serial<input value={editing.serial} onChange={event=>setEditing({...editing,serial:event.target.value})}/></label>
         <label className="field">Công suất / thông số<input value={editing.power} onChange={event=>setEditing({...editing,power:event.target.value})}/></label>
-        <label className="field">Ngày đưa vào sử dụng{isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')?' *':''}<input type="date" required={Boolean(isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D'))} value={editing.commissionedAt} onChange={event=>setEditing({...editing,commissionedAt:event.target.value})}/></label>
+        <label className="field">Ngày đưa vào sử dụng{isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')?' *':''}<input type="date" required={Boolean(isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D'))} value={editing.commissionedAt} onChange={event=>{
+          if(editing.idReservationId&&supabase&&organizationId)void releaseSmartEquipmentIdReservation(supabase,organizationId,editing.idReservationId).catch(()=>false)
+          setEditing({...editing,commissionedAt:event.target.value,idReservationId:undefined})
+        }}/></label>
         <label className="field">Chu kỳ bảo trì<select value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})}><option value="">Chưa thiết lập</option>{ASSET_CYCLES.map(item=><option key={item} value={item}>{item}</option>)}{editing.cycle&&!ASSET_CYCLES.includes(editing.cycle as typeof ASSET_CYCLES[number])&&<option value={editing.cycle}>{editing.cycle} · giá trị cũ</option>}</select></label>
         <label className="field">Trạng thái<select value={editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
         <label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked})}/> Thiết bị được chuyển từ cơ sở khác đến</span></label>
