@@ -407,7 +407,7 @@ export default function App() {
             await db.assetMutations.add({mutationId,organizationId,assetId:value.id,payload,expectedCloudUpdatedAt:lease.expectedCloudUpdatedAt,localUpdatedAt:value.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
             if(groupChanged)await db.assetGroupChanges.add({
               id:groupChangeId!,organizationId,assetId:value.id,oldCategory:previous!.category,newCategory:value.category,
-              changedByUserId:session?.user.id,changedAt:value.updatedAt,syncStatus:'pending'
+              changedByUserId:session?.user.id,mutationId,changedAt:value.updatedAt,syncStatus:'pending'
             })
           })
         }
@@ -418,7 +418,10 @@ export default function App() {
           await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
             await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
             await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:value.updatedAt,status:'linked',lastVerifiedAt:at})
-            if(groupChangeId)await db.assetGroupChanges.update(groupChangeId,{syncStatus:'synced'})
+            const linkedAudit=groupChangeId
+              ? await db.assetGroupChanges.get(groupChangeId)
+              : await db.assetGroupChanges.filter(change=>change.mutationId===mutationId&&change.syncStatus==='pending').first()
+            if(linkedAudit)await db.assetGroupChanges.update(linkedAudit.id,{syncStatus:'synced'})
           })
           setCloudLease(null);setShowForm(false);setEditing(null);await loadAssets();notify('Cloud xác nhận cập nhật thiết bị.')
           await releaseCloudAssetLock(supabase,organizationId,value.id,lease.token).catch(()=>false)
