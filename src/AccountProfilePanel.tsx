@@ -3,8 +3,6 @@ import type {SupabaseClient} from '@supabase/supabase-js'
 import {Check,KeyRound,Mail,UserRound,X} from 'lucide-react'
 
 type Props={client:SupabaseClient;onClose:()=>void}
-type Profile={display_name:string|null;phone:string|null}
-
 export default function AccountProfilePanel({client,onClose}:Props){
  const [userId,setUserId]=useState('')
  const [email,setEmail]=useState('')
