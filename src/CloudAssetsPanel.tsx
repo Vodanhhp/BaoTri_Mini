@@ -118,8 +118,10 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     const cloudChanged=asset.updatedAt!==link.cloudUpdatedAt
     if(localChanged&&cloudChanged){
       await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()})
-      const existingConflict=local?await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='conflict').first()
-      if(local&&!existingConflict)await db.assetMutations.add({mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'})
+      if(local){
+       const existingConflict=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='conflict').first()
+       if(!existingConflict)await db.assetMutations.add({mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'})
+      }
       await reload()
       throw new Error('Local và Cloud đều thay đổi. Đã tạo mục đối chiếu; chọn Cloud hoặc Local trong phần conflict.')
     }
