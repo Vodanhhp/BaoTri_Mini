@@ -310,3 +310,10 @@ Permission catalog hiện có 26 code:
 - Edge Function `platform-manage-organization` đã redeploy ACTIVE **version 2**, verify_jwt=true; token Bearer được parse đúng bằng regex whitespace. CI Build and test + GitHub Pages deploy đã success ở commit `ca4e8dea4e1c35d6cf92fe48225615a7a790cad2`; các chỉnh sửa giao diện cuối đang chờ workflow mới.
 - Kiểm tra trực tiếp `private.is_org_member(uuid)`: policy/RLS xác nhận cả membership active và `organizations.status='active'`; khi tạm ngưng, quyền truy cập Cloud qua RLS bị chặn ngay cả khi người dùng còn giữ phiên đăng nhập.
 - Rollback test hàm xóa đã tạo fixture tổ chức + Admin membership + role assignment, gọi hàm xóa, xác minh tổ chức biến mất trong transaction rồi ROLLBACK; kiểm tra fixture không tồn tại sau test. Wrapper RPC chỉ service_role EXECUTE; authenticated và anon bị từ chối. Security Advisor không phát sinh lint mới; cảnh báo Auth leaked-password protection là cảnh báo cũ.
+
+
+## Tinh chỉnh giao diện Quản trị nền tảng (21/11/2026)
+- Thu gọn typography và mật độ bảng doanh nghiệp: thống nhất cỡ chữ, giảm padding, giới hạn độ rộng tên tổ chức, giữ các nút thao tác gọn trên một hàng; bảng có thể cuộn ngang khi màn hình hẹp.
+- Chuyển xác nhận Tạm ngưng / Kích hoạt / Xóa khỏi cuối nội dung trang sang modal riêng ở giữa màn hình, có lớp nền tối, tiêu đề theo hành động, cảnh báo phù hợp và nút thao tác rõ ràng.
+- Dùng lựa chọn Có/Không dạng radio; Không hoặc Hủy đóng modal mà không gọi API. Giữ nguyên xác thực lại mật khẩu, kiểm tra đúng tên tổ chức khi xóa và xác thực Super Admin ở backend.
+- Commit giao diện: `a020f9411f516c407d573482757fc2a89e452c0e`. Chờ CI build và GitHub Pages deploy.
