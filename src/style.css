@@ -777,7 +777,7 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 
 /* Organization account administration */
 .member-management-modal{width:min(980px,96vw);max-width:980px;max-height:94vh;display:flex;flex-direction:column;gap:12px}
-.member-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.member-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
 .member-stat{padding:11px 13px;border:1px solid var(--border);border-radius:9px;background:var(--panel-alt)}
 .member-stat small{display:block;color:var(--muted);font-size:10px}
 .member-stat strong{display:block;font-size:21px;line-height:1.35;margin-top:3px}
@@ -813,6 +813,7 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 .member-invite-section .field input,.member-invite-section .field select{font-size:12px}
 .member-invite-section .modal-actions{grid-column:1/-1;justify-content:flex-end;margin-top:0}
 .member-note{font-size:10px;line-height:1.5;margin:0}
+@media(max-width:900px){.member-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){
  .member-management-modal{width:96vw;max-height:95dvh;padding:13px;gap:10px}
  .member-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
