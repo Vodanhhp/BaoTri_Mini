@@ -176,6 +176,44 @@ The Smart ID database foundation was later applied separately to the new project
 ### Still required before real use
 
 - Neither `BAOTRI Mini` nor `BAOTRI Mini Test 02` has an Organization catalog snapshot or an assigned Plan in BAOTRI-Mini-New. No Plan was guessed and no official equipment ID has been issued.
-- Add a trusted Super Admin provisioning flow to assign the subscription Plan and initialize a tenant-owned snapshot from `public/data/baotri-config.json`.
-- Complete the Organization-specific catalog management UI.
+- The trusted Super Admin create-customer flow now requires explicit Plan A/B/C/D selection and atomically creates the Organization, built-in roles/grants, first Admin membership and tenant-owned Plan-filtered Catalog Snapshot from the published catalog registry (dataVersion `1.1.0`).
+- Organization-specific catalog management UI (custom groups/equipment dictionary additions and audited changes) remains to be completed.
 - The current Cloud asset read path still returns `assets.id` to ordinary authenticated clients. The approved requirement that KTV/Viewer must not receive the internal UUID in ordinary API responses remains open and needs a broader API/view refactor.
+
+## 12. Plan-aware customer onboarding (21/11/2026)
+
+Plan selection is part of creating a new customer Organization, not a follow-up manual task.
+
+### Owner UI
+- `src/PlatformAdminPanel.tsx` loads Plan definitions from `public/data/baotri-config.json`.
+- The owner must explicitly choose Plan A/B/C/D; there is no implicit default.
+- The form displays device capacity, equipment-group availability, site support and the corresponding ID rule.
+- The organization overview displays Plan and Catalog Snapshot version. Existing organizations without a snapshot show `Chưa khởi tạo`; no Plan is inferred or assigned automatically.
+
+### Trusted database provisioning
+Migration `20261121110000_platform_customer_plan_provisioning.sql` stores the published standard catalog version in `private.standard_equipment_catalog_versions` and creates:
+- `private.platform_provision_customer(...)`: SECURITY DEFINER implementation with empty search_path and row_security off. It requires the service_role JWT claim, verifies the platform owner's Auth email, verifies the target Admin's real Auth email/profile and validates the selected Plan against the published catalog.
+- `public.platform_provision_customer(...)`: SECURITY INVOKER wrapper with EXECUTE granted only to `service_role`.
+
+The database function performs one transaction:
+1. Insert Organization (existing trigger seeds Admin/Technician/Viewer roles and permission grants)
+2. Copy the selected Plan's tenant-owned Catalog Snapshot
+3. Insert the first Admin membership
+4. Assign the built-in Admin role
+
+Any database error rolls back all four operations. Auth invitation is an external Auth operation performed by the Edge Function before the database transaction; if provisioning fails, the invited Auth account can be reused on retry, but no partial Organization is left behind.
+
+### Plan-specific snapshot
+- Plan A: 0 equipment groups, 74 equipment dictionary entries, 11 industries
+- Plan B: 9 groups, 74 dictionary entries, 21 industries
+- Plan C: 17 groups, 74 dictionary entries, 32 industries
+- Plan D: 30 groups, 74 dictionary entries, 44 industries
+
+Groups are filtered by `availableFromPlan`. Dictionary entries remain searchable across all Plans, but suggestions pointing to a group unavailable in the selected Plan are removed. This prevents the name analyzer from proposing a group the customer cannot select.
+
+### Verification and deployment boundary
+- Rollback-only tests successfully provisioned all four Plans with confirmed Auth users. Each returned the correct Plan name, dataVersion `1.1.0`, and expected snapshot counts.
+- After rollback: 2 real Organizations remain; 0 tenant Catalog Snapshots, 0 test assets; 6 seeded roles and 3 real memberships remain unchanged.
+- The provisioning RPC is executable by service_role only; authenticated and anon cannot execute it.
+- Source changes to `platform-create-customer` and `platform-get-overview` are committed on `feature/smart-equipment-id-engine`, but the Edge Functions are not redeployed until the new Pages UI is merged, avoiding a mismatch with the currently deployed UI.
+- The two existing Organizations still have no Plan/Snapshot. Their Plan must be decided separately; onboarding does not silently assign one to existing tenants.
