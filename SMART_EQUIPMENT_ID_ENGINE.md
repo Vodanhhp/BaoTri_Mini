@@ -78,7 +78,7 @@ Full integration requires tenant-isolated snapshot provisioning, organization Pl
 - `Asset.name` is the editable real-world name and never regenerates the ID.
 - `Asset.category` is the current group; Admin may change it without regenerating the ID.
 - Group changes are recorded in a private audit table with old group, new group, actor and timestamp; a reason can be added when the UI supplies one.
-- The database now stores original name, normalized name at creation, equipment type code, group/site code at creation and immutable ID-components snapshot. The Local model still needs to persist these fields.
+- The database and Local Dexie model now store original name, normalized name at creation, equipment type code, group/site code at creation and immutable ID-components snapshot.
 
 ## 9. Verification cases for the engine
 
@@ -149,4 +149,4 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - Local Preview/offline behavior must not invent an official ID when no sequence reservation can be obtained.
 - The Cloud import trigger now verifies a confirmed reservation and copies Local-issued metadata for new Smart ID records, while preserving legacy import behavior for existing records.
 - Existing asset UUIDs are the `assets.id` primary keys and remain internal relationship keys. The current application still returns them through ordinary asset reads; hiding them from KTV/Viewer API responses requires a broader API/view refactor. This migration protects UUID immutability but does not yet hide the primary key.
-- Admin-only group changes are enforced by the database trigger and audited. The UI and Cloud mutation path must be aligned so KTV edits can change names but not groups, while Admin can change groups.
+- Admin-only group changes are enforced by the database trigger. Unlinked Local group changes are recorded in the new Dexie `assetGroupChanges` table; Cloud-linked group changes are intentionally blocked until the controlled Cloud mutation/audit mirror path is implemented. KTV edits can change names but not groups.
