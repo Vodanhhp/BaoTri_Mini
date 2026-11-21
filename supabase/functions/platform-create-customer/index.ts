@@ -10,7 +10,7 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return response({error:'Method not allowed'},405,origin)
  try{
-  const token=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'')
+  const token=req.headers.get('Authorization')?.replace(/^Bearer\\s+/i,'')
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
   const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -18,11 +18,14 @@ Deno.serve(async(req)=>{
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:auth,error:authError}=await admin.auth.getUser(token)
   if(authError||!auth.user||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can create customer organizations.'},403,origin)
+
   const body=await req.json()
   const organizationName=String(body.organizationName??'').trim()
   const adminEmail=String(body.adminEmail??'').trim().toLowerCase()
   const adminName=String(body.adminName??'').trim().slice(0,120)
-  if(organizationName.length<2||organizationName.length>120||!/^\S+@\S+\.\S+$/.test(adminEmail))return response({error:'Tên tổ chức hoặc email Admin không hợp lệ.'},400,origin)
+  const planCode=String(body.planCode??'').trim().toUpperCase()
+  if(organizationName.length<2||organizationName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(adminEmail))return response({error:'Tên tổ chức hoặc email Admin không hợp lệ.'},400,origin)
+  if(!['A','B','C','D'].includes(planCode))return response({error:'Bạn phải chọn Plan A, B, C hoặc D trước khi tạo doanh nghiệp.'},400,origin)
 
   let target=null
   for(let page=1;page<=20;page++){
@@ -39,28 +42,32 @@ Deno.serve(async(req)=>{
    createdAuthUser=true
   }
   if(!target)throw new Error('Không xác định được tài khoản Auth Admin.')
-  const {data:profile}=await admin.from('profiles').select('id').eq('id',target.id).maybeSingle()
-  if(!profile)throw new Error('Tài khoản Auth chưa có profile; chưa tạo tổ chức để tránh dữ liệu dở dang.')
-  const {data:org,error:orgError}=await admin.from('organizations').insert({name:organizationName,created_by:auth.user.id}).select('id,name').single()
-  if(orgError)throw orgError
-  try{
-   const {data:role,error:roleError}=await admin.from('roles').select('id').eq('organization_id',org.id).eq('code','admin').eq('is_system',true).single()
-   if(roleError)throw roleError
-   const memberStatus=target.email_confirmed_at?'active':'invited'
-   const {data:member,error:memberError}=await admin.from('organization_members').insert({organization_id:org.id,user_id:target.id,role:'admin',status:memberStatus,invited_by_user_id:auth.user.id}).select('id').single()
-   if(memberError)throw memberError
-   const {error:assignmentError}=await admin.from('member_roles').insert({organization_id:org.id,member_id:member.id,role_id:role.id,assigned_by_user_id:auth.user.id})
-   if(assignmentError)throw assignmentError
-   return response({ok:true,organizationId:org.id,organizationName:org.name,adminEmail,status:memberStatus,createdAuthUser,message:createdAuthUser?'Đã gửi email mời; Admin cần xác nhận email và tự đặt mật khẩu.':memberStatus==='active'?'Email đã có tài khoản xác nhận; đã cấp quyền Admin.':'Email đã có Auth chưa xác nhận; membership chờ xác nhận email.'},200,origin)
-  }catch(error){
-   const {data:members}=await admin.from('organization_members').select('id').eq('organization_id',org.id)
-   const memberIds=(members??[]).map(m=>m.id)
-   if(memberIds.length)await admin.from('member_roles').delete().eq('organization_id',org.id).in('member_id',memberIds)
-   await admin.from('organization_members').delete().eq('organization_id',org.id)
-   await admin.from('role_permissions').delete().eq('organization_id',org.id)
-   await admin.from('roles').delete().eq('organization_id',org.id)
-   await admin.from('organizations').delete().eq('id',org.id)
-   throw error
+
+  const {data:profile,error:profileError}=await admin.from('profiles').select('id').eq('id',target.id).maybeSingle()
+  if(profileError)throw profileError
+  if(!profile)throw new Error('Tài khoản Auth chưa có profile; chưa khởi tạo doanh nghiệp. Có thể thử lại sau khi Auth trigger hoàn tất.')
+
+  // One database transaction creates the Organization, seeds its three roles,
+  // assigns the first Admin and copies the selected Plan's catalog snapshot.
+  const {data:provision,error:provisionError}=await admin.rpc('platform_provision_customer',{
+   p_organization_name:organizationName,
+   p_actor_user_id:auth.user.id,
+   p_admin_user_id:target.id,
+   p_admin_email:adminEmail,
+   p_plan_code:planCode
+  })
+  if(provisionError)throw new Error('Không thể khởi tạo doanh nghiệp và Catalog Snapshot: '+provisionError.message)
+  if(!provision?.organizationId||provision.planCode!==planCode||!provision.sourceDataVersion){
+   throw new Error('Backend không trả về kết quả khởi tạo doanh nghiệp hợp lệ.')
   }
- }catch(error){return response({error:error instanceof Error?error.message:String(error)},400,origin)}
+
+  const message=createdAuthUser
+   ?'Đã tạo tổ chức, gán Plan và gửi email mời; Admin cần xác nhận email và tự đặt mật khẩu.'
+   :provision.status==='active'
+    ?'Đã tạo tổ chức, gán Plan và khởi tạo Catalog Snapshot; email Admin đã được xác nhận.'
+    :'Đã tạo tổ chức, gán Plan và khởi tạo Catalog Snapshot; membership Admin sẽ kích hoạt sau khi xác nhận email.'
+  return response({...provision,adminEmail,createdAuthUser,message},200,origin)
+ }catch(error){
+  return response({error:error instanceof Error?error.message:String(error)},400,origin)
+ }
 })
