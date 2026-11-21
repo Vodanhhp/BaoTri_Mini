@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Asset, AssetCloudLink, AssetMutationPayload } from '../db'
+import type { Asset, AssetCloudLink, AssetMutationPayload, EquipmentIdComponentsSnapshot } from '../db'
 import { db, now, uid } from '../db'
 
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
@@ -16,7 +16,7 @@ export type CloudLease = CloudLock & { lock_token: string }
 
 const optional=(value:unknown)=>value==null||value===''?undefined:String(value)
 
-const columns = 'id,organization_id,code,name,category,brand,model,serial,location,commissioned_at,power,cycle,cycle_started_at,transferred_from_other_facility,status,notes,archived_at,created_at,updated_at,created_by_user_id,created_by_label'
+const columns = 'id,organization_id,code,name,category,brand,model,serial,location,commissioned_at,power,cycle,cycle_started_at,transferred_from_other_facility,status,notes,archived_at,created_at,updated_at,created_by_user_id,created_by_label,original_name,normalized_name_at_creation,equipment_type_code,group_code_at_creation,site_code_at_creation,id_components_snapshot'
 
 function fromRow(row: Record<string, unknown>): CloudAsset {
   return {
@@ -28,7 +28,14 @@ function fromRow(row: Record<string, unknown>): CloudAsset {
     status: row.status as Asset['status'], notes: String(row.notes ?? ''), images: [],
     archivedAt: optional(row.archived_at), createdAt: String(row.created_at),
     updatedAt: String(row.updated_at), createdByUserId: optional(row.created_by_user_id),
-    createdByLabel: optional(row.created_by_label), localScope: String(row.organization_id),
+    createdByLabel: optional(row.created_by_label),
+    originalName: optional(row.original_name), normalizedNameAtCreation: optional(row.normalized_name_at_creation),
+    equipmentTypeCode: optional(row.equipment_type_code), groupCodeAtCreation: optional(row.group_code_at_creation),
+    siteCodeAtCreation: optional(row.site_code_at_creation),
+    idComponentsSnapshot: row.id_components_snapshot ? row.id_components_snapshot as EquipmentIdComponentsSnapshot : undefined,
+    idReservationId: row.id_components_snapshot && typeof row.id_components_snapshot === 'object' ? optional((row.id_components_snapshot as Record<string,unknown>).reservation_id) : undefined,
+    idReservationStatus: row.id_components_snapshot ? 'confirmed' : undefined,
+    localScope: String(row.organization_id),
     organizationId: String(row.organization_id), cloudUpdatedAt: String(row.updated_at)
   }
 }
@@ -43,7 +50,13 @@ export function toImportPayload(asset: Asset) {
     cycle_started_at: asset.cycleStartedAt || null, transferred_from_other_facility: Boolean(asset.transferredFromOtherFacility),
     status: asset.status, notes: asset.notes ?? '', archived_at: asset.archivedAt || null,
     created_at: asset.createdAt, updated_at: asset.updatedAt,
-    created_by_user_id: asset.createdByUserId ?? null, created_by_label: asset.createdByLabel ?? null
+    created_by_user_id: asset.createdByUserId ?? null, created_by_label: asset.createdByLabel ?? null,
+    original_name: asset.originalName ?? null,
+    normalized_name_at_creation: asset.normalizedNameAtCreation ?? null,
+    equipment_type_code: asset.equipmentTypeCode ?? null,
+    group_code_at_creation: asset.groupCodeAtCreation ?? null,
+    site_code_at_creation: asset.siteCodeAtCreation ?? null,
+    id_components_snapshot: asset.idComponentsSnapshot ?? null
   }
 }
 
