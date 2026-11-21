@@ -31,6 +31,8 @@ jobs:
         run: npm run build
         env:
           VITE_ENABLE_LOCAL_PREVIEW: 'true'
+          VITE_SUPABASE_URL: 'https://dskeaiyvldiwlsfqkboq.supabase.co'
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_zJr8Ni71uMzTloJzXmpmUg_KftR0EY'
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact
