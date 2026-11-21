@@ -254,8 +254,13 @@ export default function App() {
       // confirmation without reserving a second sequence.
       if(previous?.idReservationId&&previous.idReservationStatus==='reserved'){
         if(!supabase||!organizationId||!navigator.onLine)throw new Error('Thiết bị đã lưu Local; cần Internet để xác nhận lại số thứ tự.')
+        if(!previous.idComponentsSnapshot||!previous.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; cần Admin kiểm tra trước khi xác nhận.')
         await confirmSmartEquipmentIdReservation(supabase,{
-          organizationId,reservationId:previous.idReservationId,assetId:previous.id,equipmentId:previous.code
+          organizationId,reservationId:previous.idReservationId,assetId:previous.id,equipmentId:previous.code,
+          originalName:previous.originalName||previous.name,
+          normalizedNameAtCreation:previous.normalizedNameAtCreation||previous.name,
+          equipmentTypeCode:previous.equipmentTypeCode,
+          components:previous.idComponentsSnapshot
         })
         await db.assets.update(previous.id,{idReservationStatus:'confirmed',updatedAt:now()})
         await loadAssets();setShowForm(false);setEditing(null);notify('Cloud đã xác nhận số thứ tự của thiết bị Local.')
@@ -318,7 +323,11 @@ export default function App() {
         }
         try{
           await confirmSmartEquipmentIdReservation(supabase,{
-            organizationId,reservationId,assetId:value.id,equipmentId:value.code
+            organizationId,reservationId,assetId:value.id,equipmentId:value.code,
+            originalName:value.originalName||value.name,
+            normalizedNameAtCreation:value.normalizedNameAtCreation||value.name,
+            equipmentTypeCode:value.equipmentTypeCode||'',
+            components:value.idComponentsSnapshot!
           })
           await db.assets.update(value.id,{idReservationStatus:'confirmed'})
           await loadAssets();setShowForm(false);setEditing(null)
