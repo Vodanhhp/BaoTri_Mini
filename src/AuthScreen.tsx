@@ -2,9 +2,9 @@ import { useState, type FormEvent } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { LockKeyhole, Mail, Wrench } from 'lucide-react'
 
-type Props = { client: SupabaseClient | null; onLocalPreview?: () => void }
+type Props = { client: SupabaseClient | null; onLocalPreview?: () => void; onOpenSmartIdTool?: () => void }
 
-export default function AuthScreen({ client, onLocalPreview }: Props) {
+export default function AuthScreen({ client, onLocalPreview, onOpenSmartIdTool }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -61,6 +61,7 @@ export default function AuthScreen({ client, onLocalPreview }: Props) {
         <button className="auth-submit" type="submit" disabled={busy}>{busy?'Đang xác thực…':'Đăng nhập'}</button>
         <button className="auth-link" type="button" disabled={busy} onClick={()=>void sendRecovery()}>Quên mật khẩu?</button>
       </form>}
+      {onOpenSmartIdTool&&<button type="button" className="auth-link" onClick={onOpenSmartIdTool}>Mở công cụ thử sinh mã thiết bị</button>}
       <div className="auth-note"><b>Lưu ý:</b> Chưa bật đăng ký tự do. Tài khoản do Admin cấp.</div>
     </section>
   </main>
