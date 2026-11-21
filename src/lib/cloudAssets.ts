@@ -62,7 +62,7 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
-  if(asset.idReservationId){
+  if(asset.idReservationId&&asset.idReservationStatus!=='confirmed'){
     if(!asset.idComponentsSnapshot||!asset.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; chưa thể nhập thiết bị Smart ID lên Cloud.')
     await confirmSmartEquipmentIdReservation(client,{
       organizationId,
