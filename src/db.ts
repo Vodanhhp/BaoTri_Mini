@@ -77,6 +77,8 @@ export type AssetCloudLink = {
 }
 
 export type AssetMutationPayload = {
+  /** Current equipment group; the Cloud RPC permits changes only for Admin. */
+  category: string
   name: string
   brand: string
   model: string
