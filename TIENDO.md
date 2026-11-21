@@ -323,3 +323,13 @@ Permission catalog hiện có 26 code:
 - Thống nhất: **Quản trị tài khoản** và **Quản trị tổ chức / Quản trị nền tảng** chỉ hoạt động trên PC (máy tính để bàn hoặc laptop); không hỗ trợ điện thoại và máy tính bảng.
 - Thêm kiểm tra nền tảng ở giao diện hai panel quản trị; thiết bị di động/máy tính bảng chỉ hiển thị thông báo giới hạn, không hiển thị nội dung thao tác quản trị.
 - Gỡ quy tắc responsive cho màn hình nhỏ khỏi giao diện Quản trị nền tảng; giữ bố cục desktop.
+
+
+## 21/11/2026 – Làm lại menu mobile và giao diện quản trị
+
+- Khắc phục menu mobile: thêm nút mở menu trên thanh tiêu đề, sidebar dạng ngăn kéo có lớp nền đóng/mở; khôi phục nhãn điều hướng, submenu Cài đặt và các mục Hồ sơ cá nhân / Quản lý tài khoản / Quản trị nền tảng trên màn hình nhỏ.
+- Khi chọn một mục trong menu, ngăn kéo tự đóng.
+- Làm mới giao diện PC cho Quản trị tài khoản: mở rộng hộp thoại, cân đối dải thống kê, bố trí danh sách thành viên và vùng mời tài khoản rõ ràng hơn.
+- Làm mới giao diện PC cho Quản trị nền tảng: mở rộng hộp thoại, thống kê 4 cột, bảng doanh nghiệp có vùng cuộn riêng và biểu mẫu tạo khách hàng theo hàng ngang.
+- Giữ nguyên chính sách nghiệp vụ: các màn hình quản trị tài khoản/tổ chức chỉ hoạt động trên PC; mobile chỉ khôi phục menu điều hướng và hồ sơ cá nhân, không mở chức năng quản trị.
+- Commit giao diện: `50404f0` (App/mobile menu), `0d6f894` (CSS giao diện).
