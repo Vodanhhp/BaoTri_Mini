@@ -4,9 +4,9 @@ import type { Asset } from './db'
 import { db, now, uid, type AssetMutation } from './db'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
-type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];canImport:boolean;canView:boolean;onClose:()=>void;onChanged:()=>void}
+type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void}
 
-export default function CloudAssetsPanel({client,organizationId,localAssets,canImport,canView,onClose,onChanged}:Props){
+export default function CloudAssetsPanel({client,organizationId,localAssets,canImport,canView,canUpdate,onClose,onChanged}:Props){
  const [cloud,setCloud]=useState<CloudAsset[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
  const [pending,setPending]=useState<AssetMutation[]>([])
