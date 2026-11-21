@@ -156,10 +156,11 @@ export default function App() {
   }
 
   useEffect(()=>{
-    if(!cloudLease||cloudLease.lost||!supabase)return
+    const client=supabase
+    if(!cloudLease||cloudLease.lost||!client)return
     const renew=async()=>{
       if(!navigator.onLine){setCloudLease(current=>current?.assetId===cloudLease.assetId?{...current,lost:true}:current);setError('Mất Internet; khóa Cloud không còn được gia hạn. Không lưu hồ sơ.');return}
-      try{const ok=await heartbeatCloudAssetLock(supabase,organizationId,cloudLease.assetId,cloudLease.token);if(!ok){setCloudLease(current=>current?.assetId===cloudLease.assetId?{...current,lost:true}:current);setError('Cloud không xác nhận khóa chỉnh sửa. Không lưu hồ sơ.')}}
+      try{const ok=await heartbeatCloudAssetLock(client,organizationId,cloudLease.assetId,cloudLease.token);if(!ok){setCloudLease(current=>current?.assetId===cloudLease.assetId?{...current,lost:true}:current);setError('Cloud không xác nhận khóa chỉnh sửa. Không lưu hồ sơ.')}}
       catch(e){setCloudLease(current=>current?.assetId===cloudLease.assetId?{...current,lost:true}:current);setError('Gia hạn khóa thất bại: '+(e instanceof Error?e.message:String(e)))}
     }
     const timer=window.setInterval(()=>void renew(),25000)
