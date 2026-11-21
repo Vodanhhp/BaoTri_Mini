@@ -78,10 +78,10 @@ begin
   v_locks:=private.list_asset_edit_locks(p_organization_id);
   return coalesce((
     select jsonb_agg(
-      (item-'asset_id')||jsonb_build_object('asset_code',a.code)
+      (lock_row.value-'asset_id')||jsonb_build_object('asset_code',a.code)
     )
-    from jsonb_array_elements(v_locks) item
-    join public.assets a on a.organization_id=p_organization_id and a.id=(item->>'asset_id')::uuid
+    from jsonb_array_elements(v_locks) as lock_row(value)
+    join public.assets a on a.organization_id=p_organization_id and a.id=(lock_row.value->>'asset_id')::uuid
   ),'[]'::jsonb);
 end;
 $function$;
