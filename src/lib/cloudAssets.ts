@@ -84,6 +84,21 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
   const result=data as {asset?:Record<string,unknown>;already_present?:boolean}
   if (!result?.asset || result.asset.id!==asset.id || result.asset.code!==asset.code) throw new Error('Cloud trả về UUID/mã thiết bị không khớp Local.')
   const cloud=fromRow(result.asset)
+  const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,asset.id])
+    .filter(change=>change.syncStatus==='pending').toArray()
+  if(pendingGroupChanges.length){
+    const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
+    const {error:historyError}=await client.rpc('mirror_asset_group_change_history',{
+      p_organization_id:organizationId,
+      p_asset_id:asset.id,
+      p_changes:ordered.map(change=>({
+        id:change.id,oldCategory:change.oldCategory,newCategory:change.newCategory,
+        changedByUserId:change.changedByUserId??null,changedAt:change.changedAt,reason:change.reason??null
+      }))
+    })
+    if(historyError)throw new Error('Thiết bị đã có trên Cloud nhưng chưa đồng bộ được lịch sử đổi nhóm: '+historyError.message)
+    for(const change of ordered)await db.assetGroupChanges.update(change.id,{syncStatus:'synced'})
+  }
   const link: AssetCloudLink = {
     id: organizationId+':'+asset.id, organizationId, assetId: asset.id, cloudCode: cloud.code,
     cloudUpdatedAt: cloud.updatedAt, lastSyncedLocalUpdatedAt: asset.updatedAt, status:'linked', lastVerifiedAt:now()
