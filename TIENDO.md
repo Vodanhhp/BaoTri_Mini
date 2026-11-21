@@ -3,7 +3,7 @@
 Cập nhật: 21/11/2026
 
 ## Phạm vi và nguyên tắc
-- Repo: `Vodanhhp/BaoTri_Mini`, branch `main`, local clone dự kiến `E:\\BaoTri_Mini`.
+- Repo: `Vodanhhp/BaoTri_Mini`, branch `main`, local clone `E:\\BaoTri_Mini`.
 - Supabase duy nhất được phép thao tác cho repo mới: **BAOTRI-Mini-New**.
 - Supabase Project Ref: `dskeaiyvldiwlsfqkboq`; region Singapore `ap-southeast-1`.
 - Hai project cũ chỉ tham khảo, không sửa/xóa: `BAOTRI-Mini-Test` (đang giữ để tham khảo) và `BAOTRI-Mini` (đã Pause).
@@ -14,7 +14,7 @@ Cập nhật: 21/11/2026
 - Project URL: `https://dskeaiyvldiwlsfqkboq.supabase.co`.
 - Frontend dùng `VITE_SUPABASE_URL` và `VITE_SUPABASE_PUBLISHABLE_KEY`.
 - Publishable key đã được xác minh qua Supabase Project Keys; giá trị được đặt trong build environment của workflow GitHub Pages `.github/workflows/deploy-pages.yml`. Đây là public client key, không phải secret/service_role.
-- `.env.example` có đúng 2 biến; người dùng cần tạo `.env.local` trên máy nếu chạy local với Cloud Auth.
+- `.env.example` đã điền URL + publishable key của project mới; copy sang `.env.local` trên máy để chạy local với Cloud Auth.
 - GitHub Pages workflow bật `VITE_ENABLE_LOCAL_PREVIEW=true`; chế độ thử Local không cần Cloud.
 
 ## Trạng thái Supabase
@@ -71,3 +71,9 @@ Permission catalog hiện có 26 code:
 - Migration 007 source: `83b87a691a1008d1ebd6050f65db72c70a63eef3`.
 - Bootstrap script: `c1a581d4535645012903428479f9f76cc9457deb`.
 - TIENDO được tạo và cập nhật trong các commit: `136f3601d5f4fe9a0d40deb0f5af61371b3ebe9`, `0a4eb71f1e7906676097311d1856d8e7646c725b`, `0da54a671c870f181f2d8e53c7787f1b2fe85fda`.
+
+### Cấu hình key sửa lỗi (21/11/2026)
+- So sánh trực tiếp workflow với Supabase Project Keys phát hiện publishable key trong workflow thiếu ký tự `k` trước `0EY`; đã sửa về đúng key hiện tại.
+- Đã cập nhật `.env.example` để dùng URL và key của BAOTRI-Mini-New, thuận tiện tạo `.env.local` local.
+- Commit sửa workflow: `c9cfb386206990d64e09ba99562330146174ef9f`; commit `.env.example`: `5b5a5de5ea530f4b7f3ce85f7832bc41b41f2499`.
+- Các commit trên kích hoạt GitHub Pages workflow build/deploy; trạng thái run chưa kiểm tra được qua kết nối GitHub hiện có.
