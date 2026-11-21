@@ -522,3 +522,20 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
   4. Cần kiểm tra Auth URL redirect allowlist trong Dashboard; công cụ hiện tại không đọc được Auth URL configuration.
 - Supabase Security Advisor hiện có 4 INFO cho private tables bật RLS nhưng không có policy (các bảng private bị revoke quyền trực tiếp, dự kiến chỉ truy cập qua hàm private); 1 WARN về leaked-password protection. Không có migration hoặc dữ liệu nào được ghi thêm trong lần rà soát này.
 - Không deploy Edge Functions, không đổi Auth settings, không gán Plan cho hai Organization hiện có, không tạo khách hàng/asset/reservation thật.
+
+
+## 21/11/2026 – Refactor Cloud Asset API để không lộ UUID nội bộ
+
+- Đã xác minh bằng quyền database thực tế: `public.assets` đang cấp `SELECT` cho `authenticated` và `anon`; RLS chỉ giới hạn thành viên tổ chức, không giới hạn theo role. Đây là nguồn UUID bị lộ cho KTV/Viewer. Anon hiện không có policy SELECT nên bị RLS chặn, nhưng vẫn thu hồi grant trực tiếp để đóng bề mặt không cần thiết.
+- Đã thêm migration nguồn `20261121130000_cloud_asset_public_key_api.sql` trên nhánh PR #11:
+  - Thu hồi quyền đọc trực tiếp `public.assets` từ `anon` và `authenticated`.
+  - RPC `list_cloud_assets` chỉ trả `asset_key=code`, bỏ cột UUID `id`.
+  - Các RPC khóa, gia hạn khóa, nhả khóa, mutation và mirror lịch sử đổi nhóm nhận mã quản lý thay vì UUID.
+  - RPC đọc danh sách khóa đổi `asset_id` thành `asset_code`.
+  - RPC import/apply trả biên nhận không chứa UUID Cloud.
+  - Thu hồi EXECUTE khỏi các RPC cũ có thể trả UUID (acquire/list locks/apply/mirror); các RPC mới kiểm tra membership hoặc permission trước khi phân giải mã thiết bị.
+- Đã chuyển `src/lib/cloudAssets.ts`, `src/CloudAssetsPanel.tsx`, `src/App.tsx` sang RPC code-based; loại bỏ các truy vấn trực tiếp `.from('assets').select(...)`. Local UUID vẫn được giữ tại IndexedDB và khi import; phía client không còn nhận UUID Cloud khi đọc danh sách.
+- Đã bổ sung `scripts/cloudAssetPublicApi.test.mjs` và mở rộng lệnh `npm test` chạy toàn bộ `scripts/*.test.mjs`.
+- Các commit refactor gần nhất: migration + client/API + UI + test trên nhánh PR #11, head hiện tại cần kiểm tra lại sau commit cuối.
+- Giới hạn an toàn: migration mới CHƯA được áp dụng lên Supabase; chưa deploy bất kỳ Edge Function nào; chưa có browser/CI build mới xác nhận. Không được thu hồi quyền SELECT ở database đang dùng trước khi migration + frontend cùng được kiểm thử và phát hành đồng bộ, nếu không giao diện cũ sẽ mất khả năng đọc Cloud.
+- PR #11 vẫn Draft, chưa merge. Main có thêm 3 commit kể từ merge-base; cần đồng bộ main và chạy CI/build sau khi giải quyết divergence.
