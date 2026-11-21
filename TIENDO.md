@@ -564,7 +564,7 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Overview source đọc Plan và Catalog Snapshot để hiển thị đúng thông tin khách hàng.
 ### Supabase BAOTRI-Mini-New
 - Đã áp dụng migration 20261121120907_platform_customer_provisioning_idempotency: bảng request private, RLS bật, không cấp quyền đọc trực tiếp; function khóa advisory theo request UUID, ràng buộc request vào payload và lưu kết quả provision trong cùng transaction.
-- Đã áp dụng migration 20261121120908_grant_service_role_customer_provisioning_idempotency: cấp EXECUTE cho service_role trên private implementation; public wrapper SECURITY INVOKER chỉ cho service_role gọi.
+- Đã áp dụng migration 20261121120954_grant_service_role_customer_provisioning_idempotency: cấp EXECUTE cho service_role trên private implementation; public wrapper SECURITY INVOKER chỉ cho service_role gọi.
 - Kiểm tra rollback-only qua public RPC với role service_role: hai lần gọi cùng request UUID trả cùng organizationId; kết quả có Plan A, Snapshot v1.1.0, 74 dictionary entries và 11 industries. Transaction đã ROLLBACK; không tạo khách hàng thật.
 - Security Advisor: INFO cho private tables bật RLS nhưng không có policy (đúng chủ đích vì không cho client truy cập trực tiếp); WARN hiện hữu về Leaked Password Protection đang tắt. Performance Advisor có cảnh báo FK/index và permissive profiles policy từ schema trước; chưa thuộc phạm vi thay đổi lần này.
 - Không áp dụng migration 20261121130000_cloud_asset_public_key_api.sql trong công việc này.
