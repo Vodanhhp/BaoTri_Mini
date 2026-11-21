@@ -294,3 +294,15 @@ Permission catalog hiện có 26 code:
 - Thanh tài khoản trên topbar ưu tiên `profiles.display_name` sau khi đăng nhập; nếu chưa có họ tên thì dùng `user_metadata.full_name`, cuối cùng mới fallback về email.
 - Khi đóng cửa sổ Hồ sơ cá nhân, ứng dụng tải lại tên hiển thị để cập nhật ngay sau khi lưu.
 - Không thay đổi email đăng nhập, Auth, RBAC, RLS hoặc cấu trúc dữ liệu.
+
+
+## Quản trị vòng đời tổ chức – Super Admin (21/11/2026)
+- Chỉ owner email đã xác thực `tuanluongpham1980@gmail.com` được mở và thao tác Quản trị nền tảng; UI và Edge Function đều kiểm tra allowlist server-side, không dựa vào user metadata.
+- Bổ sung thao tác Tạm ngưng / Kích hoạt lại / Xóa vĩnh viễn theo từng tổ chức trong bảng quản trị nền tảng.
+- Mỗi thao tác bắt buộc xác thực lại mật khẩu bằng Supabase Auth `signInWithPassword`, đối chiếu đúng Auth user ID của access token; backend bắt buộc xác nhận `Có`. Không lưu mật khẩu, không trả session/token xác thực phụ về trình duyệt.
+- Xóa vĩnh viễn yêu cầu nhập đúng tên tổ chức. Edge Function `platform-manage-organization` ACTIVE v1, verify_jwt=true; service-role chỉ dùng phía server.
+- Migration `20261121045631_platform_organization_lifecycle.sql`: hàm xóa tổ chức nguyên tử, implementation ở schema private SECURITY DEFINER, wrapper public SECURITY INVOKER chỉ cấp EXECUTE cho service_role. Xóa receipt/lock/assets/memberships/roles theo thứ tự FK RESTRICT; giữ nguyên Auth users và profiles.
+- Đã rà soát các bảng có organization_id: assets, asset_import_receipts, asset_mutation_receipts, asset_edit_locks, organization_members, member_roles, role_permissions, roles. Hiện không có Storage bucket nào.
+- Tạm ngưng chỉ đổi organizations.status sang suspended; dữ liệu giữ nguyên. Kích hoạt lại chuyển status về active. Organization context chỉ nạp tổ chức active.
+- Xóa tổ chức không thể xóa dữ liệu Local IndexedDB đã tải về trên thiết bị người dùng; giao diện cảnh báo rõ giới hạn này. Chưa thực hiện xóa tổ chức khách hàng thật.
+- Cần kiểm tra CI Build/Pages, test password sai/đúng, từ chối non-owner, suspend/reactivate trên tổ chức thử; chỉ kiểm thử xóa bằng fixture rollback hoặc tổ chức thử riêng, tuyệt đối không xóa BAOTRI Mini đang dùng.
