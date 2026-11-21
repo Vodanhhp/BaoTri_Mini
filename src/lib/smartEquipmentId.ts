@@ -208,17 +208,29 @@ export function analyzeEquipmentName(input: SmartIdInput): SmartIdResult {
     return empty('invalid-input', 'Mã loại thiết bị trong danh mục phải được chuẩn hóa về 2–4 ký tự.', matches)
   }
 
-  const selectedGroupCode = input.selectedGroupCode ? normalizeCode(input.selectedGroupCode) : ''
-  const suggestedGroupCode = normalizeCode(best.suggestedGroup ?? '')
+  if (input.plan === 'A' && input.selectedGroupCode) {
+    return empty('invalid-input', 'Plan A không có chức năng chọn/quản lý nhóm thiết bị.', matches)
+  }
+
+  const selectedGroupCode = input.plan === 'A' ? '' : (input.selectedGroupCode ? normalizeCode(input.selectedGroupCode) : '')
+  const suggestedGroupCode = input.plan === 'A' ? '' : normalizeCode(best.suggestedGroup ?? '')
   const resolvedGroupCode = selectedGroupCode || suggestedGroupCode
   const group = groups.find(item => normalizeCode(item.code) === resolvedGroupCode)
 
-  if (resolvedGroupCode && !group && (input.plan !== 'A' || Boolean(selectedGroupCode))) {
+  if (resolvedGroupCode && !group) {
     return empty('missing-group', 'Nhóm được chọn/gợi ý không có trong Snapshot của Organization. Không tự thay bằng nhóm khác.', matches)
   }
 
   if (input.plan !== 'A' && !group) {
     return empty('missing-group', 'Plan B/C/D cần xác nhận một nhóm thiết bị có mã hợp lệ.', matches)
+  }
+
+  if (group && input.plan !== 'A') {
+    const planRank: Record<PlanCode, number> = { A: 1, B: 2, C: 3, D: 4 }
+    const availableFrom = (group as EquipmentGroup & { availableFromPlan?: PlanCode }).availableFromPlan ?? 'B'
+    if (planRank[availableFrom] > planRank[input.plan]) {
+      return empty('invalid-input', 'Nhóm thiết bị này chưa được phép sử dụng trong Plan hiện tại.', matches)
+    }
   }
 
   const groupCode = group ? normalizeCode(group.code) : undefined
