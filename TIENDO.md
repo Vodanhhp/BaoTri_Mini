@@ -502,3 +502,23 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Bổ sung unit tests dùng chính danh mục chuẩn thực tế cho Plan A/B/C/D, bao gồm số thứ tự 1000.
 - Không gán Plan cho Organization hiện có, không tạo dữ liệu test trong Supabase. Công cụ mô phỏng đã được port riêng trên nền main qua PR #12 (không kéo theo PR #11), merge vào main tại commit `fbccd395a5d25ca8140305592db720fe0cc8c802` và GitHub Pages Production deploy thành công. Bản sửa thêm lối vào công cụ ngay trên màn hình đăng nhập đã deploy tại commit `41328767da804b382901fa9da3e3e02ebd7dfd01`.
 - CI PR #12: 25/25 unit tests passed; Build and test + Validate BAOTRI Mini đều success. Pages build/deploy sau merge và sau sửa lối vào đều success. Công cụ chỉ mô phỏng, không cấp mã chính thức hoặc ghi dữ liệu. PR #11 chứa luồng Smart ID đầy đủ vẫn Draft, chưa merge.
+
+
+## 21/11/2026 – Rà soát bảo mật và ranh giới triển khai PR #11 (tiếp tục)
+
+- Xác nhận Supabase đích vẫn là `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`), trạng thái `ACTIVE_HEALTHY`; migration history khớp đủ 18 migration, bao gồm Smart ID và Plan provisioning. Không thao tác trên hai project cũ.
+- Đọc lại Edge Function source trên nhánh PR #11 và đối chiếu function đang chạy trong Supabase:
+  - Source nhánh đã yêu cầu `planCode` và gọi RPC `platform_provision_customer` để tạo Organization + Plan Catalog Snapshot nguyên tử.
+  - Function đang chạy `platform-create-customer` vẫn là version 2 cũ, chưa yêu cầu Plan và chưa gọi RPC snapshot.
+  - Function đang chạy `platform-get-overview` vẫn là version 1 cũ, chưa trả Plan/Snapshot.
+  - Vì vậy tuyệt đối chưa merge UI Plan-aware hoặc triển khai tạo khách hàng chính thức cho tới khi cập nhật Edge Functions đồng bộ; nếu không, giao diện và backend sẽ lệch phiên bản.
+- Củng cố authorization trong source PR #11: cả `platform-create-customer` và `platform-get-overview` đều yêu cầu owner có email đã xác nhận (`email_confirmed_at`) ngoài kiểm tra đúng email allowlist. Hai thay đổi đã commit trên nhánh: `80b517d68ef0f9fb6c5f13cb3ad4e7f9fe029f3b`, `bdfd7d5bbb098eee8510313ecb961232c172e0fd`.
+- Xác minh các hàm Smart ID RPC: implementation `SECURITY DEFINER` ở schema `private`; public entrypoints là `SECURITY INVOKER`; authenticated được gọi qua wrapper, anon không được EXECUTE. Reserve/confirm/release đều kiểm tra quyền `assets.create`; confirm kiểm tra actor hoặc Admin, đối chiếu mã và snapshot với reservation.
+- Đối chiếu luồng frontend: `App.tsx` đã gắn `reservation_id` vào `idComponentsSnapshot` trước khi lưu Local và gửi confirm; nghi vấn thiếu trường này không phải lỗi thực tế.
+- Các blocker còn mở:
+  1. Cloud asset read path vẫn trả `assets.id` cho mọi authenticated member; cần thiết kế API/view theo mã quản lý hoặc public asset handle để Technician/Viewer không nhận UUID nội bộ, đồng thời giữ được lock/mutation/import.
+  2. Auth Leaked Password Protection vẫn tắt (Supabase Security Advisor WARN); cần bật trong Auth settings trước khi phát hành.
+  3. PR #11 hiện sau main 3 commit và đang diverged; cần đồng bộ main, giải quyết mergeability rồi chạy lại CI đầy đủ.
+  4. Cần kiểm tra Auth URL redirect allowlist trong Dashboard; công cụ hiện tại không đọc được Auth URL configuration.
+- Supabase Security Advisor hiện có 4 INFO cho private tables bật RLS nhưng không có policy (các bảng private bị revoke quyền trực tiếp, dự kiến chỉ truy cập qua hàm private); 1 WARN về leaked-password protection. Không có migration hoặc dữ liệu nào được ghi thêm trong lần rà soát này.
+- Không deploy Edge Functions, không đổi Auth settings, không gán Plan cho hai Organization hiện có, không tạo khách hàng/asset/reservation thật.
