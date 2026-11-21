@@ -16,7 +16,8 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return json({error:'Method not allowed'},405,origin)
  try{
-  const token=req.headers.get('Authorization')?.replace(/^Bearer\\s+/i,'')
+  const authHeader=req.headers.get('Authorization')??''
+  const token=authHeader.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
   if(!token)return json({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
   const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
