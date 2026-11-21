@@ -41,7 +41,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
   if(!window.confirm('Chọn Cloud làm bản đúng và ghi đè Local? Ảnh Local được giữ, các thay đổi Local chưa đồng bộ sẽ bị bỏ.'))return
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
-   const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.id===mutation.assetId);setCloud(fresh)
+   const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    await downloadCloudAsset(organizationId,cloudAsset,local)
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
@@ -61,12 +61,12 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
   const mutationId=uid()
   const payload=toMutationPayload(local)
   try{
-   const fresh=await listCloudAssets(client,organizationId);const cloudAsset=fresh.find(a=>a.id===mutation.assetId);setCloud(fresh)
+   const fresh=await listCloudAssets(client,organizationId);const cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    if(cloudAsset.code!==link.cloudCode)throw new Error('Mã quản lý Cloud đã đổi; cần xử lý thủ công.')
-   const acquired=await acquireCloudAssetLock(client,organizationId,local.id,getLocalDeviceId(),getDeviceLabel())
+   const acquired=await acquireCloudAssetLock(client,organizationId,local.code,getLocalDeviceId(),getDeviceLabel())
    if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
-   lease={assetId:local.id,token:acquired.lease.lock_token}
+   lease={assetId:local.code,token:acquired.lease.lock_token}
    await db.assetMutations.add({mutationId,organizationId,assetId:local.id,payload,expectedCloudUpdatedAt:cloudAsset.updatedAt,localUpdatedAt:local.updatedAt,status:'processing',attempts:1,createdAt:now(),updatedAt:now()})
    const applied=await applyCloudAssetMutation(client,organizationId,local,lease.token,mutationId,cloudAsset.updatedAt,payload)
    const at=now()
@@ -105,12 +105,12 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
  const downloadOne=async(asset:CloudAsset)=>{
   setBusyId(asset.id);setError('');setMessage('')
   try{
-   const local=await db.assets.get(asset.id)
-   const link=await db.assetCloudLinks.get(organizationId+':'+asset.id)
+   const local=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
+   const link=local?await db.assetCloudLinks.get(organizationId+':'+local.id):undefined
    if(local&&!link){
-    if(local.localScope!==organizationId)throw new Error('UUID đã tồn tại ở phạm vi Local khác; không ghi đè.')
-    if(local.code!==asset.code)throw new Error('Local và Cloud cùng UUID nhưng mã khác nhau; cần đối chiếu thủ công.')
-    throw new Error('Local đã có UUID này nhưng chưa liên kết Cloud. Không tự ghi đè.')
+    if(local.localScope!==organizationId)throw new Error('Mã thiết bị đã tồn tại ở phạm vi Local khác; không ghi đè.')
+    if(local.code!==asset.code)throw new Error('Local và Cloud cùng mã nhưng dữ liệu khác nhau; cần đối chiếu thủ công.')
+    throw new Error('Local đã có mã này nhưng chưa liên kết Cloud. Không tự ghi đè.')
    }
    if(local&&link){
     if(link.cloudCode!==asset.code)throw new Error('Mã Cloud đã thay đổi so với liên kết; cần đối chiếu thủ công.')
@@ -118,8 +118,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     const cloudChanged=asset.updatedAt!==link.cloudUpdatedAt
     if(localChanged&&cloudChanged){
       await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()})
-      const existingConflict=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,asset.id]).filter(m=>m.status==='conflict').first()
-      if(!existingConflict)await db.assetMutations.add({mutationId:uid(),organizationId,assetId:asset.id,payload:toMutationPayload(local),expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'})
+      const existingConflict=local?await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='conflict').first()
+      if(local&&!existingConflict)await db.assetMutations.add({mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'})
       await reload()
       throw new Error('Local và Cloud đều thay đổi. Đã tạo mục đối chiếu; chọn Cloud hoặc Local trong phần conflict.')
     }
@@ -134,7 +134,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
  }
  return <div className="modal-backdrop cloud-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
   <section className="modal cloud-modal">
-   <div className="modal-head"><div><div className="eyebrow">ĐỒNG BỘ CÓ KIỂM SOÁT</div><h2>Local ↔ Cloud</h2><p>Không đồng bộ đại trà; kiểm tra UUID, mã quản lý và phiên bản trước khi chuyển.</p></div><button className="icon-btn" onClick={onClose}>×</button></div>
+   <div className="modal-head"><div><div className="eyebrow">ĐỒNG BỘ CÓ KIỂM SOÁT</div><h2>Local ↔ Cloud</h2><p>Không đồng bộ đại trà; đối chiếu mã quản lý và phiên bản trước khi chuyển.</p></div><button className="icon-btn" onClick={onClose}>×</button></div>
    <div className="cloud-summary"><b>{localAssets.length}</b> Local · <b>{cloud.length}</b> Cloud · <span>Ảnh chỉ lưu Local</span></div>
    {error&&<div className="auth-error">{error}</div>}{message&&<div className="cloud-message">{message}</div>}
    <div className="cloud-section">
@@ -147,9 +147,9 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
    <div className="cloud-section">
     <div className="cloud-section-head"><h3>Local chưa liên kết</h3><div className="cloud-row-actions"><button className="soft-btn small" onClick={()=>setSelected(candidates.map(a=>a.id))}>Chọn tất cả</button><button className="primary-btn small" disabled={!canImport||selected.length===0||!!busyId} onClick={()=>void importSelected()}>Nhập đã chọn ({selected.length})</button></div></div>
     {candidates.length===0?<p className="empty-small">Không có hồ sơ Local chưa liên kết trong tổ chức này.</p>:<div className="cloud-list">{candidates.map(a=>{
-     const collision=cloud.some(row=>row.id===a.id||row.code===a.code)
+     const collision=cloud.some(row=>row.code===a.code)
      return <div className="cloud-row" key={a.id}>
-      <label className="cloud-select"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,a.id]:prev.filter(id=>id!==a.id))}/><span className="cloud-row-main"><b>{a.code} · {a.name}</b><small>{a.category} · {a.location||'Chưa có vị trí'} · {a.images?.length||0} ảnh Local {collision?'· Có UUID/mã trùng trên Cloud':''}</small></span></label>
+      <label className="cloud-select"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,a.id]:prev.filter(id=>id!==a.id))}/><span className="cloud-row-main"><b>{a.code} · {a.name}</b><small>{a.category} · {a.location||'Chưa có vị trí'} · {a.images?.length||0} ảnh Local {collision?'· Mã quản lý đã có trên Cloud':''}</small></span></label>
       <div className="cloud-row-actions">{canImport&&<button className="primary-btn small" disabled={!!busyId} onClick={()=>void importOne(a)}>{busyId===a.id?'Đang nhập…':'Nhập lên Cloud'}</button>}</div>
      </div>
     })}</div>}
