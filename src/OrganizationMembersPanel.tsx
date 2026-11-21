@@ -99,12 +99,12 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
    <div className="member-list-wrap">
     {loading?<div className="member-empty">Đang tải danh sách tài khoản…</div>:filtered.length===0?<div className="member-empty">Chưa có tài khoản phù hợp.</div>:<div className="member-list">
      {filtered.map(member=>{
-      const protectedMember=member.roleCode==='admin'||member.userId===actorId
+      const protectedMember=member.roleCode==='admin'||member.roleCode==='unknown'||member.userId===actorId
       return <article className="member-row" key={member.id}>
        <div className="member-identity"><span className="member-avatar"><UserRound size={17}/></span><div><b>{member.displayName||member.email}</b><small>{member.email}</small><small>Tham gia: {dateLabel(member.createdAt)}</small></div></div>
        <div className="member-meta"><span className="member-role">{roleLabel(member.roleCode)}</span><span className={'status '+(member.status==='active'?'green':member.status==='suspended'?'red':'orange')}>{statusLabel(member.status)}</span><small className="member-confirm">{member.emailConfirmed?'Email đã xác nhận':'Email chưa xác nhận'}</small></div>
        <div className="member-actions">
-        {!protectedMember&&<><button className="member-action" title="Gửi email đặt lại mật khẩu" disabled={busy} onClick={()=>void act(member,'reset_password')}><Mail size={14}/> Reset mật khẩu</button>{member.status==='suspended'?<button className="member-action" disabled={busy} onClick={()=>void act(member,'reactivate')}><RotateCcw size={14}/> Mở khóa</button>:<button className="member-action warning" disabled={busy} onClick={()=>void act(member,'suspend')}><Shield size={14}/> Tạm khóa</button>}<button className="member-action danger" disabled={busy} onClick={()=>void act(member,'remove')}><Trash2 size={14}/> Xóa khỏi tổ chức</button></>}
+        {!protectedMember&&<><button className="member-action" title="Gửi email đặt lại mật khẩu" disabled={busy||!member.emailConfirmed} title={member.emailConfirmed?'Gửi email đặt lại mật khẩu':'Cần xác nhận email trước khi reset'} onClick={()=>void act(member,'reset_password')}><Mail size={14}/> Reset mật khẩu</button>{member.status==='suspended'?<button className="member-action" disabled={busy} onClick={()=>void act(member,'reactivate')}><RotateCcw size={14}/> Mở khóa</button>:<button className="member-action warning" disabled={busy} onClick={()=>void act(member,'suspend')}><Shield size={14}/> Tạm khóa</button>}<button className="member-action danger" disabled={busy} onClick={()=>void act(member,'remove')}><Trash2 size={14}/> Xóa khỏi tổ chức</button></>}
         {protectedMember&&<small className="member-protected">Được bảo vệ</small>}
        </div>
       </article>
