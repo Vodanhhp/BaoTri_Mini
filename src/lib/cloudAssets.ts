@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, AssetCloudLink, AssetMutationPayload, EquipmentIdComponentsSnapshot } from '../db'
 import { db, now, uid } from '../db'
+import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
 
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
 
@@ -61,6 +62,20 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
+  if(asset.idReservationId){
+    if(!asset.idComponentsSnapshot||!asset.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; chưa thể nhập thiết bị Smart ID lên Cloud.')
+    await confirmSmartEquipmentIdReservation(client,{
+      organizationId,
+      reservationId:asset.idReservationId,
+      assetId:asset.id,
+      equipmentId:asset.code,
+      originalName:asset.originalName||asset.name,
+      normalizedNameAtCreation:asset.normalizedNameAtCreation||asset.name,
+      equipmentTypeCode:asset.equipmentTypeCode,
+      components:asset.idComponentsSnapshot
+    })
+    await db.assets.update(asset.id,{idReservationStatus:'confirmed'})
+  }
   const { data, error } = await client.rpc('import_asset_preserving_identity', {
     p_organization_id: organizationId, p_id: asset.id, p_code: asset.code,
     p_asset: toImportPayload(asset), p_mutation_id: asset.id
