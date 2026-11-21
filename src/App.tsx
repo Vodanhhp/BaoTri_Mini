@@ -4,6 +4,7 @@ import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Sea
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
+import AccountProfilePanel from './AccountProfilePanel'
 import PlatformAdminPanel from './PlatformAdminPanel'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetStatus, type AssetMutationPayload } from './db'
@@ -61,6 +62,7 @@ export default function App() {
   const [organizationReady,setOrganizationReady]=useState(false)
   const [cloudPanel,setCloudPanel]=useState(false)
   const [membersPanel,setMembersPanel]=useState(false)
+  const [profilePanel,setProfilePanel]=useState(false)
   const [platformPanel,setPlatformPanel]=useState(false)
   const [settingsOpen,setSettingsOpen]=useState(false)
   const [cloudLease,setCloudLease]=useState<ActiveCloudLease|null>(null)
@@ -310,9 +312,10 @@ export default function App() {
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
       <button className="nav-item active"><LayoutDashboard size={17}/><span>Tổng quan thiết bị</span></button>
       <button className="nav-item"><Building2 size={17}/><span>Danh mục thiết bị</span></button>
-      {session&&(currentOrganization?.isAdmin||session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com')&&<div className="sidebar-settings">
+      {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
+          <button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
           {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
         </div>}
@@ -322,7 +325,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
-        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p></div><div className="welcome-icon"><Wrench size={42}/></div></section>
@@ -374,6 +377,7 @@ export default function App() {
         <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
     </section></div>}
+    {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>setProfilePanel(false)}/>}
     {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)}/>}
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>void loadAssets()}/>}

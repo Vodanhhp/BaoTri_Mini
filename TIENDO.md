@@ -273,3 +273,11 @@ Permission catalog hiện có 26 code:
 - Thanh sidebar và mục quản trị tiếp tục không hiển thị trên giao diện mobile theo quy tắc responsive hiện có; backend vẫn là lớp bảo vệ quyền thực tế.
 - Đã triển khai trên branch `feature/settings-sidebar-menu`: cập nhật `src/App.tsx`, `src/style.css`.
 - CI, kiểm tra giao diện PC/mobile và xác nhận Pages deploy còn chờ.
+
+
+## Hồ sơ cá nhân và thông tin đăng nhập (21/11/2026)
+- Bổ sung màn hình **Hồ sơ cá nhân** để mọi tài khoản đã đăng nhập tự cập nhật họ tên, số điện thoại và ngày sinh.
+- Họ tên + số điện thoại lưu trong bảng profiles theo đúng auth.uid(); ngày sinh lưu trong Auth user metadata, không thêm vào bảng hồ sơ đang có chính sách đọc hồ sơ các thành viên cùng tổ chức, tránh lộ ngày sinh cho người khác.
+- Cho phép người dùng tự yêu cầu đổi email đăng nhập qua supabase.auth.updateUser({email}); email chỉ đổi sau quy trình xác nhận của Supabase. Cho phép tự đổi mật khẩu qua Supabase Auth; không lưu mật khẩu dạng văn bản trong database.
+- Mục **Hồ sơ cá nhân** xuất hiện với mọi tài khoản trong Cài đặt; thêm lối mở nhanh từ thẻ tài khoản trên topbar để dùng được cả khi sidebar ẩn ở màn hình nhỏ. Các mục quản trị vẫn giữ điều kiện Admin/Super Admin và giới hạn PC.
+- Không thay đổi RBAC, membership, quyền tenant, Edge Functions hoặc dữ liệu thiết bị. Cần CI build/validate và kiểm tra thao tác cập nhật hồ sơ, email, mật khẩu bằng tài khoản thử nghiệm trước khi nghiệm thu.
