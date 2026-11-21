@@ -191,7 +191,7 @@ Plan selection is part of creating a new customer Organization, not a follow-up 
 - The organization overview displays Plan and Catalog Snapshot version. Existing organizations without a snapshot show `Chưa khởi tạo`; no Plan is inferred or assigned automatically.
 
 ### Trusted database provisioning
-Migration `20261121110000_platform_customer_plan_provisioning.sql` stores the published standard catalog version in `private.standard_equipment_catalog_versions` and creates:
+Migration `20261121100426_platform_customer_plan_provisioning.sql` stores the published standard catalog version in `private.standard_equipment_catalog_versions` and creates:
 - `private.platform_provision_customer(...)`: SECURITY DEFINER implementation with empty search_path and row_security off. It requires the service_role JWT claim, verifies the platform owner's Auth email, verifies the target Admin's real Auth email/profile and validates the selected Plan against the published catalog.
 - `public.platform_provision_customer(...)`: SECURITY INVOKER wrapper with EXECUTE granted only to `service_role`.
 
