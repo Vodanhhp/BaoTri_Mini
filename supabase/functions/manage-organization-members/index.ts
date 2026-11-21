@@ -48,15 +48,16 @@ Deno.serve(async(req)=>{
   if(!isAdmin&&!(actorGrants??[]).length)return json({error:'Bạn không có quyền quản lý tài khoản.'},403,origin)
 
   if(action==='list'){
-   const [{data:members,error:membersError},{data:profiles,error:profilesError},{data:orgRoles,error:orgRolesError}]=await Promise.all([
-    admin.from('organization_members').select('id,user_id,status,created_at').eq('organization_id',organizationId).order('created_at',{ascending:true}),
-    admin.from('profiles').select('id,display_name').limit(10000),
+   const {data:members,error:membersError}=await admin.from('organization_members').select('id,user_id,status,created_at').eq('organization_id',organizationId).order('created_at',{ascending:true})
+   if(membersError)throw membersError
+   const memberRows=members??[]
+   const memberUserIds=[...new Set(memberRows.map(row=>row.user_id))]
+   const [{data:profiles,error:profilesError},{data:orgRoles,error:orgRolesError}]=await Promise.all([
+    admin.from('profiles').select('id,display_name').in('id',memberUserIds),
     admin.from('roles').select('id,code').eq('organization_id',organizationId)
    ])
-   if(membersError)throw membersError
    if(profilesError)throw profilesError
    if(orgRolesError)throw orgRolesError
-   const memberRows=members??[]
    const ids=memberRows.map(row=>row.id)
    const {data:assignments,error:assignError}=ids.length?await admin.from('member_roles').select('member_id,role_id').eq('organization_id',organizationId).in('member_id',ids):{data:[],error:null}
    if(assignError)throw assignError
