@@ -1,0 +1,32 @@
+begin;
+do $test$
+declare u uuid:=gen_random_uuid();org uuid;member_id uuid;role_id uuid;a uuid:=gen_random_uuid();mutation uuid:=gen_random_uuid();lock1 jsonb;lock2 jsonb;applied jsonb;replay jsonb;imported jsonb;imported_retry jsonb;asset_payload jsonb;edit_payload jsonb;expected timestamptz;
+begin
+ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values(u,'authenticated','authenticated','sync-check-'||u||'@example.invalid','',now(),'{}','{"display_name":"Temporary sync test"}',now(),now());
+ if not exists(select 1 from public.profiles where id=u) then raise exception 'profile trigger failed';end if;
+ insert into public.organizations(name,created_by) values('Temporary sync test org',u) returning id into org;
+ select id into role_id from public.roles where organization_id=org and code='admin';
+ insert into public.organization_members(organization_id,user_id,role,status) values(org,u,'admin','active') returning id into member_id;
+ insert into public.member_roles(organization_id,member_id,role_id) values(org,member_id,role_id);
+ perform set_config('request.jwt.claim.sub',u::text,true);
+ perform set_config('request.jwt.claims',jsonb_build_object('sub',u::text,'role','authenticated','email','sync-check@example.invalid')::text,true);
+ if not private.has_org_permission(org,'assets.import') or not private.has_org_permission(org,'assets.update') then raise exception 'admin permissions missing';end if;
+ asset_payload:=jsonb_build_object('name','Temporary Cloud import test','category','Thiết bị điện','brand','Test','model','','serial','','location','Test','commissioned_at',null,'power','','cycle','','cycle_started_at',null,'transferred_from_other_facility',false,'status','Đang hoạt động','notes','','archived_at',null,'created_at',now(),'updated_at',now(),'created_by_user_id',u,'created_by_label','Test Admin');
+ imported:=public.import_asset_preserving_identity(org,a,'SYNC-TEST-001',asset_payload,a);
+ if imported->'asset'->>'id'<>a::text or imported->>'already_present'<>'false' then raise exception 'import identity/status check failed';end if;
+ imported_retry:=public.import_asset_preserving_identity(org,a,'SYNC-TEST-001',asset_payload,a);
+ if imported_retry->>'already_present'<>'true' then raise exception 'import idempotent retry failed';end if;
+ lock1:=public.acquire_asset_edit_lock(org,a,'pc-device-test','Temporary PC');
+ if lock1->>'acquired'<>'true' then raise exception 'lock acquisition failed';end if;
+ lock2:=public.acquire_asset_edit_lock(org,a,'mobile-device-test','Temporary Mobile');
+ if lock2->>'acquired'<>'false' or lock2->>'holder_device_id'<>'pc-device-test' then raise exception 'cross-device lock conflict failed';end if;
+ expected:=(imported->'asset'->>'updated_at')::timestamptz;
+ edit_payload:=jsonb_build_object('name','Temporary Cloud import edited','brand','Test','model','','serial','','location','Test','commissioned_at',null,'power','','cycle','','cycle_started_at',null,'transferred_from_other_facility',false,'status','Đang hoạt động','notes','','archived_at',null);
+ applied:=public.apply_asset_mutation_with_lock(org,a,(lock1->>'lock_token')::uuid,mutation,expected,edit_payload);
+ if applied->'asset'->>'name'<>'Temporary Cloud import edited' then raise exception 'mutation update failed';end if;
+ replay:=public.apply_asset_mutation_with_lock(org,a,(lock1->>'lock_token')::uuid,mutation,expected,edit_payload);
+ if replay->>'already_applied'<>'true' then raise exception 'receipt replay failed';end if;
+ if not public.release_asset_edit_lock(org,a,(lock1->>'lock_token')::uuid) then raise exception 'release lock failed';end if;
+ if exists(select 1 from public.asset_edit_locks where organization_id=org and asset_id=a) then raise exception 'lock row not released';end if;
+end;$test$;
+rollback;
