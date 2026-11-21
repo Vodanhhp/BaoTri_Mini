@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus } from 'lucide-react'
+import { Activity, Archive, Building2, Check, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
@@ -66,6 +66,7 @@ export default function App() {
   const [profilePanel,setProfilePanel]=useState(false)
   const [platformPanel,setPlatformPanel]=useState(false)
   const [settingsOpen,setSettingsOpen]=useState(false)
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false)
   const [cloudLease,setCloudLease]=useState<ActiveCloudLease|null>(null)
   const [passwordRecovery,setPasswordRecovery]=useState(false)
   const [sessionReady, setSessionReady] = useState(!supabase)
@@ -319,7 +320,9 @@ export default function App() {
   const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt).length
 
   return <div className="app-shell">
-    <aside className="sidebar">
+    {mobileMenuOpen&&<button type="button" className="mobile-menu-backdrop" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}/>}
+    <aside className={"sidebar"+(mobileMenuOpen?" mobile-open":"")}>
+      <button type="button" className="mobile-menu-close" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}><X size={18}/><span>Đóng menu</span></button>
       <div className="brand"><span className="brand-icon"><Wrench size={21}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div>
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
       <button className="nav-item active"><LayoutDashboard size={17}/><span>Tổng quan thiết bị</span></button>
@@ -327,15 +330,16 @@ export default function App() {
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
-          <button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>
-          {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
-          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
+          <button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>
+          {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
+          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
         </div>}
       </div>}
       <div className="sidebar-bottom"><ShieldCheck size={15}/> Dữ liệu thiết bị Local</div>
     </aside>
     <main className="main">
       <header className="topbar">
+        <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
         <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
