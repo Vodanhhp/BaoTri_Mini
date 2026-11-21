@@ -424,5 +424,6 @@ Permission catalog hiện có 26 code:
 - Sau rollback: organizations=2, tenant Catalog Snapshots=0, assets=0, roles=6, memberships=3. Không tạo doanh nghiệp hoặc dữ liệu thử nghiệm tồn tại.
 - Quyền RPC: authenticated=false, anon=false, service_role=true; public wrapper SECURITY INVOKER, private implementation SECURITY DEFINER. Authenticated vẫn chỉ đọc Catalog Snapshot theo RLS và không được sửa Plan.
 - Source Edge Function `platform-create-customer` đã đổi sang bắt buộc `planCode` và gọi RPC nguyên tử; `platform-get-overview` đã bổ sung Plan/Snapshot vào tổng quan.
+- CI trên commit `ef771bc879fb95cfb016db6ffc17749d15694717`: Build and test run `44892786102` success; Validate BAOTRI Mini run `44892786091` success.
 - **Chưa deploy hai Edge Function đã sửa và chưa merge PR #11** để tránh lệch phiên bản với giao diện Pages đang chạy trên `main`. Sau khi merge/đưa UI mới lên Pages mới deploy đồng bộ hai function. Database migration nền tảng đã có trên BAOTRI-Mini-New nhưng chưa có khách hàng mới nào được tạo.
 - Chưa gán Plan cho hai Organization hiện tại; cần người vận hành quyết định riêng sau này. Không thay đổi bất kỳ dữ liệu hay Supabase project cũ nào.
