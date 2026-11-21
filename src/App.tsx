@@ -57,6 +57,7 @@ type ActiveCloudLease = { assetId:string; token:string; expectedCloudUpdatedAt:s
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
+  const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
   const [organizationReady,setOrganizationReady]=useState(false)
@@ -90,6 +91,17 @@ export default function App() {
     const { data } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if(event==='PASSWORD_RECOVERY') setPasswordRecovery(true); if(event==='SIGNED_OUT'){setOrganizationContexts([]);setOrganizationId('');setOrganizationReady(false);setPasswordRecovery(false)} })
     return () => data.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    let active = true
+    const loadProfileName = async () => {
+      if (!session?.user.id || !supabase) { setProfileDisplayName(''); return }
+      const { data } = await supabase.from('profiles').select('display_name').eq('id', session.user.id).maybeSingle()
+      if (active) setProfileDisplayName(data?.display_name?.trim() || String(session.user.user_metadata?.full_name || '').trim())
+    }
+    void loadProfileName()
+    return () => { active = false }
+  }, [session?.user.id, session?.user.user_metadata?.full_name])
 
   useEffect(()=>{
     let active=true
@@ -325,7 +337,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
-        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p></div><div className="welcome-icon"><Wrench size={42}/></div></section>
@@ -377,7 +389,7 @@ export default function App() {
         <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
     </section></div>}
-    {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>setProfilePanel(false)}/>}
+    {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>{setProfilePanel(false);if(session?.user.id&&supabase)void supabase.from('profiles').select('display_name').eq('id',session.user.id).maybeSingle().then(({data})=>setProfileDisplayName(data?.display_name?.trim()||String(session.user.user_metadata?.full_name||'').trim()))}}/>}
     {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)}/>}
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>void loadAssets()}/>}
