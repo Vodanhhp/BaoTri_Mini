@@ -19,12 +19,15 @@ Deno.serve(async(req)=>{
   const {data:auth,error:authError}=await admin.auth.getUser(token)
   if(authError||!auth.user||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can view platform statistics.'},403,origin)
 
-  const [{data:organizations,error:orgError},{data:members,error:memberError}]=await Promise.all([
+  const [{data:organizations,error:orgError},{data:members,error:memberError},{data:catalogs,error:catalogError}]=await Promise.all([
    admin.from('organizations').select('id,name,status,created_at').order('created_at',{ascending:false}),
-   admin.from('organization_members').select('id,organization_id,user_id,status')
+   admin.from('organization_members').select('id,organization_id,user_id,status'),
+   admin.from('organization_equipment_catalog').select('organization_id,plan_code,source_data_version,snapshot')
   ])
   if(orgError)throw orgError
   if(memberError)throw memberError
+  if(catalogError)throw catalogError
+  const catalogByOrganization=new Map((catalogs??[]).map(catalog=>[catalog.organization_id,catalog]))
 
   let authAccountsTotal=0,confirmedAccounts=0
   for(let page=1;page<=100;page++){
@@ -40,13 +43,17 @@ Deno.serve(async(req)=>{
   const memberships=members??[]
   const rows=(organizations??[]).map(org=>{
    const own=memberships.filter(member=>member.organization_id===org.id)
+   const catalog=catalogByOrganization.get(org.id)
    return {
     id:org.id,name:org.name,status:org.status,createdAt:org.created_at,
     totalMembers:own.length,
     activeMembers:own.filter(member=>member.status==='active').length,
     invitedMembers:own.filter(member=>member.status==='invited').length,
     suspendedMembers:own.filter(member=>member.status==='suspended').length,
-    uniqueUsers:new Set(own.map(member=>member.user_id)).size
+    uniqueUsers:new Set(own.map(member=>member.user_id)).size,
+    planCode:catalog?.plan_code??null,
+    planName:catalog?.snapshot?.plan?.name??null,
+    sourceDataVersion:catalog?.source_data_version??null
    }
   })
   return response({
