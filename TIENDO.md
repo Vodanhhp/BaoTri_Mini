@@ -441,3 +441,43 @@ Permission catalog hiện có 26 code:
 - Các thay đổi giao diện/code đã commit trên `feature/smart-equipment-id-engine`. CI cho commit code cuối `af62511ac0440d68633d41051b90a843bad8d20d`: `Build and test` run `44894357408` và `Validate BAOTRI Mini` run `44894357391` đều success. Build thêm trên commit tài liệu mới nhất `4cc73a78a1c48f6a56a699491a54ed3776b0ab68`: run `44894405573` success.
 - Tương thích chuyển phiên bản: bảng Plan xử lý trường metadata chưa có từ Edge Function cũ bằng trạng thái “Đang tải hạn mức” và dấu gạch cho số liệu chưa trả về; không hiển thị nhầm `NaN` hoặc hiểu thiếu dữ liệu là Plan không giới hạn.
 - Chưa merge PR #11, chưa deploy Pages hoặc hai Edge Function provisioning/overview. Khi phát hành phải triển khai theo cửa sổ phối hợp: cập nhật `platform-get-overview` trước (bổ sung dữ liệu, tương thích ngược), sau đó cập nhật `platform-create-customer` (bắt buộc Plan; giao diện cũ sẽ bị từ chối tạo mới một cách an toàn), rồi đưa UI mới lên Pages ngay sau đó. Không đưa UI mới lên trước Edge Function tạo khách hàng vì function cũ có thể bỏ qua `planCode` và tạo Organization không có Plan. Tạm dừng thao tác tạo khách hàng trong thời gian chuyển phiên bản.
+
+
+## 21/11/2026 – Ma trận nghiệm thu Smart ID theo Plan A/B/C/D
+
+### Kiểm tra trạng thái trước nghiệm thu
+- Supabase `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`) đang `ACTIVE_HEALTHY`.
+- Catalog chuẩn hiện hành trong registry private: dataVersion `1.1.0`, 44 ngành nghề, 30 nhóm chuẩn, 74 mục từ điển.
+- Kiểm tra read-only sau các kiểm thử trước đó: 2 Organizations, 0 tenant Catalog Snapshot, 0 assets, 0 sequence counters, 0 reservations. Không có dữ liệu test tồn tại.
+- RPC public `platform_provision_customer` là SECURITY INVOKER; EXECUTE chỉ có `service_role`, không có `anon` hoặc `authenticated`.
+- PR #11 vẫn Draft; branch đang ahead main 110 commits, behind 0. Hai workflow gắn với head hiện tại `f82623ec166c246c29875f3cd1e9f5b9d6f3a139` đều success: Build and test run `44894499728`, Validate BAOTRI Mini run `44894499754`.
+- Lưu ý: workflow tên “Build and test” hiện chỉ chạy `npm ci` và `npm run build`; chưa có bộ unit test tự động riêng cho Smart ID engine. Build success không thay thế nghiệm thu nghiệp vụ.
+
+### Ma trận mã dự kiến
+| Plan | Mã minh họa | Nhóm | Cơ sở | Ngày đưa vào sử dụng |
+|---|---|---|---|---|
+| A | `BOM-001` | Không yêu cầu | Không áp dụng | Không yêu cầu |
+| B | `BOM-NUO-001` | Bắt buộc chọn/xác nhận | Không áp dụng | Không yêu cầu |
+| C | `BOM-NUO-01-001-1126` | Bắt buộc chọn/xác nhận | Mã 2 chữ số | Bắt buộc |
+| D | `BOM-NUO-01-001-1126` | Bắt buộc chọn/xác nhận | Mã 2 chữ số | Bắt buộc |
+
+Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thiết bị thật.
+
+### Các ca bắt buộc trước khi cho dùng thực tế
+1. **Plan A:** thêm thiết bị mới; không hiện thao tác chọn nhóm/cơ sở; mã theo `EQUIPMENT_CODE-SEQUENCE`; từ chối thiết bị không nhận diện được hoặc mã loại không hợp lệ.
+2. **Plan B:** gợi ý nhóm không được xem là đã xác nhận; phải chọn nhóm rõ ràng trước khi lưu; mã có nhóm nhưng không có cơ sở/ngày tháng.
+3. **Plan C/D:** thiếu hoặc sai ngày đưa vào sử dụng phải bị chặn; mã gồm loại-nhóm-cơ sở-số thứ tự-MMYY; xác minh đổi tháng không reset bộ đếm.
+4. **Nhận diện:** thử tên có dấu/không dấu, chữ hoa/thường, alias, tên không tồn tại và hai kết quả gần tương đương; không tự bịa mã khi not-found/ambiguous.
+5. **Nhóm:** thử mã có dấu câu như `CNC-T`; nhóm phải thuộc Snapshot và đúng Plan; không được tự nhận nhóm gợi ý nếu người dùng chưa chọn.
+6. **Local-first:** Cloud giữ số; Local tự định dạng ID và ghi IndexedDB trước; Cloud chỉ xác nhận ID Local đã lưu. Nếu lỗi trước khi Local lưu thì không có asset Local; nếu confirm lỗi sau khi Local lưu thì giữ record và retry cùng reservation, không cấp số thứ hai.
+7. **Bất biến:** sửa tên không đổi ID; UUID và ID đã cấp không được sửa; Admin đổi nhóm phải có audit; Technician không được đổi nhóm.
+8. **Hạn mức:** kiểm tra tại biên 200/201 (A), 500/501 (B), 1.000/1.001 (C); D không giới hạn. Chỉ dùng transaction rollback/fixture riêng, không tạo asset thử tồn tại trên tổ chức thật.
+9. **Tenant và đồng bộ:** xác minh người dùng chỉ đọc snapshot/sequence của tổ chức đang chọn; kiểm tra Local↔Cloud, retry, import idempotent và xung đột không nhân đôi thiết bị.
+10. **Thiết bị:** kiểm tra thao tác thêm mới trên PC và mobile; kiểm tra trạng thái offline/online và thông báo khi chưa thể cấp mã chính thức.
+
+### Trạng thái và giới hạn
+- Đã kiểm chứng trước đó bằng transaction rollback: các định dạng A/B/C/D, sequence vượt 999, retry idempotent, confirm Local ID, Cloud mirror metadata, audit đổi nhóm và bộ lọc snapshot.
+- Chưa chạy nghiệm thu browser E2E cho cả bốn Plan trên tenant được provision riêng; hiện không có tenant snapshot để tạo mã chính thức.
+- Không được gán Plan cho hai Organization hiện có hoặc tạo khách hàng/asset thử nghiệm thật nếu chưa có quyết định rõ.
+- Trước khi phát hành còn phải xử lý yêu cầu không trả UUID nội bộ `assets.id` cho Technician/Viewer qua API đọc thông thường; đây là hạng mục bảo mật còn mở.
+- Không merge PR, deploy Pages hoặc redeploy Edge Functions trong bước nghiệm thu này.
