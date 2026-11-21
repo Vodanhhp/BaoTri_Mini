@@ -548,3 +548,26 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Sau khi provisioning thành công, hiển thị kết quả gồm tổ chức, Plan, Admin, Snapshot, số nhóm/từ điển/ngành và hạn mức; biểu mẫu được đưa về bước 1 để sẵn sàng tạo khách hàng tiếp theo.
 - Giữ nguyên Edge Function `platform-create-customer` và luồng provisioning giao dịch hiện có; không phát sinh thao tác ghi dữ liệu mới từ giao diện ngoài lời gọi API đã được bảo vệ.
 - Thay đổi giao diện nằm trên nhánh `feature/smart-equipment-id-engine`, PR #11. Chưa merge, chưa deploy Pages và chưa deploy Edge Functions. Chưa có CI/build mới xác nhận cho các commit giao diện này; migration Cloud Asset Public Key vẫn chưa apply.
+
+## Hoàn thiện Smart Equipment ID và đăng ký khách hàng lần đầu (21/11/2026)
+### Smart Equipment ID
+- Luồng cấp mã chính thức tiếp tục theo Local-first: bộ phân tích đọc Catalog Snapshot riêng của Organization; Cloud chỉ giữ số thứ tự nguyên tử; Local ghép mã hoàn chỉnh và ghi hồ sơ IndexedDB; Cloud xác nhận reservation + snapshot thành phần mã.
+- Sửa luồng retry reservation: reservation_id được giữ trên bản nháp khi RPC có thể đã thành công nhưng phản hồi bị mất. Bấm lưu lại dùng đúng reservation key, không cấp số thứ tự mới.
+- Khi người dùng đổi tên/nhóm/cơ sở/ngày vận hành trước khi lưu, reservation cũ được giải phóng best-effort và khóa reservation của bản nháp được làm mới. Khi đóng form chưa lưu, hệ thống thử giải phóng reservation; nếu Local đã ghi hồ sơ thì giữ reservation để retry xác nhận.
+- Client kiểm tra chặt dữ liệu Cloud trả về: request ID, Plan, mã loại, nhóm, cơ sở, MMYY, sequence, trạng thái và source catalog version phải khớp với đầu vào trước khi ghép ID.
+- Không tự đoán mã nếu tên không khớp; trường hợp mơ hồ buộc người dùng chọn loại. Plan B/C/D bắt buộc xác nhận nhóm; Plan C/D yêu cầu mã cơ sở 2 chữ số và ngày đưa vào sử dụng.
+### Đăng ký khách hàng lần đầu
+- Wizard 3 bước giữ nguyên: thông tin doanh nghiệp → Plan A/B/C/D → Admin đầu tiên + review. Plan/Snapshot hiển thị hạn mức, nhóm, ngành, từ điển và quy tắc ID.
+- Thêm request UUID idempotency cho provisioning. Nếu HTTP response bị mất sau khi transaction đã commit, thao tác retry trả về cùng Organization thay vì tạo tổ chức thứ hai.
+- Bản nháp provisioning lưu trong sessionStorage của tab, gồm request ID và dữ liệu form; sau reload/đóng-mở panel trong cùng tab có thể tiếp tục đúng yêu cầu. Xóa bản nháp sau khi nhận kết quả thành công.
+- Edge Function source platform-create-customer yêu cầu request UUID hợp lệ và gọi RPC idempotent; vẫn xác minh token, email chủ nền tảng đã xác nhận, Auth user + profile Admin, Plan hợp lệ. Không đưa mật khẩu Admin qua form.
+- Overview source đọc Plan và Catalog Snapshot để hiển thị đúng thông tin khách hàng.
+### Supabase BAOTRI-Mini-New
+- Đã áp dụng migration 20261121120907_platform_customer_provisioning_idempotency: bảng request private, RLS bật, không cấp quyền đọc trực tiếp; function khóa advisory theo request UUID, ràng buộc request vào payload và lưu kết quả provision trong cùng transaction.
+- Đã áp dụng migration 20261121120908_grant_service_role_customer_provisioning_idempotency: cấp EXECUTE cho service_role trên private implementation; public wrapper SECURITY INVOKER chỉ cho service_role gọi.
+- Kiểm tra rollback-only qua public RPC với role service_role: hai lần gọi cùng request UUID trả cùng organizationId; kết quả có Plan A, Snapshot v1.1.0, 74 dictionary entries và 11 industries. Transaction đã ROLLBACK; không tạo khách hàng thật.
+- Security Advisor: INFO cho private tables bật RLS nhưng không có policy (đúng chủ đích vì không cho client truy cập trực tiếp); WARN hiện hữu về Leaked Password Protection đang tắt. Performance Advisor có cảnh báo FK/index và permissive profiles policy từ schema trước; chưa thuộc phạm vi thay đổi lần này.
+- Không áp dụng migration 20261121130000_cloud_asset_public_key_api.sql trong công việc này.
+### Ranh giới phát hành
+- Các thay đổi code và migration source chỉ được commit trên feature/smart-equipment-id-engine / PR #11. Chưa merge main, chưa deploy Pages, chưa redeploy Edge Functions; do đó website production vẫn giữ phiên bản cũ và Edge Functions trên BAOTRI-Mini-New vẫn là bản cũ cho đến khi phát hành đồng bộ frontend + functions.
+- Không tạo Organization, Auth user, membership, asset hoặc sequence thật trong quá trình này.
