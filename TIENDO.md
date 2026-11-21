@@ -342,3 +342,12 @@ Permission catalog hiện có 26 code:
 - Quản trị nền tảng: giữ 4 thẻ thống kê trên một hàng; giới hạn chiều cao bảng doanh nghiệp; bố trí biểu mẫu tạo khách hàng thành 3 cột ngang thay vì xếp dọc.
 - Không thay đổi nghiệp vụ, quyền hạn hoặc chính sách quản trị chỉ hỗ trợ trên PC.
 - Commit giao diện: `cab303d` (CSS), `bd4c15b` (biểu mẫu Quản trị nền tảng).
+
+
+## 21/11/2026 – Chuẩn hóa bảng Hồ sơ cá nhân
+
+- Đồng bộ kích thước hộp thoại Hồ sơ cá nhân với hai bảng Quản lý tài khoản và Quản trị nền tảng: chiều rộng PC khoảng 960px, tiêu đề và khoảng đệm gọn.
+- Chia nội dung thành các khung thông tin riêng: Thông tin cá nhân, Email đăng nhập và Đổi mật khẩu.
+- Thông tin cá nhân bố trí 3 trường theo chiều ngang; Email và Đổi mật khẩu bố trí 2 cột, nút thao tác nằm cuối từng khung.
+- Trên màn hình nhỏ, các khung tự chuyển về một cột để dễ thao tác.
+- Không thay đổi logic lưu hồ sơ, đổi email hoặc đổi mật khẩu.
