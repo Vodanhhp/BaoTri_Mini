@@ -61,7 +61,7 @@ export default function AuthScreen({ client, onLocalPreview }: Props) {
         <button className="auth-submit" type="submit" disabled={busy}>{busy?'Đang xác thực…':'Đăng nhập'}</button>
         <button className="auth-link" type="button" disabled={busy} onClick={()=>void sendRecovery()}>Quên mật khẩu?</button>
       </form>}
-      <div className="auth-note"><b>Lưu ý:</b> Chưa bật đăng ký tự do. Tài khoản do Admin cấp. Không có đăng ký tự do.</div>
+      <div className="auth-note"><b>Lưu ý:</b> Chưa bật đăng ký tự do. Tài khoản do Admin cấp.</div>
     </section>
   </main>
 }
