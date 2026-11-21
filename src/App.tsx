@@ -12,6 +12,8 @@ import { loadOrganizationContext, type OrganizationContext } from './lib/organiz
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
+import { analyzeEquipmentName } from './lib/smartEquipmentId'
+import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord } from './lib/smartEquipmentIdClient'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý']
 
@@ -61,6 +63,12 @@ export default function App() {
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
   const [organizationReady,setOrganizationReady]=useState(false)
+  const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
+  const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
+  const [equipmentCatalogError,setEquipmentCatalogError]=useState('')
+  const [smartEquipmentChoice,setSmartEquipmentChoice]=useState('')
+  const [smartGroupChoice,setSmartGroupChoice]=useState('')
+  const [smartSiteCode,setSmartSiteCode]=useState('00')
   const [cloudPanel,setCloudPanel]=useState(false)
   const [membersPanel,setMembersPanel]=useState(false)
   const [profilePanel,setProfilePanel]=useState(false)
@@ -122,6 +130,20 @@ export default function App() {
     return ()=>{active=false}
   },[session?.user.id])
 
+  useEffect(()=>{
+    let active=true
+    if(!session?.user.id||!supabase||!organizationId){
+      setEquipmentCatalog(null);setEquipmentCatalogError('');setEquipmentCatalogLoading(false)
+      return
+    }
+    setEquipmentCatalog(null);setEquipmentCatalogError('');setEquipmentCatalogLoading(true)
+    loadOrganizationEquipmentCatalog(supabase,organizationId)
+      .then(record=>{if(active)setEquipmentCatalog(record)})
+      .catch(err=>{if(active)setEquipmentCatalogError(err instanceof Error?err.message:String(err))})
+      .finally(()=>{if(active)setEquipmentCatalogLoading(false)})
+    return()=>{active=false}
+  },[session?.user.id,organizationId])
+
   const localScope=localPreview?'local-preview':organizationId
   const loadAssets = async (scope=localScope) => {
     if(!scope){setAssets([]);return}
@@ -129,6 +151,29 @@ export default function App() {
   }
   useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
 
+  const isNewSmartAsset=Boolean(editing&&!localPreview&&!assets.some(a=>a.id===editing.id))
+  const smartAnalysis=useMemo(()=>{
+    if(!editing||!isNewSmartAsset||!equipmentCatalog)return null
+    const dictionary=equipmentCatalog.snapshot.equipmentDictionary
+    const selectedDictionary=smartEquipmentChoice
+      ? dictionary.filter(entry=>entry.shortCode.replace(/[^A-Za-z0-9]/g,'').toUpperCase()===smartEquipmentChoice.replace(/[^A-Za-z0-9]/g,'').toUpperCase())
+      : dictionary
+    return analyzeEquipmentName({
+      name:editing.name,
+      plan:equipmentCatalog.plan_code,
+      catalog:{...equipmentCatalog.snapshot,equipmentDictionary:selectedDictionary},
+      selectedGroupCode:smartGroupChoice||undefined,
+      siteCode:smartSiteCode,
+      commissionedAt:editing.commissionedAt||undefined
+    })
+  },[editing?.name,editing?.commissionedAt,isNewSmartAsset,equipmentCatalog,smartEquipmentChoice,smartGroupChoice,smartSiteCode])
+  const smartAvailableGroups=useMemo(()=>{
+    if(!equipmentCatalog||equipmentCatalog.plan_code==='A')return []
+    const rank={A:1,B:2,C:3,D:4}
+    return equipmentCatalog.snapshot.equipmentGroups.filter(group=>rank[group.availableFromPlan??'B']<=rank[equipmentCatalog.plan_code])
+  },[equipmentCatalog])
+  const smartSelectedGroup=smartAvailableGroups.find(group=>group.code===smartGroupChoice)
+    ?? smartAnalysis?.group
   const categories = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
   const locations = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
   const visibleAssets = useMemo(() => assets.filter(asset => {
