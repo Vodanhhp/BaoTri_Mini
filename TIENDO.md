@@ -364,3 +364,19 @@ Permission catalog hiện có 26 code:
 - Bổ sung `display:flex` trực tiếp cho `.sidebar` trong media query mobile của drawer để sidebar có thể hiện ra khi nhấn nút ba gạch; trạng thái mặc định vẫn trượt ra ngoài màn hình, khi mở dùng `.mobile-open`.
 - Giữ nguyên mẫu đã thống nhất: nút menu ở góc trái thanh tiêu đề, sidebar dạng ngăn kéo có nhãn và submenu Cài đặt, backdrop/đóng menu; không thay đổi quyền quản trị PC-only hoặc logic nghiệp vụ.
 - Commit: `188e2d848becb079b74b451c7131c1ae30e4833e`. Chờ CI Build và GitHub Pages deploy; cần kiểm tra thực tế trên mobile sau deploy.
+
+
+## Chốt phạm vi Tài khoản và Quản trị (21/11/2026)
+
+- Người dùng xác nhận phần **Tài khoản và Quản trị đã hoàn tất**, đồng ý chốt phạm vi này; không tiếp tục chỉnh sửa nếu không có yêu cầu mới.
+- Các nội dung đã hoàn thành:
+  - **Hồ sơ cá nhân:** cập nhật họ tên, số điện thoại, ngày sinh; yêu cầu đổi email qua xác nhận Supabase; tự đổi mật khẩu. Tên hiển thị trên topbar ưu tiên họ tên hồ sơ.
+  - **Quản lý tài khoản tổ chức:** mời thành viên; quản lý trạng thái; đổi vai trò Kỹ thuật viên (Technician) / Người xem (Viewer); backend xác minh quyền Admin và giới hạn đúng tổ chức.
+  - **Quản trị nền tảng:** tạo khách hàng/tổ chức; tạm ngưng, kích hoạt lại và xóa vĩnh viễn có xác thực lại mật khẩu; chỉ Super Admin được phép thao tác, backend xác minh owner.
+  - **Chọn tổ chức sau đăng nhập:** một tổ chức hợp lệ thì tự vào; nhiều tổ chức thì bắt buộc chọn; không chuyển tổ chức giữa phiên làm việc.
+  - **Giao diện:** đưa các chức năng quản trị vào Cài đặt/sidebar; tối ưu bố cục PC theo chiều ngang; các màn hình Quản lý tài khoản và Quản trị nền tảng chỉ hỗ trợ PC. Mobile vẫn có menu ngăn kéo để điều hướng và truy cập Hồ sơ cá nhân, không mở chức năng quản trị.
+  - **Sửa lỗi giao diện:** loại bỏ chuỗi literal `\\n` thừa trong Quản trị nền tảng; khôi phục menu mobile bằng cách ghi đè `display:flex` cho sidebar trong media query drawer.
+- Người dùng xác nhận menu mobile đã hoạt động và chốt phần Tài khoản/Quản trị.
+- CI Build and test run **44872238366**: success. GitHub Pages deploy run **44872238426**: success, cùng commit `6c3146839bdf51db8c7d92747c7cda38b221f20d`.
+- Production: `https://baotri.vieclamhp247.com/`.
+- Trạng thái: **ĐÃ CHỐT**. Các thay đổi tiếp theo thuộc phạm vi Tài khoản/Quản trị chỉ thực hiện khi người dùng yêu cầu cụ thể; ưu tiên chuyển sang module/chức năng kế tiếp của BAOTRI Mini.
