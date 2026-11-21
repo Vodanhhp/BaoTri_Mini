@@ -5,8 +5,6 @@
 begin;
 
 create schema if not exists private;
-revoke all on schema private from public, anon, authenticated;
-
 create table if not exists public.organization_equipment_catalog (
   organization_id uuid primary key references public.organizations(id) on delete restrict,
   plan_code text not null check (plan_code in ('A','B','C','D')),
@@ -34,16 +32,16 @@ on public.organization_equipment_catalog
 for select
 to authenticated
 using (
-  public.has_org_permission(organization_id, 'settings.view')
-  or public.has_org_permission(organization_id, 'assets.create')
+  private.has_org_permission(organization_id, 'settings.view')
+  or private.has_org_permission(organization_id, 'assets.create')
 );
 
 create policy organization_equipment_catalog_update
 on public.organization_equipment_catalog
 for update
 to authenticated
-using (public.has_org_permission(organization_id, 'settings.manage'))
-with check (public.has_org_permission(organization_id, 'settings.manage'));
+using (private.has_org_permission(organization_id, 'settings.manage'))
+with check (private.has_org_permission(organization_id, 'settings.manage'));
 
 comment on table public.organization_equipment_catalog is
   'Organization-owned immutable-version catalog snapshot plus tenant-only custom additions. The plan is provisioned by trusted platform operations and cannot be changed through the client Data API.';
@@ -117,7 +115,7 @@ begin
   end if;
 
   if new.category is distinct from old.category
-    and not public.has_org_permission(old.organization_id, 'settings.manage') then
+    and not private.has_org_permission(old.organization_id, 'settings.manage') then
     raise exception 'Only an organization Admin may change the current equipment group' using errcode = '42501';
   end if;
 
