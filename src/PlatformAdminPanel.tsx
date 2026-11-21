@@ -16,7 +16,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  const [organizationName,setOrganizationName]=useState('')
  const [adminEmail,setAdminEmail]=useState('')
  const [adminName,setAdminName]=useState('')
- const [planCode,setPlanCode]=useState<PlanOption['id']>('A')
+ const [planCode,setPlanCode]=useState<PlanOption['id']|''>('')
  const [planOptions,setPlanOptions]=useState<PlanOption[]>([])
  const [planLoadError,setPlanLoadError]=useState('')
  const [busy,setBusy]=useState(false)
@@ -142,7 +142,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
   <form className="form-grid platform-create-form" onSubmit={submit}>
    <label className="field full-field">Tên doanh nghiệp / tổ chức *<input required minLength={2} maxLength={120} value={organizationName} onChange={e=>setOrganizationName(e.target.value)} placeholder="Ví dụ: Công ty ABC"/></label>
-   <label className="field full-field">Gói sử dụng (Plan) *<select required value={planCode} onChange={e=>setPlanCode(e.target.value as PlanOption['id'])} disabled={!planOptions.length}><option value="" disabled>Chọn Plan</option>{planOptions.map(plan=><option key={plan.id} value={plan.id}>Plan {plan.id} — {plan.name} · {plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)+' thiết bị'}</option>)}</select></label>
+   <label className="field full-field">Gói sử dụng (Plan) *<select required value={planCode} onChange={e=>setPlanCode(e.target.value as PlanOption['id']|'')} disabled={!planOptions.length}><option value="" disabled>Chọn Plan</option>{planOptions.map(plan=><option key={plan.id} value={plan.id}>Plan {plan.id} — {plan.name} · {plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)+' thiết bị'}</option>)}</select></label>
    {selectedPlan&&<div className="auth-note full-field"><b>Plan {selectedPlan.id} — {selectedPlan.name}:</b> {selectedPlan.maxDevices===null?'Không giới hạn số thiết bị':`Tối đa ${number(selectedPlan.maxDevices)} thiết bị`} · {selectedPlan.features.equipmentGroups?'Có nhóm thiết bị':'Không hiển thị nhóm thiết bị'} · {selectedPlan.features.multipleSites?'Có mã cơ sở':'Một cơ sở'}<br/>Mã quản lý theo quy tắc {selectedPlan.idRule.replace('PLAN_','Plan ')}. Snapshot riêng của doanh nghiệp sẽ được khởi tạo theo đúng Plan này.</div>}
    {planLoadError&&<div className="auth-error full-field">{planLoadError}</div>}
    <label className="field full-field">Email Admin đầu tiên *<input type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="admin@company.com"/></label>
