@@ -329,7 +329,7 @@ export default function App() {
         {settingsOpen&&<div className="sidebar-settings-submenu">
           <button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
-          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
+          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
         </div>}
       </div>}
       <div className="sidebar-bottom"><ShieldCheck size={15}/> Dữ liệu thiết bị Local</div>
@@ -390,7 +390,7 @@ export default function App() {
       </form>
     </section></div>}
     {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>{setProfilePanel(false);if(session?.user.id&&supabase)void supabase.from('profiles').select('display_name').eq('id',session.user.id).maybeSingle().then(({data})=>setProfileDisplayName(data?.display_name?.trim()||String(session.user.user_metadata?.full_name||'').trim()))}}/>}
-    {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)}/>}
+    {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)}/>}
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>void loadAssets()}/>}
     {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{detailAsset.name}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
