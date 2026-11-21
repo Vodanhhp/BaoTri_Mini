@@ -6,7 +6,7 @@ import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
 
 export type CloudLock = {
-  asset_id: string
+  asset_code: string
   holder_user_id: string
   holder_device_id: string
   holder_label: string
@@ -120,25 +120,25 @@ export async function downloadCloudAsset(organizationId: string, cloud: CloudAss
   return local
 }
 
-export async function acquireCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, deviceId: string, label: string) {
-  const {data,error}=await client.rpc('acquire_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_device_id:deviceId,p_holder_label:label})
+export async function acquireCloudAssetLock(client: SupabaseClient, organizationId: string, assetCode: string, deviceId: string, label: string) {
+  const {data,error}=await client.rpc('acquire_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetCode,p_device_id:deviceId,p_holder_label:label})
   if(error) throw new Error('Xin khóa sửa thiết bị thất bại: '+error.message)
   const result=data as Record<string,unknown>
   if(result.acquired===true) {
     if(!result.lock_token || !result.expires_at) throw new Error('Cloud cấp khóa thiếu thông tin.')
-    return {acquired:true as const,lease:{...result,asset_id:String(result.asset_code??assetId)} as unknown as CloudLease}
+    return {acquired:true as const,lease:result as unknown as CloudLease}
   }
   return {acquired:false as const,lock:result as unknown as CloudLock}
 }
 
-export async function heartbeatCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, token: string) {
-  const {data,error}=await client.rpc('heartbeat_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_lock_token:token})
+export async function heartbeatCloudAssetLock(client: SupabaseClient, organizationId: string, assetCode: string, token: string) {
+  const {data,error}=await client.rpc('heartbeat_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetCode,p_lock_token:token})
   if(error) throw new Error(error.message)
   return (data as {renewed?:boolean})?.renewed===true
 }
 
-export async function releaseCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, token: string) {
-  const {data,error}=await client.rpc('release_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_lock_token:token})
+export async function releaseCloudAssetLock(client: SupabaseClient, organizationId: string, assetCode: string, token: string) {
+  const {data,error}=await client.rpc('release_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetCode,p_lock_token:token})
   if(error) throw new Error(error.message)
   return data===true
 }
