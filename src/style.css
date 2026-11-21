@@ -774,3 +774,53 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 .primary-btn.small,.soft-btn.small{padding:7px 9px;font-size:12px}
 .member-modal{max-width:520px}
 @media(max-width:680px){.cloud-row{align-items:flex-start;flex-direction:column}.cloud-row-actions{width:100%}.cloud-row-actions button{flex:1}.cloud-modal,.member-modal{width:96vw;padding:14px}.org-select{max-width:120px}}
+
+/* Organization account administration */
+.member-management-modal{width:min(980px,96vw);max-width:980px;max-height:94vh;display:flex;flex-direction:column;gap:12px}
+.member-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.member-stat{padding:11px 13px;border:1px solid var(--border);border-radius:9px;background:var(--panel-alt)}
+.member-stat small{display:block;color:var(--muted);font-size:10px}
+.member-stat strong{display:block;font-size:21px;line-height:1.35;margin-top:3px}
+.member-toolbar{display:flex;align-items:center;gap:9px}
+.member-search{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:1px solid var(--border);border-radius:8px;padding:0 10px;height:38px;color:var(--muted)}
+.member-search input{border:0;outline:0;background:transparent;color:var(--text);width:100%;min-width:0;font:inherit;font-size:12px}
+.member-list-wrap{border:1px solid var(--border);border-radius:9px;overflow:auto;max-height:310px}
+.member-list{display:flex;flex-direction:column}
+.member-row{display:grid;grid-template-columns:minmax(180px,1.1fr) minmax(130px,.7fr) minmax(190px,1fr);align-items:center;gap:12px;padding:11px 12px;border-bottom:1px solid var(--border)}
+.member-row:last-child{border-bottom:0}
+.member-identity{display:flex;align-items:center;gap:9px;min-width:0}
+.member-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--primary)}
+.member-identity>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.member-identity b{font-size:12px;overflow-wrap:anywhere}
+.member-identity small,.member-confirm{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+.member-meta{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.member-role{font-size:11px;font-weight:700}
+.member-actions{display:flex;justify-content:flex-end;align-items:center;gap:5px;flex-wrap:wrap}
+.member-action{display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:7px;padding:6px 7px;font-size:10px;cursor:pointer}
+.member-action:disabled{opacity:.5;cursor:not-allowed}
+.member-action.warning{color:#a66b1d}
+.member-action.danger{color:#b54e49}
+.member-protected{font-size:10px;color:var(--muted)}
+.member-empty{padding:24px 12px;text-align:center;color:var(--muted);font-size:12px}
+.member-feedback{margin:0}
+.member-invite-section{border-top:1px solid var(--border);padding-top:12px}
+.member-section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.member-section-title>div{display:flex;flex-direction:column;gap:3px}
+.member-section-title b{display:flex;align-items:center;gap:7px;font-size:13px}
+.member-section-title small{font-size:10px;color:var(--muted)}
+.member-invite-section .form-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.member-invite-section .field{font-size:10px}
+.member-invite-section .field input,.member-invite-section .field select{font-size:12px}
+.member-invite-section .modal-actions{grid-column:1/-1;justify-content:flex-end;margin-top:0}
+.member-note{font-size:10px;line-height:1.5;margin:0}
+@media(max-width:760px){
+ .member-management-modal{width:96vw;max-height:95dvh;padding:13px;gap:10px}
+ .member-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .member-row{grid-template-columns:minmax(0,1fr) auto;gap:8px}
+ .member-meta{grid-column:1;grid-row:2;flex-direction:row;align-items:center;flex-wrap:wrap}
+ .member-actions{grid-column:2;grid-row:1/3;flex-direction:column;align-items:stretch}
+ .member-action{white-space:nowrap}
+ .member-invite-section .form-grid{grid-template-columns:1fr}
+ .member-invite-section .modal-actions{grid-column:1}
+ .member-toolbar>.soft-btn{padding:8px}
+}
