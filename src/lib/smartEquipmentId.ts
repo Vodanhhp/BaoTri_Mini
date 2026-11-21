@@ -12,6 +12,7 @@ export type EquipmentGroup = {
   code: string
   name: string
   aliases?: string[]
+  availableFromPlan?: PlanCode
 }
 
 export type EquipmentDictionaryEntry = {
