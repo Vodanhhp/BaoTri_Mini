@@ -749,3 +749,28 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 .detail-photos h3{font-size:12px;margin:0 0 8px}
 .detail-photo-grid a{aspect-ratio:4/3;overflow:hidden;border-radius:8px;border:1px solid var(--border)}
 @media(max-width:680px){.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.detail-modal{padding:15px}.detail-status-row{align-items:flex-start;flex-direction:column}}
+
+/* Local-first Cloud, organization and account management */
+.auth-link{background:none;border:0;color:var(--primary,#315b91);font-weight:600;padding:10px;cursor:pointer}
+.auth-link:disabled{opacity:.55;cursor:not-allowed}
+.org-select{max-width:190px;min-width:130px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:inherit}
+.cloud-modal,.member-modal{width:min(920px,96vw);max-height:92vh;overflow:auto}
+.cloud-summary{padding:10px 12px;margin:8px 0 14px;background:var(--surface-soft,#f5f7fa);border-radius:9px;font-size:13px}
+.cloud-summary span{color:#a25a12}
+.cloud-section{border:1px solid var(--border);border-radius:10px;padding:12px;margin:12px 0}
+.cloud-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;flex-wrap:wrap}
+.cloud-section-head h3{margin:0;font-size:15px}
+.cloud-list{display:flex;flex-direction:column;gap:8px}
+.cloud-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:8px;padding:10px}
+.cloud-row-main{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.cloud-row-main b{font-size:13px}
+.cloud-row-main small{font-size:12px;color:var(--text-muted,#6b7280);overflow-wrap:anywhere}
+.cloud-row-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cloud-select{display:flex;gap:10px;align-items:flex-start;min-width:0;flex:1;cursor:pointer}
+.cloud-select input{margin-top:3px}
+.cloud-select span{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cloud-message{background:#eaf5ee;color:#24613d;border:1px solid #c5e2d0;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px}
+.empty-small{font-size:13px;color:var(--text-muted,#6b7280);padding:8px 4px}
+.primary-btn.small,.soft-btn.small{padding:7px 9px;font-size:12px}
+.member-modal{max-width:520px}
+@media(max-width:680px){.cloud-row{align-items:flex-start;flex-direction:column}.cloud-row-actions{width:100%}.cloud-row-actions button{flex:1}.cloud-modal,.member-modal{width:96vw;padding:14px}.org-select{max-width:120px}}
