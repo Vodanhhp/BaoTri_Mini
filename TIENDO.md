@@ -281,3 +281,10 @@ Permission catalog hiện có 26 code:
 - Cho phép người dùng tự yêu cầu đổi email đăng nhập qua supabase.auth.updateUser({email}); email chỉ đổi sau quy trình xác nhận của Supabase. Cho phép tự đổi mật khẩu qua Supabase Auth; không lưu mật khẩu dạng văn bản trong database.
 - Mục **Hồ sơ cá nhân** xuất hiện với mọi tài khoản trong Cài đặt; thêm lối mở nhanh từ thẻ tài khoản trên topbar để dùng được cả khi sidebar ẩn ở màn hình nhỏ. Các mục quản trị vẫn giữ điều kiện Admin/Super Admin và giới hạn PC.
 - Không thay đổi RBAC, membership, quyền tenant, Edge Functions hoặc dữ liệu thiết bị. Cần CI build/validate và kiểm tra thao tác cập nhật hồ sơ, email, mật khẩu bằng tài khoản thử nghiệm trước khi nghiệm thu.
+
+
+## Sửa lỗi hiển thị khi lưu hồ sơ cá nhân (21/11/2026)
+- Khắc phục lỗi giao diện hiển thị `[object Object]`: chuẩn hóa thông báo lỗi Supabase, hiển thị message/details/hint/code thay vì ép object thành chuỗi.
+- Luồng lưu hồ sơ kiểm tra kết quả UPDATE có thực sự trả về bản ghi; nếu không có bản ghi sẽ báo rõ và hướng dẫn đăng nhập lại.
+- Phân biệt trường hợp họ tên/số điện thoại đã lưu nhưng ngày sinh chưa lưu được, tránh báo chung gây hiểu nhầm.
+- Commit: `b57e8966e1b2b0f88396f12f75c8373d0c3d6e35`. Chờ CI build/validate; cần người dùng thử lưu trên giao diện sau deploy để xác định lỗi gốc nếu vẫn còn.
