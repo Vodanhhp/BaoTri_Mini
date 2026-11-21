@@ -150,6 +150,36 @@ export default function App() {
     setAssets(await db.assets.where('localScope').equals(scope).toArray())
   }
   useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
+  useEffect(()=>{
+    if(!session?.user.id||!supabase||!organizationId)return
+    let active=true
+    const retryPendingLocalReservations=async()=>{
+      if(!navigator.onLine)return
+      const pending=await db.assets.where('localScope').equals(organizationId)
+        .filter(asset=>asset.idReservationStatus==='reserved'&&Boolean(asset.idReservationId))
+        .toArray()
+      for(const asset of pending){
+        if(!active)break
+        if(!asset.idReservationId||!asset.idComponentsSnapshot||!asset.equipmentTypeCode)continue
+        try{
+          await confirmSmartEquipmentIdReservation(supabase,{
+            organizationId,reservationId:asset.idReservationId,assetId:asset.id,equipmentId:asset.code,
+            originalName:asset.originalName||asset.name,
+            normalizedNameAtCreation:asset.normalizedNameAtCreation||asset.name,
+            equipmentTypeCode:asset.equipmentTypeCode,
+            components:asset.idComponentsSnapshot
+          })
+          await db.assets.update(asset.id,{idReservationStatus:'confirmed'})
+        }catch{
+          // Keep the Local record and reservation pending; a later online retry can confirm it.
+        }
+      }
+      if(active)await loadAssets(organizationId)
+    }
+    void retryPendingLocalReservations()
+    window.addEventListener('online',retryPendingLocalReservations)
+    return()=>{active=false;window.removeEventListener('online',retryPendingLocalReservations)}
+  },[session?.user.id,organizationId])
 
   const isNewSmartAsset=Boolean(editing&&!localPreview&&!assets.some(a=>a.id===editing.id))
   const smartAnalysis=useMemo(()=>{
