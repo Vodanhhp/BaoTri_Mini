@@ -10,7 +10,7 @@ import SmartEquipmentIdTool from './SmartEquipmentIdTool'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetStatus, type AssetMutationPayload } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
@@ -243,16 +243,16 @@ export default function App() {
       if(pending)throw new Error('Thiết bị có mutation Cloud chưa được xác nhận. Không mở phiên sửa mới.')
       if(!navigator.onLine)throw new Error('Thiết bị Cloud cần Internet để xác minh quyền sửa.')
       const deviceId=getLocalDeviceId()
-      const acquired=await acquireCloudAssetLock(supabase,organizationId,asset.id,deviceId,getDeviceLabel())
+      const acquired=await acquireCloudAssetLock(supabase,organizationId,asset.code,deviceId,getDeviceLabel())
       if(!acquired.acquired)throw new Error('Thiết bị đang được sửa bởi '+(acquired.lock.holder_label||'thiết bị khác')+'. Chỉ xem, chưa thể sửa.')
       try{
-        const {data,error:readError}=await supabase.from('assets').select('id,code,updated_at').eq('organization_id',organizationId).eq('id',asset.id).maybeSingle()
-        if(readError)throw readError
-        if(!data||data.id!==asset.id||data.code!==link.cloudCode)throw new Error('Cloud không khớp UUID/mã quản lý của liên kết.')
-        if(data.updated_at!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud đã đổi. Đã đánh dấu conflict; tải Cloud về và đối chiếu trước khi sửa.')}
-        setCloudLease({assetId:asset.id,token:acquired.lease.lock_token,expectedCloudUpdatedAt:data.updated_at,deviceId,lost:false})
+        const cloudRows=await listCloudAssets(supabase,organizationId)
+        const data=cloudRows.find(row=>row.code===link.cloudCode)
+        if(!data||data.code!==asset.code)throw new Error('Cloud không khớp mã quản lý của liên kết.')
+        if(data.updatedAt!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud đã đổi. Đã đánh dấu conflict; tải Cloud về và đối chiếu trước khi sửa.')}
+        setCloudLease({assetId:asset.code,token:acquired.lease.lock_token,expectedCloudUpdatedAt:data.updatedAt,deviceId,lost:false})
         setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true)
-      }catch(e){await releaseCloudAssetLock(supabase,organizationId,asset.id,acquired.lease.lock_token).catch(()=>false);throw e}
+      }catch(e){await releaseCloudAssetLock(supabase,organizationId,asset.code,acquired.lease.lock_token).catch(()=>false);throw e}
     }catch(e){alert(e instanceof Error?e.message:String(e))}
   }
 
@@ -426,7 +426,7 @@ export default function App() {
             if(linkedAudit)await db.assetGroupChanges.update(linkedAudit.id,{syncStatus:'synced'})
           })
           setCloudLease(null);setShowForm(false);setEditing(null);await loadAssets();notify('Cloud xác nhận cập nhật thiết bị.')
-          await releaseCloudAssetLock(supabase,organizationId,value.id,lease.token).catch(()=>false)
+          await releaseCloudAssetLock(supabase,organizationId,value.code,lease.token).catch(()=>false)
           return
         }catch(cloudError){
           await db.assetMutations.update(mutationId,{status:'pending',lastError:cloudError instanceof Error?cloudError.message:String(cloudError),updatedAt:now()})
@@ -482,12 +482,12 @@ export default function App() {
     if(pending){alert('Có mutation chưa được Cloud xác nhận.');return}
     let lease: {token:string;expectedCloudUpdatedAt:string}|null=null
     try{
-      const got=await acquireCloudAssetLock(supabase,organizationId,asset.id,getLocalDeviceId(),getDeviceLabel())
+      const got=await acquireCloudAssetLock(supabase,organizationId,asset.code,getLocalDeviceId(),getDeviceLabel())
       if(!got.acquired){alert('Thiết bị đang được khóa bởi '+got.lock.holder_label);return}
       lease={token:got.lease.lock_token,expectedCloudUpdatedAt:link.cloudUpdatedAt}
-      const {data,error:readError}=await supabase.from('assets').select('id,code,updated_at').eq('organization_id',organizationId).eq('id',asset.id).maybeSingle()
-      if(readError)throw readError
-      if(!data||data.code!==link.cloudCode||data.updated_at!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud thay đổi; cần đồng bộ/đối chiếu trước.')}
+      const cloudRows=await listCloudAssets(supabase,organizationId)
+      const data=cloudRows.find(row=>row.code===link.cloudCode)
+      if(!data||data.code!==asset.code||data.updatedAt!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud thay đổi; cần đồng bộ/đối chiếu trước.')}
       const candidate={...asset,archivedAt:archived?now():undefined,updatedAt:now()}
       const payload=assetMutationPayload(candidate);const mutationId=uid()
       await db.transaction('rw',[db.assets,db.assetMutations],async()=>{
@@ -500,7 +500,7 @@ export default function App() {
       })
       notify(archived?'Cloud đã lưu kho thiết bị.':'Cloud đã khôi phục thiết bị.')
     }catch(e){alert(e instanceof Error?e.message:String(e))}
-    finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.id,lease.token).catch(()=>false);await loadAssets()}
+    finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.code,lease.token).catch(()=>false);await loadAssets()}
   }
   const signOut = async () => { if(cloudLease&&supabase&&!cloudLease.lost)await releaseCloudAssetLock(supabase,organizationId,cloudLease.assetId,cloudLease.token).catch(()=>false); await supabase?.auth.signOut(); setSession(null); setLocalPreview(false);setCloudLease(null);setOrganizationContexts([]);setOrganizationId('') }
   const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
