@@ -30,7 +30,7 @@ language plpgsql security definer set search_path='' set row_security=off
 as $function$
 declare v_asset_id uuid;v_result jsonb;
 begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501';end if;
+  if auth.uid() is null or not private.has_org_permission(p_organization_id,'assets.update') then raise exception 'Missing assets.update permission' using errcode='42501';end if;
   select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code;
   if not found then raise exception 'Asset not found in this organization' using errcode='P0002';end if;
   v_result:=private.acquire_asset_edit_lock(p_organization_id,v_asset_id,p_device_id,p_holder_label);
@@ -45,7 +45,7 @@ language plpgsql security definer set search_path='' set row_security=off
 as $function$
 declare v_asset_id uuid;
 begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501';end if;
+  if auth.uid() is null or not private.is_org_member(p_organization_id) then raise exception 'Active organization membership required' using errcode='42501';end if;
   select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code;
   if not found then return jsonb_build_object('renewed',false);end if;
   return private.heartbeat_asset_edit_lock(p_organization_id,v_asset_id,p_lock_token);
@@ -59,7 +59,7 @@ language plpgsql security definer set search_path='' set row_security=off
 as $function$
 declare v_asset_id uuid;
 begin
-  if auth.uid() is null then return false;end if;
+  if auth.uid() is null or not private.is_org_member(p_organization_id) then return false;end if;
   select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code;
   if not found then return false;end if;
   return private.release_asset_edit_lock(p_organization_id,v_asset_id,p_lock_token);
@@ -94,7 +94,7 @@ language plpgsql security definer set search_path='' set row_security=off
 as $function$
 declare v_asset_id uuid;v_result jsonb;v_asset jsonb;
 begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501';end if;
+  if auth.uid() is null or not private.has_org_permission(p_organization_id,'assets.update') then raise exception 'Missing assets.update permission' using errcode='42501';end if;
   select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code;
   if not found then raise exception 'Asset not found in this organization' using errcode='P0002';end if;
   v_result:=private.apply_asset_mutation_with_lock(
@@ -112,7 +112,7 @@ language plpgsql security definer set search_path='' set row_security=off
 as $function$
 declare v_asset_id uuid;
 begin
-  if auth.uid() is null then raise exception 'Authentication required' using errcode='42501';end if;
+  if auth.uid() is null or not private.has_org_permission(p_organization_id,'assets.import') then raise exception 'Missing assets.import permission' using errcode='42501';end if;
   select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code;
   if not found then raise exception 'Cloud asset does not exist in this organization' using errcode='P0002';end if;
   return private.mirror_asset_group_change_history(p_organization_id,v_asset_id,p_changes);
