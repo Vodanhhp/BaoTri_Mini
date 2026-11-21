@@ -107,7 +107,7 @@ Migrations applied only to `BAOTRI-Mini-Test`:
 - `20261121092724_smart_equipment_id_local_group_audit_mirror.sql`
 - `20261121092923_smart_equipment_id_catalog_snapshot_validation.sql`
 
-The production/inactive project and `BAOTRI-Mini-New` were not changed.
+At the time of the original Test-project validation, the production/inactive project and `BAOTRI-Mini-New` were not changed. The later BAOTRI-Mini-New deployment is recorded separately in section 11.
 
 Database objects:
 - `public.organization_equipment_catalog`: one catalog snapshot and Plan per Organization. Snapshot reads are available to users who can view settings or create assets; updates require `settings.manage`. Plan assignment is not client-editable.
@@ -160,3 +160,22 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - The Cloud import trigger now verifies a confirmed reservation and copies Local-issued metadata for new Smart ID records, while preserving legacy import behavior for existing records.
 - Existing asset UUIDs are the `assets.id` primary keys and remain internal relationship keys. The current application still returns them through ordinary asset reads; hiding them from KTV/Viewer API responses requires a broader API/view refactor. This migration protects UUID immutability but does not yet hide the primary key.
 - Admin-only group changes are enforced by the database trigger and the locked Cloud mutation RPC. Unlinked Local group changes are recorded in Dexie `assetGroupChanges` and mirrored to Cloud during import; Cloud-linked Admin group changes are recorded locally and in the Cloud audit table. KTV edits can change names but not groups.
+
+
+## 11. Deployment to BAOTRI-Mini-New (21/11/2026)
+
+The Smart ID database foundation was later applied separately to the new project:
+- Supabase project: `BAOTRI-Mini-New`, ref `dskeaiyvldiwlsfqkboq`.
+- The migrations were adapted to the new project's RBAC structure: permission checks use `private.has_org_permission`; existing `private` schema grants are preserved.
+- Group-code lookup normalizes punctuation consistently with the TypeScript engine (for example `CNC-T` → `CNCT`).
+- Public RPCs are SECURITY INVOKER wrappers; SECURITY DEFINER implementations are stored in `private`.
+- Applied migration versions: `20261121094439`, `20261121094441`, `20261121094443`, `20261121094444`, `20261121094447`, `20261121094449`, `20261121094451`, `20261121094453`, and `20261121094809`. Repo migration filenames were aligned to these exact versions.
+- Rollback-only test on the BAOTRI Mini organization validated Plan C reservation, punctuation-normalized group code, confirmation, and Cloud insert-trigger metadata copy. The transaction was rolled back; no catalog, sequence, reservation, or asset test rows remain.
+- Security Advisor reports no Smart ID public SECURITY DEFINER RPC warnings. Three INFO findings remain for private RLS tables with no direct policies; the existing Auth leaked-password warning remains.
+
+### Still required before real use
+
+- Neither `BAOTRI Mini` nor `BAOTRI Mini Test 02` has an Organization catalog snapshot or an assigned Plan in BAOTRI-Mini-New. No Plan was guessed and no official equipment ID has been issued.
+- Add a trusted Super Admin provisioning flow to assign the subscription Plan and initialize a tenant-owned snapshot from `public/data/baotri-config.json`.
+- Complete the Organization-specific catalog management UI.
+- The current Cloud asset read path still returns `assets.id` to ordinary authenticated clients. The approved requirement that KTV/Viewer must not receive the internal UUID in ordinary API responses remains open and needs a broader API/view refactor.
