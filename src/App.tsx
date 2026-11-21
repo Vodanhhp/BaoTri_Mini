@@ -249,15 +249,108 @@ export default function App() {
     setBusy(true); setError('')
     try {
       const previous = await db.assets.get(editing.id)
+
+      // A Local record saved before a failed reservation confirmation can retry
+      // confirmation without reserving a second sequence.
+      if(previous?.idReservationId&&previous.idReservationStatus==='reserved'){
+        if(!supabase||!organizationId||!navigator.onLine)throw new Error('Thiết bị đã lưu Local; cần Internet để xác nhận lại số thứ tự.')
+        await confirmSmartEquipmentIdReservation(supabase,{
+          organizationId,reservationId:previous.idReservationId,assetId:previous.id,equipmentId:previous.code
+        })
+        await db.assets.update(previous.id,{idReservationStatus:'confirmed',updatedAt:now()})
+        await loadAssets();setShowForm(false);setEditing(null);notify('Cloud đã xác nhận số thứ tự của thiết bị Local.')
+        return
+      }
+
+      // New organization assets receive their number from a Cloud reservation,
+      // but Local constructs the complete ID and commits the asset first.
+      if(!previous&&!localPreview){
+        if(!supabase||!organizationId||!session)throw new Error('Cần đăng nhập và chọn tổ chức để cấp mã thiết bị.')
+        if(!navigator.onLine)throw new Error('Cần Internet để giữ số thứ tự. Chưa thể cấp mã chính thức khi ngoại tuyến.')
+        if(!equipmentCatalog)throw new Error('Tổ chức chưa được khởi tạo Plan và Catalog Snapshot.')
+        if(!smartAnalysis||smartAnalysis.status!=='matched'||!smartAnalysis.canPrepareId||!smartAnalysis.equipmentCode){
+          throw new Error(smartAnalysis?.message||'Chưa xác định được loại thiết bị trong Catalog Snapshot.')
+        }
+        const plan=equipmentCatalog.plan_code
+        const selectedGroup=plan==='A'?undefined:smartAvailableGroups.find(group=>group.code===smartGroupChoice)
+        if(plan!=='A'&&!selectedGroup)throw new Error('Bạn cần chọn và xác nhận nhóm thiết bị trước khi lưu.')
+        if((plan==='C'||plan==='D')&&!editing.commissionedAt)throw new Error('Plan C/D yêu cầu ngày đưa vào sử dụng.')
+        const reservationId=uid()
+        const issuance=await reserveSmartEquipmentId(supabase,{
+          organizationId,
+          reservationId,
+          plan,
+          equipmentCode:smartAnalysis.equipmentCode,
+          groupCode:selectedGroup?.code,
+          siteCode:plan==='C'||plan==='D'?smartSiteCode:undefined,
+          commissionedAt:editing.commissionedAt||undefined,
+          standardEquipmentName:smartAnalysis.normalizedName||smartAnalysis.matches[0]?.standardName||editing.name.trim(),
+          groupNameAtCreation:selectedGroup?.name
+        })
+        const value:Asset={
+          ...editing,
+          localScope,
+          code:issuance.equipmentId,
+          name:editing.name.trim(),
+          category:selectedGroup?.name||'Thiết bị',
+          originalName:editing.name.trim(),
+          normalizedNameAtCreation:smartAnalysis.normalizedName||smartAnalysis.matches[0]?.standardName||editing.name.trim(),
+          equipmentTypeCode:smartAnalysis.equipmentCode,
+          groupCodeAtCreation:selectedGroup?.code,
+          siteCodeAtCreation:plan==='C'||plan==='D'?smartSiteCode:undefined,
+          idComponentsSnapshot:issuance.components,
+          idReservationId:reservationId,
+          idReservationStatus:'reserved',
+          createdByLabel:editing.createdByLabel||session.user.email||'',
+          createdByUserId:editing.createdByUserId||session.user.id,
+          updatedAt:now()
+        }
+        const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
+        if(duplicate&&duplicate.id!==value.id){
+          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          throw new Error('Mã vừa được giữ đã tồn tại trong Local. Không lưu hồ sơ; hãy thử lại để nhận số khác.')
+        }
+        try{
+          await db.assets.add(value)
+        }catch(localError){
+          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          throw localError
+        }
+        try{
+          await confirmSmartEquipmentIdReservation(supabase,{
+            organizationId,reservationId,assetId:value.id,equipmentId:value.code
+          })
+          await db.assets.update(value.id,{idReservationStatus:'confirmed'})
+          await loadAssets();setShowForm(false);setEditing(null)
+          notify('Đã lưu Local và Cloud xác nhận số thứ tự: '+value.code)
+        }catch(confirmError){
+          await loadAssets()
+          setEditing(value)
+          throw confirmError
+        }
+        return
+      }
+
       const link=!localPreview&&organizationId?await db.assetCloudLinks.get(organizationId+':'+editing.id):undefined
-      const value = { ...editing, localScope, createdByLabel: editing.createdByLabel || previous?.createdByLabel || session?.user.email || (localPreview ? 'Chế độ thử nghiệm Local' : ''), createdByUserId: editing.createdByUserId || previous?.createdByUserId || session?.user.id, code: editing.code.trim().toUpperCase(), name: editing.name.trim(), category: editing.category.trim(), updatedAt: now() }
-      if (!value.code || !value.name || !value.category) throw new Error('Cần nhập mã, tên và nhóm thiết bị.')
-      const duplicate = await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
-      if (duplicate && duplicate.id !== value.id) throw new Error('Mã thiết bị đã tồn tại trong phạm vi Local này, kể cả hồ sơ lưu kho.')
+      const isAdmin=Boolean(organizationContexts.find(o=>o.id===organizationId)?.isAdmin)
+      const value:Asset={
+        ...editing,
+        localScope,
+        createdByLabel:editing.createdByLabel||previous?.createdByLabel||session?.user.email||(localPreview?'Chế độ thử nghiệm Local':''),
+        createdByUserId:editing.createdByUserId||previous?.createdByUserId||session?.user.id,
+        code:previous?.code??editing.code.trim().toUpperCase(),
+        name:editing.name.trim(),
+        category:previous&&!isAdmin?previous.category:editing.category.trim(),
+        updatedAt:now()
+      }
+      if(!value.code||!value.name||!value.category)throw new Error('Cần nhập mã, tên và nhóm thiết bị.')
+      const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
+      if(duplicate&&duplicate.id!==value.id)throw new Error('Mã thiết bị đã tồn tại trong phạm vi Local này, kể cả hồ sơ lưu kho.')
+
       if(link){
         const lease=cloudLease
         if(!lease||lease.assetId!==value.id||lease.lost||!supabase)throw new Error('Không còn khóa Cloud hợp lệ; không lưu.')
-        value.code=previous?.code??value.code;value.category=previous?.category??value.category
+        if(value.category!==previous?.category)throw new Error('Đổi nhóm thiết bị trên hồ sơ Cloud cần luồng cập nhật nhóm có kiểm soát. Chưa ghi thay đổi; tên thiết bị vẫn có thể sửa.')
         const payload=assetMutationPayload(value)
         const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,value.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
         let mutationId:string
@@ -287,10 +380,11 @@ export default function App() {
           throw new Error('Local đã lưu snapshot, nhưng Cloud chưa xác nhận. Giữ mutation để retry đúng nội dung. '+(cloudError instanceof Error?cloudError.message:String(cloudError)))
         }
       }
+
       await db.assets.put(value)
-      await loadAssets(); setShowForm(false); setEditing(null); notify('Đã lưu hồ sơ thiết bị Local.')
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
-    finally { setBusy(false) }
+      await loadAssets();setShowForm(false);setEditing(null);notify('Đã lưu hồ sơ thiết bị Local.')
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    finally{setBusy(false)}
   }
 
   const addImages = async (files: FileList | null) => {
