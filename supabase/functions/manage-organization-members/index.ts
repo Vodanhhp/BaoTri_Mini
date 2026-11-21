@@ -21,10 +21,18 @@ Deno.serve(async(req)=>{
   const url=Deno.env.get('SUPABASE_URL')
   const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if(!url||!key)return json({error:'Server configuration missing'},500,origin)
-  const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
-  const {data:auth,error:authError}=await admin.auth.getUser(token)
-  if(authError||!auth.user)return json({error:'Phiên đăng nhập không hợp lệ.'},401,origin)
+  // Verify the caller JWT with a public client. The service-role client must not
+  // be used for auth.getUser(jwt): its default Authorization header is the service key.
+  const publicKey=Deno.env.get('SUPABASE_ANON_KEY')||Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
+  if(!publicKey)return json({error:'Server public Auth key is not configured.'},500,origin)
+  const authClient=createClient(url,publicKey,{
+   global:{headers:{Authorization:`Bearer ${token}`}},
+   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
+  })
+  const {data:auth,error:authError}=await authClient.auth.getUser()
+  if(authError||!auth.user)return json({error:'Phiên đăng nhập không hợp lệ: '+(authError?.message??'không tìm thấy người dùng')},401,origin)
   const actor=auth.user
+  const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const body=await req.json()
   const action=String(body.action??'')
   const organizationId=String(body.organizationId??'')
