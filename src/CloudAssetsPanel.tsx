@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from './db'
-import { db, now } from './db'
+import { db } from './db'
 import { downloadCloudAsset, importLocalAsset, listCloudAssets, type CloudAsset } from './lib/cloudAssets'
 
 type Props = {
@@ -23,7 +23,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
   const [error,setError]=useState('')
   const reload=async()=>{
     setLoading(true);setError('')
-    try{setCloud(await listCloudAssets(client,organizationId))}
+    try{const [cloudRows,linkRows]=await Promise.all([listCloudAssets(client,organizationId),db.assetCloudLinks.where('organizationId').equals(organizationId).toArray()]);setCloud(cloudRows);setLinks(linkRows.map(l=>l.assetId))}
     catch(e){setError(e instanceof Error?e.message:String(e))}
     finally{setLoading(false)}
   }
@@ -74,7 +74,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     finally{setBusyId('')}
   }
   const importSelected=async()=>{
-    const items=localAssets.filter(a=>selected.includes(a.id))
+    const items=importCandidates.filter(a=>selected.includes(a.id))
     if(!items.length)return
     if(!window.confirm('Nhập '+items.length+' hồ sơ Local lên Cloud? UUID và mã quản lý được giữ nguyên. Ảnh vẫn ở Local.'))return
     for(const a of items)await importOne(a)
