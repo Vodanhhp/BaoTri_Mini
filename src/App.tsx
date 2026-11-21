@@ -49,6 +49,7 @@ const imageToDataUrl = async (file: File): Promise<string> => {
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [sessionReady, setSessionReady] = useState(!supabase)
+  const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả nhóm')
@@ -72,7 +73,7 @@ export default function App() {
   }, [])
 
   const loadAssets = async () => setAssets(await db.assets.toArray())
-  useEffect(() => { if (session) void loadAssets() }, [session])
+  useEffect(() => { if (session || localPreview) void loadAssets() }, [session, localPreview])
 
   const categories = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
   const locations = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
@@ -99,7 +100,7 @@ export default function App() {
     setBusy(true); setError('')
     try {
       const previous = await db.assets.get(editing.id)
-      const value = { ...editing, createdByLabel: editing.createdByLabel || previous?.createdByLabel || session?.user.email || '', code: editing.code.trim().toUpperCase(), name: editing.name.trim(), category: editing.category.trim(), updatedAt: now() }
+      const value = { ...editing, createdByLabel: editing.createdByLabel || previous?.createdByLabel || session?.user.email || (localPreview ? 'Chế độ thử nghiệm Local' : ''), code: editing.code.trim().toUpperCase(), name: editing.name.trim(), category: editing.category.trim(), updatedAt: now() }
       if (!value.code || !value.name || !value.category) throw new Error('Cần nhập mã, tên và nhóm thiết bị.')
       const duplicate = await db.assets.where('code').equals(value.code).first()
       if (duplicate && duplicate.id !== value.id) throw new Error('Mã thiết bị đã tồn tại, kể cả hồ sơ đang lưu kho.')
@@ -128,11 +129,11 @@ export default function App() {
     await db.assets.update(asset.id, { archivedAt: undefined, updatedAt: now() })
     await loadAssets(); notify('Đã khôi phục thiết bị khỏi Lưu kho.')
   }
-  const signOut = async () => { await supabase?.auth.signOut(); setSession(null) }
+  const signOut = async () => { await supabase?.auth.signOut(); setSession(null); setLocalPreview(false) }
   const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
-  if (!session) return <AuthScreen client={supabase}/>
+  if (!session && !localPreview) return <AuthScreen client={supabase} onLocalPreview={() => setLocalPreview(true)}/>
 
   const activeAssets = assets.filter(item => !item.archivedAt && item.status !== 'Thanh lý')
   const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt).length
@@ -149,7 +150,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
-        <div className="top-actions"><span className="sync-status"><i/>Đang lưu trên thiết bị</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session.user.email}</b><small>Đã đăng nhập</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions"><span className="sync-status"><i/>Đang lưu trên thiết bị</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : 'Đã đăng nhập'}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p></div><div className="welcome-icon"><Wrench size={42}/></div></section>
