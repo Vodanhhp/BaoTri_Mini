@@ -53,6 +53,10 @@ Deno.serve(async(req)=>{
     uniqueUsers:new Set(own.map(member=>member.user_id)).size,
     planCode:catalog?.plan_code??null,
     planName:catalog?.snapshot?.plan?.name??null,
+    planMaxDevices:catalog?catalog.snapshot?.plan?.maxDevices??null:null,
+    equipmentGroups:Array.isArray(catalog?.snapshot?.equipmentGroups)?catalog.snapshot.equipmentGroups.length:0,
+    equipmentDictionary:Array.isArray(catalog?.snapshot?.equipmentDictionary)?catalog.snapshot.equipmentDictionary.length:0,
+    industries:Array.isArray(catalog?.snapshot?.industries)?catalog.snapshot.industries.length:0,
     sourceDataVersion:catalog?.source_data_version??null
    }
   })
