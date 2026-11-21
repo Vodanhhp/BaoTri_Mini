@@ -50,7 +50,7 @@ declare
   v_asset_count bigint; v_month_year text;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if not public.has_org_permission(p_organization_id, 'assets.create') then
+  if not private.has_org_permission(p_organization_id, 'assets.create') then
     raise exception 'Missing assets.create permission for this organization' using errcode = '42501';
   end if;
   if p_reservation_id is null then raise exception 'Reservation ID is required' using errcode = '22023'; end if;
@@ -142,7 +142,7 @@ as $function$
 declare v_reservation private.asset_id_sequence_reservations; v_sequence_text text; v_expected_code text;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if not public.has_org_permission(p_organization_id,'assets.create') then
+  if not private.has_org_permission(p_organization_id,'assets.create') then
     raise exception 'Missing assets.create permission for this organization' using errcode = '42501';
   end if;
   if p_asset_id is null or nullif(btrim(p_equipment_id),'') is null then
@@ -181,13 +181,13 @@ as $function$
 declare v_reservation private.asset_id_sequence_reservations;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if not public.has_org_permission(p_organization_id,'assets.create') then
+  if not private.has_org_permission(p_organization_id,'assets.create') then
     raise exception 'Missing assets.create permission for this organization' using errcode = '42501';
   end if;
   select * into v_reservation from private.asset_id_sequence_reservations r
   where r.organization_id=p_organization_id and r.reservation_id=p_reservation_id for update;
   if not found then return jsonb_build_object('reservation_id',p_reservation_id,'status','not_found'); end if;
-  if v_reservation.actor_user_id<>auth.uid() and not public.has_org_permission(p_organization_id,'settings.manage') then
+  if v_reservation.actor_user_id<>auth.uid() and not private.has_org_permission(p_organization_id,'settings.manage') then
     raise exception 'Only the reserving user or an Admin may release this reservation' using errcode = '42501';
   end if;
   if v_reservation.status='confirmed' then raise exception 'Confirmed reservation cannot be released or reused' using errcode = '23514'; end if;
