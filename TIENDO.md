@@ -317,3 +317,9 @@ Permission catalog hiện có 26 code:
 - Chuyển xác nhận Tạm ngưng / Kích hoạt / Xóa khỏi cuối nội dung trang sang modal riêng ở giữa màn hình, có lớp nền tối, tiêu đề theo hành động, cảnh báo phù hợp và nút thao tác rõ ràng.
 - Dùng lựa chọn Có/Không dạng radio; Không hoặc Hủy đóng modal mà không gọi API. Giữ nguyên xác thực lại mật khẩu, kiểm tra đúng tên tổ chức khi xóa và xác thực Super Admin ở backend.
 - Commit giao diện: `a020f9411f516c407d573482757fc2a89e452c0e`. Chờ CI build và GitHub Pages deploy.
+
+
+## 21/11/2026 – Quy định PC-only cho khu vực quản trị
+- Thống nhất: **Quản trị tài khoản** và **Quản trị tổ chức / Quản trị nền tảng** chỉ hoạt động trên PC (máy tính để bàn hoặc laptop); không hỗ trợ điện thoại và máy tính bảng.
+- Thêm kiểm tra nền tảng ở giao diện hai panel quản trị; thiết bị di động/máy tính bảng chỉ hiển thị thông báo giới hạn, không hiển thị nội dung thao tác quản trị.
+- Gỡ quy tắc responsive cho màn hình nhỏ khỏi giao diện Quản trị nền tảng; giữ bố cục desktop.
