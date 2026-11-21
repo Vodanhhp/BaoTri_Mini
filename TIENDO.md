@@ -288,3 +288,9 @@ Permission catalog hiện có 26 code:
 - Luồng lưu hồ sơ kiểm tra kết quả UPDATE có thực sự trả về bản ghi; nếu không có bản ghi sẽ báo rõ và hướng dẫn đăng nhập lại.
 - Phân biệt trường hợp họ tên/số điện thoại đã lưu nhưng ngày sinh chưa lưu được, tránh báo chung gây hiểu nhầm.
 - Commit: `b57e8966e1b2b0f88396f12f75c8373d0c3d6e35`. Chờ CI build/validate; cần người dùng thử lưu trên giao diện sau deploy để xác định lỗi gốc nếu vẫn còn.
+
+
+## 21/11/2026 – Ưu tiên họ tên hồ sơ trên thanh tài khoản
+- Thanh tài khoản trên topbar ưu tiên `profiles.display_name` sau khi đăng nhập; nếu chưa có họ tên thì dùng `user_metadata.full_name`, cuối cùng mới fallback về email.
+- Khi đóng cửa sổ Hồ sơ cá nhân, ứng dụng tải lại tên hiển thị để cập nhật ngay sau khi lưu.
+- Không thay đổi email đăng nhập, Auth, RBAC, RLS hoặc cấu trúc dữ liệu.
