@@ -67,6 +67,8 @@ export async function reserveSmartEquipmentId(
     groupCode?: string
     siteCode?: string
     commissionedAt?: string
+    standardEquipmentName: string
+    groupNameAtCreation?: string
   }
 ): Promise<SmartEquipmentIssuance> {
   const { data, error } = await client.rpc('reserve_asset_id_sequence', {
@@ -108,7 +110,8 @@ export async function reserveSmartEquipmentId(
     site_code: siteCode ?? null,
     sequence,
     month_year: reservation.month_year ?? null,
-    standard_equipment_name: '',
+    standard_equipment_name: input.standardEquipmentName,
+    group_name_at_creation: input.groupNameAtCreation ?? null,
     source_data_version: reservation.source_data_version,
     issued_at: new Date().toISOString()
   }
