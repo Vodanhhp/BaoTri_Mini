@@ -1004,3 +1004,76 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
  .platform-admin-modal .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  .platform-admin-modal .form-grid{grid-template-columns:1fr}
 }
+
+
+/* 2026-11-21: compact horizontal PC administration layout */
+@media(min-width:901px){
+ .member-management-modal{
+  width:min(980px,92vw);max-width:980px;max-height:88vh;
+  padding:16px 18px;gap:9px
+ }
+ .member-management-modal .modal-head{padding-bottom:8px}
+ .member-management-modal .modal-head h2{font-size:18px}
+ .member-management-modal .modal-head p{font-size:11px;margin-top:3px}
+ .member-stats{grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}
+ .member-stat{padding:8px 10px}
+ .member-stat small{font-size:9px}
+ .member-stat strong{font-size:19px;margin-top:1px}
+ .member-toolbar{gap:7px}
+ .member-search{height:34px}
+ .member-list-wrap{max-height:230px}
+ .member-row{
+  grid-template-columns:minmax(175px,1fr) minmax(130px,.7fr) minmax(300px,1.55fr);
+  gap:8px;padding:8px 10px
+ }
+ .member-avatar{width:29px;height:29px;flex-basis:29px}
+ .member-actions{gap:4px}
+ .member-action{font-size:9px;padding:5px 6px}
+ .member-invite-section{padding-top:8px}
+ .member-section-title{margin-bottom:6px}
+ .member-section-title b{font-size:12px}
+ .member-section-title small{font-size:9px}
+ .member-invite-section .form-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(150px,.7fr);gap:8px}
+ .member-invite-section .field{font-size:10px}
+ .member-invite-section .field input,.member-invite-section .field select{min-height:34px;font-size:12px;padding:7px 9px}
+ .member-note{font-size:9px;line-height:1.4;padding:7px 9px}
+ .member-management-modal>.modal-actions{margin-top:0}
+ .platform-admin-modal{
+  width:min(960px,92vw)!important;max-width:960px;max-height:88vh!important;
+  padding:16px 18px!important;line-height:1.4
+ }
+ .platform-admin-modal .modal-head{padding-bottom:8px;margin-bottom:8px}
+ .platform-admin-modal .modal-head h2{font-size:18px}
+ .platform-admin-modal .modal-head p{font-size:11px}
+ .platform-admin-modal .panel-head{margin:6px 0 8px}
+ .platform-admin-modal .panel-head h3{font-size:13px}
+ .platform-admin-modal .panel-head p{font-size:10px}
+ .platform-admin-modal .stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px;margin:8px 0}
+ .platform-admin-modal .stat-card{padding:8px 10px;gap:6px}
+ .platform-admin-modal .stat-card strong{font-size:19px}
+ .platform-admin-modal .stat-card span,.platform-admin-modal .stat-card small{font-size:9px}
+ .platform-admin-modal .platform-org-table{max-height:245px}
+ .platform-admin-modal .platform-org-table table{min-width:790px;font-size:10px}
+ .platform-admin-modal .platform-org-table th{padding:7px 8px;font-size:10px}
+ .platform-admin-modal .platform-org-table td{padding:7px 8px}
+ .platform-admin-modal .platform-org-table td:first-child{min-width:130px}
+ .platform-admin-modal .platform-org-actions{gap:3px}
+ .platform-admin-modal .platform-org-actions button{font-size:9px;padding:5px 7px;min-height:25px}
+ .platform-admin-modal .auth-note{font-size:9px;padding:6px 8px;margin-top:6px!important}
+ .platform-admin-modal .divider{margin:10px 0!important}
+ .platform-admin-modal .platform-create-form{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(160px,.75fr);gap:8px;align-items:end}
+ .platform-admin-modal .platform-create-form .full-field{grid-column:auto}
+ .platform-admin-modal .platform-create-form .auth-note,
+ .platform-admin-modal .platform-create-form .modal-actions{grid-column:1/-1}
+ .platform-admin-modal .field{font-size:10px;gap:4px}
+ .platform-admin-modal .field input{min-height:34px;font-size:12px;padding:7px 9px}
+ .platform-admin-modal .modal-actions{margin-top:0}
+}
+@media(min-width:761px) and (max-width:900px){
+ .member-management-modal{width:96vw;max-height:90vh;padding:14px;gap:9px}
+ .member-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .platform-admin-modal .platform-create-form{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .platform-admin-modal .platform-create-form .full-field{grid-column:auto}
+ .platform-admin-modal .platform-create-form .auth-note,
+ .platform-admin-modal .platform-create-form .modal-actions{grid-column:1/-1}
+}
