@@ -9,12 +9,14 @@ export default function AuthScreen({ client, onLocalPreview }: Props) {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [recoverySent, setRecoverySent] = useState(false)
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!client) return
     setBusy(true)
     setError('')
+    setRecoverySent(false)
     try {
       const { error: authError } = await client.auth.signInWithPassword({
         email: email.trim(),
@@ -33,6 +35,17 @@ export default function AuthScreen({ client, onLocalPreview }: Props) {
     }
   }
 
+  const sendRecovery = async () => {
+    if (!client || !email.trim()) { setError('Nhập email trước để gửi liên kết đặt lại mật khẩu.'); return }
+    setBusy(true);setError('');setRecoverySent(false)
+    try {
+      const {error:resetError}=await client.auth.resetPasswordForEmail(email.trim(),{redirectTo:window.location.origin})
+      if(resetError) throw resetError
+      setRecoverySent(true)
+    } catch(e) { setError(e instanceof Error?e.message:'Không gửi được email đặt lại mật khẩu.') }
+    finally { setBusy(false) }
+  }
+
   return <main className="auth-page">
     <section className="auth-card">
       <div className="auth-brand"><span><Wrench size={25}/></span><div><b>BAOTRI</b><small>QUẢN LÝ THIẾT BỊ</small></div></div>
@@ -44,9 +57,11 @@ export default function AuthScreen({ client, onLocalPreview }: Props) {
         <label>Mật khẩu</label>
         <div className="auth-input"><LockKeyhole size={17}/><input type="password" autoComplete="current-password" required value={password} onChange={event=>setPassword(event.target.value)} placeholder="Nhập mật khẩu"/></div>
         {error && <div className="auth-error" role="alert">{error}</div>}
+        {recoverySent&&<div className="cloud-message">Nếu email hợp lệ, liên kết đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư và Spam.</div>}
         <button className="auth-submit" type="submit" disabled={busy}>{busy?'Đang xác thực…':'Đăng nhập'}</button>
+        <button className="auth-link" type="button" disabled={busy} onClick={()=>void sendRecovery()}>Quên mật khẩu?</button>
       </form>}
-      <div className="auth-note"><b>Lưu ý:</b> Chưa bật đăng ký tự do. Tài khoản được quản lý trong Supabase Dashboard. Dữ liệu thiết bị giai đoạn đầu lưu cục bộ trên trình duyệt và chưa đồng bộ Cloud.</div>
+      <div className="auth-note"><b>Lưu ý:</b> Chưa bật đăng ký tự do. Tài khoản do Admin cấp. Không có đăng ký tự do.</div>
     </section>
   </main>
 }
