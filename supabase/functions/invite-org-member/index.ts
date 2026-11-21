@@ -50,7 +50,7 @@ Deno.serve(async(req)=>{
   let invitedUser=(userList.users??[]).find(u=>u.email?.toLowerCase()===email)
   let created=false
   if(!invitedUser){
-   const {data:inviteData,error:inviteError}=await admin.auth.admin.inviteUserByEmail(email,{data:{display_name:displayName||email.split('@')[0]},redirectTo:'https://baotri.vieclamhp247.com/'})
+   const {data:inviteData,error:inviteError}=await admin.auth.admin.inviteUserByEmail(email,{data:{display_name:displayName||email.split('@')[0],must_set_password:true},redirectTo:'https://baotri.vieclamhp247.com/'})
    if(inviteError)return json({error:'Gửi lời mời Auth thất bại: '+inviteError.message},400,origin)
    invitedUser=inviteData.user??undefined
    if(!invitedUser)return json({error:'Auth invite returned no user'},500,origin)
