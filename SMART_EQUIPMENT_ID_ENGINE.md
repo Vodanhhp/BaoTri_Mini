@@ -97,7 +97,7 @@ Full integration requires a reviewed database migration/RPC, tenant-isolated sna
 
 ## 10. Database foundation applied to the Test project
 
-Migration: `20261121070000_smart_equipment_id_engine_v1.sql`
+Migration: `20261121091634_smart_equipment_id_engine_v1.sql`
 Supabase migration history name: `smart_equipment_id_engine_v1`
 
 Applied only to the `BAOTRI-Mini-Test` project. The production/inactive project and `BAOTRI-Mini-New` were not changed.
