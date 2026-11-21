@@ -15,11 +15,22 @@ const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
 const date=(value:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
 const planRank:Record<PlanCode,number>={A:1,B:2,C:3,D:4}
 
+const PROVISION_DRAFT_KEY='baotri-platform-provision-draft-v1'
+const readProvisionDraft=()=>{
+ try{
+  const value=JSON.parse(sessionStorage.getItem(PROVISION_DRAFT_KEY)||'null')
+  if(!value||typeof value!=='object')return null
+  return value as {requestId?:string;organizationName?:string;adminEmail?:string;adminName?:string;planCode?:PlanCode}
+ }catch{return null}
+}
+
 export default function PlatformAdminPanel({client,onClose}:Props){
- const [organizationName,setOrganizationName]=useState('')
- const [adminEmail,setAdminEmail]=useState('')
- const [adminName,setAdminName]=useState('')
- const [planCode,setPlanCode]=useState<PlanOption['id']|''>('')
+ const [savedProvisionDraft]=useState(readProvisionDraft)
+ const [organizationName,setOrganizationName]=useState(savedProvisionDraft?.organizationName??'')
+ const [adminEmail,setAdminEmail]=useState(savedProvisionDraft?.adminEmail??'')
+ const [adminName,setAdminName]=useState(savedProvisionDraft?.adminName??'')
+ const [planCode,setPlanCode]=useState<PlanOption['id']|''>(savedProvisionDraft?.planCode??'')
+ const [provisionRequestId,setProvisionRequestId]=useState(savedProvisionDraft?.requestId??'')
  const [registrationStep,setRegistrationStep]=useState(1)
  const [planOptions,setPlanOptions]=useState<PlanOption[]>([])
  const [planCatalog,setPlanCatalog]=useState<PlanCatalogConfig|null>(null)
@@ -37,6 +48,12 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  const [managementBusy,setManagementBusy]=useState(false)
  const [managementError,setManagementError]=useState('')
  const [managementSuccess,setManagementSuccess]=useState('')
+ useEffect(()=>{
+  if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
+  sessionStorage.setItem(PROVISION_DRAFT_KEY,JSON.stringify({
+   requestId:provisionRequestId,organizationName,adminEmail,adminName,planCode
+  }))
+ },[provisionRequestId,organizationName,adminEmail,adminName,planCode])
 
  const loadOverview=useCallback(async()=>{
   setLoadingOverview(true);setOverviewError('')
@@ -100,11 +117,15 @@ export default function PlatformAdminPanel({client,onClose}:Props){
 
  const submit=async(e:FormEvent)=>{
   e.preventDefault();setBusy(true);setError('');setCreated(null)
+  const requestId=provisionRequestId||crypto.randomUUID()
+  if(!provisionRequestId)setProvisionRequestId(requestId)
   try{
-   const {data,error:invokeError}=await client.functions.invoke('platform-create-customer',{body:{organizationName:organizationName.trim(),adminEmail:adminEmail.trim(),adminName:adminName.trim(),planCode}})
+   const {data,error:invokeError}=await client.functions.invoke('platform-create-customer',{body:{requestId,organizationName:organizationName.trim(),adminEmail:adminEmail.trim(),adminName:adminName.trim(),planCode}})
    if(invokeError)throw new Error(invokeError.message)
    if(data?.error)throw new Error(data.error)
    setCreated(data as Created)
+   sessionStorage.removeItem(PROVISION_DRAFT_KEY)
+   setProvisionRequestId('')
    setOrganizationName('');setAdminEmail('');setAdminName('');setPlanCode('');setRegistrationStep(1)
    await loadOverview()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
@@ -183,7 +204,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
     <label className="field full-field">Email Admin đầu tiên *<input autoFocus type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="admin@company.com"/></label>
     <label className="field full-field">Tên người đại diện<input maxLength={120} value={adminName} onChange={e=>setAdminName(e.target.value)} placeholder="Họ và tên"/></label>
     <div className="platform-onboarding-review full-field"><h4>Kiểm tra trước khi khởi tạo</h4><div><span>Doanh nghiệp</span><b>{organizationName.trim()}</b></div><div><span>Gói sử dụng</span><b>Plan {selectedPlan?.id} — {selectedPlan?.name}</b></div><div><span>Hạn mức thiết bị</span><b>{selectedPlan?.maxDevices===null?'Không giới hạn':selectedPlan?number(selectedPlan.maxDevices)+' thiết bị':'—'}</b></div><div><span>Email Admin</span><b>{adminEmail.trim()||'Chưa nhập'}</b></div>{selectedPlanStats&&<div><span>Snapshot v{planCatalog?.dataVersion}</span><b>{selectedPlanStats.groups} nhóm · {selectedPlanStats.dictionary} loại · {selectedPlanStats.industries} ngành</b></div>}</div>
-    <div className="auth-note full-field">Nếu email đã có tài khoản BAOTRI, hệ thống sẽ gắn tài khoản đó vào tổ chức mới. Nếu chưa có, hệ thống gửi thư mời để Admin xác nhận email và tự đặt mật khẩu. Không gửi mật khẩu qua biểu mẫu này.</div>
+    <div className="auth-note full-field">Nếu email đã có tài khoản BAOTRI, hệ thống sẽ gắn tài khoản đó vào tổ chức mới. Nếu chưa có, hệ thống gửi thư mời để Admin xác nhận email và tự đặt mật khẩu. Không gửi mật khẩu qua biểu mẫu này. Nếu mất kết nối sau khi gửi, giữ nguyên thông tin và bấm lại; hệ thống dùng mã yêu cầu đã lưu để tránh tạo trùng doanh nghiệp.</div>
     {error&&<div className="auth-error full-field">{error}</div>}
     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={()=>setRegistrationStep(2)} disabled={busy}>← Quay lại</button><button type="submit" className="primary-btn" disabled={busy||!selectedPlan||!!planLoadError||!adminEmail.trim()}>{busy?'Đang khởi tạo…':'Xác nhận và tạo khách hàng'}</button></div>
    </>}
