@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataVersion": "1.0.0",
+  "sourceDocument": "THIET_BI.md",
+  "description": "Cấu hình Plan, ngành nghề, nhóm thiết bị, từ điển thiết bị và quy tắc sinh mã ID cho BAOTRI Mini.",
+  "plans": [
+    {
+      "id": "A",
+      "name": "Cơ bản",
+      "maxDevices": 200,
+      "features": { "equipmentGroups": false, "multipleSites": false },
+      "idRule": "PLAN_A"
+    },
+    {
+      "id": "B",
+      "name": "Tiêu chuẩn",
+      "maxDevices": 500,
+      "features": { "equipmentGroups": true, "multipleSites": false },
+      "idRule": "PLAN_B"
+    },
+    {
+      "id": "C",
+      "name": "Chuyên nghiệp",
+      "maxDevices": 1000,
+      "features": { "equipmentGroups": true, "multipleSites": true },
+      "idRule": "PLAN_C"
+    },
+    {
+      "id": "D",
+      "name": "Doanh nghiệp chuyên sâu",
+      "maxDevices": null,
+      "features": { "equipmentGroups": true, "multipleSites": true },
+      "idRule": "PLAN_D"
+    }
+  ],
+  "industries": [
+    { "code": "A01", "name": "Nhà nghỉ, homestay", "plan": "A", "aliases": ["Homestay", "Nhà nghỉ"] },
+    { "code": "A02", "name": "Khách sạn nhỏ", "plan": "A", "aliases": ["Khách sạn mini"] },
+    { "code": "A03", "name": "Cửa hàng tạp hóa", "plan": "A", "aliases": ["Tạp hóa"] },
+    { "code": "A04", "name": "Cửa hàng bán lẻ", "plan": "A", "aliases": ["Shop", "Cửa hàng"] },
+    { "code": "A05", "name": "Quán ăn, nhà hàng nhỏ", "plan": "A", "aliases": ["Quán ăn", "Nhà hàng nhỏ"] },
+    { "code": "A06", "name": "Quán cà phê, trà sữa", "plan": "A", "aliases": ["Quán cafe", "Trà sữa"] },
+    { "code": "A07", "name": "Salon tóc, spa", "plan": "A", "aliases": ["Tiệm tóc", "Spa"] },
+    { "code": "A08", "name": "Tiệm sửa chữa", "plan": "A", "aliases": ["Cửa hàng sửa chữa"] },
+    { "code": "A09", "name": "Văn phòng công ty", "plan": "A", "aliases": ["Văn phòng"] },
+    { "code": "A10", "name": "Cơ sở kinh doanh dịch vụ", "plan": "A", "aliases": ["Dịch vụ"] },
+    { "code": "A11", "name": "Hộ kinh doanh khác", "plan": "A", "aliases": ["Hộ kinh doanh"] },
+
+    { "code": "B01", "name": "Khách sạn", "plan": "B", "aliases": ["Khách sạn"] },
+    { "code": "B02", "name": "Nhà hàng", "plan": "B", "aliases": ["Nhà hàng"] },
+    { "code": "B03", "name": "Trung tâm thương mại", "plan": "B", "aliases": ["TTTM"] },
+    { "code": "B04", "name": "Siêu thị", "plan": "B", "aliases": ["Siêu thị"] },
+    { "code": "B05", "name": "Trường học", "plan": "B", "aliases": ["Trường", "Cơ sở giáo dục"] },
+    { "code": "B06", "name": "Phòng khám", "plan": "B", "aliases": ["Phòng khám tư"] },
+    { "code": "B07", "name": "Văn phòng, tòa nhà", "plan": "B", "aliases": ["Tòa nhà văn phòng"] },
+    { "code": "B08", "name": "Nhà xưởng nhỏ", "plan": "B", "aliases": ["Xưởng sản xuất"] },
+    { "code": "B09", "name": "Cơ sở dịch vụ", "plan": "B", "aliases": ["Doanh nghiệp dịch vụ"] },
+    { "code": "B10", "name": "Cửa hàng và chuỗi bán lẻ", "plan": "B", "aliases": ["Chuỗi cửa hàng", "Bán lẻ"] },
+
+    { "code": "C01", "name": "Sản xuất công nghiệp", "plan": "C", "aliases": ["Nhà máy", "Sản xuất"] },
+    { "code": "C02", "name": "Cơ khí chế tạo", "plan": "C", "aliases": ["Cơ khí"] },
+    { "code": "C03", "name": "Điện, điện tử", "plan": "C", "aliases": ["Sản xuất điện tử"] },
+    { "code": "C04", "name": "Sản xuất hóa chất", "plan": "C", "aliases": ["Hóa chất"] },
+    { "code": "C05", "name": "Dược phẩm", "plan": "C", "aliases": ["Nhà máy dược"] },
+    { "code": "C06", "name": "Thực phẩm, đồ uống", "plan": "C", "aliases": ["Chế biến thực phẩm", "Đồ uống"] },
+    { "code": "C07", "name": "Kho vận, logistics", "plan": "C", "aliases": ["Kho vận", "Logistics"] },
+    { "code": "C08", "name": "Nông nghiệp công nghệ cao", "plan": "C", "aliases": ["Nông nghiệp"] },
+    { "code": "C09", "name": "Chế biến thủy sản", "plan": "C", "aliases": ["Thủy sản"] },
+    { "code": "C10", "name": "Sản xuất vật liệu", "plan": "C", "aliases": ["Vật liệu xây dựng"] },
+    { "code": "C11", "name": "Tòa nhà, khu công nghiệp", "plan": "C", "aliases": ["Khu công nghiệp", "KCN"] },
+
+    { "code": "D01", "name": "Hóa chất công nghiệp", "plan": "D", "aliases": ["Hóa chất quy mô lớn"] },
+    { "code": "D02", "name": "Dược phẩm, hóa mỹ phẩm", "plan": "D", "aliases": ["Dược", "Hóa mỹ phẩm"] },
+    { "code": "D03", "name": "Chế biến thực phẩm", "plan": "D", "aliases": ["Nhà máy thực phẩm"] },
+    { "code": "D04", "name": "Điện tử, bán dẫn", "plan": "D", "aliases": ["Bán dẫn"] },
+    { "code": "D05", "name": "Xi măng, vật liệu xây dựng", "plan": "D", "aliases": ["Xi măng"] },
+    { "code": "D06", "name": "Luyện kim, thép", "plan": "D", "aliases": ["Thép", "Luyện kim"] },
+    { "code": "D07", "name": "Đóng tàu", "plan": "D", "aliases": ["Công nghiệp đóng tàu"] },
+    { "code": "D08", "name": "Dầu khí", "plan": "D", "aliases": ["Dầu khí"] },
+    { "code": "D09", "name": "Nhiệt điện", "plan": "D", "aliases": ["Nhà máy nhiệt điện"] },
+    { "code": "D10", "name": "Sản xuất giấy", "plan": "D", "aliases": ["Giấy"] },
+    { "code": "D11", "name": "Dệt may", "plan": "D", "aliases": ["May mặc", "Dệt"] },
+    { "code": "D12", "name": "Chế biến thủy sản quy mô công nghiệp", "plan": "D", "aliases": ["Nhà máy thủy sản"] }
+  ],
+  "equipmentGroups": [
+    { "code": "DIE", "name": "Hệ thống điện", "availableFromPlan": "B", "aliases": ["Điện", "Điện công nghiệp"] },
+    { "code": "NUO", "name": "Cấp thoát nước", "availableFromPlan": "B", "aliases": ["Nước", "Cấp nước", "Thoát nước"] },
+    { "code": "HVAC", "name": "Điều hòa, thông gió", "availableFromPlan": "B", "aliases": ["Điều hòa", "Thông gió"] },
+    { "code": "PCCC", "name": "Phòng cháy chữa cháy", "availableFromPlan": "B", "aliases": ["Phòng cháy", "Chữa cháy"] },
+    { "code": "LIF", "name": "Thang máy, thang cuốn", "availableFromPlan": "B", "aliases": ["Thang máy"] },
+    { "code": "IT", "name": "Công nghệ thông tin", "availableFromPlan": "B", "aliases": ["CNTT", "Mạng máy tính"] },
+    { "code": "SEC", "name": "An ninh, camera", "availableFromPlan": "B", "aliases": ["Camera", "Kiểm soát ra vào"] },
+    { "code": "GEN", "name": "Máy phát điện", "availableFromPlan": "B", "aliases": ["Nguồn dự phòng"] },
+    { "code": "PRO", "name": "Thiết bị sản xuất", "availableFromPlan": "B", "aliases": ["Máy sản xuất", "Dây chuyền"] },
+    { "code": "KHI", "name": "Khí nén", "availableFromPlan": "C", "aliases": ["Hệ thống khí nén"] },
+    { "code": "LAN", "name": "Hệ thống lạnh", "availableFromPlan": "C", "aliases": ["Kho lạnh", "Làm lạnh"] },
+    { "code": "CNC", "name": "Máy CNC", "availableFromPlan": "C", "aliases": ["Gia công CNC"] },
+    { "code": "BANG", "name": "Băng tải, dây chuyền", "availableFromPlan": "C", "aliases": ["Băng chuyền"] },
+    { "code": "NEN", "name": "Hệ thống máy nén khí", "availableFromPlan": "C", "aliases": ["Máy nén khí"] },
+    { "code": "NHI", "name": "Lò hơi, hệ thống nhiệt", "availableFromPlan": "C", "aliases": ["Lò hơi", "Nhiệt công nghiệp"] },
+    { "code": "XLN", "name": "Xử lý nước", "availableFromPlan": "C", "aliases": ["Nước thải", "Nước cấp xử lý"] },
+    { "code": "XLK", "name": "Xử lý khí thải", "availableFromPlan": "C", "aliases": ["Khí thải"] },
+    { "code": "REA", "name": "Thiết bị phản ứng", "availableFromPlan": "D", "aliases": ["Reactor"] },
+    { "code": "DIS", "name": "Thiết bị chưng cất", "availableFromPlan": "D", "aliases": ["Tháp chưng cất"] },
+    { "code": "SEP", "name": "Thiết bị phân ly", "availableFromPlan": "D", "aliases": ["Thiết bị tách"] },
+    { "code": "MIX", "name": "Máy trộn công nghiệp", "availableFromPlan": "D", "aliases": ["Máy khuấy trộn"] },
+    { "code": "DRY", "name": "Thiết bị sấy", "availableFromPlan": "D", "aliases": ["Máy sấy công nghiệp"] },
+    { "code": "FIL", "name": "Hệ thống lọc", "availableFromPlan": "D", "aliases": ["Thiết bị lọc"] },
+    { "code": "CHP", "name": "Máy nghiền, máy băm", "availableFromPlan": "D", "aliases": ["Máy nghiền công nghiệp"] },
+    { "code": "BOI", "name": "Lò hơi công nghiệp", "availableFromPlan": "D", "aliases": ["Nồi hơi"] },
+    { "code": "TUR", "name": "Tuabin", "availableFromPlan": "D", "aliases": ["Turbine"] },
+    { "code": "COM", "name": "Máy nén công nghiệp", "availableFromPlan": "D", "aliases": ["Compressor công nghiệp"] },
+    { "code": "ROB", "name": "Robot công nghiệp", "availableFromPlan": "D", "aliases": ["Robot"] },
+    { "code": "PLC", "name": "Hệ thống điều khiển PLC", "availableFromPlan": "D", "aliases": ["PLC"] },
+    { "code": "INS", "name": "Thiết bị đo lường, cảm biến", "availableFromPlan": "D", "aliases": ["Instrumentation", "Cảm biến"] }
+  ],
+  "equipmentDictionary": [
+    { "standardName": "Máy bơm nước", "shortCode": "BOM", "aliases": ["Bơm nước", "Bơm tăng áp"], "suggestedGroup": "NUO" },
+    { "standardName": "Động cơ điện", "shortCode": "MOT", "aliases": ["Motor", "Mô tơ"], "suggestedGroup": "DIE" },
+    { "standardName": "Máy nén khí", "shortCode": "NEN", "aliases": ["Compressor"], "suggestedGroup": "KHI" },
+    { "standardName": "Máy phát điện", "shortCode": "GEN", "aliases": ["Generator"], "suggestedGroup": "GEN" },
+    { "standardName": "Máy điều hòa", "shortCode": "DH", "aliases": ["Máy lạnh", "Điều hòa"], "suggestedGroup": "HVAC" },
+    { "standardName": "Quạt công nghiệp", "shortCode": "QG", "aliases": ["Quạt hút", "Quạt thông gió"], "suggestedGroup": "HVAC" },
+    { "standardName": "Tủ điện", "shortCode": "TD", "aliases": ["Tủ điều khiển"], "suggestedGroup": "DIE" },
+    { "standardName": "Biến tần", "shortCode": "BT", "aliases": ["Inverter", "VFD"], "suggestedGroup": "DIE" },
+    { "standardName": "Máy biến áp", "shortCode": "MBA", "aliases": ["MBA", "Biến áp"], "suggestedGroup": "DIE" },
+    { "standardName": "Cảm biến áp suất", "shortCode": "CAP", "aliases": ["Pressure sensor"], "suggestedGroup": "INS" }
+  ],
+  "idRules": {
+    "common": {
+      "uniqueScope": "organization",
+      "immutableAfterAssignment": true,
+      "neverReuseAssignedIds": true,
+      "preserveExistingIdsOnPlanChange": true,
+      "sequenceMustExpandBeyondThreeDigits": true,
+      "aiMaySuggestButMustNotAllocateOfficialSequence": true
+    },
+    "PLAN_A": {
+      "pattern": "{EQUIPMENT_CODE}-{SEQUENCE}",
+      "equipmentCodeLength": { "min": 2, "max": 4 },
+      "sequence": { "start": 1, "minWidth": 3, "maxDevices": 200 },
+      "includesGroupCode": false,
+      "includesSiteCode": false,
+      "includesCommissionMonthYear": false
+    },
+    "PLAN_B": {
+      "pattern": "{EQUIPMENT_CODE}-{GROUP_CODE}-{SEQUENCE}",
+      "equipmentCodeLength": { "min": 2, "max": 4 },
+      "sequence": { "start": 1, "minWidth": 3, "maxDevices": 500 },
+      "includesGroupCode": true,
+      "includesSiteCode": false,
+      "includesCommissionMonthYear": false
+    },
+    "PLAN_C": {
+      "pattern": "{EQUIPMENT_CODE}-{GROUP_CODE}-{SITE_CODE}-{SEQUENCE}-{MMYY}",
+      "equipmentCodeLength": { "min": 2, "max": 4 },
+      "siteCode": { "default": "00", "format": "two-digit-sequence" },
+      "sequence": { "start": 1, "minWidth": 3, "scope": "organization+equipmentCode+groupCode+siteCode", "expandable": true },
+      "commissionMonthYear": { "format": "MMYY", "source": "confirmedCommissioningDate" },
+      "includesGroupCode": true,
+      "includesSiteCode": true,
+      "includesCommissionMonthYear": true
+    },
+    "PLAN_D": {
+      "pattern": "{EQUIPMENT_CODE}-{GROUP_CODE}-{SITE_CODE}-{SEQUENCE}-{MMYY}",
+      "equipmentCodeLength": { "min": 2, "max": 4 },
+      "siteCode": { "default": "00", "format": "two-digit-sequence" },
+      "sequence": { "start": 1, "minWidth": 3, "scope": "organization+equipmentCode+groupCode+siteCode", "expandable": true },
+      "commissionMonthYear": { "format": "MMYY", "source": "confirmedCommissioningDate" },
+      "includesGroupCode": true,
+      "includesSiteCode": true,
+      "includesCommissionMonthYear": true
+    }
+  },
+  "notes": [
+    "Ngành nghề chỉ cung cấp ngữ cảnh và gợi ý, không giới hạn loại thiết bị doanh nghiệp được phép khai báo.",
+    "Plan A không hiển thị chức năng nhóm thiết bị; Engine vẫn có thể dùng phân loại nội bộ để hỗ trợ nhận diện.",
+    "Các mã nhóm và mã thiết bị là hai lớp khác nhau. Ví dụ BOM là mã loại máy bơm, NUO là mã nhóm cấp thoát nước.",
+    "Danh mục hiện là dữ liệu khởi tạo theo phương án đã duyệt; có thể mở rộng bằng cách tăng dataVersion và giữ nguyên schemaVersion.",
+    "Tệp này chỉ cung cấp cấu hình dữ liệu. Ứng dụng cần được tích hợp bộ đọc và kiểm tra dữ liệu riêng trước khi sử dụng trong nghiệp vụ."
+  ]
+}
