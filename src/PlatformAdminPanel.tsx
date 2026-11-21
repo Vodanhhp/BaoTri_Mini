@@ -128,7 +128,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
    if(invokeError)throw new Error(invokeError.message)
    if(data?.error)throw new Error(data.error)
    setCreated(data as Created)
-   sessionStorage.removeItem(PROVISION_DRAFT_KEY)
+   try{sessionStorage.removeItem(PROVISION_DRAFT_KEY)}catch{/* Storage may be disabled; the server request has still succeeded. */}
    setProvisionRequestId('')
    setOrganizationName('');setAdminEmail('');setAdminName('');setPlanCode('');setRegistrationStep(1)
    await loadOverview()
