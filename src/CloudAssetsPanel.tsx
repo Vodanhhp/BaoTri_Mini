@@ -62,7 +62,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     throw new Error('Local đã có UUID này nhưng chưa liên kết Cloud. Không tự ghi đè.')
    }
    if(local&&link){
-    if(link.status!=='linked')throw new Error('Liên kết đang conflict; cần xử lý trước.')
+    if(link.cloudCode!==asset.code)throw new Error('Mã Cloud đã thay đổi so với liên kết; cần đối chiếu thủ công.')
     const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
     const cloudChanged=asset.updatedAt!==link.cloudUpdatedAt
     if(localChanged&&cloudChanged){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()});throw new Error('Local và Cloud đều thay đổi. Đã đánh dấu conflict; cần đối chiếu thủ công.')}
