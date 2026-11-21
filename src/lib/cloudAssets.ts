@@ -50,13 +50,7 @@ export function toImportPayload(asset: Asset) {
     cycle_started_at: asset.cycleStartedAt || null, transferred_from_other_facility: Boolean(asset.transferredFromOtherFacility),
     status: asset.status, notes: asset.notes ?? '', archived_at: asset.archivedAt || null,
     created_at: asset.createdAt, updated_at: asset.updatedAt,
-    created_by_user_id: asset.createdByUserId ?? null, created_by_label: asset.createdByLabel ?? null,
-    original_name: asset.originalName ?? null,
-    normalized_name_at_creation: asset.normalizedNameAtCreation ?? null,
-    equipment_type_code: asset.equipmentTypeCode ?? null,
-    group_code_at_creation: asset.groupCodeAtCreation ?? null,
-    site_code_at_creation: asset.siteCodeAtCreation ?? null,
-    id_components_snapshot: asset.idComponentsSnapshot ?? null
+    created_by_user_id: asset.createdByUserId ?? null, created_by_label: asset.createdByLabel ?? null
   }
 }
 
