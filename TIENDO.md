@@ -351,3 +351,9 @@ Permission catalog hiện có 26 code:
 - Thông tin cá nhân bố trí 3 trường theo chiều ngang; Email và Đổi mật khẩu bố trí 2 cột, nút thao tác nằm cuối từng khung.
 - Trên màn hình nhỏ, các khung tự chuyển về một cột để dễ thao tác.
 - Không thay đổi logic lưu hồ sơ, đổi email hoặc đổi mật khẩu.
+
+
+## Sửa ký tự `\\n` hiển thị thừa trong Quản trị nền tảng (21/11/2026)
+- Xóa chuỗi backslash+n bị chèn trực tiếp sau thẻ `</style>` trong JSX của `src/PlatformAdminPanel.tsx`; nguyên nhân khiến giao diện hiển thị nguyên văn `\\n` trước mục **Tổng quan hệ thống**.
+- Chỉ sửa ký tự phân cách markup, không thay đổi CSS, bố cục, dữ liệu hoặc logic quản trị.
+- Commit sửa lỗi: `388b854cf9e0ef7b4f9e8c2199dff44f956b546a`. Chờ CI Build và GitHub Pages deploy; sau deploy cần tải lại cứng bằng Ctrl+F5 để xác nhận.
