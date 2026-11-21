@@ -104,7 +104,9 @@ Deno.serve(async(req)=>{
   const targetRoleIds=(targetAssignments??[]).map(row=>row.role_id)
   const {data:targetRoles,error:targetRolesError}=await admin.from('roles').select('code').eq('organization_id',organizationId).in('id',targetRoleIds)
   if(targetRolesError)throw targetRolesError
-  if((targetRoles??[]).some(role=>role.code==='admin'))return json({error:'Không thể reset, khóa hoặc xóa Admin bằng mục này.'},403,origin)
+  const targetRoleCodes=(targetRoles??[]).map(role=>role.code)
+  if(targetRoleCodes.includes('admin'))return json({error:'Không thể reset, khóa hoặc xóa Admin bằng mục này.'},403,origin)
+  if(!targetRoleCodes.some(code=>code==='technician'||code==='viewer'))return json({error:'Không thể thao tác với tài khoản chưa có vai trò hợp lệ.'},403,origin)
   const {data:targetUser,error:targetUserError}=await admin.auth.admin.getUserById(target.user_id)
   if(targetUserError||!targetUser.user)return json({error:'Không tìm thấy tài khoản Auth của thành viên.'},404,origin)
 
