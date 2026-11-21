@@ -17,7 +17,7 @@ Deno.serve(async(req)=>{
   if(!url||!key)return response({error:'Server configuration missing'},500,origin)
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:auth,error:authError}=await admin.auth.getUser(token)
-  if(authError||!auth.user||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can create customer organizations.'},403,origin)
+  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can create customer organizations.'},403,origin)
 
   const body=await req.json()
   const organizationName=String(body.organizationName??'').trim()
