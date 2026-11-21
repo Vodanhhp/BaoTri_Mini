@@ -539,3 +539,12 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Các commit refactor gần nhất: migration + client/API + UI + test trên nhánh PR #11, head hiện tại cần kiểm tra lại sau commit cuối.
 - Giới hạn an toàn: migration mới CHƯA được áp dụng lên Supabase; chưa deploy bất kỳ Edge Function nào; chưa có browser/CI build mới xác nhận. Không được thu hồi quyền SELECT ở database đang dùng trước khi migration + frontend cùng được kiểm thử và phát hành đồng bộ, nếu không giao diện cũ sẽ mất khả năng đọc Cloud.
 - PR #11 vẫn Draft, chưa merge. Main có thêm 3 commit kể từ merge-base; cần đồng bộ main và chạy CI/build sau khi giải quyết divergence.
+
+
+## 21/11/2026 – Hoàn thiện wizard giao diện đăng ký khách hàng lần đầu
+
+- Nâng cấp khu vực **Tạo khách hàng mới** trong Quản trị nền tảng từ biểu mẫu dài thành quy trình 3 bước: (1) thông tin doanh nghiệp, (2) chọn Plan A/B/C/D, (3) khai báo Admin đầu tiên và rà soát trước khi khởi tạo.
+- Bổ sung tiến trình từng bước, nút quay lại/tiếp tục, trạng thái tải danh mục Plan, thẻ Plan có trạng thái đã chọn, phần tóm tắt Catalog Snapshot và bảng rà soát dữ liệu cuối cùng.
+- Sau khi provisioning thành công, hiển thị kết quả gồm tổ chức, Plan, Admin, Snapshot, số nhóm/từ điển/ngành và hạn mức; biểu mẫu được đưa về bước 1 để sẵn sàng tạo khách hàng tiếp theo.
+- Giữ nguyên Edge Function `platform-create-customer` và luồng provisioning giao dịch hiện có; không phát sinh thao tác ghi dữ liệu mới từ giao diện ngoài lời gọi API đã được bảo vệ.
+- Thay đổi giao diện nằm trên nhánh `feature/smart-equipment-id-engine`, PR #11. Chưa merge, chưa deploy Pages và chưa deploy Edge Functions. Chưa có CI/build mới xác nhận cho các commit giao diện này; migration Cloud Asset Public Key vẫn chưa apply.
