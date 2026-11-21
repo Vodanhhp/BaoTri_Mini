@@ -156,7 +156,30 @@ Ví dụ trên chỉ minh họa cách trình bày. Mã nhóm, bộ đếm và m�
 9. **Không khóa thiết bị theo ngành:** Ngành nghề chỉ cung cấp ngữ cảnh và gợi ý. Doanh nghiệp vẫn có thể thêm thiết bị không nằm trong danh mục gợi ý.
 10. **Không phá mã cũ khi nâng cấp:** Nâng cấp Plan không tự động đổi ID đã cấp; quy tắc Plan mới áp dụng cho thiết bị tạo mới sau nâng cấp, trừ khi có quyết định nghiệp vụ riêng.
 
-### 5.7. Quan hệ với từ điển ngành nghề theo Plan
+### 5.7. Phân biệt mã định danh bất biến và thông tin thiết bị có thể thay đổi
+
+Các trường thông tin của thiết bị được chia thành hai nhóm rõ ràng:
+
+**A. Mã định danh bất biến**
+- UUID là mã kỹ thuật duy nhất, gắn với hồ sơ thiết bị trong suốt vòng đời; không thay đổi khi sửa tên, đổi nhóm, chuyển cơ sở, lưu kho hoặc khôi phục.
+- Mã ID là mã quản lý nghiệp vụ đã được cấp và có thể đã được ghi trong hồ sơ, biên bản, bản vẽ hoặc tài liệu nội bộ của doanh nghiệp. Sau khi lưu thiết bị, mã ID không được tự động hoặc thủ công thay đổi.
+- Không sinh mã ID mới chỉ vì Admin thay đổi nhóm thiết bị hoặc Admin/KTV sửa tên gọi thực tế.
+- Mã ID phản ánh quy tắc và thông tin phân loại tại thời điểm cấp mã; không bắt buộc phản ánh nhóm hiện tại hoặc tên gọi thực tế hiện tại.
+
+**B. Thông tin nghiệp vụ có thể thay đổi**
+- **Tên gọi thực tế (display/working name):** Admin hoặc KTV được phép sửa theo tên đang được doanh nghiệp sử dụng ngoài thực tế. Việc sửa tên này chỉ cập nhật thông tin hiển thị/vận hành, không làm thay đổi UUID, mã ID, mã rút gọn đã cấp hoặc bộ đếm.
+- **Nhóm thiết bị hiện tại:** Admin được phép thay đổi khi xác định việc phân loại mới phù hợp hơn với thực tế. Việc thay đổi nhóm chỉ cập nhật phân loại hiện tại, không sửa mã ID đã cấp. Cần ghi lịch sử nhóm cũ, nhóm mới, người thực hiện, thời điểm và lý do nếu có.
+- Tên gốc lúc tạo, tên chuẩn hóa lúc cấp mã và tên gọi thực tế hiện tại nên được lưu thành các trường riêng để giữ lịch sử và phục vụ tìm kiếm/báo cáo. Không ghi đè mất tên gốc hoặc dữ liệu tên đã dùng để giải thích việc cấp mã.
+
+Ví dụ: Thiết bị được cấp mã `BOMP-NUO-00-001-1126` khi thuộc nhóm NUO và có tên gọi ban đầu là “Máy bơm nước làm mát”. Sau này Admin chuyển nhóm hiện tại sang PRO, đồng thời KTV sửa tên thực tế thành “Bơm tuần hoàn dây chuyền”. UUID và mã ID vẫn giữ nguyên; hệ thống chỉ cập nhật nhóm hiện tại và tên gọi thực tế, đồng thời lưu lịch sử thay đổi cần thiết.
+
+**Quyền và kiểm soát**
+- Admin có quyền xem UUID; KTV và Viewer không được hiển thị UUID trong giao diện hoặc dữ liệu trả về thông thường.
+- Admin có quyền thay đổi nhóm thiết bị hiện tại.
+- Admin và KTV có thể sửa tên gọi thực tế theo quyền sửa hồ sơ thiết bị được cấp.
+- Mọi thay đổi tên/nhóm cần tuân thủ RBAC hiện hành và được ghi nhận lịch sử phù hợp. Quyền sửa thông tin không đồng nghĩa với quyền sửa UUID hoặc mã ID.
+
+### 5.8. Quan hệ với từ điển ngành nghề theo Plan
 
 - Mỗi Plan có phạm vi từ điển ngành nghề phù hợp với mức độ chi tiết của gói.
 - Plan A ưu tiên nhóm ngành phổ thông, phục vụ hộ kinh doanh và cơ sở nhỏ (ví dụ: nhà nghỉ/khách sạn mini, cửa hàng, tiệm, văn phòng hoặc công ty nhỏ).
@@ -165,7 +188,7 @@ Ví dụ trên chỉ minh họa cách trình bày. Mã nhóm, bộ đếm và m�
 - Plan D hướng tới từ điển chuyên sâu theo lĩnh vực, phân ngành và loại hình hoạt động đặc thù.
 - Việc mở rộng từ điển ở Plan cao hơn không làm thay đổi mã ID đã cấp ở Plan thấp hơn.
 
-### 5.8. Các nội dung cần thiết kế chi tiết sau
+### 5.9. Các nội dung cần thiết kế chi tiết sau
 
 - Cấu trúc dữ liệu và phiên bản của từ điển ngành nghề, từ điển thiết bị và từ điển mã.
 - Cách chuẩn hóa tiếng Việt, từ viết tắt, tên thương mại, tên model và tên gọi địa phương.
