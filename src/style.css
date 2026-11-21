@@ -917,3 +917,90 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 .account-profile-section .modal-actions{grid-column:1/-1;justify-content:flex-end}
 .account-profile-section .auth-note{grid-column:1/-1}
 @media(max-width:600px){.account-profile-section{grid-template-columns:1fr}.account-profile-modal{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}}
+
+
+/* 2026-11: mobile navigation drawer and refreshed administration panels */
+.mobile-menu-toggle,.mobile-menu-close,.mobile-menu-backdrop{display:none}
+@media(max-width:680px){
+  .sidebar{width:min(290px,84vw);padding:16px 14px;transform:translateX(-105%);transition:transform .22s ease;box-shadow:12px 0 34px #0003;z-index:100}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .mobile-menu-backdrop{display:block;position:fixed;inset:0;border:0;padding:0;background:rgba(8,24,21,.52);z-index:99}
+  .mobile-menu-toggle{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--text)}
+  .mobile-menu-close{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 16px;padding:8px 10px;border:1px solid #ffffff24;border-radius:8px;background:#ffffff0b;color:#dce9e6;font-size:12px}
+  .sidebar .brand{padding:0 5px 22px}
+  .sidebar .brand>div:last-child{display:block}
+  .sidebar .nav-label{display:block;font-size:9px}
+  .sidebar .nav-item{justify-content:flex-start;padding:12px 13px;gap:12px}
+  .sidebar .nav-item span{display:inline}
+  .sidebar .nav-item svg{width:18px;height:18px;flex:0 0 18px}
+  .sidebar .sidebar-bottom{display:flex;align-items:center;gap:8px}
+  .sidebar .sidebar-settings-submenu{display:flex;padding-left:18px}
+  .sidebar .nav-subitem{min-height:42px;font-size:12px}
+  .main{margin-left:0;width:100%}
+  .topbar{gap:9px;padding:10px 12px}
+  .page-heading{min-width:0;flex:1}
+  .topbar h1{font-size:15px;white-space:nowrap}
+  .topbar .eyebrow{font-size:7px;letter-spacing:.8px}
+  .top-actions{gap:5px}
+  .profile-text{display:none}
+  .profile-chip{padding:5px}
+}
+
+/* PC admin dialogs: wider, aligned and visually consistent */
+.member-management-modal{width:min(1120px,94vw);max-width:1120px;max-height:92vh;padding:22px 24px;gap:14px}
+.member-management-modal .modal-head{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:0}
+.member-management-modal .modal-head h2{font-size:20px}
+.member-management-modal .modal-head p{font-size:12px;margin-top:5px}
+.member-stats{gap:10px}
+.member-stat{padding:12px 14px;background:var(--panel-alt)}
+.member-stat strong{font-size:23px}
+.member-toolbar{gap:10px}
+.member-search{height:40px}
+.member-list-wrap{max-height:350px}
+.member-row{grid-template-columns:minmax(220px,1.15fr) minmax(145px,.65fr) minmax(310px,1.45fr);padding:12px 14px;gap:14px}
+.member-actions{justify-content:flex-end;gap:6px}
+.member-action{font-size:11px;padding:7px 9px}
+.member-invite-section{padding:15px 0 3px}
+.member-section-title{margin-bottom:12px}
+.member-section-title b{font-size:14px}
+.member-section-title small{font-size:11px}
+.member-invite-section .form-grid{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(170px,.7fr);gap:12px;align-items:end}
+.member-invite-section .field{font-size:11px}
+.member-invite-section .field input,.member-invite-section .field select{min-height:39px;font-size:13px}
+.member-invite-section .modal-actions{grid-column:1/-1}
+.member-note{font-size:11px;line-height:1.6;padding:10px 12px}
+.platform-admin-modal{width:min(1120px,94vw)!important;max-height:92vh!important;padding:22px 24px!important;line-height:1.5}
+.platform-admin-modal .modal-head{padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.platform-admin-modal .modal-head h2{font-size:20px}
+.platform-admin-modal .panel-head{align-items:center;margin:10px 0 12px}
+.platform-admin-modal .panel-head h3{font-size:15px}
+.platform-admin-modal .panel-head p{font-size:11px}
+.platform-admin-modal .stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px;margin:12px 0}
+.platform-admin-modal .stat-card{min-width:0;padding:13px}
+.platform-admin-modal .stat-card strong{font-size:23px}
+.platform-admin-modal .platform-org-table{max-height:360px;overflow:auto}
+.platform-admin-modal .platform-org-table table{min-width:850px;font-size:12px}
+.platform-admin-modal .platform-org-table th{position:sticky;top:0;z-index:1;padding:11px 10px}
+.platform-admin-modal .platform-org-table td{padding:11px 10px}
+.platform-admin-modal .divider{margin:18px 0!important}
+.platform-admin-modal .form-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.platform-admin-modal .form-grid .full-field{grid-column:1/-1}
+.platform-admin-modal .field{font-size:11px}
+.platform-admin-modal .field input{min-height:40px;font-size:13px}
+@media(max-width:900px){
+ .member-management-modal{width:96vw}
+ .member-row{grid-template-columns:minmax(180px,1fr) minmax(120px,.65fr)}
+ .member-actions{grid-column:1/-1;justify-content:flex-start}
+ .platform-admin-modal .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+ .member-management-modal{width:96vw;max-height:95dvh;padding:14px;gap:10px}
+ .member-row{grid-template-columns:minmax(0,1fr);gap:8px}
+ .member-meta{grid-column:auto;grid-row:auto;flex-direction:row;align-items:center;flex-wrap:wrap}
+ .member-actions{grid-column:auto;grid-row:auto;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-start}
+ .member-action{white-space:normal;min-height:34px}
+ .member-invite-section .form-grid{grid-template-columns:1fr}
+ .platform-admin-modal{width:96vw!important;max-height:95dvh!important;padding:14px!important}
+ .platform-admin-modal .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .platform-admin-modal .form-grid{grid-template-columns:1fr}
+}
