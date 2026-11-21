@@ -37,7 +37,7 @@ Deno.serve(async(req)=>{
   const body=await req.json()
   const action=String(body.action??'')
   const organizationId=String(body.organizationId??'')
-  if(!organizationId||!['list','reset_password','suspend','reactivate','remove'].includes(action))return json({error:'Yêu cầu không hợp lệ.'},400,origin)
+  if(!organizationId||!['list','reset_password','suspend','reactivate','remove','change_role'].includes(action))return json({error:'Yêu cầu không hợp lệ.'},400,origin)
 
   const {data:org,error:orgError}=await admin.from('organizations').select('id,name,status').eq('id',organizationId).maybeSingle()
   if(orgError)throw orgError
@@ -54,6 +54,7 @@ Deno.serve(async(req)=>{
   const isAdmin=(actorRoles??[]).some(role=>role.code==='admin')
   const {data:actorGrants,error:actorGrantsError}=await admin.from('role_permissions').select('role_id').eq('organization_id',organizationId).eq('permission_code','users.manage').in('role_id',actorRoleIds)
   if(actorGrantsError)throw actorGrantsError
+  if(action==='change_role'&&!isAdmin)return json({error:'Chỉ Admin tổ chức mới được đổi vai trò thành viên.'},403,origin)
   if(!isAdmin&&!(actorGrants??[]).length)return json({error:'Bạn không có quyền quản lý tài khoản.'},403,origin)
 
   if(action==='list'){
@@ -107,15 +108,35 @@ Deno.serve(async(req)=>{
   const {data:target,error:targetError}=await admin.from('organization_members').select('id,user_id,status').eq('organization_id',organizationId).eq('id',memberId).maybeSingle()
   if(targetError)throw targetError
   if(!target)return json({error:'Không tìm thấy thành viên trong tổ chức.'},404,origin)
-  if(target.user_id===actor.id)return json({error:'Không thể tự khóa hoặc xóa tài khoản đang đăng nhập.'},403,origin)
+  if(target.user_id===actor.id)return json({error:'Không thể tự thay đổi vai trò, khóa hoặc xóa tài khoản đang đăng nhập.'},403,origin)
   const {data:targetAssignments,error:targetAssignmentsError}=await admin.from('member_roles').select('role_id').eq('organization_id',organizationId).eq('member_id',memberId)
   if(targetAssignmentsError)throw targetAssignmentsError
   const targetRoleIds=(targetAssignments??[]).map(row=>row.role_id)
   const {data:targetRoles,error:targetRolesError}=await admin.from('roles').select('code').eq('organization_id',organizationId).in('id',targetRoleIds)
   if(targetRolesError)throw targetRolesError
   const targetRoleCodes=(targetRoles??[]).map(role=>role.code)
-  if(targetRoleCodes.includes('admin'))return json({error:'Không thể reset, khóa hoặc xóa Admin bằng mục này.'},403,origin)
-  if(!targetRoleCodes.some(code=>code==='technician'||code==='viewer'))return json({error:'Không thể thao tác với tài khoản chưa có vai trò hợp lệ.'},403,origin)
+  if(targetRoleCodes.includes('admin'))return json({error:'Không thể thay đổi vai trò hoặc thao tác với Admin bằng mục này.'},403,origin)
+  if(targetRoleCodes.length!==1||!['technician','viewer'].includes(targetRoleCodes[0]))return json({error:'Không thể thao tác với tài khoản có vai trò không xác định hoặc nhiều vai trò.'},403,origin)
+
+  if(action==='change_role'){
+   const newRoleCode=String(body.newRoleCode??'')
+   const currentRoleCode=targetRoleCodes[0]
+   if(!['technician','viewer'].includes(newRoleCode))return json({error:'Vai trò mới không hợp lệ.'},400,origin)
+   if(newRoleCode===currentRoleCode)return json({ok:true,message:'Tài khoản đã có vai trò này.'},200,origin)
+   const {data:newRole,error:newRoleError}=await admin.from('roles').select('id,code,is_system,is_active').eq('organization_id',organizationId).eq('code',newRoleCode).maybeSingle()
+   if(newRoleError)throw newRoleError
+   if(!newRole||!newRole.is_system||!newRole.is_active)return json({error:'Không tìm thấy vai trò hệ thống hợp lệ trong tổ chức.'},409,origin)
+   const oldRoleId=targetRoleIds[0]
+   const {error:removeRoleError}=await admin.from('member_roles').delete().eq('organization_id',organizationId).eq('member_id',memberId).eq('role_id',oldRoleId)
+   if(removeRoleError)throw removeRoleError
+   const {error:addRoleError}=await admin.from('member_roles').insert({organization_id:organizationId,member_id:memberId,role_id:newRole.id,assigned_by_user_id:actor.id})
+   if(addRoleError){
+    const {error:restoreError}=await admin.from('member_roles').insert({organization_id:organizationId,member_id:memberId,role_id:oldRoleId,assigned_by_user_id:actor.id})
+    if(restoreError)throw new Error('Không thể gán vai trò mới và cũng không khôi phục được vai trò cũ. Cần kiểm tra member_roles ngay: '+restoreError.message)
+    throw addRoleError
+   }
+   return json({ok:true,message:'Đã đổi vai trò từ '+(currentRoleCode==='technician'?'Kỹ thuật viên':'Người xem')+' sang '+(newRoleCode==='technician'?'Kỹ thuật viên':'Người xem')+'. Trạng thái tài khoản được giữ nguyên.'},200,origin)
+  }
   const {data:targetUser,error:targetUserError}=await admin.auth.admin.getUserById(target.user_id)
   if(targetUserError||!targetUser.user)return json({error:'Không tìm thấy tài khoản Auth của thành viên.'},404,origin)
 

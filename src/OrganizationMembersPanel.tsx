@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState,type FormEvent} from 'react'
-import {Activity,Mail,RefreshCw,RotateCcw,Search,Shield,Trash2,UserPlus,UserRound,X} from 'lucide-react'
+import {Activity,Mail,RefreshCw,RotateCcw,Search,Shield,Trash2,UserCog,UserPlus,UserRound,X} from 'lucide-react'
 import type {SupabaseClient} from '@supabase/supabase-js'
 
 type Member={
@@ -64,17 +64,18 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
   finally{setBusy(false)}
  }
 
- const act=async(member:Member,action:'reset_password'|'suspend'|'reactivate'|'remove')=>{
+ const act=async(member:Member,action:'reset_password'|'suspend'|'reactivate'|'remove'|'change_role',newRoleCode?:'technician'|'viewer')=>{
   const prompts={
    reset_password:'Gửi email đặt lại mật khẩu cho '+member.email+'?',
    suspend:'Tạm khóa quyền truy cập tổ chức của '+member.email+'?',
    reactivate:'Mở lại quyền truy cập tổ chức cho '+member.email+'?',
-   remove:'Xóa '+member.email+' khỏi tổ chức? Tài khoản Auth và lịch sử dữ liệu sẽ được giữ nguyên.'
+   remove:'Xóa '+member.email+' khỏi tổ chức? Tài khoản Auth và lịch sử dữ liệu sẽ được giữ nguyên.',
+   change_role:'Đổi vai trò của '+member.email+' từ '+roleLabel(member.roleCode)+' sang '+roleLabel(newRoleCode??'')+'? Thay đổi chỉ áp dụng trong tổ chức này.'
   }
   if(!window.confirm(prompts[action]))return
   setBusy(true);setError('');setMessage('')
   try{
-   const {data,error:invokeError}=await client.functions.invoke('manage-organization-members',{body:{action,organizationId,memberId:member.id}})
+   const {data,error:invokeError}=await client.functions.invoke('manage-organization-members',{body:{action,organizationId,memberId:member.id,...(action==='change_role'?{newRoleCode}:{})}})
    if(invokeError)throw invokeError
    if(data?.error)throw new Error(data.error)
    setMessage(data?.message||'Đã thực hiện thao tác.')
@@ -106,7 +107,7 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
        <div className="member-identity"><span className="member-avatar"><UserRound size={17}/></span><div><b>{member.displayName||member.email}</b><small>{member.email}</small><small>Tham gia: {dateLabel(member.createdAt)}</small></div></div>
        <div className="member-meta"><span className="member-role">{roleLabel(member.roleCode)}</span><span className={'status '+(member.status==='active'?'green':member.status==='suspended'?'red':'orange')}>{statusLabel(member.status)}</span><small className="member-confirm">{member.emailConfirmed?'Email đã xác nhận':'Email chưa xác nhận'}</small></div>
        <div className="member-actions">
-        {!protectedMember&&<><button className="member-action" disabled={busy||!member.emailConfirmed} title={member.emailConfirmed?'Gửi email đặt lại mật khẩu':'Cần xác nhận email trước khi reset'} onClick={()=>void act(member,'reset_password')}><Mail size={14}/> Reset mật khẩu</button>{member.status==='suspended'?<button className="member-action" disabled={busy} onClick={()=>void act(member,'reactivate')}><RotateCcw size={14}/> Mở khóa</button>:<button className="member-action warning" disabled={busy} onClick={()=>void act(member,'suspend')}><Shield size={14}/> Tạm khóa</button>}<button className="member-action danger" disabled={busy} onClick={()=>void act(member,'remove')}><Trash2 size={14}/> Xóa khỏi tổ chức</button></>}
+        {!protectedMember&&<><button className="member-action" disabled={busy} onClick={()=>void act(member,'change_role',member.roleCode==='technician'?'viewer':'technician')}><UserCog size={14}/> Đổi vai trò</button><button className="member-action" disabled={busy||!member.emailConfirmed} title={member.emailConfirmed?'Gửi email đặt lại mật khẩu':'Cần xác nhận email trước khi reset'} onClick={()=>void act(member,'reset_password')}><Mail size={14}/> Reset mật khẩu</button>{member.status==='suspended'?<button className="member-action" disabled={busy} onClick={()=>void act(member,'reactivate')}><RotateCcw size={14}/> Mở khóa</button>:<button className="member-action warning" disabled={busy} onClick={()=>void act(member,'suspend')}><Shield size={14}/> Tạm khóa</button>}<button className="member-action danger" disabled={busy} onClick={()=>void act(member,'remove')}><Trash2 size={14}/> Xóa khỏi tổ chức</button></>}
         {protectedMember&&<small className="member-protected">Được bảo vệ</small>}
        </div>
       </article>
@@ -122,7 +123,7 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
      <div className="modal-actions full-field"><button className="primary-btn" disabled={busy}>{busy?'Đang xử lý…':'Gửi lời mời'}</button></div>
     </form>
    </div>
-   <div className="auth-note member-note">Reset mật khẩu sẽ gửi email để người dùng tự đặt lại. Tạm khóa chỉ thu hồi quyền trong tổ chức này. Xóa khỏi tổ chức không xóa tài khoản Auth hoặc lịch sử thiết bị. Admin và tài khoản đang đăng nhập không thể bị khóa/xóa tại đây.</div>
+   <div className="auth-note member-note">Reset mật khẩu sẽ gửi email để người dùng tự đặt lại. Tạm khóa chỉ thu hồi quyền trong tổ chức này. Xóa khỏi tổ chức không xóa tài khoản Auth hoặc lịch sử thiết bị. Admin và tài khoản đang đăng nhập không thể bị đổi vai trò, khóa hoặc xóa tại đây. Đổi vai trò không tự thay đổi trạng thái đang hoạt động, chờ xác nhận hoặc tạm khóa.</div>
    <div className="modal-actions"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button></div>
   </section>
  </div>
