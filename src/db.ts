@@ -2,7 +2,7 @@ import Dexie, { type Table } from 'dexie'
 
 export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừng sử dụng' | 'Thanh lý'
 export type CloudLinkStatus = 'linked' | 'conflict'
-export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict'
+export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
 
 export type Asset = {
   id: string
