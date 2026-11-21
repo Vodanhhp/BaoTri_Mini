@@ -17,11 +17,9 @@ export type CloudLease = CloudLock & { lock_token: string }
 
 const optional=(value:unknown)=>value==null||value===''?undefined:String(value)
 
-const columns = 'id,organization_id,code,name,category,brand,model,serial,location,commissioned_at,power,cycle,cycle_started_at,transferred_from_other_facility,status,notes,archived_at,created_at,updated_at,created_by_user_id,created_by_label,original_name,normalized_name_at_creation,equipment_type_code,group_code_at_creation,site_code_at_creation,id_components_snapshot'
-
 function fromRow(row: Record<string, unknown>): CloudAsset {
   return {
-    id: String(row.id), code: String(row.code), name: String(row.name), category: String(row.category),
+    id: String(row.asset_key ?? row.code), code: String(row.code), name: String(row.name), category: String(row.category),
     brand: String(row.brand ?? ''), model: String(row.model ?? ''), serial: String(row.serial ?? ''),
     location: String(row.location ?? ''), commissionedAt: String(row.commissioned_at ?? ''),
     power: String(row.power ?? ''), cycle: String(row.cycle ?? ''), cycleStartedAt: optional(row.cycle_started_at),
@@ -56,9 +54,9 @@ export function toImportPayload(asset: Asset) {
 }
 
 export async function listCloudAssets(client: SupabaseClient, organizationId: string): Promise<CloudAsset[]> {
-  const { data, error } = await client.from('assets').select(columns).eq('organization_id',organizationId).order('name')
+  const { data, error } = await client.rpc('list_cloud_assets',{p_organization_id:organizationId})
   if (error) throw new Error('Tải danh sách Cloud thất bại: '+error.message)
-  return (data ?? []).map(row => fromRow(row as Record<string,unknown>))
+  return ((data ?? []) as Record<string,unknown>[]).map(row => fromRow(row))
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
@@ -82,15 +80,15 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
   })
   if (error) throw new Error('Không thể nhập lên Cloud: '+error.message)
   const result=data as {asset?:Record<string,unknown>;already_present?:boolean}
-  if (!result?.asset || result.asset.id!==asset.id || result.asset.code!==asset.code) throw new Error('Cloud trả về UUID/mã thiết bị không khớp Local.')
+  if (!result?.asset || result.asset.asset_key!==asset.code || result.asset.code!==asset.code) throw new Error('Cloud trả về mã thiết bị không khớp Local.')
   const cloud=fromRow(result.asset)
   const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,asset.id])
     .filter(change=>change.syncStatus==='pending').toArray()
   if(pendingGroupChanges.length){
     const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
-    const {error:historyError}=await client.rpc('mirror_asset_group_change_history',{
+    const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
       p_organization_id:organizationId,
-      p_asset_id:asset.id,
+      p_asset_code:asset.code,
       p_changes:ordered.map(change=>({
         id:change.id,oldCategory:change.oldCategory,newCategory:change.newCategory,
         changedByUserId:change.changedByUserId??null,changedAt:change.changedAt,reason:change.reason??null
@@ -109,38 +107,38 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
 
 export async function downloadCloudAsset(organizationId: string, cloud: CloudAsset, existing?: Asset) {
   const local: Asset = {
-    ...cloud, localScope: organizationId,
+    ...cloud, id:existing?.id??uid(), localScope: organizationId,
     images: existing?.images ?? [],
     createdByLabel: cloud.createdByLabel ?? existing?.createdByLabel,
     createdByUserId: cloud.createdByUserId ?? existing?.createdByUserId
   }
   await db.assets.put(local)
   await db.assetCloudLinks.put({
-    id: organizationId+':'+cloud.id, organizationId, assetId:cloud.id, cloudCode:cloud.code,
+    id: organizationId+':'+local.id, organizationId, assetId:local.id, cloudCode:cloud.code,
     cloudUpdatedAt:cloud.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:now()
   })
   return local
 }
 
 export async function acquireCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, deviceId: string, label: string) {
-  const {data,error}=await client.rpc('acquire_asset_edit_lock',{p_organization_id:organizationId,p_asset_id:assetId,p_device_id:deviceId,p_holder_label:label})
+  const {data,error}=await client.rpc('acquire_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_device_id:deviceId,p_holder_label:label})
   if(error) throw new Error('Xin khóa sửa thiết bị thất bại: '+error.message)
   const result=data as Record<string,unknown>
   if(result.acquired===true) {
     if(!result.lock_token || !result.expires_at) throw new Error('Cloud cấp khóa thiếu thông tin.')
-    return {acquired:true as const,lease:result as unknown as CloudLease}
+    return {acquired:true as const,lease:{...result,asset_id:String(result.asset_code??assetId)} as unknown as CloudLease}
   }
   return {acquired:false as const,lock:result as unknown as CloudLock}
 }
 
 export async function heartbeatCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, token: string) {
-  const {data,error}=await client.rpc('heartbeat_asset_edit_lock',{p_organization_id:organizationId,p_asset_id:assetId,p_lock_token:token})
+  const {data,error}=await client.rpc('heartbeat_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_lock_token:token})
   if(error) throw new Error(error.message)
   return (data as {renewed?:boolean})?.renewed===true
 }
 
 export async function releaseCloudAssetLock(client: SupabaseClient, organizationId: string, assetId: string, token: string) {
-  const {data,error}=await client.rpc('release_asset_edit_lock',{p_organization_id:organizationId,p_asset_id:assetId,p_lock_token:token})
+  const {data,error}=await client.rpc('release_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetId,p_lock_token:token})
   if(error) throw new Error(error.message)
   return data===true
 }
@@ -151,13 +149,13 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
     commissioned_at:payload.commissionedAt||null,power:payload.power,cycle:payload.cycle,cycle_started_at:payload.cycleStartedAt||null,
     transferred_from_other_facility:payload.transferredFromOtherFacility,status:payload.status,notes:payload.notes,archived_at:payload.archivedAt||null
   }
-  const {data,error}=await client.rpc('apply_asset_mutation_with_lock',{
-    p_organization_id:organizationId,p_asset_id:asset.id,p_lock_token:token,p_mutation_id:mutationId,
+  const {data,error}=await client.rpc('apply_cloud_asset_mutation_with_lock',{
+    p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,
     p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_payload:cloudPayload
   })
   if(error) throw new Error(error.message)
   const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
-  if(!result.asset || result.asset.id!==asset.id || !result.applied_at) throw new Error('Cloud thiếu biên nhận cập nhật hợp lệ.')
+  if(!result.asset || result.asset.asset_key!==asset.code || !result.applied_at) throw new Error('Cloud thiếu biên nhận cập nhật hợp lệ.')
   return {asset:fromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
 }
 
@@ -181,7 +179,7 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
  if(!link)throw new Error('Thiết bị chưa có liên kết Cloud.')
  const deviceId=getLocalDeviceId()
- const acquired=await acquireCloudAssetLock(client,organizationId,mutation.assetId,deviceId,getDeviceLabel())
+ const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
  if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
  try{
   await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,updatedAt:now(),lastError:undefined})
@@ -201,6 +199,6 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
   if(conflict)await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
   throw error
  }finally{
-  await releaseCloudAssetLock(client,organizationId,mutation.assetId,acquired.lease.lock_token).catch(()=>false)
+  await releaseCloudAssetLock(client,organizationId,local.code,acquired.lease.lock_token).catch(()=>false)
  }
 }
