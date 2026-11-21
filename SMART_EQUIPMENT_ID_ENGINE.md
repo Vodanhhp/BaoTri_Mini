@@ -50,7 +50,7 @@ The engine's `previewSequence` is only for a provisional display. It is never a 
 
 Cloud must not generate the final equipment ID or create the Local asset. When online, Cloud atomically reserves only the next numeric sequence for the Organization. Local formats the complete ID, writes the asset and its UUID to IndexedDB first, then confirms the reservation. If Local save fails, release the unused reservation; the numeric sequence is never reused. If confirmation fails after Local save, retain the Local record and retry confirmation later.
 
-The current JSON defines the Plan C/D counter scope but does not explicitly define Plan A/B counter scopes. Do not silently invent those scopes during database implementation; resolve them as a business rule first.
+Counter scopes are now explicit: Plan A = Organization + equipment code; Plan B = Organization + equipment code + group code; Plan C/D = Organization + equipment code + group code + site code. For Plan C/D, MMYY is a code segment and does not reset the sequence.
 
 ## 6. Catalog snapshot isolation
 
@@ -62,12 +62,12 @@ The standard JSON is only an initialization source for a new Organization snapsh
 
 The current application is not yet ready for full end-to-end ID generation:
 
-1. `organizations` currently has no Plan field.
-2. No Organization catalog snapshot persistence/reader is present in the current application.
-3. The add-equipment form currently asks the user to type `Asset.code` manually.
-4. Equipment groups in the form are currently a static hard-coded list, not the Organization snapshot.
-5. The Cloud edit-save path currently preserves the previous `code` and `category`; it therefore does not yet support the approved Admin group-change rule.
-6. There is no atomic official ID sequence allocator yet.
+1. The Plan is stored with the Organization catalog snapshot, but the current application has no trusted provisioning flow to assign it.
+2. The database snapshot table exists, but no organization currently has an initialized snapshot and the browser has no snapshot reader yet.
+3. The add-equipment form still asks the user to type `Asset.code` manually.
+4. Equipment groups in the form are still a static hard-coded list, not the Organization snapshot.
+5. The Cloud edit-save path still preserves the previous `code` and `category`; it does not yet support the approved Admin group-change rule.
+6. The database sequence reservation/confirmation RPCs exist, but the Local form does not call them yet.
 
 Full integration requires tenant-isolated snapshot provisioning, organization Plan context, Local-first reservation/confirmation calls, local asset metadata, and changes to the existing Cloud import path. These must be implemented without weakening existing Local/Cloud locking and sync guarantees.
 
@@ -77,8 +77,8 @@ Full integration requires tenant-isolated snapshot provisioning, organization Pl
 - `Asset.code` / business ID is immutable after save.
 - `Asset.name` is the editable real-world name and never regenerates the ID.
 - `Asset.category` is the current group; Admin may change it without regenerating the ID.
-- Group changes should eventually be audited with old group, new group, actor, timestamp, and optional reason.
-- Preserve the original name and normalized name used at issuance separately when the data model is extended; do not overwrite the real-world name with the dictionary's standard name.
+- Group changes are recorded in a private audit table with old group, new group, actor and timestamp; a reason can be added when the UI supplies one.
+- The database now stores original name, normalized name at creation, equipment type code, group/site code at creation and immutable ID-components snapshot. The Local model still needs to persist these fields.
 
 ## 9. Verification cases for the engine
 
