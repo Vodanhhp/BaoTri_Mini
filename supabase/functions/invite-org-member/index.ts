@@ -28,7 +28,7 @@ Deno.serve(async(req)=>{
   const email=String(body.email??'').trim().toLowerCase()
   const displayName=String(body.displayName??'').trim().slice(0,120)
   const roleCode=String(body.roleCode??'')
-  if(!organizationId||!email||!email.includes('@')||!['admin','technician','viewer'].includes(roleCode))return json({error:'Organization, valid email and supported role are required'},400,origin)
+  if(!organizationId||!email||!email.includes('@')||!['technician','viewer'].includes(roleCode))return json({error:'Organization, valid email and supported role are required'},400,origin)
   const {data:membership,error:memberError}=await admin.from('organization_members').select('id,status').eq('organization_id',organizationId).eq('user_id',actor.id).maybeSingle()
   if(memberError)return json({error:memberError.message},500,origin)
   if(!membership||membership.status!=='active')return json({error:'Active organization membership required'},403,origin)
@@ -44,9 +44,13 @@ Deno.serve(async(req)=>{
   if(orgError||!organization||organization.status!=='active')return json({error:'Organization is not active'},404,origin)
   const {data:systemRole,error:systemRoleError}=await admin.from('roles').select('id').eq('organization_id',organizationId).eq('code',roleCode).eq('is_system',true).maybeSingle()
   if(systemRoleError||!systemRole)return json({error:'Role is not seeded for this organization'},400,origin)
-  const {data:userList,error:listError}=await admin.auth.admin.listUsers({page:1,perPage:1000})
-  if(listError)return json({error:listError.message},500,origin)
-  let invitedUser=(userList.users??[]).find(u=>u.email?.toLowerCase()===email)
+  let invitedUser=null
+  for(let page=1;page<=100;page++){
+   const {data:userList,error:listError}=await admin.auth.admin.listUsers({page,perPage:500})
+   if(listError)return json({error:listError.message},500,origin)
+   invitedUser=(userList.users??[]).find(u=>u.email?.toLowerCase()===email)??null
+   if(invitedUser||(userList.users??[]).length<500)break
+  }
   let created=false
   if(!invitedUser){
    const {data:inviteData,error:inviteError}=await admin.auth.admin.inviteUserByEmail(email,{data:{display_name:displayName||email.split('@')[0],must_set_password:true},redirectTo:'https://baotri.vieclamhp247.com/'})
@@ -57,7 +61,7 @@ Deno.serve(async(req)=>{
   }
   const status=invitedUser.email_confirmed_at?'active':'invited'
   const {data:newMembership,error:insertMemberError}=await admin.from('organization_members').insert({
-   organization_id:organizationId,user_id:invitedUser.id,role:roleCode==='admin'?'admin':'user',status,invited_by_user_id:actor.id
+   organization_id:organizationId,user_id:invitedUser.id,role:'user',status,invited_by_user_id:actor.id
   }).select('id').single()
   if(insertMemberError){
    if(created)await admin.auth.admin.deleteUser(invitedUser.id).catch(()=>{})
