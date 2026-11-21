@@ -7,9 +7,9 @@
 | Gói | Quy mô thiết bị tối đa | Nhóm thiết bị | Quản lý nhiều cơ sở | Cấu trúc mã ID |
 |---|---:|---|---|---|
 | Plan A | 200 thiết bị | Không | Không | `ABCD-XXX` |
-| Plan B | 500 thiết bị | Có | Chưa bao gồm | `ABCD-EFG-YYY` |
-| Plan C | 1.000 thiết bị | Có | Có | `ABCD-EFG-XX-XXX-YYZZ` |
-| Plan D | Trên 1.000 thiết bị | Có | Có | `ABCD-EFG-XX-XXX-YYZZ` |
+| Plan B | 500 thiết bị | Có | Chưa bao gồm | `ABCD-{GROUP_CODE}-YYY` |
+| Plan C | 1.000 thiết bị | Có | Có | `ABCD-{GROUP_CODE}-XX-XXX-YYZZ` |
+| Plan D | Trên 1.000 thiết bị | Có | Có | `ABCD-{GROUP_CODE}-XX-XXX-YYZZ` |
 
 - Số lượng thiết bị là giới hạn của gói doanh nghiệp.
 - Plan A không sử dụng chức năng nhóm thiết bị.
@@ -31,30 +31,30 @@ Ví dụ: `BOM-001`, `BOM-002`, `MAY-003`.
 
 ### 2.2. Plan B — mã có nhóm thiết bị
 
-**Cấu trúc:** `ABCD-EFG-YYY`
+**Cấu trúc:** `ABCD-{GROUP_CODE}-YYY`
 
 Ví dụ: `BOM-DIE-001`, `BOM-BOM-001`.
 
 - `ABCD`: mã rút gọn dựa trên tên thiết bị, từ 2 đến 4 ký tự.
-- `EFG`: mã nhóm thiết bị.
+- `{GROUP_CODE}`: mã nhóm thiết bị (mã trong danh mục có thể dài 2–4 ký tự).
 - `YYY`: số thứ tự từ `001` đến `500`.
 - Có chức năng phân nhóm thiết bị; chưa quản lý nhiều cơ sở.
 
 ### 2.3. Plan C — mã có nhóm và cơ sở
 
-**Cấu trúc:** `ABCD-EFG-XX-XXX-YYZZ`
+**Cấu trúc:** `ABCD-{GROUP_CODE}-XX-XXX-YYZZ`
 
 Ví dụ: `BOM-DIE-00-001-1126`.
 
 - `ABCD`: mã rút gọn dựa trên tên thiết bị, từ 2 đến 4 ký tự.
-- `EFG`: mã nhóm thiết bị.
+- `{GROUP_CODE}`: mã nhóm thiết bị (mã trong danh mục có thể dài 2–4 ký tự).
 - `XX`: mã cơ sở. Cơ sở mặc định là `00`; cơ sở tiếp theo được cấp mã tăng tuần tự.
 - `XXX`: số thứ tự thiết bị, bắt đầu từ `001`. Bộ đếm được quản lý riêng theo tổ hợp mã thiết bị + mã nhóm + mã cơ sở; số thứ tự không được cấp trùng.
 - `YYZZ`: tháng và năm thiết bị được đưa vào sử dụng, theo định dạng MMYY. Ví dụ `1126` là tháng 11 năm 2026.
 
 ### 2.4. Plan D — doanh nghiệp quy mô lớn
 
-**Cấu trúc:** `ABCD-EFG-XX-XXX-YYZZ`
+**Cấu trúc:** `ABCD-{GROUP_CODE}-XX-XXX-YYZZ`
 
 - Áp dụng cùng quy tắc cấu trúc và sinh mã ID như Plan C.
 - Dành cho doanh nghiệp có trên 1.000 thiết bị.
@@ -174,6 +174,64 @@ Ví dụ trên chỉ minh họa cách trình bày. Mã nhóm, bộ đếm và m�
 - Phạm vi bộ đếm, cách cấp số khi tạo đồng thời và cách xử lý giao dịch thất bại.
 - Cách quản trị, phê duyệt và phát hành phiên bản từ điển dùng chung.
 - Giao diện đề xuất, chỉnh sửa và xác nhận tên chuẩn/mã ID trước khi lưu.
+
+
+
+## 6. Nguyên tắc danh mục chuẩn và danh mục riêng của khách hàng (Snapshot)
+
+Đây là quyết định nghiệp vụ đã thống nhất ngày 21/11/2026.
+
+### 6.1. Danh mục chuẩn
+- `public/data/baotri-config.json` là nguồn danh mục chuẩn do chủ hệ thống quản lý.
+- Danh mục chuẩn gồm cấu hình Plan, ngành nghề, nhóm thiết bị, từ điển thiết bị/tên gọi tương đương, mã rút gọn và quy tắc sinh mã ID.
+- Chủ hệ thống có thể bổ sung hoặc chỉnh sửa danh mục chuẩn. Mỗi lần phát hành cần tăng `dataVersion`; thay đổi cấu trúc dữ liệu mới cần cân nhắc tăng `schemaVersion`.
+
+### 6.2. Khởi tạo danh mục cho khách hàng
+- Khi một Organization bắt đầu thuê bao Plan, hệ thống tạo một bản sao độc lập (snapshot) từ danh mục chuẩn tại thời điểm khởi tạo, theo phạm vi Plan đó.
+- Snapshot phải lưu thông tin nguồn tối thiểu: phiên bản danh mục chuẩn, Plan, thời điểm khởi tạo và Organization sở hữu.
+- Sau khi khởi tạo, danh mục của Organization là dữ liệu riêng, không phải một liên kết động tới tệp chuẩn.
+
+### 6.3. Khách hàng tự bổ sung
+- Khách hàng được phép thêm nhóm thiết bị, loại thiết bị, tên gọi tương đương và các mục tùy biến trong phạm vi quyền của Plan.
+- Các mục tự bổ sung chỉ được lưu trong danh mục riêng của Organization đó; không ghi ngược vào `baotri-config.json` và không ảnh hưởng Organization khác.
+- Việc thêm danh mục không được tự ý thay đổi ID của thiết bị đã cấp.
+
+### 6.4. Khi chủ hệ thống cập nhật danh mục chuẩn
+- Organization đã được khởi tạo tiếp tục sử dụng snapshot hiện có cùng các mục riêng đã bổ sung.
+- Không tự động đồng bộ, ghi đè, đối chiếu, hợp nhất hoặc xóa dữ liệu của khách hàng hiện hữu.
+- Organization đăng ký/khởi tạo mới sau thời điểm phát hành sẽ nhận danh mục chuẩn phiên bản mới.
+- Không xây dựng cơ chế tự động hợp nhất danh mục trong phạm vi thiết kế hiện tại.
+
+### 6.5. Lưu trữ và bảo đảm dữ liệu
+- Tệp JSON chuẩn là nguồn khởi tạo; không dùng tệp JSON dùng chung làm nơi ghi dữ liệu khách hàng.
+- Snapshot và các mục riêng của khách hàng được lưu trong kho dữ liệu của ứng dụng, phân vùng theo `organization_id`, tuân thủ kiến trúc Local/Cloud và chính sách đồng bộ của BAOTRI Mini.
+- Mỗi Organization phải được cô lập dữ liệu; khách hàng này không được đọc hoặc sửa danh mục của khách hàng khác.
+- Nâng cấp Plan không được làm mất mục riêng hoặc thay đổi ID đã cấp. Quyền sử dụng và giới hạn Plan được kiểm tra riêng với dữ liệu danh mục đã lưu.
+
+## 7. Phạm vi danh mục chuẩn hiện tại và nguyên tắc mở rộng
+
+### 7.1. Ngành nghề
+- Plan A: 11 nhóm ngành phổ thông (A01–A11).
+- Plan B: 10 nhóm ngành dịch vụ, thương mại, giáo dục, y tế, tòa nhà và xưởng nhỏ (B01–B10).
+- Plan C: 11 nhóm ngành sản xuất, cơ khí, điện tử, hóa chất, dược, thực phẩm, logistics, nông nghiệp, thủy sản, vật liệu và khu công nghiệp (C01–C11).
+- Plan D: 12 nhóm ngành công nghiệp chuyên sâu (D01–D12).
+- Ngành nghề là ngữ cảnh gợi ý, không phải danh sách giới hạn thiết bị được phép khai báo.
+
+### 7.2. Nhóm thiết bị
+Danh mục hiện có các nhóm nền tảng: điện, cấp thoát nước, HVAC, PCCC, thang máy/thang cuốn, CNTT, an ninh/camera, máy phát điện, thiết bị sản xuất; các nhóm mở rộng gồm khí nén, hệ thống lạnh, CNC, băng tải/dây chuyền, máy nén khí, nhiệt/lò hơi, xử lý nước, xử lý khí thải; và nhóm chuyên sâu gồm phản ứng, chưng cất, phân ly, trộn, sấy, lọc, nghiền/băm, tuabin, máy nén công nghiệp, robot, PLC, đo lường/cảm biến.
+
+### 7.3. Từ điển thiết bị
+- Từ điển chuẩn cung cấp tên thiết bị, mã rút gọn, tên gọi tương đương và nhóm gợi ý.
+- Danh mục ban đầu ưu tiên các thiết bị thường gặp trong tòa nhà, cơ sở dịch vụ, nhà xưởng và sản xuất công nghiệp; có thể tiếp tục mở rộng khi phát sinh loại thiết bị phổ biến còn thiếu.
+- Không coi từ điển khởi tạo là danh sách đóng. Người dùng vẫn được khai báo thiết bị chưa có trong từ điển; Engine phải yêu cầu xác nhận khi không đủ căn cứ phân loại/mã hóa.
+- Mã nhóm và mã thiết bị là hai trường độc lập. Mã nhóm có thể dài 2–4 ký tự; không được giả định mọi mã nhóm đều đúng 3 ký tự chỉ vì ký hiệu minh họa cũ là EFG.
+
+### 7.4. Quy tắc bổ sung danh mục
+- Mã danh mục phải duy nhất trong phạm vi loại danh mục tương ứng; không tái sử dụng mã đã phát hành cho mục khác.
+- Trước khi thêm, kiểm tra trùng tên chuẩn, tên gọi tương đương, mã rút gọn và nhóm gợi ý.
+- Không tự tạo mã rút gọn chỉ bằng cách cắt ký tự nếu có nguy cơ gây hiểu nhầm; trường hợp trùng mã phải được người quản trị chuẩn hóa.
+- Bổ sung dữ liệu thông thường làm tăng `dataVersion`; chỉ thay đổi cấu trúc/ý nghĩa schema mới làm tăng `schemaVersion`.
+- Mọi thay đổi danh mục chuẩn chỉ áp dụng cho snapshot được khởi tạo sau phiên bản đó; không hồi tố lên khách hàng hiện hữu.
 
 
 ---
