@@ -33,8 +33,8 @@ export default function AccountProfilePanel({client,onClose}:Props){
     setUserId(user.id)
     setEmail(user.email??'')
     setNewEmail(user.email??'')
-    setFullName(profile?.display_name??String(user.user_metadata?.full_name??''))
-    setPhone(profile?.phone??'')
+    setFullName(data?.display_name??String(user.user_metadata?.full_name??''))
+    setPhone(data?.phone??'')
     setBirthDate(String(user.user_metadata?.date_of_birth??''))
    }catch(e){if(active)setError(e instanceof Error?e.message:String(e))}
    finally{if(active)setLoading(false)}
@@ -96,7 +96,7 @@ export default function AccountProfilePanel({client,onClose}:Props){
      <h3><UserRound size={16}/> Thông tin cá nhân</h3>
      <label className="field">Họ và tên *<input required maxLength={120} value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Nhập họ và tên"/></label>
      <label className="field">Số điện thoại<input type="tel" maxLength={30} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Số điện thoại liên hệ"/></label>
-     <label className="field">Ngày tháng năm sinh<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={e=>setBirthDate(e.target.value}/></label>
+     <label className="field">Ngày tháng năm sinh<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={e=>setBirthDate(e.target.value)}/></label>
      <div className="modal-actions"><button className="primary-btn" disabled={busy}><Check size={15}/> Lưu hồ sơ</button></div>
     </form>
     <form className="account-profile-section" onSubmit={changeEmail}>
