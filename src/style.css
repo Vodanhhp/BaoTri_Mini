@@ -1122,3 +1122,26 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
  .account-profile-section{grid-template-columns:1fr;padding:10px}
  .account-profile-section h3,.account-profile-section .modal-actions,.account-profile-section .auth-note{grid-column:1}
 }
+
+
+/* Smart Equipment ID generator simulation */
+.smart-id-tool-modal{width:min(760px,100%)}
+.smart-id-tool-modal .modal-head h2{display:flex;align-items:center;gap:8px;margin:4px 0}
+.smart-id-tool-modal .modal-head p{font-size:11px;color:var(--muted);margin:5px 0 0}
+.smart-id-simulation-warning{display:grid;gap:5px;padding:12px 14px;border:1px solid #e8d9ae;border-radius:9px;background:#fff9e9;color:#775d25;font-size:11px;line-height:1.55;margin-bottom:16px}
+.smart-id-simulation-warning span{color:#806d45}
+.smart-id-tool-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.smart-id-wide{grid-column:1/-1}
+.smart-id-tool-modal .field small{font-size:10px;line-height:1.45}
+.smart-id-pending{padding:10px 12px;border-radius:8px;background:var(--panel-alt);color:var(--muted);font-size:11px;line-height:1.5;margin-top:13px}
+.smart-id-status{margin-top:13px}
+.smart-id-result{display:grid;gap:7px;margin-top:14px;padding:16px;border:1px solid #b8d9ce;border-radius:10px;background:#f0f8f4;color:#225e4d}
+.smart-id-result small{font-size:10px;font-weight:700;letter-spacing:.5px}
+.smart-id-result strong{font-size:25px;letter-spacing:1px;overflow-wrap:anywhere}
+.smart-id-result span{font-size:11px;line-height:1.5}
+@media(max-width:680px){
+ .smart-id-tool-modal{width:calc(100vw - 16px);padding:14px}
+ .smart-id-tool-grid{grid-template-columns:1fr}
+ .smart-id-wide{grid-column:auto}
+ .smart-id-result strong{font-size:21px}
+}
