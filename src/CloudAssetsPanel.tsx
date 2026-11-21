@@ -101,7 +101,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     <div className="cloud-section-head"><h3>Thiết bị Cloud</h3><button className="soft-btn small" disabled={loading} onClick={()=>void reload()}>{loading?'Đang tải…':'Tải lại'}</button></div>
     {loading?<p className="empty-small">Đang tải…</p>:cloud.length===0?<p className="empty-small">Cloud chưa có thiết bị.</p>:<div className="cloud-list">{cloud.map(a=><div className="cloud-row" key={a.id}>
      <div className="cloud-row-main"><b>{a.code} · {a.name}</b><small>{a.category} · {a.location||'Chưa có vị trí'} · Cập nhật {new Date(a.updatedAt).toLocaleString('vi-VN')}</small></div>
-     <div className="cloud-row-actions"><button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void downloadOne(a)}>{busyId===a.id?'Đang tải…':'Tải về Local'}</button></div>
+     <div className="cloud-row-actions"><button className="soft-btn small" disabled={!canView||!!busyId} onClick={()=>void downloadOne(a)}>{busyId===a.id?'Đang tải…':'Tải về Local'}</button></div>
     </div>)}</div>}
    </div>
    <div className="modal-actions"><button className="soft-btn" onClick={onClose}>Đóng</button></div>
