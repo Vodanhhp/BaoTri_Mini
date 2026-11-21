@@ -330,6 +330,7 @@ export default function App() {
               <td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
               <td className="actions">{showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}</>}</td>
             </tr>)}
+          </tbody></table></div>
         </div>
         <div className="footnote"><ShieldCheck size={15}/> Thiết bị Local thuộc phạm vi tổ chức hiện chọn. Dùng Local ↔ Cloud để nhập hoặc tải hồ sơ có kiểm soát. Ảnh chưa đồng bộ Cloud.</div>
       </div>
@@ -363,7 +364,7 @@ export default function App() {
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><a href={src} target="_blank" rel="noreferrer" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></a>)}</div>:<p className="muted">Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.</p>}</div>
       <div className="asset-qr-panel"><div><small>MÃ QR THIẾT BỊ</small><b>{detailAsset.code || 'Chưa có mã quản lý'}</b><span>QR hiện mã hóa trực tiếp mã quản lý thiết bị</span></div>{detailAsset.code&&<QRCodeSVG value={detailAsset.code} size={104} level="M" includeMargin/>}</div>
       <div className="asset-photo-actions"><button className="soft-btn" disabled={!detailAsset.code} onClick={()=>printAsset('sticker')}>In tem QR</button><button className="soft-btn" onClick={()=>printAsset('detail')}>In chi tiết</button></div>
-      <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button><button className="primary-btn" onClick={()=>{setEditing({...detailAsset});setDetailAsset(null);setError('');setShowForm(true)}}>Chỉnh sửa hồ sơ</button></div>
+      <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button>{(localPreview||canUpdate)&&<button className="primary-btn" onClick={()=>{const selected=detailAsset;setDetailAsset(null);void openAssetEditor(selected)}}>Chỉnh sửa hồ sơ</button>}</div>
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
       {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><strong>{detailAsset.code}</strong></div>}
