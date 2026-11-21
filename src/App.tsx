@@ -151,7 +151,8 @@ export default function App() {
   }
   useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
   useEffect(()=>{
-    if(!session?.user.id||!supabase||!organizationId)return
+    const client=supabase
+    if(!session?.user.id||!client||!organizationId)return
     let active=true
     const retryPendingLocalReservations=async()=>{
       if(!navigator.onLine)return
@@ -162,7 +163,7 @@ export default function App() {
         if(!active)break
         if(!asset.idReservationId||!asset.idComponentsSnapshot||!asset.equipmentTypeCode)continue
         try{
-          await confirmSmartEquipmentIdReservation(supabase,{
+          await confirmSmartEquipmentIdReservation(client,{
             organizationId,reservationId:asset.idReservationId,assetId:asset.id,equipmentId:asset.code,
             originalName:asset.originalName||asset.name,
             normalizedNameAtCreation:asset.normalizedNameAtCreation||asset.name,
@@ -395,9 +396,9 @@ export default function App() {
         const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,value.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
         let mutationId:string
         if(pending){
-          const pendingPayload=pending.payload as AssetMutationPayload
-          const comparablePending=('category' in pendingPayload)?pendingPayload:{...pendingPayload,category:previous?.category??value.category}
-          if(pending.status==='conflict'||JSON.stringify(comparablePending)!==JSON.stringify(payload))throw new Error('Có mutation chưa xác nhận với snapshot khác. Chỉ retry đúng snapshot cũ.')
+          const pendingPayload=JSON.parse(JSON.stringify(pending.payload)) as Record<string,unknown>
+          if(typeof pendingPayload.category!=='string')pendingPayload.category=previous?.category??value.category
+          if(pending.status==='conflict'||JSON.stringify(pendingPayload)!==JSON.stringify(payload))throw new Error('Có mutation chưa xác nhận với snapshot khác. Chỉ retry đúng snapshot cũ.')
           mutationId=pending.mutationId
         }else{
           mutationId=uid()
