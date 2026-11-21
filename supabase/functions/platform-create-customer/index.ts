@@ -10,7 +10,7 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return response({error:'Method not allowed'},405,origin)
  try{
-  const token=req.headers.get('Authorization')?.replace(/^Bearer\\s+/i,'')
+  const token=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'')
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
   const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -22,7 +22,7 @@ Deno.serve(async(req)=>{
   const organizationName=String(body.organizationName??'').trim()
   const adminEmail=String(body.adminEmail??'').trim().toLowerCase()
   const adminName=String(body.adminName??'').trim().slice(0,120)
-  if(organizationName.length<2||organizationName.length>120||!/^\\S+@\\S+\\.\\S+$/.test(adminEmail))return response({error:'Tên tổ chức hoặc email Admin không hợp lệ.'},400,origin)
+  if(organizationName.length<2||organizationName.length>120||!/^\S+@\S+\.\S+$/.test(adminEmail))return response({error:'Tên tổ chức hoặc email Admin không hợp lệ.'},400,origin)
 
   let target=null
   for(let page=1;page<=20;page++){
