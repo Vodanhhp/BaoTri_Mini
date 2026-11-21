@@ -105,6 +105,7 @@ Migrations applied only to `BAOTRI-Mini-Test`:
 - `20261121092406_smart_equipment_id_admin_confirmation.sql`
 - `20261121092625_smart_equipment_id_admin_group_mutation.sql`
 - `20261121092724_smart_equipment_id_local_group_audit_mirror.sql`
+- `20261121092923_smart_equipment_id_catalog_snapshot_validation.sql`
 
 The production/inactive project and `BAOTRI-Mini-New` were not changed.
 
@@ -123,6 +124,7 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - `public.confirm_asset_id_sequence_reservation(...)` now records the Local original/normalized name, equipment type code and immutable components snapshot. The creator or an Organization Admin can retry confirmation.
 - The locked Cloud mutation RPC accepts an optional `category` field; only `settings.manage` can change it. Legacy mutation payloads without `category` remain compatible.
 - `public.mirror_asset_group_change_history(...)` imports Local Admin group-change events idempotently after the Local asset is mirrored.
+- A private snapshot-validation trigger rejects duplicate normalized group codes and equipment short codes, invalid code lengths, blank standard names, and invalid `availableFromPlan` values.
 - A Cloud insert trigger copies the confirmed Local metadata into `assets` during the existing `import_asset_preserving_identity` RPC. A Smart ID cannot be mirrored before its reservation is confirmed.
 
 ### Sequence scopes now explicit
@@ -146,6 +148,7 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - Admin group change audit recorded old group, new group and Admin UUID.
 - Admin Cloud mutation changed the current group and the Cloud trigger recorded the audit event; the same attempt as KTV was rejected.
 - Local group-history mirror inserted an event and returned an idempotent no-op on retry.
+- Catalog snapshot validator accepted a valid sample and rejected duplicate normalized equipment codes such as `BOM` / `B.O.M`.
 - All test catalog rows, reservations, counters and temporary updates were rolled back. The Test Organization still has its original 2 assets and no catalog row/reservations/counters from these tests.
 
 ### Not yet provisioned / integrated
