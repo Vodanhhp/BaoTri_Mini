@@ -53,6 +53,12 @@ Deno.serve(async(req)=>{
    if(assignmentError)throw assignmentError
    return response({ok:true,organizationId:org.id,organizationName:org.name,adminEmail,status:memberStatus,createdAuthUser,message:createdAuthUser?'Đã gửi email mời; Admin cần xác nhận email và tự đặt mật khẩu.':memberStatus==='active'?'Email đã có tài khoản xác nhận; đã cấp quyền Admin.':'Email đã có Auth chưa xác nhận; membership chờ xác nhận email.'},200,origin)
   }catch(error){
+   const {data:members}=await admin.from('organization_members').select('id').eq('organization_id',org.id)
+   const memberIds=(members??[]).map(m=>m.id)
+   if(memberIds.length)await admin.from('member_roles').delete().eq('organization_id',org.id).in('member_id',memberIds)
+   await admin.from('organization_members').delete().eq('organization_id',org.id)
+   await admin.from('role_permissions').delete().eq('organization_id',org.id)
+   await admin.from('roles').delete().eq('organization_id',org.id)
    await admin.from('organizations').delete().eq('id',org.id)
    throw error
   }
