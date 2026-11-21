@@ -158,7 +158,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
      <span className="platform-plan-capacity">{plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)}</span>
      <small>{plan.maxDevices===null?'Thiết bị':'thiết bị tối đa'}</small>
      <div className="platform-plan-details"><span>{plan.features.equipmentGroups?'Có nhóm thiết bị':'Không phân nhóm'}</span><span>{plan.features.multipleSites?'Nhiều cơ sở':'Một cơ sở'}</span></div>
-     <small>Mã: {plan.idRule.replace('PLAN_','Plan ')}</small>
+     <small>Quy tắc ID: {plan.idRule.replace('PLAN_','Plan ')}</small>
     </button>)}
    </div>
    {selectedPlan&&<div className="platform-plan-summary full-field"><b>Plan {selectedPlan.id} — {selectedPlan.name}</b>: {selectedPlan.maxDevices===null?'Không giới hạn số thiết bị':`Tối đa ${number(selectedPlan.maxDevices)} thiết bị`}. {selectedPlan.features.equipmentGroups?'Có phân nhóm thiết bị.':'Không sử dụng nhóm thiết bị.'} {selectedPlan.features.multipleSites?'Hỗ trợ nhiều cơ sở và mã cơ sở.':'Quản lý một cơ sở.'}<br/>
