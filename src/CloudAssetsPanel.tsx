@@ -37,7 +37,6 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
  const resolveConflictCloud=async(mutation:AssetMutation)=>{
   const local=localAssets.find(a=>a.id===mutation.assetId)
   let cloudAsset:CloudAsset|undefined
-  const local=localAssets.find(a=>a.id===mutation.assetId)
   if(!local){setError('Không tìm thấy Local để đối chiếu.');return}
   if(!window.confirm('Chọn Cloud làm bản đúng và ghi đè Local? Ảnh Local được giữ, các thay đổi Local chưa đồng bộ sẽ bị bỏ.'))return
   setBusyId(mutation.mutationId);setError('');setMessage('')
@@ -53,7 +52,6 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
   finally{setBusyId('')}
  }
  const resolveConflictLocal=async(mutation:AssetMutation)=>{
-  const local=localAssets.find(a=>a.id===mutation.assetId)
   const local=localAssets.find(a=>a.id===mutation.assetId)
   const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
   if(!local||!link){setError('Không tìm thấy snapshot hoặc liên kết để đối chiếu.');return}
