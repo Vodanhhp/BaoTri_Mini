@@ -29,7 +29,7 @@ Deno.serve(async(req)=>{
    global:{headers:{Authorization:`Bearer ${token}`}},
    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
   })
-  const {data:auth,error:authError}=await authClient.auth.getUser()
+  const {data:auth,error:authError}=await authClient.auth.getUser(token)
   if(authError||!auth.user)return json({error:'Phiên đăng nhập không hợp lệ: '+(authError?.message??'không tìm thấy người dùng')},401,origin)
   const actor=auth.user
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
