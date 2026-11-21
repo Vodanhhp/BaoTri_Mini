@@ -3,6 +3,15 @@ import type {SupabaseClient} from '@supabase/supabase-js'
 import {Check,KeyRound,Mail,UserRound,X} from 'lucide-react'
 
 type Props={client:SupabaseClient;onClose:()=>void}
+function describeError(error:unknown):string{
+ if(error&&typeof error==='object'){
+  const value=error as {message?:unknown;details?:unknown;hint?:unknown;code?:unknown}
+  const parts=[value.message,value.details,value.hint].filter(v=>typeof v==='string'&&v.trim()).map(String)
+  if(parts.length)return parts.join(' — ')+(value.code?' (mã: '+String(value.code)+')':'')
+  try{return JSON.stringify(error)}catch{return 'Lỗi không xác định.'}
+ }
+ return error instanceof Error?error.message:String(error)
+}
 export default function AccountProfilePanel({client,onClose}:Props){
  const [userId,setUserId]=useState('')
  const [email,setEmail]=useState('')
@@ -34,7 +43,7 @@ export default function AccountProfilePanel({client,onClose}:Props){
     setFullName(data?.display_name??String(user.user_metadata?.full_name??''))
     setPhone(data?.phone??'')
     setBirthDate(String(user.user_metadata?.date_of_birth??''))
-   }catch(e){if(active)setError(e instanceof Error?e.message:String(e))}
+   }catch(e){if(active)setError(describeError(e))}
    finally{if(active)setLoading(false)}
   }
   void load()
@@ -48,12 +57,15 @@ export default function AccountProfilePanel({client,onClose}:Props){
    const name=fullName.trim()
    if(!name)throw new Error('Vui lòng nhập họ và tên.')
    if(birthDate&&birthDate>new Date().toISOString().slice(0,10))throw new Error('Ngày sinh không thể ở tương lai.')
-   const {error:profileError}=await client.from('profiles').update({display_name:name,phone:phone.trim()||null,updated_at:new Date().toISOString()}).eq('id',userId)
-   if(profileError)throw profileError
-   const {error:metadataError}=await client.auth.updateUser({data:{...((await client.auth.getUser()).data.user?.user_metadata??{}),full_name:name,date_of_birth:birthDate||null}})
-   if(metadataError)throw metadataError
+   const {data:updatedProfile,error:profileError}=await client.from('profiles').update({display_name:name,phone:phone.trim()||null,updated_at:new Date().toISOString()}).eq('id',userId).select('id').maybeSingle()
+   if(profileError)throw new Error('Không lưu được thông tin hồ sơ: '+describeError(profileError))
+   if(!updatedProfile)throw new Error('Không tìm thấy bản ghi hồ sơ để cập nhật. Hãy đăng xuất rồi đăng nhập lại.')
+   const {data:{user},error:userError}=await client.auth.getUser()
+   if(userError)throw new Error('Đã lưu họ tên/số điện thoại, nhưng không đọc được thông tin tài khoản để lưu ngày sinh: '+describeError(userError))
+   const {error:metadataError}=await client.auth.updateUser({data:{...(user?.user_metadata??{}),full_name:name,date_of_birth:birthDate||null}})
+   if(metadataError)throw new Error('Đã lưu họ tên/số điện thoại, nhưng ngày sinh chưa lưu được: '+describeError(metadataError))
    setMessage('Đã cập nhật hồ sơ cá nhân.')
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){setError(describeError(e))}
   finally{setBusy(false)}
  }
 
@@ -66,7 +78,7 @@ export default function AccountProfilePanel({client,onClose}:Props){
    const {error:changeError}=await client.auth.updateUser({email:value})
    if(changeError)throw changeError
    setMessage('Đã gửi yêu cầu đổi email. Hãy mở email xác nhận theo hướng dẫn của Supabase; email đăng nhập chỉ đổi sau khi xác nhận thành công.')
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){setError(describeError(e))}
   finally{setBusy(false)}
  }
 
