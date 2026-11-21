@@ -34,7 +34,7 @@ declare
   v_components jsonb := p_id_components_snapshot;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if not public.has_org_permission(p_organization_id, 'assets.create') then
+  if not private.has_org_permission(p_organization_id, 'assets.create') then
     raise exception 'Missing assets.create permission for this organization' using errcode = '42501';
   end if;
   if p_asset_id is null or nullif(btrim(p_equipment_id), '') is null then
