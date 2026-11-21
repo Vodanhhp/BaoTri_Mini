@@ -49,10 +49,14 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  const [managementError,setManagementError]=useState('')
  const [managementSuccess,setManagementSuccess]=useState('')
  useEffect(()=>{
-  if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
-  sessionStorage.setItem(PROVISION_DRAFT_KEY,JSON.stringify({
-   requestId:provisionRequestId,organizationName,adminEmail,adminName,planCode
-  }))
+  try{
+   if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
+   sessionStorage.setItem(PROVISION_DRAFT_KEY,JSON.stringify({
+    requestId:provisionRequestId,organizationName,adminEmail,adminName,planCode
+   }))
+  }catch{
+   // Provisioning remains protected by the in-memory request key for this open panel.
+  }
  },[provisionRequestId,organizationName,adminEmail,adminName,planCode])
 
  const loadOverview=useCallback(async()=>{
