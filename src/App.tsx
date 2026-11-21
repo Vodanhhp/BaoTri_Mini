@@ -92,7 +92,11 @@ export default function App() {
   useEffect(()=>{
     let active=true
     if(!session?.user.id||!supabase){setOrganizationContexts([]);setOrganizationId('');setOrganizationReady(true);return}
+    // Clear the previous user's tenant context immediately to prevent stale cross-account rendering.
     setOrganizationReady(false)
+    setOrganizationContexts([])
+    setOrganizationId('')
+    setError('')
     loadOrganizationContext(supabase,session.user.id).then(contexts=>{
       if(!active)return
       setOrganizationContexts(contexts)
