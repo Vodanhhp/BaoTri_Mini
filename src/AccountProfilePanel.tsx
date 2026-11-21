@@ -102,7 +102,8 @@ export default function AccountProfilePanel({client,onClose}:Props){
    {loading?<div className="member-empty">Đang tải thông tin tài khoản…</div>:<>
     {error&&<div className="auth-error member-feedback">{error}</div>}
     {message&&<div className="cloud-message member-feedback">{message}</div>}
-    <form className="account-profile-section" onSubmit={saveProfile}>
+    <div className="account-profile-layout">
+    <form className="account-profile-section profile-personal-section" onSubmit={saveProfile}>
      <h3><UserRound size={16}/> Thông tin cá nhân</h3>
      <label className="field">Họ và tên *<input required maxLength={120} value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Nhập họ và tên"/></label>
      <label className="field">Số điện thoại<input type="tel" maxLength={30} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Số điện thoại liên hệ"/></label>
@@ -123,8 +124,9 @@ export default function AccountProfilePanel({client,onClose}:Props){
      <div className="modal-actions"><button className="soft-btn" disabled={busy}>Đổi mật khẩu</button></div>
      <small className="auth-note">Mật khẩu được xử lý bởi Supabase Auth, không lưu trong hồ sơ cá nhân hoặc bảng profiles.</small>
     </form>
+    </div>
    </>}
-   <div className="modal-actions"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button></div>
+   <div className="modal-actions account-profile-footer"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button></div>
   </section>
  </div>
 }
