@@ -14,6 +14,8 @@ export type CloudLock = {
 }
 export type CloudLease = CloudLock & { lock_token: string }
 
+const optional=(value:unknown)=>value==null||value===''?undefined:String(value)
+
 const columns = 'id,organization_id,code,name,category,brand,model,serial,location,commissioned_at,power,cycle,cycle_started_at,transferred_from_other_facility,status,notes,archived_at,created_at,updated_at,created_by_user_id,created_by_label'
 
 function fromRow(row: Record<string, unknown>): CloudAsset {
@@ -21,12 +23,12 @@ function fromRow(row: Record<string, unknown>): CloudAsset {
     id: String(row.id), code: String(row.code), name: String(row.name), category: String(row.category),
     brand: String(row.brand ?? ''), model: String(row.model ?? ''), serial: String(row.serial ?? ''),
     location: String(row.location ?? ''), commissionedAt: String(row.commissioned_at ?? ''),
-    power: String(row.power ?? ''), cycle: String(row.cycle ?? ''), cycleStartedAt: String(row.cycle_started_at ?? undefined),
+    power: String(row.power ?? ''), cycle: String(row.cycle ?? ''), cycleStartedAt: optional(row.cycle_started_at),
     transferredFromOtherFacility: Boolean(row.transferred_from_other_facility),
     status: row.status as Asset['status'], notes: String(row.notes ?? ''), images: [],
-    archivedAt: String(row.archived_at ?? undefined), createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at), createdByUserId: String(row.created_by_user_id ?? undefined),
-    createdByLabel: String(row.created_by_label ?? undefined), localScope: String(row.organization_id),
+    archivedAt: optional(row.archived_at), createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at), createdByUserId: optional(row.created_by_user_id),
+    createdByLabel: optional(row.created_by_label), localScope: String(row.organization_id),
     organizationId: String(row.organization_id), cloudUpdatedAt: String(row.updated_at)
   }
 }
@@ -129,4 +131,35 @@ export function getLocalDeviceId() {
 export function getDeviceLabel() {
   const ua=navigator.userAgent
   return /Android/i.test(ua)?'Android Mobile':/iPhone|iPad/i.test(ua)?'iPhone/iPad':/Windows/i.test(ua)?'Windows PC':/Mac/i.test(ua)?'Mac':/Linux/i.test(ua)?'Linux PC':'Thiết bị'
+}
+
+export async function retryCloudAssetMutation(client:SupabaseClient,organizationId:string,mutationId:string){
+ const mutation=await db.assetMutations.get(mutationId)
+ if(!mutation||mutation.organizationId!==organizationId)throw new Error('Không tìm thấy mutation Local.')
+ if(mutation.status==='conflict')throw new Error('Mutation đã conflict; cần đối chiếu thủ công, không tự retry.')
+ const local=await db.assets.get(mutation.assetId)
+ if(!local)throw new Error('Local snapshot của mutation đã mất.')
+ const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
+ if(!link)throw new Error('Thiết bị chưa có liên kết Cloud.')
+ const deviceId=getLocalDeviceId()
+ const acquired=await acquireCloudAssetLock(client,organizationId,mutation.assetId,deviceId,getDeviceLabel())
+ if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
+ try{
+  await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,updatedAt:now(),lastError:undefined})
+  const applied=await applyCloudAssetMutation(client,organizationId,local,acquired.lease.lock_token,mutation.mutationId,mutation.expectedCloudUpdatedAt,mutation.payload)
+  const at=now()
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+   await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
+   await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
+  })
+  return {alreadyApplied:applied.alreadyApplied,cloudUpdatedAt:applied.asset.updatedAt}
+ }catch(error){
+  const msg=error instanceof Error?error.message:String(error)
+  const conflict=msg.toLowerCase().includes('version changed')||msg.toLowerCase().includes('changed since')
+  await db.assetMutations.update(mutationId,{status:conflict?'conflict':'pending',lastError:msg,updatedAt:now()})
+  if(conflict)await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  throw error
+ }finally{
+  await releaseCloudAssetLock(client,organizationId,mutation.assetId,acquired.lease.lock_token).catch(()=>false)
+ }
 }
