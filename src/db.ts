@@ -53,6 +53,18 @@ export type Asset = {
   localScope: string
 }
 
+export type AssetGroupChange = {
+  id: string
+  organizationId: string
+  assetId: string
+  oldCategory: string
+  newCategory: string
+  changedByUserId?: string
+  changedAt: string
+  reason?: string
+  syncStatus: 'pending' | 'synced'
+}
+
 export type AssetCloudLink = {
   id: string
   organizationId: string
@@ -100,6 +112,7 @@ class BaoTriDatabase extends Dexie {
   assets!: Table<Asset, string>
   assetCloudLinks!: Table<AssetCloudLink, string>
   assetMutations!: Table<AssetMutation, string>
+  assetGroupChanges!: Table<AssetGroupChange, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -129,6 +142,12 @@ class BaoTriDatabase extends Dexie {
         localScope: typeof row.localScope === 'string' ? row.localScope : 'local-preview',
         createdByUserId: typeof row.createdByUserId === 'string' ? row.createdByUserId : undefined
       })))
+    })
+    this.version(4).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus'
     })
   }
 }
