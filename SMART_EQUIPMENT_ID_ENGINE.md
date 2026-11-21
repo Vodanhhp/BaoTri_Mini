@@ -94,3 +94,49 @@ Full integration requires a reviewed database migration/RPC, tenant-isolated sna
 10. Sequence values expand beyond three digits without truncation.
 11. Formatting and name edits never mutate an existing saved ID.
 12. The engine never allocates an official sequence or persists data.
+
+## 10. Database foundation applied to the Test project
+
+Migration: `20261121070000_smart_equipment_id_engine_v1.sql`
+Supabase migration history name: `smart_equipment_id_engine_v1`
+
+Applied only to the `BAOTRI-Mini-Test` project. The production/inactive project and `BAOTRI-Mini-New` were not changed.
+
+Database objects added:
+- `public.organization_equipment_catalog`: one snapshot and Plan record per Organization. The Plan is not client-editable; snapshot reads are available to users who can view settings or create assets; snapshot updates require `settings.manage`.
+- `private.asset_id_sequences`: private atomic sequence counters, inaccessible to browser roles.
+- Six issuance metadata columns on `public.assets`: `original_name`, `normalized_name_at_creation`, `equipment_type_code`, `group_code_at_creation`, `site_code_at_creation`, `id_components_snapshot`.
+- `public.guard_asset_identity_fields()` trigger: rejects UUID, Organization, equipment ID, and issuance-metadata changes; current group changes require `settings.manage`.
+- `public.create_asset_with_smart_id(...)`: authenticated, permission-checked RPC that allocates the sequence and inserts the asset in one transaction.
+
+The existing `public.create_asset_with_code` and `public.asset_code_counters` legacy generator were left intact.
+
+### Sequence scopes now made explicit
+
+- Plan A: Organization + equipment short code.
+- Plan B: Organization + equipment short code + group code.
+- Plan C/D: Organization + equipment short code + group code + site code.
+- Plan C/D sequence does not reset each month; MMYY is a date segment, not a counter scope.
+- Sequence display pads to at least three digits and never truncates values above 999.
+
+Capacity is checked against all existing Organization assets, including archived records, before allocation. A per-Organization transaction advisory lock serializes capacity checks across equipment-code families.
+
+### Test results (transactional; rolled back)
+
+- Plan A: `BOM-001`
+- Plan A after sequence 999: `BOM-1000`
+- Plan B: `BOM-NUO-001`
+- Plan C: `BOM-NUO-00-001-1126`
+- Plan D: `BOM-NUO-01-001-1126`
+- Admin can update current name and current group while the ID remains fixed.
+- Attempted change of an existing equipment ID was rejected by the database trigger.
+
+The test catalog rows and test equipment rows were inside explicit transactions and rolled back; no sample equipment or catalog snapshot was left in the Test Organization.
+
+### Not yet provisioned / integrated
+
+- The Test Organization currently has no row in `organization_equipment_catalog`. Its actual Plan must be provisioned by trusted platform operations; no Plan was guessed or assigned.
+- The browser add-equipment form still uses the old manual-code path. It must be migrated to load the Organization snapshot, call the analyzer for suggestions, and invoke the new RPC on Cloud save.
+- Local-first behavior needs a deliberate online/offline decision: official sequence allocation requires Cloud; a local preview must not be treated as an issued ID.
+- Existing asset UUIDs are the `assets.id` primary keys. The current application uses those keys for relationships and Cloud operations. Hiding UUIDs from ordinary KTV/Viewer API responses requires a broader API/view refactor; this migration protects UUID immutability but does not yet hide the primary key from Data API responses.
+- Admin-only group changes are enforced in the database trigger. The UI and Cloud mutation payload must be aligned so KTV edits can change names but not groups, while Admin can change groups with audit history.
