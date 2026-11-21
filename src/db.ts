@@ -60,6 +60,7 @@ export type AssetGroupChange = {
   oldCategory: string
   newCategory: string
   changedByUserId?: string
+  mutationId?: string
   changedAt: string
   reason?: string
   syncStatus: 'pending' | 'synced'
