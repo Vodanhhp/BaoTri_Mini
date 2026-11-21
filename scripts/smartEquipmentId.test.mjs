@@ -204,3 +204,56 @@ test('preview ID uses the same formatter and supports sequence above 999', () =>
   assert.equal(result.status, 'matched')
   assert.equal(result.previewId, 'BOM-NUO-03-1000-1126')
 })
+
+
+const standardConfig = JSON.parse(await readFile(new URL('../public/data/baotri-config.json', import.meta.url), 'utf8'))
+
+test('published standard catalog supports Plan A generation without group selection', () => {
+  const result = analyzeEquipmentName({
+    name: 'Máy bơm nước',
+    plan: 'A',
+    catalog: {
+      equipmentGroups: standardConfig.equipmentGroups,
+      equipmentDictionary: standardConfig.equipmentDictionary
+    },
+    previewSequence: 1
+  })
+  assert.equal(result.status, 'matched')
+  assert.equal(result.previewId, 'BOM-001')
+  assert.equal(result.requiresUserConfirmation, false)
+})
+
+test('published standard catalog supports Plan B after explicit group confirmation', () => {
+  const result = analyzeEquipmentName({
+    name: 'Máy bơm nước',
+    plan: 'B',
+    catalog: {
+      equipmentGroups: standardConfig.equipmentGroups,
+      equipmentDictionary: standardConfig.equipmentDictionary
+    },
+    selectedGroupCode: 'NUO',
+    previewSequence: 1
+  })
+  assert.equal(result.status, 'matched')
+  assert.equal(result.previewId, 'BOM-NUO-001')
+  assert.equal(result.requiresUserConfirmation, false)
+})
+
+test('published standard catalog supports Plan C/D with site and commissioning date', () => {
+  for (const plan of ['C', 'D']) {
+    const result = analyzeEquipmentName({
+      name: 'Máy nén khí',
+      plan,
+      catalog: {
+        equipmentGroups: standardConfig.equipmentGroups,
+        equipmentDictionary: standardConfig.equipmentDictionary
+      },
+      selectedGroupCode: 'NEN',
+      siteCode: '01',
+      commissionedAt: '2026-11-21',
+      previewSequence: 1000
+    })
+    assert.equal(result.status, 'matched')
+    assert.equal(result.previewId, 'NEN-NEN-01-1000-1126')
+  }
+})

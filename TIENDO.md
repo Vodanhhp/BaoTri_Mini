@@ -491,3 +491,14 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Unit test và build đều chạy thành công trên GitHub Actions commit `cdcad0c999e11bd60e5c7ad1c20d86e53e9f649d`: Build and test run `44895188334` (Unit tests + Build success); Validate BAOTRI Mini run `44895188313` (npm ci + npm run build success).
 - Không cài thêm thư viện, không sửa database, không tạo tenant/asset/reservation test. Chỉ thêm script test, cấu hình CI và tài liệu.
 - Phạm vi hiện tại là unit test cho hàm thuần của Smart ID Engine; chưa bao gồm test tích hợp RPC, IndexedDB, đồng bộ Local↔Cloud hoặc browser E2E.
+
+
+## 21/11/2026 – Tích hợp công cụ mô phỏng sinh mã Smart Equipment ID
+
+- Bổ sung component src/SmartEquipmentIdTool.tsx, mở từ nút **Sinh mã thử** trong chế độ thử nghiệm Local của appweb.
+- Công cụ đọc danh mục chuẩn public/data/baotri-config.json (dataVersion hiện tại), cho phép chọn Plan A/B/C/D, nhập tên thiết bị, chọn loại khi kết quả mơ hồ, xác nhận nhóm, nhập mã cơ sở/ngày đưa vào sử dụng đối với Plan C/D và thử số thứ tự.
+- Kết quả hiển thị đúng cấu trúc mã theo Plan; không tự đoán loại/nhóm khi không đủ dữ liệu.
+- Đây là chế độ mô phỏng độc lập: không gọi Supabase, không cấp/giữ số chính thức, không ghi thiết bị vào IndexedDB và luôn ghi rõ mã chỉ là minh họa. Luồng thêm thiết bị của Organization vẫn dùng Catalog Snapshot riêng và RPC Cloud reservation/confirmation đã tích hợp trước đó.
+- Bổ sung unit tests dùng chính danh mục chuẩn thực tế cho Plan A/B/C/D, bao gồm số thứ tự 1000.
+- Không gán Plan cho Organization hiện có, không tạo dữ liệu test trong Supabase. Thay đổi chỉ nằm trên branch feature/smart-equipment-id-engine; chưa merge hoặc deploy appweb Production.
+- Chờ GitHub Actions xác nhận npm test và npm run build sau commit.
