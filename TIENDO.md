@@ -438,4 +438,5 @@ Permission catalog hiện có 26 code:
 - Sửa lỗi xác nhận nhóm thiết bị: trước đây dropdown hiển thị nhóm gợi ý nhưng state chưa có lựa chọn, khiến người dùng tưởng đã chọn mà khi lưu vẫn bị báo thiếu nhóm. Hiện nhóm gợi ý chỉ là gợi ý; người dùng phải chọn rõ trong danh sách để xác nhận.
 - Ngày đưa vào sử dụng được đánh dấu bắt buộc ngay trên giao diện khi thêm thiết bị mới thuộc Plan C/D; backend vẫn kiểm tra lại trước khi cấp số.
 - Kiểm tra hạn mức thiết bị vẫn do RPC Cloud thực hiện trong giao dịch giữ số thứ tự; UI chỉ trình bày hạn mức, không thay thế kiểm tra bảo mật phía database. Plan D không giới hạn.
-- Các thay đổi giao diện/code đã commit trên `feature/smart-equipment-id-engine`; chưa merge PR #11, chưa deploy Pages hoặc hai Edge Function provisioning/overview. Chờ CI và rà soát tiếp.
+- Các thay đổi giao diện/code đã commit trên `feature/smart-equipment-id-engine`. CI `Build and test` run `44893860606` và `Validate BAOTRI Mini` run `44893802932` đều success; các bước `npm ci` và `npm run build` thành công.
+- Chưa merge PR #11, chưa deploy Pages hoặc hai Edge Function provisioning/overview. Chờ rà soát và nghiệm thu tiếp.
