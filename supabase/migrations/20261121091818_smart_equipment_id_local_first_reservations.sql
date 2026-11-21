@@ -76,7 +76,7 @@ begin
     v_group_code := regexp_replace(upper(coalesce(p_group_code, '')), '[^A-Z0-9]', '', 'g');
     if v_group_code !~ '^[A-Z0-9]{2,4}$' then raise exception 'Plan B/C/D requires a valid 2–4 character group code' using errcode = '22023'; end if;
     select g into v_group from jsonb_array_elements(v_snapshot -> 'equipmentGroups') g
-    where upper(coalesce(g ->> 'code', '')) = v_group_code limit 1;
+    where regexp_replace(upper(coalesce(g ->> 'code', '')), '[^A-Z0-9]', '', 'g') = v_group_code limit 1;
     if v_group is null then raise exception 'Selected group code is not present in this Organization catalog snapshot' using errcode = '22023'; end if;
     v_available_plan := coalesce(nullif(v_group ->> 'availableFromPlan', ''), 'B');
     v_available_rank := case v_available_plan when 'A' then 1 when 'B' then 2 when 'C' then 3 when 'D' then 4 else 99 end;
