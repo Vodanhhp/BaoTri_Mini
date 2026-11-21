@@ -39,7 +39,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
   }catch(e){setOverviewError(e instanceof Error?e.message:String(e))}
   finally{setLoadingOverview(false)}
  },[client])
- useEffect(()=>{void loadOverview()},[loadOverview])
+ useEffect(()=>{if(isPcPlatform())void loadOverview()},[loadOverview])
 
  const beginManagement=(organization:OrganizationRow,action:LifecycleAction)=>{
   setManagement({organization,action});setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementSuccess('')
