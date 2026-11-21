@@ -92,11 +92,16 @@ export default function App() {
   useEffect(()=>{
     let active=true
     if(!session?.user.id||!supabase){setOrganizationContexts([]);setOrganizationId('');setOrganizationReady(true);return}
+    // Clear the previous user's tenant context immediately to prevent stale cross-account rendering.
     setOrganizationReady(false)
+    setOrganizationContexts([])
+    setOrganizationId('')
+    setError('')
     loadOrganizationContext(supabase,session.user.id).then(contexts=>{
       if(!active)return
       setOrganizationContexts(contexts)
-      setOrganizationId(current=>contexts.some(o=>o.id===current)?current:(contexts[0]?.id??''))
+      // One active organization is selected automatically; multiple organizations require an explicit choice after login.
+      setOrganizationId(contexts.length===1?contexts[0].id:'')
     }).catch(err=>{if(active)setError(err instanceof Error?err.message:String(err))})
       .finally(()=>{if(active)setOrganizationReady(true)})
     return ()=>{active=false}
@@ -288,6 +293,8 @@ export default function App() {
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
 
+  if(session&&organizationContexts.length>1&&!organizationId)return <main className="auth-page"><section className="auth-card org-chooser-card"><div className="auth-brand"><span><Building2 size={25}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div><h1>Chọn tổ chức làm việc</h1><p className="auth-intro">Tài khoản này có quyền truy cập nhiều tổ chức. Hãy chọn doanh nghiệp bạn muốn làm việc.</p><div className="org-choice-list">{organizationContexts.map(org=><button type="button" className="org-choice" key={org.id} onClick={()=>setOrganizationId(org.id)}><span className="org-choice-icon"><Building2 size={19}/></span><span className="org-choice-copy"><b>{org.name}</b><small>Vai trò: {org.roleCodes.join(', ')||'Chưa xác định'}</small></span><span className="org-choice-arrow">›</span></button>)}</div><button className="auth-link" type="button" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
+
   const currentOrganization=organizationContexts.find(o=>o.id===organizationId)
   const canImport=Boolean(currentOrganization?.permissions.includes('assets.import'))
   const canUpdate=Boolean(currentOrganization?.permissions.includes('assets.update'))
@@ -308,7 +315,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1></div>
-        <div className="top-actions">{session&&organizationContexts.length>1&&<select className="org-select" value={organizationId} onChange={e=>{setOrganizationId(e.target.value);setCloudPanel(false)}}>{organizationContexts.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>}{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}{session&&(currentOrganization?.isAdmin||session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com')&&<div className="settings-menu desktop-settings"><button className="soft-btn settings-trigger" aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><SlidersHorizontal size={15}/> Cài đặt</button>{settingsOpen&&<div className="settings-dropdown">{currentOrganization?.isAdmin&&<button onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/> Quản lý tài khoản</button>}{session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/> Quản trị nền tảng</button>}</div>}</div>}<span className="sync-status"><i/>Đang lưu Local</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}{session&&(currentOrganization?.isAdmin||session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com')&&<div className="settings-menu desktop-settings"><button className="soft-btn settings-trigger" aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><SlidersHorizontal size={15}/> Cài đặt</button>{settingsOpen&&<div className="settings-dropdown">{currentOrganization?.isAdmin&&<button onClick={()=>{setMembersPanel(true);setSettingsOpen(false)}}><UserRound size={15}/> Quản lý tài khoản</button>}{session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&<button onClick={()=>{setPlatformPanel(true);setSettingsOpen(false)}}><ShieldCheck size={15}/> Quản trị nền tảng</button>}</div>}</div>}<span className="sync-status"><i/>Đang lưu Local</span><div className="profile-chip"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></div><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p></div><div className="welcome-icon"><Wrench size={42}/></div></section>
