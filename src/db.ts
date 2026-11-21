@@ -15,6 +15,7 @@ export type EquipmentIdComponentsSnapshot = {
   group_name_at_creation?: string | null
   source_data_version: string
   issued_at: string
+  reservation_id?: string
 }
 
 export type Asset = {
