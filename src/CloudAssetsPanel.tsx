@@ -4,9 +4,9 @@ import type { Asset } from './db'
 import { db, type AssetMutation } from './db'
 import { downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, type CloudAsset } from './lib/cloudAssets'
 
-type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];canImport:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void}
+type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];canImport:boolean;canView:boolean;onClose:()=>void;onChanged:()=>void}
 
-export default function CloudAssetsPanel({client,organizationId,localAssets,canImport,canUpdate,onClose,onChanged}:Props){
+export default function CloudAssetsPanel({client,organizationId,localAssets,canImport,canView,onClose,onChanged}:Props){
  const [cloud,setCloud]=useState<CloudAsset[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
  const [pending,setPending]=useState<AssetMutation[]>([])
@@ -67,7 +67,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     const cloudChanged=asset.updatedAt!==link.cloudUpdatedAt
     if(localChanged&&cloudChanged){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()});throw new Error('Local và Cloud đều thay đổi. Đã đánh dấu conflict; cần đối chiếu thủ công.')}
     if(localChanged&&!cloudChanged){setMessage('Local có thay đổi chưa đồng bộ; giữ nguyên Local.');return}
-    if(!cloudChanged){setMessage('Local và Cloud đã cùng phiên bản.');return}
+    if(!cloudChanged){await db.assetCloudLinks.update(link.id,{status:'linked',lastVerifiedAt:new Date().toISOString()});setMessage('Local và Cloud đã cùng phiên bản.');return}
    }
    await downloadCloudAsset(organizationId,asset,local)
    setMessage(local?'Đã cập nhật Local theo Cloud; giữ lại ảnh Local.':'Đã tải hồ sơ Cloud về Local.')
@@ -84,7 +84,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     <div className="cloud-section-head"><h3>Mutation Local chưa được Cloud xác nhận</h3><button className="soft-btn small" disabled={loading} onClick={()=>void reload()}>Kiểm tra</button></div>
     {pending.length===0?<p className="empty-small">Không có thay đổi Cloud đang chờ.</p>:<div className="cloud-list">{pending.map(m=>{
       const asset=localAssets.find(a=>a.id===m.assetId)
-      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<span className="status red">Conflict</span>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
+      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<span className="status red">Conflict</span>:<button className="primary-btn small" disabled={!canView||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
     })}</div>}
    </div>
    <div className="cloud-section">
