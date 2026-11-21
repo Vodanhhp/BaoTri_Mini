@@ -224,7 +224,7 @@ export default function App() {
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
 
   const assetMutationPayload=(asset:Asset):AssetMutationPayload=>({
-    name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',
+    category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',
     commissionedAt:asset.commissionedAt||'',power:asset.power??'',cycle:asset.cycle??'',cycleStartedAt:asset.cycleStartedAt||undefined,
     transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined
   })
@@ -389,7 +389,6 @@ export default function App() {
       if(link){
         const lease=cloudLease
         if(!lease||lease.assetId!==value.id||lease.lost||!supabase)throw new Error('Không còn khóa Cloud hợp lệ; không lưu.')
-        if(value.category!==previous?.category)throw new Error('Đổi nhóm thiết bị trên hồ sơ Cloud cần luồng cập nhật nhóm có kiểm soát. Chưa ghi thay đổi; tên thiết bị vẫn có thể sửa.')
         const payload=assetMutationPayload(value)
         const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,value.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
         let mutationId:string
