@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from './db'
-import { db, type AssetMutation } from './db'
-import { downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, type CloudAsset } from './lib/cloudAssets'
+import { db, now, uid, type AssetMutation } from './db'
+import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
 type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];canImport:boolean;canView:boolean;onClose:()=>void;onChanged:()=>void}
 
@@ -33,6 +33,53 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
    await reload();onChanged()
   }catch(e){setError(e instanceof Error?e.message:String(e));await reload()}
   finally{setBusyId('')}
+ }
+ const resolveConflictCloud=async(mutation:AssetMutation)=>{
+  const local=localAssets.find(a=>a.id===mutation.assetId)
+  const cloudAsset=cloud.find(a=>a.id===mutation.assetId)
+  if(!local||!cloudAsset){setError('Không tìm thấy cả Local lẫn Cloud để đối chiếu.');return}
+  if(!window.confirm('Chọn Cloud làm bản đúng và ghi đè Local? Ảnh Local được giữ, các thay đổi Local chưa đồng bộ sẽ bị bỏ.'))return
+  setBusyId(mutation.mutationId);setError('');setMessage('')
+  try{
+   await downloadCloudAsset(organizationId,cloudAsset,local)
+   const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
+   for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
+   setMessage('Đã chọn Cloud; Local cập nhật theo Cloud và giữ ảnh Local.')
+   await reload();onChanged()
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setBusyId('')}
+ }
+ const resolveConflictLocal=async(mutation:AssetMutation)=>{
+  const local=localAssets.find(a=>a.id===mutation.assetId)
+  const cloudAsset=cloud.find(a=>a.id===mutation.assetId)
+  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
+  if(!local||!cloudAsset||!link){setError('Không tìm thấy snapshot hoặc liên kết để đối chiếu.');return}
+  if(!window.confirm('Ghi đè Cloud bằng snapshot Local hiện tại? Cloud sẽ được cập nhật sau khi kiểm tra khóa.'))return
+  setBusyId(mutation.mutationId);setError('');setMessage('')
+  let lease:{assetId:string;token:string}|null=null
+  const mutationId=uid()
+  const payload=toMutationPayload(local)
+  try{
+   const acquired=await acquireCloudAssetLock(client,organizationId,local.id,getLocalDeviceId(),getDeviceLabel())
+   if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
+   lease={assetId:local.id,token:acquired.lease.lock_token}
+   await db.assetMutations.add({mutationId,organizationId,assetId:local.id,payload,expectedCloudUpdatedAt:cloudAsset.updatedAt,localUpdatedAt:local.updatedAt,status:'processing',attempts:1,createdAt:now(),updatedAt:now()})
+   const applied=await applyCloudAssetMutation(client,organizationId,local,lease.token,mutationId,cloudAsset.updatedAt,payload)
+   const at=now()
+   const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='conflict').toArray()
+   await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+    await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at})
+    for(const old of conflicts)await db.assetMutations.update(old.mutationId,{status:'discarded',updatedAt:at,lastError:'Đã giải quyết conflict bằng cách chọn Local.'})
+    await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
+   })
+   setMessage('Đã chọn Local; Cloud được cập nhật và xác nhận.')
+   await reload();onChanged()
+  }catch(e){
+   const msg=e instanceof Error?e.message:String(e)
+   await db.assetMutations.update(mutationId,{status:'pending',lastError:msg,updatedAt:now()}).catch(()=>{})
+   setError(msg)
+   await reload()
+  }finally{if(lease)await releaseCloudAssetLock(client,organizationId,lease.assetId,lease.token).catch(()=>false);setBusyId('')}
  }
  const importOne=async(asset:Asset)=>{
   setBusyId(asset.id);setError('');setMessage('')
