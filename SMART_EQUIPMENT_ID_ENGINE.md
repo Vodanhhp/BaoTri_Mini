@@ -48,7 +48,7 @@ Plan C/D require a valid confirmed commissioning date. Site code defaults to `00
 
 The engine's `previewSequence` is only for a provisional display. It is never a reservation and must never be written as the official ID.
 
-The official sequence must be allocated atomically as part of the save transaction, with a database-level uniqueness constraint scoped to the Organization. A failed save must not leave a committed ID without its equipment record.
+Cloud must not generate the final equipment ID or create the Local asset. When online, Cloud atomically reserves only the next numeric sequence for the Organization. Local formats the complete ID, writes the asset and its UUID to IndexedDB first, then confirms the reservation. If Local save fails, release the unused reservation; the numeric sequence is never reused. If confirmation fails after Local save, retain the Local record and retry confirmation later.
 
 The current JSON defines the Plan C/D counter scope but does not explicitly define Plan A/B counter scopes. Do not silently invent those scopes during database implementation; resolve them as a business rule first.
 
@@ -69,7 +69,7 @@ The current application is not yet ready for full end-to-end ID generation:
 5. The Cloud edit-save path currently preserves the previous `code` and `category`; it therefore does not yet support the approved Admin group-change rule.
 6. There is no atomic official ID sequence allocator yet.
 
-Full integration requires a reviewed database migration/RPC, tenant-isolated snapshot storage and RLS, organization Plan context, and changes to the asset save path. These are separate from this deterministic engine and must be implemented and verified without weakening existing Local/Cloud locking and sync guarantees.
+Full integration requires tenant-isolated snapshot provisioning, organization Plan context, Local-first reservation/confirmation calls, local asset metadata, and changes to the existing Cloud import path. These must be implemented without weakening existing Local/Cloud locking and sync guarantees.
 
 ## 8. Immutable identity and editable operational information
 
@@ -97,46 +97,51 @@ Full integration requires a reviewed database migration/RPC, tenant-isolated sna
 
 ## 10. Database foundation applied to the Test project
 
-Migration: `20261121091634_smart_equipment_id_engine_v1.sql`
-Supabase migration history name: `smart_equipment_id_engine_v1`
+Migrations applied only to `BAOTRI-Mini-Test`:
+- `20261121091634_smart_equipment_id_engine_v1.sql`
+- `20261121091818_smart_equipment_id_local_first_reservations.sql`
+- `20261121091922_smart_equipment_id_audit_hardening.sql`
 
-Applied only to the `BAOTRI-Mini-Test` project. The production/inactive project and `BAOTRI-Mini-New` were not changed.
+The production/inactive project and `BAOTRI-Mini-New` were not changed.
 
-Database objects added:
-- `public.organization_equipment_catalog`: one snapshot and Plan record per Organization. The Plan is not client-editable; snapshot reads are available to users who can view settings or create assets; snapshot updates require `settings.manage`.
+Database objects:
+- `public.organization_equipment_catalog`: one catalog snapshot and Plan per Organization. Snapshot reads are available to users who can view settings or create assets; updates require `settings.manage`. Plan assignment is not client-editable.
 - `private.asset_id_sequences`: private atomic sequence counters, inaccessible to browser roles.
+- `private.asset_id_sequence_reservations`: private idempotent reservations linking a numeric sequence to the Local UUID and final Local-generated equipment ID after confirmation.
 - Six issuance metadata columns on `public.assets`: `original_name`, `normalized_name_at_creation`, `equipment_type_code`, `group_code_at_creation`, `site_code_at_creation`, `id_components_snapshot`.
-- `public.guard_asset_identity_fields()` trigger: rejects UUID, Organization, equipment ID, and issuance-metadata changes; current group changes require `settings.manage`.
-- `public.create_asset_with_smart_id(...)`: authenticated, permission-checked RPC that allocates the sequence and inserts the asset in one transaction.
+- `public.guard_asset_identity_fields()`: rejects UUID, Organization, equipment ID and issuance-metadata changes; current group changes require `settings.manage`.
+- `private.asset_group_change_history`: records old/current group, actor and timestamp when Admin changes a group. The reason field is reserved for a later UI input.
 
-The existing `public.create_asset_with_code` and `public.asset_code_counters` legacy generator were left intact.
+The existing `public.create_asset_with_code` and `public.asset_code_counters` legacy generator remain intact. The temporary Cloud-side `create_asset_with_smart_id` RPC was removed before any real data was created. The final design uses:
+- `public.reserve_asset_id_sequence(...)`: Cloud reserves a number only; returns sequence components, not a completed equipment ID.
+- `public.confirm_asset_id_sequence_reservation(...)`: Cloud confirms the final ID that Local already saved.
+- `public.release_asset_id_sequence_reservation(...)`: releases an unused reservation; the number is never reused.
 
-### Sequence scopes now made explicit
+### Sequence scopes now explicit
 
 - Plan A: Organization + equipment short code.
 - Plan B: Organization + equipment short code + group code.
 - Plan C/D: Organization + equipment short code + group code + site code.
 - Plan C/D sequence does not reset each month; MMYY is a date segment, not a counter scope.
 - Sequence display pads to at least three digits and never truncates values above 999.
+- Capacity checks include existing assets and active reservations. A per-Organization transaction advisory lock serializes reservations across equipment-code families.
 
-Capacity is checked against all existing Organization assets, including archived records, before allocation. A per-Organization transaction advisory lock serializes capacity checks across equipment-code families.
+### Test results (all inside transactions and rolled back)
 
-### Test results (transactional; rolled back)
-
-- Plan A: `BOM-001`
-- Plan A after sequence 999: `BOM-1000`
-- Plan B: `BOM-NUO-001`
-- Plan C: `BOM-NUO-00-001-1126`
-- Plan D: `BOM-NUO-01-001-1126`
-- Admin can update current name and current group while the ID remains fixed.
-- Attempted change of an existing equipment ID was rejected by the database trigger.
-
-The test catalog rows and test equipment rows were inside explicit transactions and rolled back; no sample equipment or catalog snapshot was left in the Test Organization.
+- Plan A reservation returns sequence 1; retrying the same reservation ID returns the same sequence.
+- Plan A sequence 1000 is preserved as 1000 (not truncated to 100).
+- Plan B returns sequence 1 for BOM/NUO.
+- Plan C returns sequence 1 for BOM/NUO/site 00 and month-year 1126.
+- Plan D returns sequence 1 for BOM/NUO/site 01 and month-year 1126.
+- Confirmation accepted the Local-formatted examples: `BOM-001`, `BOM-1000`, `BOM-NUO-001`, `BOM-NUO-00-001-1126`, `BOM-NUO-01-001-1126`.
+- Admin group change audit recorded old group, new group and Admin UUID.
+- All test catalog rows, reservations, counters and temporary updates were rolled back. The Test Organization still has its original 2 assets and no catalog row/reservations/counters from these tests.
 
 ### Not yet provisioned / integrated
 
 - The Test Organization currently has no row in `organization_equipment_catalog`. Its actual Plan must be provisioned by trusted platform operations; no Plan was guessed or assigned.
-- The browser add-equipment form still uses the old manual-code path. It must be migrated to load the Organization snapshot, call the analyzer for suggestions, and invoke the new RPC on Cloud save.
-- Local-first behavior needs a deliberate online/offline decision: official sequence allocation requires Cloud; a local preview must not be treated as an issued ID.
-- Existing asset UUIDs are the `assets.id` primary keys. The current application uses those keys for relationships and Cloud operations. Hiding UUIDs from ordinary KTV/Viewer API responses requires a broader API/view refactor; this migration protects UUID immutability but does not yet hide the primary key from Data API responses.
-- Admin-only group changes are enforced in the database trigger. The UI and Cloud mutation payload must be aligned so KTV edits can change names but not groups, while Admin can change groups with audit history.
+- The browser add-equipment form still uses the old manual-code path. It must load the Organization snapshot, call the analyzer, reserve a number, let Local format/save the complete ID, then confirm the reservation.
+- Local Preview/offline behavior must not invent an official ID when no sequence reservation can be obtained.
+- The Cloud import path must accept and verify a confirmed reservation for newly generated Local equipment, while preserving legacy import behavior for existing records.
+- Existing asset UUIDs are the `assets.id` primary keys and remain internal relationship keys. The current application still returns them through ordinary asset reads; hiding them from KTV/Viewer API responses requires a broader API/view refactor. This migration protects UUID immutability but does not yet hide the primary key.
+- Admin-only group changes are enforced by the database trigger and audited. The UI and Cloud mutation path must be aligned so KTV edits can change names but not groups, while Admin can change groups.
