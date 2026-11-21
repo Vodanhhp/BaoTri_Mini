@@ -23,10 +23,13 @@ Cập nhật: 21/11/2026
   - `001_identity_and_organizations` (version `20261121022414`)
   - `005_roles_and_permissions` (version `20261121022440`)
   - `006_private_rbac_helpers` (version `20261121022513`)
+  - `007_assets_import_permission_and_builtin_roles` (version `20261121022858`)
 - Bảng public hiện có: `profiles`, `organizations`, `organization_members`, `roles`, `permissions`, `role_permissions`, `member_roles`; tất cả bật RLS.
-- Catalog hiện có 26 permission codes; profile trigger `on_auth_user_created` gọi `handle_new_auth_user()`.
-- Kiểm tra số bản ghi (21/11): organizations=0, roles=0, permissions=26, role_permissions=0, profiles=0. Chưa tạo Auth user hoặc tổ chức đầu tiên.
+- Catalog hiện có **27 permission codes** (đã bổ sung `assets.import` để khớp dự án cũ); profile trigger `on_auth_user_created` gọi `handle_new_auth_user()`.
+- Kiểm tra số bản ghi (21/11): organizations=0, roles=0, permissions=27, role_permissions=0, profiles=0. Chưa tạo Auth user hoặc tổ chức đầu tiên.
 - Các helper RBAC nằm schema `private`: `is_org_member`, `has_org_role`, `has_org_permission`.
+- Migration 007 tạo trigger seed tự động 3 role và permission grants khi organization mới được tạo; role grants: Admin 27, Technician 17, Viewer 10. Helper seed nằm private, đã revoke EXECUTE khỏi PUBLIC/anon/authenticated.
+- Bootstrap script an toàn (template, chưa chạy): `supabase/bootstrap/first_admin_org.sql`. Cần tạo Auth user đầu tiên qua Dashboard, thay email/tên tổ chức trong script, chạy một lần trên project mới.
 
 ## Ba cấp tài khoản (giữ nguyên mô hình cũ)
 Role codes: `admin`, `technician`, `viewer`.
@@ -59,3 +62,7 @@ Permission catalog hiện có 26 code:
 - Đã kiểm tra database: 3 migration nền đã chạy; 7 bảng identity/RBAC; 26 permission catalog; chưa có organization/user/role assignments.
 - Đã xác nhận mô hình 3 role và permission grants từ database Test cũ theo dạng read-only để giữ đúng thiết kế (không chỉnh sửa project cũ).
 - Đã tạo file TIENDO để ghi lại các công việc và quyết định quan trọng từ nay về sau.
+- Đã áp dụng Migration 007 trên BAOTRI-Mini-New: thêm `assets.import`, tạo private seed helper + trigger auto-seed roles/permissions mỗi organization. Migration source được commit vào repo.
+- Đã kiểm thử trong transaction rollback-only: Auth user trigger tạo profile; tạo organization trigger sinh đúng 3 role; counts Admin=27, Technician=17, Viewer=10; Admin helper xác nhận `admin`, `users.manage`, `assets.import`. Toàn bộ test fixture đã ROLLBACK; database không lưu user/org thử nghiệm.
+- Đã chạy Supabase Security Advisor sau migration: không có lints.
+- Đã thêm template bootstrap first Admin + organization; chưa chạy và chưa tạo tài khoản thật.
