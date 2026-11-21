@@ -420,8 +420,19 @@ export default function App() {
         }
       }
 
-      await db.assets.put(value)
-      await loadAssets();setShowForm(false);setEditing(null);notify('Đã lưu hồ sơ thiết bị Local.')
+      const groupChanged=Boolean(previous&&isAdmin&&previous.category!==value.category)
+      if(groupChanged){
+        await db.transaction('rw',[db.assets,db.assetGroupChanges],async()=>{
+          await db.assets.put(value)
+          await db.assetGroupChanges.add({
+            id:uid(),organizationId,assetId:value.id,oldCategory:previous!.category,newCategory:value.category,
+            changedByUserId:session?.user.id,changedAt:value.updatedAt,syncStatus:'pending'
+          })
+        })
+      }else{
+        await db.assets.put(value)
+      }
+      await loadAssets();setShowForm(false);setEditing(null);notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setBusy(false)}
   }
