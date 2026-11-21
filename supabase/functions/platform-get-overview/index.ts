@@ -17,7 +17,7 @@ Deno.serve(async(req)=>{
   if(!url||!key)return response({error:'Server configuration missing'},500,origin)
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:auth,error:authError}=await admin.auth.getUser(token)
-  if(authError||!auth.user||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can view platform statistics.'},403,origin)
+  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can view platform statistics.'},403,origin)
 
   const [{data:organizations,error:orgError},{data:members,error:memberError},{data:catalogs,error:catalogError}]=await Promise.all([
    admin.from('organizations').select('id,name,status,created_at').order('created_at',{ascending:false}),
