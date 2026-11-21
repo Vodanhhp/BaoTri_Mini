@@ -102,6 +102,7 @@ Migrations applied only to `BAOTRI-Mini-Test`:
 - `20261121091818_smart_equipment_id_local_first_reservations.sql`
 - `20261121091922_smart_equipment_id_audit_hardening.sql`
 - `20261121092304_smart_equipment_id_cloud_mirror_metadata.sql`
+- `20261121092406_smart_equipment_id_admin_confirmation.sql`
 
 The production/inactive project and `BAOTRI-Mini-New` were not changed.
 
@@ -117,7 +118,7 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - `public.reserve_asset_id_sequence(...)`: Cloud reserves a number only; returns sequence components, not a completed equipment ID.
 - `public.confirm_asset_id_sequence_reservation(...)`: Cloud confirms the final ID that Local already saved.
 - `public.release_asset_id_sequence_reservation(...)`: releases an unused reservation; the number is never reused.
-- `public.confirm_asset_id_sequence_reservation(...)` now records the Local original/normalized name, equipment type code and immutable components snapshot.
+- `public.confirm_asset_id_sequence_reservation(...)` now records the Local original/normalized name, equipment type code and immutable components snapshot. The creator or an Organization Admin can retry confirmation.
 - A Cloud insert trigger copies the confirmed Local metadata into `assets` during the existing `import_asset_preserving_identity` RPC. A Smart ID cannot be mirrored before its reservation is confirmed.
 
 ### Sequence scopes now explicit
@@ -137,7 +138,7 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - Plan C returns sequence 1 for BOM/NUO/site 00 and month-year 1126.
 - Plan D returns sequence 1 for BOM/NUO/site 01 and month-year 1126.
 - Confirmation accepted the Local-formatted examples: `BOM-001`, `BOM-1000`, `BOM-NUO-001`, `BOM-NUO-00-001-1126`, `BOM-NUO-01-001-1126`.
-- End-to-end transactional test: Local reserved and confirmed `BOM-001`, then the existing Cloud import RPC mirrored the asset. The Cloud insert trigger populated original name, normalized name, equipment type code and reservation-linked component snapshot. The transaction was rolled back; no test asset or reservation remained.
+- End-to-end transactional test: Local reserved and confirmed `BOM-001`, then the existing Cloud import RPC mirrored the asset. The Cloud insert trigger populated original name, normalized name, equipment type code and reservation-linked component snapshot. A KTV-created reservation was also successfully confirmed by an Admin. The transactions were rolled back; no test asset or reservation remained.
 - Admin group change audit recorded old group, new group and Admin UUID.
 - All test catalog rows, reservations, counters and temporary updates were rolled back. The Test Organization still has its original 2 assets and no catalog row/reservations/counters from these tests.
 
@@ -146,6 +147,6 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - The Test Organization currently has no row in `organization_equipment_catalog`. Its actual Plan must be provisioned by trusted platform operations; no Plan was guessed or assigned.
 - The browser add-equipment form still uses the old manual-code path. It must load the Organization snapshot, call the analyzer, reserve a number, let Local format/save the complete ID, then confirm the reservation.
 - Local Preview/offline behavior must not invent an official ID when no sequence reservation can be obtained.
-- The Cloud import path must accept and verify a confirmed reservation for newly generated Local equipment, while preserving legacy import behavior for existing records.
+- The Cloud import trigger now verifies a confirmed reservation and copies Local-issued metadata for new Smart ID records, while preserving legacy import behavior for existing records.
 - Existing asset UUIDs are the `assets.id` primary keys and remain internal relationship keys. The current application still returns them through ordinary asset reads; hiding them from KTV/Viewer API responses requires a broader API/view refactor. This migration protects UUID immutability but does not yet hide the primary key.
 - Admin-only group changes are enforced by the database trigger and audited. The UI and Cloud mutation path must be aligned so KTV edits can change names but not groups, while Admin can change groups.
