@@ -306,3 +306,7 @@ Permission catalog hiện có 26 code:
 - Tạm ngưng chỉ đổi organizations.status sang suspended; dữ liệu giữ nguyên. Kích hoạt lại chuyển status về active. Organization context chỉ nạp tổ chức active.
 - Xóa tổ chức không thể xóa dữ liệu Local IndexedDB đã tải về trên thiết bị người dùng; giao diện cảnh báo rõ giới hạn này. Chưa thực hiện xóa tổ chức khách hàng thật.
 - Cần kiểm tra CI Build/Pages, test password sai/đúng, từ chối non-owner, suspend/reactivate trên tổ chức thử; chỉ kiểm thử xóa bằng fixture rollback hoặc tổ chức thử riêng, tuyệt đối không xóa BAOTRI Mini đang dùng.
+
+- Edge Function `platform-manage-organization` đã redeploy ACTIVE **version 2**, verify_jwt=true; token Bearer được parse đúng bằng regex whitespace. CI Build and test + GitHub Pages deploy đã success ở commit `ca4e8dea4e1c35d6cf92fe48225615a7a790cad2`; các chỉnh sửa giao diện cuối đang chờ workflow mới.
+- Kiểm tra trực tiếp `private.is_org_member(uuid)`: policy/RLS xác nhận cả membership active và `organizations.status='active'`; khi tạm ngưng, quyền truy cập Cloud qua RLS bị chặn ngay cả khi người dùng còn giữ phiên đăng nhập.
+- Rollback test hàm xóa đã tạo fixture tổ chức + Admin membership + role assignment, gọi hàm xóa, xác minh tổ chức biến mất trong transaction rồi ROLLBACK; kiểm tra fixture không tồn tại sau test. Wrapper RPC chỉ service_role EXECUTE; authenticated và anon bị từ chối. Security Advisor không phát sinh lint mới; cảnh báo Auth leaked-password protection là cảnh báo cũ.
