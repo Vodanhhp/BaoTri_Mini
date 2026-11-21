@@ -116,7 +116,13 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,canI
     if(link.cloudCode!==asset.code)throw new Error('Mã Cloud đã thay đổi so với liên kết; cần đối chiếu thủ công.')
     const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
     const cloudChanged=asset.updatedAt!==link.cloudUpdatedAt
-    if(localChanged&&cloudChanged){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()});throw new Error('Local và Cloud đều thay đổi. Đã đánh dấu conflict; cần đối chiếu thủ công.')}
+    if(localChanged&&cloudChanged){
+      await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:new Date().toISOString()})
+      const existingConflict=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,asset.id]).filter(m=>m.status==='conflict').first()
+      if(!existingConflict)await db.assetMutations.add({mutationId:uid(),organizationId,assetId:asset.id,payload:toMutationPayload(local),expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'})
+      await reload()
+      throw new Error('Local và Cloud đều thay đổi. Đã tạo mục đối chiếu; chọn Cloud hoặc Local trong phần conflict.')
+    }
     if(localChanged&&!cloudChanged){setMessage('Local có thay đổi chưa đồng bộ; giữ nguyên Local.');return}
     if(!cloudChanged){await db.assetCloudLinks.update(link.id,{status:'linked',lastVerifiedAt:new Date().toISOString()});setMessage('Local và Cloud đã cùng phiên bản.');return}
    }
