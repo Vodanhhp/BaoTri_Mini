@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useMemo,useState,type FormEvent} from 'react'
 import {Activity,Mail,RefreshCw,RotateCcw,Search,Shield,Trash2,UserCog,UserPlus,UserRound,X} from 'lucide-react'
 import type {SupabaseClient} from '@supabase/supabase-js'
+import { isPcPlatform } from './lib/platform'
 
 type Member={
  id:string
@@ -85,6 +86,7 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
  }
 
  const dateLabel=(value:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
+ if(!isPcPlatform())return <div className="modal-backdrop"><section className="modal member-modal"><div className="modal-head"><div><div className="eyebrow">GIỚI HẠN NỀN TẢNG</div><h2>Chỉ hỗ trợ trên PC</h2><p>Quản trị tài khoản chỉ sử dụng được trên máy tính để bàn hoặc máy tính xách tay.</p></div><button className="icon-btn" onClick={onClose}><X size={17}/></button></div><div className="auth-note">Vui lòng sử dụng trình duyệt trên PC để quản lý thành viên và quyền truy cập.</div><div className="modal-actions"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button></div></section></div>
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
   <section className="modal member-modal member-management-modal">
    <div className="modal-head"><div><div className="eyebrow">QUẢN TRỊ TỔ CHỨC</div><h2>Quản lý tài khoản</h2><p>Thành viên và quyền truy cập trong tổ chức hiện tại.</p></div><button className="icon-btn" onClick={onClose}><X size={17}/></button></div>
