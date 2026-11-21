@@ -48,7 +48,7 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
   finally{setLoading(false)}
  },[client,organizationId])
 
- useEffect(()=>{void load()},[load])
+ useEffect(()=>{if(isPcPlatform())void load()},[load])
 
  const filtered=useMemo(()=>members.filter(m=>(m.email+' '+m.displayName+' '+roleLabel(m.roleCode)).toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi'))),[members,query])
 
