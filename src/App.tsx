@@ -6,7 +6,7 @@ import CloudAssetsPanel from './CloudAssetsPanel'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetStatus, type AssetMutationPayload } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, getLocalDeviceId, getDeviceLabel, listCloudAssets } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 
@@ -274,7 +274,6 @@ export default function App() {
     finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.id,lease.token).catch(()=>false);await loadAssets()}
   }
   const signOut = async () => { if(cloudLease&&supabase&&!cloudLease.lost)await releaseCloudAssetLock(supabase,organizationId,cloudLease.assetId,cloudLease.token).catch(()=>false); await supabase?.auth.signOut(); setSession(null); setLocalPreview(false);setCloudLease(null);setOrganizationContexts([]);setOrganizationId('') }
-  const assetCloudLinksStatus=(assetId:string)=>''
   const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
@@ -286,6 +285,7 @@ export default function App() {
   const currentOrganization=organizationContexts.find(o=>o.id===organizationId)
   const canImport=Boolean(currentOrganization?.permissions.includes('assets.import'))
   const canUpdate=Boolean(currentOrganization?.permissions.includes('assets.update'))
+  const canCreate=Boolean(currentOrganization?.permissions.includes('assets.create'))
   const activeAssets = assets.filter(item => !item.archivedAt && item.status !== 'Thanh lý')
   const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt).length
   const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt).length
@@ -312,7 +312,7 @@ export default function App() {
           <div className="stat-card"><div className="stat-icon red"><SlidersHorizontal size={20}/></div><div><small>Đang sửa chữa</small><strong>{repairingCount}</strong><span>{stoppedCount} thiết bị ngừng sử dụng</span></div></div>
         </div>
         <div className="panel">
-          <div className="panel-head"><div><h2>{showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button></div></div>
+          <div className="panel-head"><div><h2>{showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button></div></div>
           <div className="asset-toolbar">
             <label className="searchbar"><Search size={16}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm theo mã, tên, nhóm, vị trí…"/></label>
             <select value={categoryFilter} onChange={event=>setCategoryFilter(event.target.value)}><option>Tất cả nhóm</option>{categories.map(item=><option key={item}>{item}</option>)}</select>
@@ -322,7 +322,7 @@ export default function App() {
             <button className="soft-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
           </div>
           <div className="table-wrap"><table><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-            {visibleAssets.map(asset=><tr key={asset.id}><td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{asset.name}</small></button>{!localPreview&&<small className="link-status">{asset.localScope===organizationId&&'Local tổ chức'}{assetCloudLinksStatus(asset.id)}</small>}</td><td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td><td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td><td className="actions">{showArchived?<button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button>:<><button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button><button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button></>}</td></tr>)}
+            {visibleAssets.map(asset=><tr key={asset.id}><td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{asset.name}</small></button></td><td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td><td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td><td className="actions">{showArchived?{(localPreview||canUpdate)&&<button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button>:<>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button></>}</td></tr>)}
           </tbody></table>{visibleAssets.length===0&&<div className="empty"><Building2 size={25}/>{assets.length?'Không tìm thấy thiết bị phù hợp.':'Chưa có thiết bị. Hãy thêm hồ sơ đầu tiên.'}</div>}</div>
         </div>
         <div className="footnote"><ShieldCheck size={15}/> Dữ liệu thiết bị lưu trên trình duyệt này. Chưa bật đồng bộ Cloud hoặc chia sẻ giữa nhiều thiết bị. Xóa vĩnh viễn chưa được cung cấp để tránh mất hồ sơ.</div>
