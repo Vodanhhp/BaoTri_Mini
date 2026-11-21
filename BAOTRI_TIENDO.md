@@ -200,3 +200,20 @@ Commit:
 Commit:
 - `92a26aca3242a678aa3ee5b0486b264be3e30978` – bổ sung metadata người tạo.
 - `7db24870ae888a5defe15907ed10af3618f9992b` – hiển thị người thêm trong chi tiết.
+
+
+## 14. Cập nhật 21/11/2026 – sửa đường dẫn và bổ sung triển khai GitHub Pages
+
+Nguyên nhân trang trắng khi mở URL GitHub Pages:
+- Dự án dùng Vite nhưng chưa khai báo base path phù hợp khi phục vụ dưới đường dẫn con hoặc domain riêng.
+- Workflow trước đó chỉ build kiểm tra, chưa upload artifact và deploy lên GitHub Pages.
+- Repository có file `CNAME` trỏ tới domain riêng `baotri.vieclamhp247.com`.
+
+Đã cập nhật:
+- `vite.config.ts`: đặt `base: './'` để asset dùng đường dẫn tương đối, phù hợp cả URL GitHub Pages dạng project path và domain riêng.
+- Thêm `.github/workflows/pages.yml`: build ứng dụng, giữ file CNAME trong thư mục dist, upload Pages artifact và deploy khi có push lên main hoặc chạy thủ công.
+
+Lưu ý:
+- GitHub Pages cần đặt Publishing source là **GitHub Actions** trong Settings → Pages nếu repository chưa chọn nguồn này.
+- Chưa xác nhận website đã hiển thị sau deploy; cần đợi workflow Pages hoàn tất và kiểm tra URL.
+- Workflow CI build kiểm tra và workflow deploy Pages là hai luồng riêng.
