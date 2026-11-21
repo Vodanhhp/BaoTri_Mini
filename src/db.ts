@@ -4,9 +4,31 @@ export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừ
 export type CloudLinkStatus = 'linked' | 'conflict'
 export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
 
+export type EquipmentIdComponentsSnapshot = {
+  plan: 'A' | 'B' | 'C' | 'D'
+  equipment_code: string
+  group_code?: string | null
+  site_code?: string | null
+  sequence: number
+  month_year?: string | null
+  standard_equipment_name: string
+  group_name_at_creation?: string | null
+  source_data_version: string
+  issued_at: string
+}
+
 export type Asset = {
   id: string
   code: string
+  /** Local-created immutable issuance metadata; legacy records may not have it. */
+  originalName?: string
+  normalizedNameAtCreation?: string
+  equipmentTypeCode?: string
+  groupCodeAtCreation?: string
+  siteCodeAtCreation?: string
+  idComponentsSnapshot?: EquipmentIdComponentsSnapshot
+  idReservationId?: string
+  idReservationStatus?: 'reserved' | 'confirmed' | 'released'
   name: string
   category: string
   brand: string
