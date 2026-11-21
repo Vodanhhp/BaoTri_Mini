@@ -105,7 +105,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
    if(invokeError)throw new Error(invokeError.message)
    if(data?.error)throw new Error(data.error)
    setCreated(data as Created)
-   setOrganizationName('');setAdminEmail('');setAdminName('');setPlanCode('')
+   setOrganizationName('');setAdminEmail('');setAdminName('');setPlanCode('');setRegistrationStep(1)
    await loadOverview()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setBusy(false)}
