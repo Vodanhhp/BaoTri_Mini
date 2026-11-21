@@ -36,7 +36,7 @@ begin
      or p_mutation_id is null or p_expected_cloud_updated_at is null then
     raise exception 'Organization, asset, lease, mutation and expected version are required' using errcode = '22023';
   end if;
-  if not public.has_org_permission(p_organization_id, 'assets.update') then
+  if not private.has_org_permission(p_organization_id, 'assets.update') then
     raise exception 'Missing assets.update permission for this organization' using errcode = '42501';
   end if;
   if pg_catalog.jsonb_typeof(p_payload) is distinct from 'object'
@@ -101,7 +101,7 @@ begin
     raise exception 'Current equipment group cannot be blank' using errcode = '22023';
   end if;
   if p_payload ? 'category' and btrim(v_input.category) is distinct from v_asset.category
-     and not public.has_org_permission(p_organization_id,'settings.manage') then
+     and not private.has_org_permission(p_organization_id,'settings.manage') then
     raise exception 'Only an organization Admin may change the current equipment group' using errcode = '42501';
   end if;
 
