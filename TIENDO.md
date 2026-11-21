@@ -59,7 +59,7 @@ Permission catalog hiện có 26 code:
 ## Nhật ký công việc
 ### 21/11/2026
 - Đã xác nhận Project BAOTRI-Mini-New active healthy và credentials public client khớp cấu hình build.
-- Đã kiểm tra database: 3 migration nền đã chạy; 7 bảng identity/RBAC; 26 permission catalog; chưa có organization/user/role assignments.
+- Đã kiểm tra database: 4 migrations đã chạy; 7 bảng identity/RBAC; catalog 27 permissions; chưa có organization/user/role assignments.
 - Đã xác nhận mô hình 3 role và permission grants từ database Test cũ theo dạng read-only để giữ đúng thiết kế (không chỉnh sửa project cũ).
 - Đã tạo file TIENDO để ghi lại các công việc và quyết định quan trọng từ nay về sau.
 - Đã áp dụng Migration 007 trên BAOTRI-Mini-New: thêm `assets.import`, tạo private seed helper + trigger auto-seed roles/permissions mỗi organization. Migration source được commit vào repo.
