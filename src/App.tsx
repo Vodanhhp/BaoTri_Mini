@@ -597,7 +597,7 @@ export default function App() {
         <div className="footnote"><ShieldCheck size={15}/> Thiết bị Local thuộc phạm vi tổ chức hiện chọn. Dùng Local ↔ Cloud để nhập hoặc tải hồ sơ có kiểm soát. Ảnh chưa đồng bộ Cloud.</div>
       </div>
     </main>
-    {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor}><X size={17}/></button></div>
+    {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor} disabled={busy}><X size={17}/></button></div>
       <form className="form-grid" onSubmit={saveAsset}>
         {isNewSmartAsset ? <>
           <label className="field full-field">Tên thiết bị *<input required value={editing.name} onChange={event=>{
@@ -643,7 +643,7 @@ export default function App() {
         <label className="field full-field">Ghi chú<textarea rows={3} value={editing.notes} onChange={event=>setEditing({...editing,notes:event.target.value})}/></label>
         <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/8)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=8} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
         {error&&<div className="auth-error full-field">{error}</div>}
-        <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
+        <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor} disabled={busy}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
     </section></div>}
     {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>{setProfilePanel(false);if(session?.user.id&&supabase)void supabase.from('profiles').select('display_name').eq('id',session.user.id).maybeSingle().then(({data})=>setProfileDisplayName(data?.display_name?.trim()||String(session.user.user_metadata?.full_name||'').trim()))}}/>}
