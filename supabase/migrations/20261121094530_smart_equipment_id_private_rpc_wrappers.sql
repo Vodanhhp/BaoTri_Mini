@@ -4,6 +4,10 @@
 
 begin;
 
+-- Migration 010 already created an older private implementation of this RPC.
+-- Replace it with the category-aware implementation introduced by Smart ID migration 006.
+drop function private.apply_asset_mutation_with_lock(uuid,uuid,uuid,uuid,timestamptz,jsonb);
+
 alter function public.reserve_asset_id_sequence(uuid,uuid,text,text,text,date) set schema private;
 alter function public.confirm_asset_id_sequence_reservation(uuid,uuid,uuid,text,text,text,text,jsonb) set schema private;
 alter function public.release_asset_id_sequence_reservation(uuid,uuid) set schema private;
