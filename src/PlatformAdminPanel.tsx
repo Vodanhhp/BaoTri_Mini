@@ -126,7 +126,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
 
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
-  <form className="form-grid" onSubmit={submit}>
+  <form className="form-grid platform-create-form" onSubmit={submit}>
    <label className="field full-field">Tên doanh nghiệp / tổ chức *<input required minLength={2} maxLength={120} value={organizationName} onChange={e=>setOrganizationName(e.target.value)} placeholder="Ví dụ: Công ty ABC"/></label>
    <label className="field full-field">Email Admin đầu tiên *<input type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="admin@company.com"/></label>
    <label className="field full-field">Tên người đại diện<input maxLength={120} value={adminName} onChange={e=>setAdminName(e.target.value)} placeholder="Họ và tên"/></label>
