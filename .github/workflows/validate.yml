@@ -1,0 +1,26 @@
+name: Validate BAOTRI Mini
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/super-admin-customer-provisioning]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_ENABLE_LOCAL_PREVIEW: 'true'
+          VITE_SUPABASE_URL: 'https://dskeaiyvldiwlsfqkboq.supabase.co'
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_zJr8Ni71uMzTloJzXmpmUg_KftRk0EY'
