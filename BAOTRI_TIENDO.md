@@ -217,3 +217,22 @@ Lưu ý:
 - GitHub Pages cần đặt Publishing source là **GitHub Actions** trong Settings → Pages nếu repository chưa chọn nguồn này.
 - Chưa xác nhận website đã hiển thị sau deploy; cần đợi workflow Pages hoàn tất và kiểm tra URL.
 - Workflow CI build kiểm tra và workflow deploy Pages là hai luồng riêng.
+
+
+## 15. Cập nhật 21/11/2026 – chế độ xem thử Local khi chưa cấu hình Supabase
+
+Người dùng đã clone repository mới về máy và chạy được Vite; màn hình hiện thông báo chưa có cấu hình Supabase. Vì màn hình đăng nhập đang chặn toàn bộ phần Thiết bị khi chưa có Supabase project riêng, đã bổ sung lối vào thử nghiệm chỉ dành cho môi trường phát triển:
+
+- src/AuthScreen.tsx: khi chưa có Supabase và ứng dụng chạy bằng Vite development server, hiển thị nút **Vào chế độ xem thử Local**.
+- src/App.tsx: chế độ này cho phép mở phân hệ Thiết bị và đọc/ghi IndexedDB trên trình duyệt hiện tại; hiển thị nhãn rõ ràng “Chế độ thử nghiệm Local” / “Không kết nối Cloud”.
+- Hồ sơ tạo trong chế độ này ghi người thêm là “Chế độ thử nghiệm Local” nếu không có email đăng nhập.
+- Nút xem thử được điều kiện hóa bằng import.meta.env.DEV; không xuất hiện trong bản build triển khai/Production. Không tạo tài khoản giả, không bỏ qua xác thực Supabase khi có cấu hình, không bật đồng bộ Cloud.
+
+Commits:
+- f23310f35dca48fc54e1a6c3dbc723ec7787d430 – thêm trạng thái xem thử Local trong luồng ứng dụng.
+- 8ac0fcb0e2ad0bb201cca31407eaf49da7853687 – chỉ hiển thị lối vào thử nghiệm trong development.
+
+Kiểm thử:
+- Đã ghi thay đổi lên GitHub nhánh main.
+- Chưa chạy build TypeScript/Vite sau thay đổi này và chưa kiểm thử trực tiếp trên trình duyệt. Người dùng cần Pull cập nhật về máy rồi khởi động lại Vite để kiểm tra.
+- Chế độ Local chỉ phục vụ kiểm thử giao diện/nghiệp vụ trên máy hiện tại; chưa thay thế đăng nhập thật.
