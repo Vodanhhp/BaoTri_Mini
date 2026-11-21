@@ -149,6 +149,7 @@ The existing `public.create_asset_with_code` and `public.asset_code_counters` le
 - Admin Cloud mutation changed the current group and the Cloud trigger recorded the audit event; the same attempt as KTV was rejected.
 - Local group-history mirror inserted an event and returned an idempotent no-op on retry.
 - Catalog snapshot validator accepted a valid sample and rejected duplicate normalized equipment codes such as `BOM` / `B.O.M`.
+- The complete standard catalog `dataVersion 1.1.0` (44 industries, 30 groups, 74 equipment dictionary entries) passed the database snapshot validator in a rolled-back test.
 - All test catalog rows, reservations, counters and temporary updates were rolled back. The Test Organization still has its original 2 assets and no catalog row/reservations/counters from these tests.
 
 ### Not yet provisioned / integrated
