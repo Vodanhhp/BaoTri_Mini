@@ -176,3 +176,10 @@ Permission catalog hiện có 26 code:
 - Endpoint đọc organizations + memberships và phân trang Auth users để đếm chính xác tổng tài khoản, không đưa email người dùng ra dashboard.
 - Kiểm tra dữ liệu hiện tại trước khi triển khai: 2 tổ chức active, 2 Auth accounts, 3 memberships (3 active); BAOTRI Mini có 2 thành viên, BAOTRI Mini Test 02 có 1 thành viên.
 - Đang chờ CI build/PR và kiểm thử giao diện với owner session. Chưa đánh dấu hoàn tất E2E cho đến khi dashboard tải số liệu thật trên website.
+
+
+### Chuan hoa co chu giao dien (21/11/2026)
+- Rà soát stylesheet toàn ứng dụng, phát hiện một số quy tắc CSS bổ sung về sau ghi đè cỡ chữ ban đầu, làm tiêu đề, thẻ thống kê, nút và nội dung một số màn hình lớn không đồng nhất.
+- Bổ sung lớp CSS chuẩn hóa ở cuối src/style.css: hạ cỡ chữ các tiêu đề/thống kê/nút và nội dung Cloud, bảo dưỡng, QR; đồng bộ riêng cho màn hình nhỏ.
+- Giữ vùng in ấn không bị tác động; input trên mobile vẫn tối thiểu 16px để tránh trình duyệt iOS tự phóng to khi nhập.
+- Đang chờ CI và kiểm tra trực quan trên web sau deploy.
