@@ -11,7 +11,7 @@ export default function PasswordRecoveryScreen({client,onDone}:Props){
   if(password.length<8){setError('Mật khẩu tối thiểu 8 ký tự.');return}
   if(password!==confirm){setError('Mật khẩu nhập lại chưa khớp.');return}
   setBusy(true)
-  try{const {error:changeError}=await client.auth.updateUser({password});if(changeError)throw changeError;await client.auth.signOut();onDone()}
+  try{const {error:changeError}=await client.auth.updateUser({password,data:{must_set_password:false}});if(changeError)throw changeError;await client.auth.signOut();onDone()}
   catch(err){setError(err instanceof Error?err.message:'Không đổi được mật khẩu.')}
   finally{setBusy(false)}
  }
