@@ -23,6 +23,7 @@ export type EquipmentDictionaryEntry = {
 }
 
 export type EquipmentCatalog = {
+  plan?: { id?: PlanCode; name?: string; maxDevices?: number | null; features?: { equipmentGroups?: boolean; multipleSites?: boolean } }
   equipmentGroups: EquipmentGroup[]
   equipmentDictionary: EquipmentDictionaryEntry[]
 }
