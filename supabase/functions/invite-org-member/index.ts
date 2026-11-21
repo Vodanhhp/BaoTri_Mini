@@ -18,8 +18,7 @@ Deno.serve(async(req)=>{
   if(!token)return json({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')!
   const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const anonKey=Deno.env.get('SUPABASE_ANON_KEY')
-  if(!serviceKey||!anonKey)return json({error:'Server auth environment is not configured'},500,origin)
+  if(!serviceKey)return json({error:'Server auth environment is not configured'},500,origin)
   const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}})
   const {data:authData,error:authError}=await admin.auth.getUser(token)
   if(authError||!authData.user)return json({error:'Invalid session'},401,origin)
@@ -70,6 +69,6 @@ Deno.serve(async(req)=>{
    if(created)await admin.auth.admin.deleteUser(invitedUser.id).catch(()=>{})
    return json({error:assignError.message},500,origin)
   }
-  return json({ok:true,email,roleCode,status,createdAuthUser:created,message:created?'Invitation sent. User must confirm email and set password.':'Existing Auth user added to organization.'},200,origin)
+  return json({ok:true,email,roleCode,status,createdAuthUser:created,message:created?'Invitation email sent. User must confirm email and set password.':status==='invited'?'Existing Auth account is unconfirmed; membership is invited, but resend the invitation from Auth Dashboard.':'Existing confirmed Auth user added to organization.'},200,origin)
  }catch(e){return json({error:e instanceof Error?e.message:String(e)},500,origin)}
 })
