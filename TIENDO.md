@@ -333,3 +333,12 @@ Permission catalog hiện có 26 code:
 - Làm mới giao diện PC cho Quản trị nền tảng: mở rộng hộp thoại, thống kê 4 cột, bảng doanh nghiệp có vùng cuộn riêng và biểu mẫu tạo khách hàng theo hàng ngang.
 - Giữ nguyên chính sách nghiệp vụ: các màn hình quản trị tài khoản/tổ chức chỉ hoạt động trên PC; mobile chỉ khôi phục menu điều hướng và hồ sơ cá nhân, không mở chức năng quản trị.
 - Commit giao diện: `50404f0` (App/mobile menu), `0d6f894` (CSS giao diện).
+
+
+## 21/11/2026 – Thu gọn bố cục quản trị PC theo chiều ngang
+
+- Thu nhỏ chiều rộng hộp thoại Quản lý tài khoản và Quản trị nền tảng, giảm padding, cỡ chữ và khoảng cách giữa các khối.
+- Quản lý tài khoản: giữ 6 thẻ thống kê trên một hàng; rút chiều cao danh sách; bố trí thông tin thành viên, trạng thái và thao tác theo hàng ngang; biểu mẫu mời giữ 3 cột.
+- Quản trị nền tảng: giữ 4 thẻ thống kê trên một hàng; giới hạn chiều cao bảng doanh nghiệp; bố trí biểu mẫu tạo khách hàng thành 3 cột ngang thay vì xếp dọc.
+- Không thay đổi nghiệp vụ, quyền hạn hoặc chính sách quản trị chỉ hỗ trợ trên PC.
+- Commit giao diện: `cab303d` (CSS), `bd4c15b` (biểu mẫu Quản trị nền tảng).
