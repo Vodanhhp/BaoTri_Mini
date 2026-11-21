@@ -33,6 +33,8 @@ function fromRow(row: Record<string, unknown>): CloudAsset {
   }
 }
 
+export function toMutationPayload(asset:Asset):AssetMutationPayload{return {name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',commissionedAt:asset.commissionedAt||'',power:asset.power??'',cycle:asset.cycle??'',cycleStartedAt:asset.cycleStartedAt||undefined,transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined}}
+
 export function toImportPayload(asset: Asset) {
   return {
     name: asset.name.trim(), category: asset.category.trim(), brand: asset.brand ?? '',
