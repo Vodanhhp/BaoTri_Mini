@@ -92,6 +92,8 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
     <div className="member-stat"><small>Đang hoạt động</small><strong>{overview.active}</strong></div>
     <div className="member-stat"><small>Chờ xác nhận</small><strong>{overview.invited}</strong></div>
     <div className="member-stat"><small>Tạm khóa</small><strong>{overview.suspended}</strong></div>
+    <div className="member-stat"><small>Email đã xác nhận</small><strong>{overview.confirmed}</strong></div>
+    <div className="member-stat"><small>Email chưa xác nhận</small><strong>{overview.unconfirmed}</strong></div>
    </div>
    <div className="member-toolbar"><div className="member-search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm email, tên hoặc vai trò..."/></div><button className="soft-btn" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={14}/> Làm mới</button></div>
    {error&&<div className="auth-error member-feedback">{error}</div>}
