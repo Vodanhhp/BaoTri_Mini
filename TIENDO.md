@@ -481,3 +481,13 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Không được gán Plan cho hai Organization hiện có hoặc tạo khách hàng/asset thử nghiệm thật nếu chưa có quyết định rõ.
 - Trước khi phát hành còn phải xử lý yêu cầu không trả UUID nội bộ `assets.id` cho Technician/Viewer qua API đọc thông thường; đây là hạng mục bảo mật còn mở.
 - Không merge PR, deploy Pages hoặc redeploy Edge Functions trong bước nghiệm thu này.
+
+
+## 21/11/2026 – Bổ sung unit test tự động cho Smart ID Engine
+
+- Tạo `scripts/smartEquipmentId.test.mjs`, dùng `node:test` của Node 22 và TypeScript compiler đã có sẵn; không thêm dependency và không cần kết nối Supabase/IndexedDB.
+- Bổ sung lệnh `npm test` trong `package.json`; cập nhật `.github/workflows/ci.yml` để chạy Unit tests trước Build.
+- Bộ kiểm thử có 22 ca: định dạng Plan A/B/C/D; sequence lớn hơn 999; kiểm tra sequence/code/group/site/date không hợp lệ; chuẩn hóa tiếng Việt; Plan A không dùng nhóm; gợi ý nhóm không được coi là xác nhận; chọn nhóm rõ ràng; giới hạn nhóm theo Plan; ngày đưa vào sử dụng C/D; not-found; ambiguous; mã nhóm trùng sau chuẩn hóa; nhóm không có trong Snapshot; dữ liệu nhóm/từ điển riêng; preview ID.
+- Unit test và build đều chạy thành công trên GitHub Actions commit `cdcad0c999e11bd60e5c7ad1c20d86e53e9f649d`: Build and test run `44895188334` (Unit tests + Build success); Validate BAOTRI Mini run `44895188313` (npm ci + npm run build success).
+- Không cài thêm thư viện, không sửa database, không tạo tenant/asset/reservation test. Chỉ thêm script test, cấu hình CI và tài liệu.
+- Phạm vi hiện tại là unit test cho hàm thuần của Smart ID Engine; chưa bao gồm test tích hợp RPC, IndexedDB, đồng bộ Local↔Cloud hoặc browser E2E.
