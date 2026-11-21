@@ -25,7 +25,7 @@ declare
   v_count integer := 0;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
-  if not public.has_org_permission(p_organization_id,'assets.import') then
+  if not private.has_org_permission(p_organization_id,'assets.import') then
     raise exception 'Missing assets.import permission for this organization' using errcode = '42501';
   end if;
   if p_asset_id is null or pg_catalog.jsonb_typeof(p_changes) is distinct from 'array' then
