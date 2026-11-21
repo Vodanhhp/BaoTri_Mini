@@ -298,7 +298,7 @@ export default function App() {
           equipmentTypeCode:smartAnalysis.equipmentCode,
           groupCodeAtCreation:selectedGroup?.code,
           siteCodeAtCreation:plan==='C'||plan==='D'?smartSiteCode:undefined,
-          idComponentsSnapshot:issuance.components,
+          idComponentsSnapshot:{...issuance.components,reservation_id:reservationId},
           idReservationId:reservationId,
           idReservationStatus:'reserved',
           createdByLabel:editing.createdByLabel||session.user.email||'',
