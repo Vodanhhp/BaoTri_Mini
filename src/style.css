@@ -824,3 +824,53 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
  .member-invite-section .modal-actions{grid-column:1}
  .member-toolbar>.soft-btn{padding:8px}
 }
+
+
+/* Chuan hoa co chu giao dien: giam cac tieu de va noi dung dang bi phong to.
+   Khong ap dung cho khu vuc in an; giu input mobile >=16px de tranh iOS tu zoom. */
+.app-shell .topbar h1{font-size:20px}
+.app-shell .welcome h2{font-size:21px}
+.app-shell .welcome p{font-size:12px}
+.app-shell .stat-card strong{font-size:22px}
+.app-shell .stat-card small,.app-shell .stat-card span{font-size:10px}
+.app-shell .panel h2,.app-shell .panel-head h2{font-size:15px}
+.app-shell .panel p{font-size:12px}
+.app-shell .primary-btn,.app-shell .soft-btn{font-size:12px}
+.app-shell .field{font-size:11px}
+.app-shell .field input,.app-shell .field select,.app-shell .field textarea,
+.app-shell .plan-period-control input,.app-shell .plan-period-control select{font-size:14px}
+.app-shell .cloud-summary,.app-shell .cloud-message,.app-shell .empty-small{font-size:12px}
+.app-shell .cloud-section-head h3{font-size:14px}
+.app-shell .cloud-row-main b{font-size:12px}
+.app-shell .cloud-row-main small{font-size:11px}
+.app-shell .asset-maintenance-history h3{font-size:14px}
+.app-shell .asset-maintenance-history .panel-head p{font-size:11px}
+.app-shell .maintenance-history-list time{font-size:11px}
+.app-shell .maintenance-history-list article b,
+.app-shell .maintenance-history-list article p{font-size:12px}
+.app-shell .maintenance-history-list article small{font-size:10px}
+.app-shell .asset-qr-panel b,.app-shell .asset-code-preview strong{font-size:14px}
+.app-shell .checklist-schedule-summary b{font-size:14px}
+.auth-card h1{font-size:21px}
+.auth-intro{font-size:12px}
+.auth-form label{font-size:11px}
+.auth-input input{font-size:14px}
+.scan-intro-copy h3{font-size:16px}
+.scan-manual-label{font-size:12px}
+.scan-manual-control input{font-size:14px}
+.scan-manual-control .primary-btn{font-size:12px}
+@media(max-width:680px){
+  .app-shell .topbar h1{font-size:16px}
+  .app-shell .welcome h2{font-size:17px}
+  .app-shell .welcome p{font-size:10px}
+  .app-shell .stat-card strong{font-size:19px}
+  .app-shell .panel h2,.app-shell .panel-head h2{font-size:13px}
+  .app-shell .panel p{font-size:11px}
+  .app-shell .primary-btn,.app-shell .soft-btn{font-size:11px}
+  .app-shell .field input,.app-shell .field select,.app-shell .field textarea,
+  .app-shell .plan-period-control input,.app-shell .plan-period-control select{font-size:16px}
+  .scan-intro-copy h3{font-size:15px}
+  .scan-manual-label{font-size:13px}
+  .scan-manual-control input{font-size:16px!important}
+  .scan-manual-control .primary-btn{font-size:13px}
+}
