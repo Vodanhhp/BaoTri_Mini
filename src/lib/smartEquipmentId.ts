@@ -213,7 +213,7 @@ export function analyzeEquipmentName(input: SmartIdInput): SmartIdResult {
   const resolvedGroupCode = selectedGroupCode || suggestedGroupCode
   const group = groups.find(item => normalizeCode(item.code) === resolvedGroupCode)
 
-  if (resolvedGroupCode && !group) {
+  if (resolvedGroupCode && !group && (input.plan !== 'A' || Boolean(selectedGroupCode))) {
     return empty('missing-group', 'Nhóm được chọn/gợi ý không có trong Snapshot của Organization. Không tự thay bằng nhóm khác.', matches)
   }
 
