@@ -1077,3 +1077,48 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
  .platform-admin-modal .platform-create-form .auth-note,
  .platform-admin-modal .platform-create-form .modal-actions{grid-column:1/-1}
 }
+
+
+/* 2026-11-21: personal profile aligned with the two administration panels */
+.account-profile-modal{
+ width:min(960px,92vw);max-width:960px;max-height:88vh;
+ padding:16px 18px;gap:9px;line-height:1.4
+}
+.account-profile-modal .modal-head{
+ padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border)
+}
+.account-profile-modal .modal-head h2{font-size:18px}
+.account-profile-modal .modal-head p{font-size:11px;margin-top:3px}
+.account-profile-layout{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start
+}
+.account-profile-section{
+ min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;padding:11px;border:1px solid var(--border);border-radius:10px;
+ background:var(--panel, var(--card))
+}
+.account-profile-section.profile-personal-section{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr))}
+.account-profile-section h3{
+ grid-column:1/-1;display:flex;align-items:center;gap:7px;
+ margin:0 0 2px;font-size:12px
+}
+.account-profile-section .field{font-size:10px;gap:4px;min-width:0}
+.account-profile-section .field input{
+ min-width:0;width:100%;min-height:34px;padding:7px 9px;font-size:12px
+}
+.account-profile-section .modal-actions{
+ grid-column:1/-1;justify-content:flex-end;margin-top:0
+}
+.account-profile-section .modal-actions button{font-size:11px;padding:7px 10px}
+.account-profile-section .auth-note{
+ grid-column:1/-1;font-size:9px;line-height:1.45;padding:7px 9px;margin:0
+}
+.account-profile-modal .member-feedback{font-size:11px;padding:8px 10px;margin:0 0 8px}
+.account-profile-footer{justify-content:flex-end;margin-top:2px}
+@media(max-width:760px){
+ .account-profile-modal{width:96vw;max-height:95dvh;padding:14px}
+ .account-profile-layout{grid-template-columns:1fr}
+ .account-profile-section.profile-personal-section{grid-column:auto;grid-template-columns:1fr}
+ .account-profile-section{grid-template-columns:1fr;padding:10px}
+ .account-profile-section h3,.account-profile-section .modal-actions,.account-profile-section .auth-note{grid-column:1}
+}
