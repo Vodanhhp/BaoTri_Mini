@@ -1176,3 +1176,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nguyên nhân UI: `OrganizationPlanPanel` chờ kiểm tra lỗi RPC/Edge Function trước khi cập nhật state Plan/Catalog. Nếu Edge Function lỗi mạng/CORS, state Plan vẫn null nên thông báo “chưa có Plan” gây hiểu nhầm.
 - Sửa thứ tự: ghi nhận Plan/Catalog trả về thành công trước, sau đó mới kiểm tra lỗi đếm Cloud hoặc API yêu cầu. Nếu API yêu cầu lỗi, giữ Plan hiện tại trên màn hình và hiển thị lỗi riêng; không tự thay đổi Plan hoặc gửi yêu cầu.
 - CORS: Edge Function `organization-plan-requests` bản Test trước đó chỉ được allowlist domain Staging cũ; deployment mới dùng hostname khác `baotri-mini-new-preview-mjyccbxn2-tuanluongpham-8256.vercel.app`. Cần người dùng cho phép bổ sung origin mới và deploy lại Edge Function trên đúng Supabase Test để kiểm thử luồng yêu cầu Plan. Chưa thay đổi Edge Function hoặc Supabase trong bước này.
+
+
+### CORS cho giao diện Thuê bao doanh nghiệp trên Staging — 22/11/2026
+- Người dùng đồng ý cập nhật CORS trên Supabase Test và đề nghị hoàn tất nhanh trên nhánh main khi đủ điều kiện.
+- Project Test `dskeaiyvldiwlsfqkboq`: triển khai thành công phiên bản 3 cho hai Edge Functions `organization-plan-requests` và `platform-manage-plan-requests`; cả hai giữ `verify_jwt: true`.
+- Chỉ bổ sung origin `https://baotri-mini-new-preview-mutqeu613-tuanluongpham-8256.vercel.app` vào allowlist hiện có; không dùng wildcard, không đổi xác thực, phân quyền, RPC, dữ liệu hoặc Plan.
+- Đã đọc lại source sau deploy và xác nhận origin mới có trong allowlist. Chưa chạy được HTTP OPTIONS end-to-end từ môi trường thao tác hiện tại do không phân giải được hostname Supabase; cần kiểm thử trực tiếp từ trình duyệt người dùng trước khi kết luận luồng gọi API đã thông suốt.
+- Đồng bộ nguyên trạng source hai Edge Functions Test phiên bản 3 vào nhánh `feature/ui-table-layout-system` để Git không còn giữ source cũ và tránh deploy sau này ghi đè mất allowlist. Không triển khai bất kỳ Edge Function nào lên Production.
+- Tiếp tục giữ PR #16 Draft cho tới khi CI và staging được xác minh; chưa merge hoặc deploy Production trong bước cập nhật CORS này.
