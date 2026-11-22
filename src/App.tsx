@@ -807,7 +807,7 @@ export default function App() {
             <select value={sortBy} onChange={event=>setSortBy(event.target.value)}><option value="updatedAt">Mới cập nhật</option><option value="code">Sắp xếp theo mã</option><option value="name">Sắp xếp theo tên</option><option value="commissionedAt">Ngày đưa vào sử dụng</option></select>
             <button className="soft-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
           </div>
-          <div className="table-wrap"><table><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+          <div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.map(asset=><tr key={asset.id}>
               <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
