@@ -80,7 +80,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
   finally{setBusy(false)}
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
-  <section className="modal member-modal" className="modal member-modal plan-request-modal" style={{maxHeight:'92vh',overflowY:'auto'}}>
+  <section className="modal member-modal plan-request-modal" style={{maxHeight:'92vh',overflowY:'auto'}}>
    <div className="modal-head"><div><div className="eyebrow">THUÊ BAO DOANH NGHIỆP</div><h2>Gói dịch vụ</h2><p>Xem Plan hiện tại và gửi yêu cầu thay đổi gói sử dụng.</p></div><button className="icon-btn" onClick={onClose} disabled={busy}>×</button></div>
    {error&&<div className="auth-error">{error}</div>}
    {message&&<div className="cloud-message">{message}</div>}
