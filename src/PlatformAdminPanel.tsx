@@ -3,7 +3,7 @@ import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
 import { PlatformPlanRequestsPanel } from './PlanChangePanels'
 
-type Props={client:SupabaseClient;onClose:()=>void}
+type Props={client:SupabaseClient;onClose:()=>void;onSyncOrganization:(organizationId:string)=>Promise<string>}
 type PlanCode='A'|'B'|'C'|'D'
 type PlanOption={id:PlanCode;name:string;maxDevices:number|null;features:{equipmentGroups:boolean;multipleSites:boolean};idRule:string}
 type PlanCatalogConfig={dataVersion:string;plans:PlanOption[];industries:{plan?:PlanCode}[];equipmentGroups:{availableFromPlan?:PlanCode}[];equipmentDictionary:unknown[]}
@@ -25,7 +25,7 @@ const readProvisionDraft=()=>{
  }catch{return null}
 }
 
-export default function PlatformAdminPanel({client,onClose}:Props){
+export default function PlatformAdminPanel({client,onClose,onSyncOrganization}:Props){
  const [savedProvisionDraft]=useState(readProvisionDraft)
  const [organizationName,setOrganizationName]=useState(savedProvisionDraft?.organizationName??'')
  const [businessType,setBusinessType]=useState(savedProvisionDraft?.businessType??'')
@@ -50,6 +50,8 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  const [managementBusy,setManagementBusy]=useState(false)
  const [managementError,setManagementError]=useState('')
  const [managementSuccess,setManagementSuccess]=useState('')
+ const [syncingOrganizationId,setSyncingOrganizationId]=useState('')
+ const [syncOrganizationMessage,setSyncOrganizationMessage]=useState('')
  useEffect(()=>{
   try{
    if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
@@ -87,6 +89,15 @@ export default function PlatformAdminPanel({client,onClose}:Props){
   dictionary:planCatalog.equipmentDictionary.length
  }:null
 
+ const syncOrganization=async(organization:OrganizationRow)=>{
+  if(syncingOrganizationId)return
+  setSyncingOrganizationId(organization.id);setSyncOrganizationMessage('')
+  try{
+   const result=await onSyncOrganization(organization.id)
+   setSyncOrganizationMessage(organization.name+': '+result)
+  }catch(cause){setSyncOrganizationMessage(organization.name+': '+(cause instanceof Error?cause.message:String(cause)))}
+  finally{setSyncingOrganizationId('')}
+ }
  const beginManagement=(organization:OrganizationRow,action:LifecycleAction)=>{
   setManagement({organization,action});setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementSuccess('')
  }
@@ -220,9 +231,10 @@ export default function PlatformAdminPanel({client,onClose}:Props){
     <div className="stat-card"><div className="stat-icon green">OK</div><div><small>Membership hoạt động</small><strong>{number(overview.activeMemberships)}</strong><span>{number(overview.invitedMemberships)} chờ xác nhận · {number(overview.suspendedMemberships)} tạm ngưng</span></div></div>
    </div>
    <div className="table-wrap platform-org-table" style={{marginTop:14}}><table><thead><tr><th>Doanh nghiệp</th><th>Trạng thái</th><th>Plan / Snapshot</th><th>Tài khoản trong DN</th><th>Đang hoạt động</th><th>Chờ xác nhận</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead><tbody>
-    {overview.organizations.map(org=><tr key={org.id}><td><b>{org.name}</b></td><td><span className={'status '+(org.status==='active'?'green':'gray')}>{org.status==='active'?'Đang hoạt động':'Tạm ngưng'}</span></td><td>{org.planCode?<><b>Plan {org.planCode}</b><small style={{display:'block',color:'var(--muted,#64748b)'}}>{org.planName||'Đã gán'} · v{org.sourceDataVersion||'—'}</small><small style={{display:'block',color:'var(--muted,#64748b)'}}>{typeof org.planMaxDevices==='number'?number(org.planMaxDevices)+' thiết bị':org.planMaxDevices===null?'Không giới hạn':'Đang tải hạn mức'} · {typeof org.equipmentGroups==='number'?number(org.equipmentGroups):'—'} nhóm · {typeof org.equipmentDictionary==='number'?number(org.equipmentDictionary):'—'} loại · {typeof org.industries==='number'?number(org.industries):'—'} ngành</small></>:<span className="status gray">Chưa khởi tạo</span>}</td><td>{number(org.uniqueUsers)}</td><td>{number(org.activeMembers)}</td><td>{number(org.invitedMembers)}</td><td>{date(org.createdAt)}</td><td><div className="platform-org-actions">{org.status==='active'?<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'suspend')}>Tạm ngưng</button>:<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'reactivate')}>Kích hoạt</button>}<button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'delete')}>Xóa</button></div></td></tr>)}
+    {overview.organizations.map(org=><tr key={org.id}><td><b>{org.name}</b></td><td><span className={'status '+(org.status==='active'?'green':'gray')}>{org.status==='active'?'Đang hoạt động':'Tạm ngưng'}</span></td><td>{org.planCode?<><b>Plan {org.planCode}</b><small style={{display:'block',color:'var(--muted,#64748b)'}}>{org.planName||'Đã gán'} · v{org.sourceDataVersion||'—'}</small><small style={{display:'block',color:'var(--muted,#64748b)'}}>{typeof org.planMaxDevices==='number'?number(org.planMaxDevices)+' thiết bị':org.planMaxDevices===null?'Không giới hạn':'Đang tải hạn mức'} · {typeof org.equipmentGroups==='number'?number(org.equipmentGroups):'—'} nhóm · {typeof org.equipmentDictionary==='number'?number(org.equipmentDictionary):'—'} loại · {typeof org.industries==='number'?number(org.industries):'—'} ngành</small></>:<span className="status gray">Chưa khởi tạo</span>}</td><td>{number(org.uniqueUsers)}</td><td>{number(org.activeMembers)}</td><td>{number(org.invitedMembers)}</td><td>{date(org.createdAt)}</td><td><div className="platform-org-actions"><button type="button" className="soft-btn" disabled={!!syncingOrganizationId||org.status!=='active'} onClick={()=>void syncOrganization(org)}>{syncingOrganizationId===org.id?'Đang tải Cloud…':'Tải Cloud → Local'}</button>{org.status==='active'?<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'suspend')}>Tạm ngưng</button>:<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'reactivate')}>Kích hoạt</button>}<button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'delete')}>Xóa</button></div></td></tr>)}
     {!overview.organizations.length&&<tr><td colSpan={8}>Chưa có doanh nghiệp nào.</td></tr>}
    </tbody></table></div>
+   {syncOrganizationMessage&&<div className="cloud-message" style={{marginTop:10}}>{syncOrganizationMessage}</div>}
    <div className="auth-note" style={{marginTop:10}}>Tài khoản Auth được đếm duy nhất trên toàn nền tảng. Một tài khoản tham gia nhiều doanh nghiệp chỉ tính một lần ở tổng Auth, nhưng được tính một lượt trong từng doanh nghiệp.</div>
   </>}
   {managementSuccess&&<div className="cloud-message" style={{marginTop:12}}>{managementSuccess}</div>}
