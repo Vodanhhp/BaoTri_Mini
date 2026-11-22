@@ -126,8 +126,12 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   const items=previewCandidates.filter(a=>selectedPreview.includes(a.id))
   if(!items.length)return
   if(!window.confirm('Bạn đang chuyển '+items.length+' hồ sơ từ Local Preview (có thể chứa dữ liệu thử nghiệm) vào tổ chức hiện tại. Chỉ các hồ sơ đã chọn mới được nhập. Tiếp tục?'))return
-  for(const asset of items)await importPreviewOne(asset)
-  setSelectedPreview([])
+  const failed:string[]=[]
+  let completed=0
+  for(const asset of items){if(await importPreviewOne(asset))completed++;else failed.push(asset.id)}
+  setSelectedPreview(failed)
+  if(failed.length){setError('Đã chuyển '+completed+' hồ sơ; còn '+failed.length+' hồ sơ chưa chuyển được và vẫn được giữ nguyên trong Local Preview.')}
+  else setMessage('Đã chuyển thành công '+completed+' hồ sơ đã chọn vào tổ chức.')
  }
  const importSelected=async()=>{
   const items=candidates.filter(a=>selected.includes(a.id))
@@ -192,7 +196,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    </div>
    {canImport&&<div className="cloud-section">
     <div className="cloud-section-head"><h3>Dữ liệu Local Preview cũ</h3><div className="cloud-row-actions"><button className="soft-btn small" onClick={()=>setSelectedPreview(previewCandidates.map(a=>a.id))}>Chọn tất cả</button><button className="primary-btn small" disabled={selectedPreview.length===0||!!busyId} onClick={()=>void importSelectedPreview()}>Chuyển đã chọn ({selectedPreview.length})</button></div></div>
-    <p className="empty-small">Nguồn này có thể chứa dữ liệu thử nghiệm. Chỉ Admin có quyền nhập mới thấy và có thể chọn từng hồ sơ. Sau khi Cloud xác nhận thành công, hồ sơ mới được chuyển khỏi Local Preview.</p>
+    <p className="empty-small">Nguồn này có thể chứa dữ liệu thử nghiệm. Chỉ tài khoản có quyền nhập thiết bị (assets.import) mới thấy và có thể chọn từng hồ sơ. Sau khi Cloud xác nhận thành công, hồ sơ mới được chuyển khỏi Local Preview.</p>
     {previewCandidates.length===0?<p className="empty-small">Không có hồ sơ Local Preview cũ.</p>:<div className="cloud-list">{previewCandidates.map(a=><div className="cloud-row" key={a.id}>
      <label className="cloud-select"><input type="checkbox" checked={selectedPreview.includes(a.id)} onChange={e=>setSelectedPreview(prev=>e.target.checked?[...prev,a.id]:prev.filter(id=>id!==a.id))}/><span className="cloud-row-main"><b>{a.code||'Chưa có mã'} · {a.name||'Chưa có tên'}</b><small>{a.category||'Chưa phân nhóm'} · {a.location||'Chưa có vị trí'} · {a.images?.length||0} ảnh Local {a.idReservationId?'· Có reservation cần xử lý riêng':''}</small></span></label>
      <div className="cloud-row-actions"><button className="primary-btn small" disabled={!!busyId||Boolean(a.idReservationId)} onClick={()=>void importPreviewOne(a)}>{busyId==='preview:'+a.id?'Đang chuyển…':'Chuyển vào tổ chức'}</button></div>
