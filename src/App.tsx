@@ -307,7 +307,7 @@ export default function App() {
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
-  const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string) => {
+  const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string, eventId?:string) => {
     const labels: Record<string,string> = {name:'Tên thiết bị',category:'Nhóm thiết bị',brand:'Hãng sản xuất',model:'Model',serial:'Số serial',location:'Vị trí lắp đặt',commissionedAt:'Ngày đưa vào sử dụng',power:'Công suất / thông số',cycle:'Chu kỳ bảo trì',status:'Trạng thái',notes:'Ghi chú',archivedAt:'Lưu kho',deletedAt:'Xóa mềm'}
     const fields = Object.keys(labels) as Array<keyof Asset>
     const changes = fields.filter(field => (before?.[field] ?? '') !== (after[field] ?? '')).map(field => ({
@@ -316,12 +316,12 @@ export default function App() {
     const kind = eventType ?? (!before ? 'created' : before.status !== after.status ? 'status_changed' : 'updated')
     if (before && !changes.length) return
     const entry:AssetHistory={
-      id:uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
+      id:eventId??uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
       summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
       changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
       occurredAt:now(),syncStatus:localPreview?'synced':'pending'
     }
-    await db.assetHistory.add(entry)
+    await db.assetHistory.put(entry)
     await syncAssetHistoryEntry(entry)
   }
   const syncAssetHistoryEntry = async (entry:AssetHistory) => {
@@ -721,7 +721,7 @@ export default function App() {
         await db.assetMutations.update(mutationId,{status:'processing',attempts:(pending?.attempts??0)+1,updatedAt:now(),lastError:undefined})
         try{
           const applied=await applyCloudAssetMutation(supabase,organizationId,value,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
-          if(!pending)await recordAssetHistory(previous,value)
+          await recordAssetHistory(previous,value,undefined,undefined,mutationId)
           const at=now()
           await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
             await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
@@ -794,7 +794,7 @@ export default function App() {
       await db.assetMutations.update(mutationId,{status:'processing',attempts:1,updatedAt:now()})
       try{
         const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
-        await recordAssetHistory(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị')
+        await recordAssetHistory(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị',mutationId)
         await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
           await db.assetMutations.update(mutationId,{status:'applied',appliedAt:now(),cloudUpdatedAt:applied.asset.updatedAt,updatedAt:now()})
           await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
@@ -845,7 +845,7 @@ export default function App() {
         await db.assets.put(candidate);await db.assetMutations.add({mutationId,organizationId,assetId:asset.id,payload,expectedCloudUpdatedAt:lease!.expectedCloudUpdatedAt,localUpdatedAt:candidate.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
       })
       const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
-      await recordAssetHistory(asset,candidate,archived?'archived':'restored',archived?'Đưa thiết bị vào Lưu kho':'Khôi phục thiết bị khỏi Lưu kho')
+      await recordAssetHistory(asset,candidate,archived?'archived':'restored',archived?'Đưa thiết bị vào Lưu kho':'Khôi phục thiết bị khỏi Lưu kho',mutationId)
       await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
         await db.assetMutations.update(mutationId,{status:'applied',appliedAt:now(),cloudUpdatedAt:applied.asset.updatedAt,updatedAt:now()})
         await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
