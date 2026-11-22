@@ -1217,5 +1217,6 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Admin mới có nút xóa và chế độ tìm/xem thiết bị đã xóa; dấu nhận diện đỏ `ĐÃ XÓA`. Chưa triển khai khôi phục.
 - Xóa chỉ áp dụng với thiết bị đã liên kết Cloud và đang có kết nối; Local ghi snapshot + mutation queue trước, Cloud xác nhận bằng RPC riêng, khóa chỉnh sửa, optimistic timestamp và receipt. Nếu Cloud chưa xác nhận, giữ mutation pending để retry.
 - Migration thêm `assets.deleted_at`, RPC xóa mềm, tombstone sync cho KTV (chỉ trả mã/trạng thái xóa, không trả hồ sơ), và lọc RLS/list để non-Admin không đọc được hồ sơ đã xóa.
-- Không xóa vật lý bản ghi thiết bị hoặc lịch sử liên quan. Không sửa dữ liệu Supabase Production. Migration chưa được áp dụng lên Supabase Test tại thời điểm ghi.
+- Không xóa vật lý bản ghi thiết bị hoặc lịch sử liên quan. Không sửa dữ liệu Supabase Production.
+- Migration đã áp dụng thành công lên Supabase Test `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`), ghi nhận version `20261122133229` / `admin_soft_delete_assets`; xác minh cột `deleted_at`, helper Admin, RPC xóa mềm, RPC tombstone và policy RLS đều tồn tại.
 - Cần CI build/test và kiểm thử thực tế Admin xóa → Cloud → PC/Mobile khác đồng bộ; KTV không thấy/tìm được; Admin tìm thấy; xác nhận hồ sơ/lịch sử vẫn còn.
