@@ -494,31 +494,41 @@ export default function App() {
         }
         const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
         if(duplicate&&duplicate.id!==value.id){
+          let released=false
           try{
             await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
-            await db.assetDrafts.delete(value.id)
-            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
+            released=true
             setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
           }catch{
-            // Keep the reservation key so a later retry can safely reconcile it.
+            // Keep the reservation and draft key so a later retry can reconcile it.
+          }
+          if(released){
+            await db.assetDrafts.delete(value.id).catch(()=>false)
+            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
           }
           throw new Error('Mã vừa được giữ đã tồn tại trong Local. Không lưu hồ sơ; hãy thử lại để nhận số khác.')
         }
         try{
           await db.assets.add(value)
-          await db.assetDrafts.delete(value.id)
-          setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
         }catch(localError){
+          let released=false
           try{
             await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
-            await db.assetDrafts.delete(value.id)
-            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
+            released=true
             setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
           }catch{
-            // Keep the reservation key if Cloud could not confirm its release.
+            // Keep the reservation and draft key if Cloud could not confirm release.
+          }
+          if(released){
+            await db.assetDrafts.delete(value.id).catch(()=>false)
+            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
           }
           throw localError
         }
+        // Local now owns the saved record. Draft cleanup must never release its
+        // reservation; startup reconciliation can safely remove a stale draft.
+        await db.assetDrafts.delete(value.id).catch(()=>false)
+        setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
         try{
           await confirmSmartEquipmentIdReservation(supabase,{
             organizationId,reservationId,assetId:value.id,equipmentId:value.code,
