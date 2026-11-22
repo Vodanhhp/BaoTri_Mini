@@ -307,6 +307,25 @@ export default function App() {
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
+  const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string) => {
+    const labels: Record<string,string> = {name:'Tên thiết bị',category:'Nhóm thiết bị',brand:'Hãng sản xuất',model:'Model',serial:'Số serial',location:'Vị trí lắp đặt',commissionedAt:'Ngày đưa vào sử dụng',power:'Công suất / thông số',cycle:'Chu kỳ bảo trì',status:'Trạng thái',notes:'Ghi chú',archivedAt:'Lưu kho',deletedAt:'Xóa mềm'}
+    const fields = Object.keys(labels) as Array<keyof Asset>
+    const changes = fields.filter(field => (before?.[field] ?? '') !== (after[field] ?? '')).map(field => ({
+      field:String(field),label:labels[String(field)],before:before?.[field] ? String(before[field]) : '—',after:after[field] ? String(after[field]) : '—'
+    }))
+    const kind = eventType ?? (!before ? 'created' : before.status !== after.status ? 'status_changed' : 'updated')
+    if (before && !changes.length) return
+    await db.assetHistory.add({
+      id:uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
+      summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
+      changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
+      occurredAt:now(),syncStatus:localPreview?'synced':'pending'
+    })
+  }
+  const loadAssetHistory = async (assetId: string) => {
+    const rows=await db.assetHistory.where('[organizationId+assetId]').equals([organizationId||'local-preview',assetId]).toArray()
+    setAssetHistory(rows.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
+  }
 
   const assetMutationPayload=(asset:Asset):AssetMutationPayload=>({
     category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',
