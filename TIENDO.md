@@ -1065,3 +1065,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Build ERROR: TypeScript TS2345 tại src/App.tsx dòng 872 cột 317: SupabaseClient | null truyền vào syncCloudAssetsToLocal, yêu cầu SupabaseClient không nullable. Đây là lỗi build được xác nhận qua Vercel logs; chưa chỉnh source.
 - URL deployment staging (không READY, không dùng để đăng nhập): baotri-mini-new-preview-qr98jtnjg-tuanluongpham-8256.vercel.app.
 - Không có Production deployment thành công/live, không apply migration mới, không thay đổi Supabase hoặc dữ liệu tenant. Bước tiếp theo: sửa lỗi narrowing/nullability ở callback onSyncOrganization trong App.tsx, sau đó build/deploy lại staging theo commit mới; chỉ tiếp tục khi được người dùng yêu cầu.
+
+
+### Sửa lỗi build và deploy staging thành công — 22/11/2026
+- Sửa `src/App.tsx` callback `onSyncOrganization` của PlatformAdminPanel: thêm guard `if(!supabase) throw new Error('Chưa kết nối Supabase.')` để TypeScript narrow nullable Supabase client trước khi truyền vào `syncCloudAssetsToLocal`. Thay đổi chỉ bảo vệ trường hợp client null; logic sync không đổi.
+- Commit source: `fcb310b709ab4c23a4e064720733600b55885c79` (main).
+- Vercel deployment ID `dpl_hW1GrFDMnH3y46AgDL6zH8YM49zz` trên đúng project `baotri-mini-new-preview`, target `staging`, state **READY**. URL: `baotri-mini-new-preview-eazlswbhd-tuanluongpham-8256.vercel.app`.
+- Build logs xác nhận `npm ci` thành công (82 packages), `tsc -b` không còn lỗi, Vite v6.4.6 transform 1640 modules; deployment READY. Build chỉ chạy trên Vercel, không chạy local.
+- Không deploy Production, không promote, không thay đổi project settings hoặc Supabase/database. Runtime đăng nhập và các chức năng ứng dụng chưa được browser-test; cần người dùng mở deployment và thử.
