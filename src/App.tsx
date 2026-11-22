@@ -9,7 +9,7 @@ import PlatformAdminPanel from './PlatformAdminPanel'
 import SmartEquipmentIdTool from './SmartEquipmentIdTool'
 import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
-import { db, now, uid, type Asset, type AssetStatus, type AssetMutationPayload } from './db'
+import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
@@ -84,6 +84,7 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(!supabase)
   const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
+  const [recoverableDrafts, setRecoverableDrafts] = useState<AssetDraft[]>([])
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả nhóm')
   const [locationFilter, setLocationFilter] = useState('Tất cả vị trí')
@@ -180,6 +181,22 @@ export default function App() {
     setAssets(await db.assets.where('localScope').equals(scope).toArray())
   }
   useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
+  useEffect(()=>{
+    if(!session?.user.id||!organizationId||localPreview){setRecoverableDrafts([]);return}
+    let active=true
+    const loadDrafts=async()=>{
+      const rows=await db.assetDrafts.where('[organizationId+userId]').equals([organizationId,session.user.id]).toArray()
+      const pending:AssetDraft[]=[]
+      for(const row of rows){
+        const saved=await db.assets.get(row.id)
+        if(saved){await db.assetDrafts.delete(row.id);continue}
+        pending.push(row)
+      }
+      if(active)setRecoverableDrafts(pending.sort((a,b)=>a.createdAt.localeCompare(b.createdAt)))
+    }
+    void loadDrafts().catch(cause=>{if(active)setError('Không tải được thao tác cấp mã đang dở: '+(cause instanceof Error?cause.message:String(cause)))})
+    return()=>{active=false}
+  },[session?.user.id,organizationId,localPreview])
   useEffect(()=>{
     const client=supabase
     if(!session?.user.id||!client||!organizationId)return
