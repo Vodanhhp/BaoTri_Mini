@@ -1126,3 +1126,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Lưu ý vận hành: các cập nhật được ghi trực tiếp lên `main`; workflow `.github/workflows/pages.yml` có trigger `push` trên `main`, vì vậy GitHub Actions đã tự chạy deploy GitHub Pages. Run `45016313747` hoàn tất **success**, source commit `b918fdcf37e02c7760aeb24fee3de815e4901808`; workflow có bước `actions/deploy-pages@v4`. Đây là lần cập nhật GitHub Pages trên domain production theo CNAME, không phải Vercel Staging. Việc này xảy ra ngoài dự kiến; không có thay đổi Supabase/Edge Functions hay dữ liệu nghiệp vụ.
 - Workflow CI run `45016313708` thất bại ở Unit tests nên bước Build của workflow CI bị skip. Kết quả test: 28/29 pass; test `member-facing Cloud asset list uses the UUID-free RPC` đang kiểm tra RPC cũ `list_cloud_assets`, trong khi `src/lib/cloudAssets.ts` hiện dùng RPC phân trang `list_cloud_assets_page`. Đây là test assertion chưa đồng bộ với implementation hiện tại, không phải lỗi từ các file UI bảng vừa sửa. Riêng workflow Pages đã chạy `npm run build` và build thành công trước khi deploy.
 - Không thực hiện rollback production vì cần quyết định rõ ràng của người dùng. Trước mọi lần cập nhật tiếp theo phải tránh push `main` nếu chưa xác định rõ tác động workflow; ưu tiên kiểm thử và xác nhận Staging trước. Chờ người dùng quyết định có cần rollback GitHub Pages về bản trước hay giữ giao diện mới.
+
+ 
+### Điều chỉnh bố cục bảng Gói dịch vụ và chuẩn bảng nhiều cột — 22/11/2026
+- Tiếp tục từ branch `feature/ui-table-layout-system`, tách khỏi `main`; không rollback hoặc di chuyển nhánh Production.
+- Nguyên nhân nhìn thấy ở source: modal Gói dịch vụ doanh nghiệp bị cố định `min(720px,96vw)`, trong khi bảng lịch sử có 4 cột và bảng Super Admin có 6 cột, kèm min-width lớn. Ở màn hình desktop, modal quá hẹp khiến bảng bị cuộn ngang và nội dung trông như bị dồn/chật.
+- Đã mở rộng modal Gói dịch vụ trên desktop lên tối đa 1120px/96vw; tablet thu về tối đa 760px; mobile dùng 96vw và giới hạn chiều cao phù hợp.
+- Chuẩn hóa bố cục hai bảng Plan: khai báo tỷ lệ cột, dùng table-layout fixed, cho phép cột ghi chú wrap; cột trạng thái/ngày gọn; giữ nhóm thao tác trên một hàng. Vùng bảng có cuộn độc lập và chiều cao giới hạn.
+- Bổ sung quy tắc modal/bảng nhiều cột vào `docs/UI_TABLE_STANDARD.md` để dùng cho các ứng dụng cùng hệ sinh thái.
+- Files thay đổi: `src/PlanChangePanels.tsx`, `src/style.css`, `docs/UI_TABLE_STANDARD.md`.
+- Chưa build/test trình duyệt; chưa deploy Staging hoặc Production. Không thay đổi nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu.
+- Bước tiếp theo: chạy CI/build trên branch, kiểm tra giao diện desktop/tablet/mobile; tiếp tục rà soát các bảng còn lại trước khi đề xuất merge/deploy.
