@@ -378,7 +378,6 @@ export default function App() {
         const issuance=await reserveSmartEquipmentId(supabase,{
           organizationId,
           reservationId,
-          plan,
           equipmentCode:smartAnalysis.equipmentCode,
           groupCode:selectedGroup?.code,
           siteCode:plan==='C'||plan==='D'?smartSiteCode:undefined,
