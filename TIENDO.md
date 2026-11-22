@@ -1194,3 +1194,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung unit test kiểm tra hai ghi được đặt trong cùng transaction.
 - Không thay đổi RPC, migration, quyền, dữ liệu Cloud, Smart ID, UUID/mã quản lý, Local Preview hoặc luồng import. Chưa deploy và không chạm Production.
 - Chờ CI/build trên branch. Sau khi đạt, tạo PR về main. Lưu ý push trực tiếp main kích hoạt GitHub Pages production workflow; vì vậy chưa push/merge main cho tới khi xử lý rõ tác động triển khai Production.
+
+
+### Sửa lỗi kiểm tra khóa khi lưu thiết bị Cloud đã tải về Local — 22/11/2026
+- Phản hồi thực tế: Công ty C có hai thiết bị Cloud; sau khi đồng bộ về Local, mở sửa một thiết bị và thêm ảnh thì ứng dụng báo “Không còn khóa Cloud hợp lệ; không lưu.” Người dùng xác nhận chỉ thao tác trên một máy.
+- Đối chiếu `src/App.tsx` tìm thấy lỗi định danh: khi mở editor, `cloudLease.assetId` được gán bằng `asset.code` (mã quản lý dùng cho RPC khóa/heartbeat), nhưng khi lưu lại so sánh với `value.id` (UUID Local). Hai giá trị không đồng nhất với thiết bị tải từ Cloud, khiến guard từ chối lưu dù lease được cấp.
+- Sửa guard so sánh `lease.assetId` với `value.code`, giữ nguyên UUID Local cho khóa IndexedDB/mutation và mã quản lý cho Cloud RPC.
+- Thêm `scripts/cloudEditLeaseIdentity.test.mjs` để kiểm tra hợp đồng định danh giữa lúc cấp lease và lúc lưu.
+- Thay đổi chỉ nằm trên nhánh `fix/cloud-edit-lock-code-check`; chưa merge main, chưa deploy, không thao tác Supabase hoặc dữ liệu Công ty C. Cần CI/build và kiểm tra Staging trước khi đề xuất merge.
