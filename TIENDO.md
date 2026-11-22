@@ -854,3 +854,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã loại bỏ phụ thuộc này: bổ sung RPC `public.count_organization_cloud_assets(uuid)` ngay trong migration PLAN; RPC chỉ trả số lượng, tự kiểm tra `assets.view` đúng tổ chức, không trả danh sách/UUID thiết bị. Frontend `src/PlanChangePanels.tsx` chuyển sang gọi RPC đếm riêng và kiểm tra dữ liệu trả về.
 - Commit thêm RPC: `ed88ac40bd5165af355e5a92943468f98eea1d7e`; commit chuyển frontend: `9eb450f81e7900c2ed3cc82591e35bd5217eeed4`.
 - Cả migration PLAN và migration đồng bộ khóa Smart ID đều chưa apply; đây chỉ là source. Không deploy hoặc kiểm thử runtime trong lượt này.
+- Điều chỉnh thêm RPC đếm: số lượng trả về nay khớp phép tính hạn mức của `reserve_asset_id_sequence`: tổng hồ sơ Cloud cộng các reservation `reserved/confirmed` chưa có asset row tương ứng; reservation đã có asset row không bị đếm hai lần. Nhờ đó cảnh báo UI phản ánh cả lượt giữ số chưa hoàn tất.
+- Commit đồng bộ cách đếm: `9b7f9e4ae20bb4675ac1a63c09469baa54cfd1fb`.
