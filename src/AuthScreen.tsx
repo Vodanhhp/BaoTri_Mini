@@ -2,9 +2,9 @@ import { useState, type FormEvent } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { LockKeyhole, Mail, Wrench } from 'lucide-react'
 
-type Props = { client: SupabaseClient | null; onLocalPreview?: () => void; onOpenSmartIdTool?: () => void }
+type Props = { client: SupabaseClient | null; errorMessage?: string; onLocalPreview?: () => void; onOpenSmartIdTool?: () => void }
 
-export default function AuthScreen({ client, onLocalPreview, onOpenSmartIdTool }: Props) {
+export default function AuthScreen({ client, errorMessage, onLocalPreview, onOpenSmartIdTool }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,6 +51,7 @@ export default function AuthScreen({ client, onLocalPreview, onOpenSmartIdTool }
       <div className="auth-brand"><span><Wrench size={25}/></span><div><b>BAOTRI</b><small>QUẢN LÝ THIẾT BỊ</small></div></div>
       <h1>Đăng nhập hệ thống</h1>
       <p className="auth-intro">Sử dụng tài khoản đã được tạo và cấp quyền trong hệ thống.</p>
+      {errorMessage && <div className="auth-error" role="alert">{errorMessage}</div>}
       {!client ? <><div className="auth-error">Chưa có cấu hình Supabase. Hãy tạo file <code>.env.local</code> từ <code>.env.example</code> và điền URL cùng Publishable Key của Supabase riêng cho dự án mới.</div>{(import.meta.env.DEV || import.meta.env.VITE_ENABLE_LOCAL_PREVIEW === 'true') && onLocalPreview && <button type="button" className="auth-submit" onClick={onLocalPreview}>Vào chế độ xem thử Local</button>}</> : <form onSubmit={submit} className="auth-form">
         <label>Email đăng nhập</label>
         <div className="auth-input"><Mail size={17}/><input type="email" autoComplete="username" required value={email} onChange={event=>setEmail(event.target.value)} placeholder="name@example.com"/></div>

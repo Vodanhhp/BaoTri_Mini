@@ -4,9 +4,32 @@ export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừ
 export type CloudLinkStatus = 'linked' | 'conflict'
 export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
 
+export type EquipmentIdComponentsSnapshot = {
+  plan: 'A' | 'B' | 'C' | 'D'
+  equipment_code: string
+  group_code?: string | null
+  site_code?: string | null
+  sequence: number
+  month_year?: string | null
+  standard_equipment_name: string
+  group_name_at_creation?: string | null
+  source_data_version: string
+  issued_at: string
+  reservation_id?: string
+}
+
 export type Asset = {
   id: string
   code: string
+  /** Local-created immutable issuance metadata; legacy records may not have it. */
+  originalName?: string
+  normalizedNameAtCreation?: string
+  equipmentTypeCode?: string
+  groupCodeAtCreation?: string
+  siteCodeAtCreation?: string
+  idComponentsSnapshot?: EquipmentIdComponentsSnapshot
+  idReservationId?: string
+  idReservationStatus?: 'reserved' | 'confirmed' | 'released'
   name: string
   category: string
   brand: string
@@ -30,6 +53,19 @@ export type Asset = {
   localScope: string
 }
 
+export type AssetGroupChange = {
+  id: string
+  organizationId: string
+  assetId: string
+  oldCategory: string
+  newCategory: string
+  changedByUserId?: string
+  mutationId?: string
+  changedAt: string
+  reason?: string
+  syncStatus: 'pending' | 'synced'
+}
+
 export type AssetCloudLink = {
   id: string
   organizationId: string
@@ -42,6 +78,8 @@ export type AssetCloudLink = {
 }
 
 export type AssetMutationPayload = {
+  /** Current equipment group; the Cloud RPC permits changes only for Admin. */
+  category: string
   name: string
   brand: string
   model: string
@@ -77,6 +115,7 @@ class BaoTriDatabase extends Dexie {
   assets!: Table<Asset, string>
   assetCloudLinks!: Table<AssetCloudLink, string>
   assetMutations!: Table<AssetMutation, string>
+  assetGroupChanges!: Table<AssetGroupChange, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -106,6 +145,12 @@ class BaoTriDatabase extends Dexie {
         localScope: typeof row.localScope === 'string' ? row.localScope : 'local-preview',
         createdByUserId: typeof row.createdByUserId === 'string' ? row.createdByUserId : undefined
       })))
+    })
+    this.version(4).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus'
     })
   }
 }

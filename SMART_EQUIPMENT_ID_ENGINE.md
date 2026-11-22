@@ -1,0 +1,249 @@
+# Smart Equipment ID Engine — implementation notes
+
+## 1. Purpose
+
+Implement the shared deterministic engine that analyzes an equipment name, resolves an equipment dictionary entry and group, and formats a Plan A/B/C/D management ID preview.
+
+The engine is shared across Plans. It does not persist equipment, allocate official sequence numbers, or change an existing identifier.
+
+## 2. Existing application mapping
+
+The current application already has these fields in `src/db.ts`:
+
+| Current field | Meaning in the ID design |
+|---|---|
+| `Asset.id` | Existing stable UUID primary key; reuse it as the equipment UUID |
+| `Asset.code` | Business management ID |
+| `Asset.name` | Real-world/display name; editable by Admin and KTV under permissions |
+| `Asset.category` | Current equipment group; Admin may change it without changing the business ID |
+
+Do not create a second UUID field without a specific migration requirement.
+
+## 3. Engine module
+
+File: `src/lib/smartEquipmentId.ts`
+
+Responsibilities:
+- Normalize Vietnamese names for matching without overwriting the user's real-world name.
+- Match standard names and aliases in the Organization's catalog snapshot.
+- Accept Organization-specific equipment dictionary entries and groups separately from standard catalog data.
+- Resolve an explicit user-selected group before considering the dictionary's suggested group.
+- Return ambiguity and missing-data states instead of guessing.
+- Format the Plan-specific ID pattern when a preview sequence is supplied.
+- Generate UUID v4 for new equipment when needed.
+
+The module is deterministic and has no database/network dependency.
+
+## 4. ID format rules
+
+- Plan A: `EQUIPMENT_CODE-SEQUENCE`
+- Plan B: `EQUIPMENT_CODE-GROUP_CODE-SEQUENCE`
+- Plan C/D: `EQUIPMENT_CODE-GROUP_CODE-SITE_CODE-SEQUENCE-MMYY`
+
+Equipment code and group code are normalized to 2–4 alphanumeric characters. Existing catalog short codes containing punctuation (for example `CNC-T`) are normalized by removing punctuation (`CNCT`).
+
+Plan C/D require a valid confirmed commissioning date. Site code defaults to `00` and must be two digits.
+
+## 5. Preview versus official allocation
+
+The engine's `previewSequence` is only for a provisional display. It is never a reservation and must never be written as the official ID.
+
+Cloud must not generate the final equipment ID or create the Local asset. When online, Cloud atomically reserves only the next numeric sequence for the Organization. Local formats the complete ID, writes the asset and its UUID to IndexedDB first, then confirms the reservation. If Local save fails, release the unused reservation; the numeric sequence is never reused. If confirmation fails after Local save, retain the Local record and retry confirmation later.
+
+Counter scopes are now explicit: Plan A = Organization + equipment code; Plan B = Organization + equipment code + group code; Plan C/D = Organization + equipment code + group code + site code. For Plan C/D, MMYY is a code segment and does not reset the sequence.
+
+## 6. Catalog snapshot isolation
+
+The engine receives catalog data from its caller. For an existing Organization, the caller must supply that Organization's own snapshot plus its custom additions. It must not fetch the latest standard JSON as a live fallback.
+
+The standard JSON is only an initialization source for a new Organization snapshot.
+
+## 7. Integration prerequisites found in the current application
+
+The current application is not yet ready for full end-to-end ID generation:
+
+1. The Plan is stored with the Organization catalog snapshot, but the current application has no trusted provisioning flow to assign it.
+2. The database snapshot table exists, but no organization currently has an initialized snapshot and the browser has no snapshot reader yet.
+3. The add-equipment form still asks the user to type `Asset.code` manually.
+4. Equipment groups in the form are still a static hard-coded list, not the Organization snapshot.
+5. The Cloud edit-save path still preserves the previous `code` and `category`; it does not yet support the approved Admin group-change rule.
+6. The database sequence reservation/confirmation RPCs exist, but the Local form does not call them yet.
+
+Full integration requires tenant-isolated snapshot provisioning, organization Plan context, Local-first reservation/confirmation calls, local asset metadata, and changes to the existing Cloud import path. These must be implemented without weakening existing Local/Cloud locking and sync guarantees.
+
+## 8. Immutable identity and editable operational information
+
+- `Asset.id` / UUID is stable for the asset lifetime.
+- `Asset.code` / business ID is immutable after save.
+- `Asset.name` is the editable real-world name and never regenerates the ID.
+- `Asset.category` is the current group; Admin may change it without regenerating the ID.
+- Group changes are recorded in a private audit table with old group, new group, actor and timestamp; a reason can be added when the UI supplies one.
+- The database and Local Dexie model now store original name, normalized name at creation, equipment type code, group/site code at creation and immutable ID-components snapshot.
+
+## 9. Verification cases for the engine
+
+1. Vietnamese accents and case differences match the same catalog alias.
+2. A longer name containing a standard equipment name resolves to that dictionary entry.
+3. An unknown name returns `not-found`; it does not fabricate a code or group.
+4. Near-equal matches with different short codes return `ambiguous`.
+5. An explicitly selected custom group takes precedence over the dictionary suggestion.
+6. A missing selected group returns `missing-group`.
+7. Plan A formats without a group code.
+8. Plan B requires a group code.
+9. Plan C/D require a valid commissioning date and a two-digit site code.
+10. Sequence values expand beyond three digits without truncation.
+11. Formatting and name edits never mutate an existing saved ID.
+12. The engine never allocates an official sequence or persists data.
+
+## 10. Database foundation applied to the Test project
+
+Migrations applied only to `BAOTRI-Mini-Test`:
+- `20261121091634_smart_equipment_id_engine_v1.sql`
+- `20261121091818_smart_equipment_id_local_first_reservations.sql`
+- `20261121091922_smart_equipment_id_audit_hardening.sql`
+- `20261121092304_smart_equipment_id_cloud_mirror_metadata.sql`
+- `20261121092406_smart_equipment_id_admin_confirmation.sql`
+- `20261121092625_smart_equipment_id_admin_group_mutation.sql`
+- `20261121092724_smart_equipment_id_local_group_audit_mirror.sql`
+- `20261121092923_smart_equipment_id_catalog_snapshot_validation.sql`
+
+At the time of the original Test-project validation, the production/inactive project and `BAOTRI-Mini-New` were not changed. The later BAOTRI-Mini-New deployment is recorded separately in section 11.
+
+Database objects:
+- `public.organization_equipment_catalog`: one catalog snapshot and Plan per Organization. Snapshot reads are available to users who can view settings or create assets; updates require `settings.manage`. Plan assignment is not client-editable.
+- `private.asset_id_sequences`: private atomic sequence counters, inaccessible to browser roles.
+- `private.asset_id_sequence_reservations`: private idempotent reservations linking a numeric sequence to the Local UUID and final Local-generated equipment ID after confirmation.
+- Six issuance metadata columns on `public.assets`: `original_name`, `normalized_name_at_creation`, `equipment_type_code`, `group_code_at_creation`, `site_code_at_creation`, `id_components_snapshot`.
+- `public.guard_asset_identity_fields()`: rejects UUID, Organization, equipment ID and issuance-metadata changes; current group changes require `settings.manage`.
+- `private.asset_group_change_history`: records old/current group, actor and timestamp when Admin changes a group. The reason field is reserved for a later UI input.
+
+The existing `public.create_asset_with_code` and `public.asset_code_counters` legacy generator remain intact. The temporary Cloud-side `create_asset_with_smart_id` RPC was removed before any real data was created. The final design uses:
+- `public.reserve_asset_id_sequence(...)`: Cloud reserves a number only; returns sequence components, not a completed equipment ID.
+- `public.confirm_asset_id_sequence_reservation(...)`: Cloud confirms the final ID that Local already saved.
+- `public.release_asset_id_sequence_reservation(...)`: releases an unused reservation; the number is never reused.
+- `public.confirm_asset_id_sequence_reservation(...)` now records the Local original/normalized name, equipment type code and immutable components snapshot. The creator or an Organization Admin can retry confirmation.
+- The locked Cloud mutation RPC accepts an optional `category` field; only `settings.manage` can change it. Legacy mutation payloads without `category` remain compatible.
+- `public.mirror_asset_group_change_history(...)` imports Local Admin group-change events idempotently after the Local asset is mirrored.
+- A private snapshot-validation trigger rejects duplicate normalized group codes and equipment short codes, invalid code lengths, blank standard names, and invalid `availableFromPlan` values.
+- A Cloud insert trigger copies the confirmed Local metadata into `assets` during the existing `import_asset_preserving_identity` RPC. A Smart ID cannot be mirrored before its reservation is confirmed.
+
+### Sequence scopes now explicit
+
+- Plan A: Organization + equipment short code.
+- Plan B: Organization + equipment short code + group code.
+- Plan C/D: Organization + equipment short code + group code + site code.
+- Plan C/D sequence does not reset each month; MMYY is a date segment, not a counter scope.
+- Sequence display pads to at least three digits and never truncates values above 999.
+- Capacity checks include existing assets and active reservations. A per-Organization transaction advisory lock serializes reservations across equipment-code families.
+
+### Test results (all inside transactions and rolled back)
+
+- Plan A reservation returns sequence 1; retrying the same reservation ID returns the same sequence.
+- Plan A sequence 1000 is preserved as 1000 (not truncated to 100).
+- Plan B returns sequence 1 for BOM/NUO.
+- Plan C returns sequence 1 for BOM/NUO/site 00 and month-year 1126.
+- Plan D returns sequence 1 for BOM/NUO/site 01 and month-year 1126.
+- Confirmation accepted the Local-formatted examples: `BOM-001`, `BOM-1000`, `BOM-NUO-001`, `BOM-NUO-00-001-1126`, `BOM-NUO-01-001-1126`.
+- End-to-end transactional test: Local reserved and confirmed `BOM-001`, then the existing Cloud import RPC mirrored the asset. The Cloud insert trigger populated original name, normalized name, equipment type code and reservation-linked component snapshot. A KTV-created reservation was also successfully confirmed by an Admin. The transactions were rolled back; no test asset or reservation remained.
+- Admin group change audit recorded old group, new group and Admin UUID.
+- Admin Cloud mutation changed the current group and the Cloud trigger recorded the audit event; the same attempt as KTV was rejected.
+- Local group-history mirror inserted an event and returned an idempotent no-op on retry.
+- Catalog snapshot validator accepted a valid sample and rejected duplicate normalized equipment codes such as `BOM` / `B.O.M`.
+- The complete standard catalog `dataVersion 1.1.0` (44 industries, 30 groups, 74 equipment dictionary entries) passed the database snapshot validator in a rolled-back test.
+- All test catalog rows, reservations, counters and temporary updates were rolled back. The Test Organization still has its original 2 assets and no catalog row/reservations/counters from these tests.
+
+### Not yet provisioned / integrated
+
+- The Test Organization currently has no row in `organization_equipment_catalog`. Its actual Plan must be provisioned by trusted platform operations; no Plan was guessed or assigned.
+- The browser add-equipment form still uses the old manual-code path. It must load the Organization snapshot, call the analyzer, reserve a number, let Local format/save the complete ID, then confirm the reservation.
+- Local Preview/offline behavior must not invent an official ID when no sequence reservation can be obtained.
+- The Cloud import trigger now verifies a confirmed reservation and copies Local-issued metadata for new Smart ID records, while preserving legacy import behavior for existing records.
+- Existing asset UUIDs are the `assets.id` primary keys and remain internal relationship keys. The current application still returns them through ordinary asset reads; hiding them from KTV/Viewer API responses requires a broader API/view refactor. This migration protects UUID immutability but does not yet hide the primary key.
+- Admin-only group changes are enforced by the database trigger and the locked Cloud mutation RPC. Unlinked Local group changes are recorded in Dexie `assetGroupChanges` and mirrored to Cloud during import; Cloud-linked Admin group changes are recorded locally and in the Cloud audit table. KTV edits can change names but not groups.
+
+
+## 11. Deployment to BAOTRI-Mini-New (21/11/2026)
+
+The Smart ID database foundation was later applied separately to the new project:
+- Supabase project: `BAOTRI-Mini-New`, ref `dskeaiyvldiwlsfqkboq`.
+- The migrations were adapted to the new project's RBAC structure: permission checks use `private.has_org_permission`; existing `private` schema grants are preserved.
+- Group-code lookup normalizes punctuation consistently with the TypeScript engine (for example `CNC-T` → `CNCT`).
+- Public RPCs are SECURITY INVOKER wrappers; SECURITY DEFINER implementations are stored in `private`.
+- Applied migration versions: `20261121094439`, `20261121094441`, `20261121094443`, `20261121094444`, `20261121094447`, `20261121094449`, `20261121094451`, `20261121094453`, and `20261121094809`. Repo migration filenames were aligned to these exact versions.
+- Rollback-only test on the BAOTRI Mini organization validated Plan C reservation, punctuation-normalized group code, confirmation, and Cloud insert-trigger metadata copy. The transaction was rolled back; no catalog, sequence, reservation, or asset test rows remain.
+- Security Advisor reports no Smart ID public SECURITY DEFINER RPC warnings. Three INFO findings remain for private RLS tables with no direct policies; the existing Auth leaked-password warning remains.
+
+### Still required before real use
+
+- Neither `BAOTRI Mini` nor `BAOTRI Mini Test 02` has an Organization catalog snapshot or an assigned Plan in BAOTRI-Mini-New. No Plan was guessed and no official equipment ID has been issued.
+- The trusted Super Admin create-customer flow now requires explicit Plan A/B/C/D selection and atomically creates the Organization, built-in roles/grants, first Admin membership and tenant-owned Plan-filtered Catalog Snapshot from the published catalog registry (dataVersion `1.1.0`).
+- Organization-specific catalog management UI (custom groups/equipment dictionary additions and audited changes) remains to be completed.
+- The current Cloud asset read path still returns `assets.id` to ordinary authenticated clients. The approved requirement that KTV/Viewer must not receive the internal UUID in ordinary API responses remains open and needs a broader API/view refactor.
+
+## 12. Plan-aware customer onboarding (21/11/2026)
+
+Plan selection is part of creating a new customer Organization, not a follow-up manual task.
+
+### Owner UI
+- `src/PlatformAdminPanel.tsx` loads Plan definitions from `public/data/baotri-config.json`.
+- The owner must explicitly choose Plan A/B/C/D; there is no implicit default.
+- The form displays device capacity, equipment-group availability, site support and the corresponding ID rule.
+- The organization overview displays Plan and Catalog Snapshot version. Existing organizations without a snapshot show `Chưa khởi tạo`; no Plan is inferred or assigned automatically.
+
+### Trusted database provisioning
+Migration `20261121100426_platform_customer_plan_provisioning.sql` stores the published standard catalog version in `private.standard_equipment_catalog_versions` and creates:
+- `private.platform_provision_customer(...)`: SECURITY DEFINER implementation with empty search_path and row_security off. It requires the service_role JWT claim, verifies the platform owner's Auth email, verifies the target Admin's real Auth email/profile and validates the selected Plan against the published catalog.
+- `public.platform_provision_customer(...)`: SECURITY INVOKER wrapper with EXECUTE granted only to `service_role`.
+
+The database function performs one transaction:
+1. Insert Organization (existing trigger seeds Admin/Technician/Viewer roles and permission grants)
+2. Copy the selected Plan's tenant-owned Catalog Snapshot
+3. Insert the first Admin membership
+4. Assign the built-in Admin role
+
+Any database error rolls back all four operations. Auth invitation is an external Auth operation performed by the Edge Function before the database transaction; if provisioning fails, the invited Auth account can be reused on retry, but no partial Organization is left behind.
+
+### Plan-specific snapshot
+- Plan A: 0 equipment groups, 74 equipment dictionary entries, 11 industries
+- Plan B: 9 groups, 74 dictionary entries, 21 industries
+- Plan C: 17 groups, 74 dictionary entries, 32 industries
+- Plan D: 30 groups, 74 dictionary entries, 44 industries
+
+Groups are filtered by `availableFromPlan`. Dictionary entries remain searchable across all Plans, but suggestions pointing to a group unavailable in the selected Plan are removed. This prevents the name analyzer from proposing a group the customer cannot select.
+
+### Verification and deployment boundary
+- Rollback-only tests successfully provisioned all four Plans with confirmed Auth users. Each returned the correct Plan name, dataVersion `1.1.0`, and expected snapshot counts.
+- After rollback: 2 real Organizations remain; 0 tenant Catalog Snapshots, 0 test assets; 6 seeded roles and 3 real memberships remain unchanged.
+- The provisioning RPC is executable by service_role only; authenticated and anon cannot execute it.
+- Source changes to `platform-create-customer` and `platform-get-overview` are committed on `feature/smart-equipment-id-engine`, but the Edge Functions are not redeployed until the new Pages UI is merged, avoiding a mismatch with the currently deployed UI.
+- The two existing Organizations still have no Plan/Snapshot. Their Plan must be decided separately; onboarding does not silently assign one to existing tenants.
+
+## 13. Current integrated implementation status (21/11/2026)
+
+### Official equipment creation
+- The official Smart Equipment ID path is integrated into the real Add Equipment form in App.tsx. It loads the active Organization's own Plan/Catalog Snapshot; it does not use the standard JSON as a live fallback.
+- The name analyzer requires explicit selection when the match is ambiguous and requires explicit group confirmation for Plan B/C/D. Unknown equipment names are not assigned guessed codes.
+- Cloud reserves only the next numeric sequence. Local constructs the final code, saves the asset and UUID to IndexedDB, then confirms the exact code and immutable issuance snapshot in Cloud.
+- The draft retains its reservation UUID across an uncertain network response. Retrying the save uses the same reservation instead of consuming a second sequence. Changing name/group/site/date or closing an unsaved form attempts to release the unused reservation; an already saved Local asset keeps its pending confirmation data.
+- The client verifies that returned Plan, equipment/group/site codes, month-year, sequence, reservation status and catalog version match the requested components before accepting the ID.
+- Plan A uses EQUIPMENT-SEQUENCE; Plan B adds GROUP; Plan C/D add SITE, SEQUENCE and MMYY. Plan C/D sequence does not reset by month. Sequence values are padded to at least three digits and are never truncated.
+
+### First-time customer onboarding
+- The Super Admin UI is a three-step wizard: organization → explicit Plan A/B/C/D → first Admin and final review. It displays capacity, features, ID rule and the exact Plan-filtered Catalog Snapshot counts.
+- The form sends a UUID requestId and persists the request draft in sessionStorage for retry within the same browser tab.
+- Edge Function source platform-create-customer validates requestId and invokes public.platform_provision_customer_idempotent. A retry after a lost response returns the same committed Organization instead of provisioning a duplicate.
+- The private idempotency table binds requestId to actor, first Admin, email, organization name, Plan and the committed result. The request lock serializes concurrent retries. Reusing the same requestId with different details is rejected.
+- Auth invitation remains separate from the database transaction. If invitation succeeds but provisioning does not, the existing Auth account can be reused on retry; the database transaction never leaves a partially provisioned Organization.
+
+### Additional Supabase migrations on BAOTRI-Mini-New
+- 20261121120907_platform_customer_provisioning_idempotency: private request ledger, RLS enabled, no direct browser/service_role table grants, private SECURITY DEFINER implementation and public SECURITY INVOKER wrapper.
+- 20261121120954_grant_service_role_customer_provisioning_idempotency: EXECUTE grant for service_role on the private implementation, required because the public wrapper is SECURITY INVOKER.
+- The public wrapper is executable by service_role only; authenticated cannot execute it. The private table remains inaccessible directly.
+- Rollback-only verification through the public wrapper with role service_role called the same request twice and returned the same organizationId and Plan A snapshot metadata. Reusing the request UUID with a different payload is rejected. The transaction was rolled back.
+
+### Release status
+- Code and migration source are on feature/smart-equipment-id-engine and PR #11. The PR remains Draft and is still divergent from main by three commits.
+- The two existing Organizations have no Plan or tenant Catalog Snapshot; no Plan has been guessed or assigned.
+- No customer organization, Auth account, membership, asset, or sequence was created during this work.
+- Supabase Edge Functions platform-create-customer and platform-get-overview have not been redeployed; Pages has not been merged/deployed. Backend and frontend source are ready to be released together, but production still runs the previous versions.
+- SmartEquipmentIdTool remains an informational formatter/simulator only; official IDs are issued only by the integrated Add Equipment workflow.

@@ -1124,6 +1124,12 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
 }
 
 
+/* 2026-11-21: visible organization Plan context */
+.plan-context-strip{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:10px;font-size:11px;line-height:1.4;color:var(--muted)}
+.plan-context-strip b{color:var(--text);font-size:12px}
+.plan-context-strip span{padding:4px 8px;border:1px solid var(--border);border-radius:20px;background:var(--panel,var(--card))}
+
+
 /* Smart Equipment ID generator simulation */
 .smart-id-tool-modal{width:min(760px,100%)}
 .smart-id-tool-modal .modal-head h2{display:flex;align-items:center;gap:8px;margin:4px 0}
