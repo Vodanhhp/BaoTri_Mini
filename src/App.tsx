@@ -35,6 +35,7 @@ const emptyAsset = (): Asset => ({
   location: '', commissionedAt: '', power: '', cycle: '', transferredFromOtherFacility: false,
   status: 'Đang hoạt động', notes: '', images: [], createdAt: now(), updatedAt: now()
 })
+const displayAssetName = (asset: Pick<Asset,'name'|'transferredFromOtherFacility'>) => asset.transferredFromOtherFacility && !asset.name.endsWith('*') ? asset.name + '*' : asset.name
 const dateText = (value: string) => value ? new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('vi-VN') : '—'
 const imageToDataUrl = async (file: File): Promise<string> => {
   if (!file.type.startsWith('image/')) throw new Error('Chỉ chấp nhận tệp hình ảnh.')
@@ -209,6 +210,7 @@ export default function App() {
     return()=>{active=false;window.removeEventListener('online',retryPendingLocalReservations)}
   },[session?.user.id,organizationId])
 
+  const isNewAssetDraft=Boolean(editing&&!assets.some(a=>a.id===editing.id))
   const isNewSmartAsset=Boolean(editing&&!localPreview&&!assets.some(a=>a.id===editing.id))
   const smartAnalysis=useMemo(()=>{
     if(!editing||!isNewSmartAsset||!equipmentCatalog)return null
@@ -396,7 +398,7 @@ export default function App() {
           idComponentsSnapshot:{...issuance.components,reservation_id:reservationId},
           idReservationId:reservationId,
           idReservationStatus:'reserved',
-          createdByLabel:editing.createdByLabel||session.user.email||'',
+          createdByLabel:editing.transferredFromOtherFacility?'Chuyển nơi khác tới':(editing.createdByLabel||session.user.email||''),
           createdByUserId:editing.createdByUserId||session.user.id,
           updatedAt:now()
         }
@@ -445,7 +447,7 @@ export default function App() {
       const value:Asset={
         ...editing,
         localScope,
-        createdByLabel:editing.createdByLabel||previous?.createdByLabel||session?.user.email||(localPreview?'Chế độ thử nghiệm Local':''),
+        createdByLabel:!previous&&editing.transferredFromOtherFacility?'Chuyển nơi khác tới':(editing.createdByLabel||previous?.createdByLabel||session?.user.email||(localPreview?'Chế độ thử nghiệm Local':'')), 
         createdByUserId:editing.createdByUserId||previous?.createdByUserId||session?.user.id,
         code:previous?.code??editing.code.trim().toUpperCase(),
         name:editing.name.trim(),
@@ -633,7 +635,7 @@ export default function App() {
           </div>
           <div className="table-wrap"><table><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.map(asset=><tr key={asset.id}>
-              <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{asset.name}</small></button></td>
+              <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
               <td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
               <td className="actions">{showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}</>}</td>
@@ -684,7 +686,7 @@ export default function App() {
         }}/></label>
         <label className="field">Chu kỳ bảo trì<select value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})}><option value="">Chưa thiết lập</option>{ASSET_CYCLES.map(item=><option key={item} value={item}>{item}</option>)}{editing.cycle&&!ASSET_CYCLES.includes(editing.cycle as typeof ASSET_CYCLES[number])&&<option value={editing.cycle}>{editing.cycle} · giá trị cũ</option>}</select></label>
         <label className="field">Trạng thái<select value={editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
-        <label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked})}/> Thiết bị được chuyển từ cơ sở khác đến</span></label>
+        {isNewAssetDraft?<label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked,createdByLabel:event.target.checked?'Chuyển nơi khác tới':undefined})}/> Thiết bị được chuyển từ cơ sở khác đến</span><small>Khi chọn, tên thiết bị sẽ hiển thị thêm dấu * và trường Người thêm ghi “Chuyển nơi khác tới”. Mã quản lý vẫn sinh theo quy tắc bình thường.</small></label>:editing.transferredFromOtherFacility?<div className="field full-field muted">* Thiết bị được chuyển từ cơ sở khác đến</div>:null}
         <label className="field full-field">Ghi chú<textarea rows={3} value={editing.notes} onChange={event=>setEditing({...editing,notes:event.target.value})}/></label>
         <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/8)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=8} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
         {error&&<div className="auth-error full-field">{error}</div>}
@@ -696,7 +698,7 @@ export default function App() {
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>void loadAssets()}/>}
     {smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}
-    {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{detailAsset.name}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
+    {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{displayAssetName(detailAsset)}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
       <div className="detail-status-row"><span className={'status '+(detailAsset.archivedAt?'gray':detailAsset.status==='Đang hoạt động'?'green':detailAsset.status==='Đang sửa chữa'?'orange':detailAsset.status==='Thanh lý'?'red':'gray')}>{detailAsset.archivedAt?'Đã lưu kho':detailAsset.status}</span><span className="muted">Cập nhật: {dateText(detailAsset.updatedAt.slice(0,10))}</span></div>
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
@@ -707,7 +709,7 @@ export default function App() {
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
       {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><strong>{detailAsset.code}</strong></div>}
-      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{detailAsset.name}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',detailAsset.name],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
+      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{displayAssetName(detailAsset)}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',displayAssetName(detailAsset)],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
     </div>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>
