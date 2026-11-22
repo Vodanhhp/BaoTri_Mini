@@ -45,15 +45,20 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
     loadPlans(import.meta.env.BASE_URL),
     client.functions.invoke('organization-plan-requests',{body:{action:'list',organizationId}})
    ])
+   // Giữ Plan/Catalog đã tải được ngay cả khi API lịch sử yêu cầu bị lỗi (ví dụ CORS).
+   setCurrentPlan(catalog?.plan_code??null)
+   onCatalogLoaded?.(catalog)
+   setPlans(planOptions)
+   if(!assetCountResponse.error){
+    const assetCount=Number(assetCountResponse.data??0)
+    if(Number.isSafeInteger(assetCount)&&assetCount>=0)setDeviceCount(assetCount)
+   }
    if(assetCountResponse.error)throw new Error('Không tải được số lượng thiết bị Cloud: '+assetCountResponse.error.message)
    if(response.error)throw new Error(response.error.message)
    if(response.data?.error)throw new Error(response.data.error)
    const assetCount=Number(assetCountResponse.data??0)
    if(!Number.isSafeInteger(assetCount)||assetCount<0)throw new Error('Cloud trả về số lượng thiết bị không hợp lệ.')
-   setCurrentPlan(catalog?.plan_code??null)
-   onCatalogLoaded?.(catalog)
    setDeviceCount(assetCount)
-   setPlans(planOptions)
    setRequests((response.data?.requests??[]) as PlanRequest[])
    setTargetPlan('')
   }catch(e){setError(e instanceof Error?e.message:String(e))}
@@ -80,7 +85,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
   finally{setBusy(false)}
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
-  <section className="modal member-modal" style={{width:'min(720px,96vw)',maxHeight:'90vh',overflowY:'auto'}}>
+  <section className="modal member-modal plan-request-modal" style={{maxHeight:'92vh',overflowY:'auto'}}>
    <div className="modal-head"><div><div className="eyebrow">THUÊ BAO DOANH NGHIỆP</div><h2>Gói dịch vụ</h2><p>Xem Plan hiện tại và gửi yêu cầu thay đổi gói sử dụng.</p></div><button className="icon-btn" onClick={onClose} disabled={busy}>×</button></div>
    {error&&<div className="auth-error">{error}</div>}
    {message&&<div className="cloud-message">{message}</div>}

@@ -1233,10 +1233,36 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
   font-size:12px;
   text-align:center;
 }
-.plan-requests-table-wrap{max-height:min(58vh,560px)}
-.plan-requests-table{min-width:880px!important}
-.plan-history-table-wrap{max-height:260px}
-.plan-history-table{min-width:600px!important}
+.plan-request-modal{width:min(1120px,96vw)!important;max-width:1120px}
+.plan-request-modal .modal-head{position:sticky;top:-1px;z-index:3;background:var(--panel);padding-bottom:12px}
+.plan-requests-table-wrap{max-height:min(58vh,560px);width:100%}
+.plan-requests-table{min-width:820px!important;table-layout:fixed!important}
+.plan-requests-table th:nth-child(1),.plan-requests-table td:nth-child(1){width:18%}
+.plan-requests-table th:nth-child(2),.plan-requests-table td:nth-child(2){width:14%}
+.plan-requests-table th:nth-child(3),.plan-requests-table td:nth-child(3){width:18%}
+.plan-requests-table th:nth-child(4),.plan-requests-table td:nth-child(4){width:27%}
+.plan-requests-table th:nth-child(5),.plan-requests-table td:nth-child(5){width:11%}
+.plan-requests-table th:nth-child(6),.plan-requests-table td:nth-child(6){width:12%}
+.plan-requests-table td:nth-child(1),.plan-requests-table td:nth-child(3){overflow-wrap:anywhere}
+.plan-requests-table td:nth-child(4){white-space:normal}
+.plan-requests-table .table-action-group{flex-wrap:nowrap}
+.plan-history-table-wrap{max-height:280px;width:100%}
+.plan-history-table{min-width:760px!important;table-layout:fixed!important}
+.plan-history-table th:nth-child(1),.plan-history-table td:nth-child(1){width:25%}
+.plan-history-table th:nth-child(2),.plan-history-table td:nth-child(2){width:19%}
+.plan-history-table th:nth-child(3),.plan-history-table td:nth-child(3){width:40%;white-space:normal}
+.plan-history-table th:nth-child(4),.plan-history-table td:nth-child(4){width:16%}
+@media(max-width:900px){
+ .plan-request-modal{width:min(96vw,760px)!important}
+ .plan-requests-table{min-width:820px!important}
+ .plan-history-table{min-width:760px!important}
+}
+@media(max-width:680px){
+ .plan-request-modal{width:96vw!important;max-height:94vh!important;padding:14px!important}
+ .plan-request-modal .modal-head{gap:10px}
+ .plan-requests-table-wrap{max-height:48vh}
+ .plan-history-table-wrap{max-height:34vh}
+}
 .platform-org-table table{min-width:900px}
 @media(max-width:680px){
   .table-standard-wrap{border-radius:9px}
@@ -1246,4 +1272,101 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
   .table-wrap > table tbody td{padding:9px 11px;font-size:10px}
   .plan-requests-table{min-width:820px!important}
   .plan-history-table{min-width:570px!important}
+}
+
+
+/* Typography system — one Vietnamese UI font and a readable shared scale */
+:root{
+  --font-family-ui:'Be Vietnam Pro',Arial,sans-serif;
+  --font-size-caption:11px;
+  --font-size-secondary:12px;
+  --font-size-body:13px;
+  --font-size-section:15px;
+  --font-size-dialog-title:18px;
+  --font-size-page-title:22px;
+}
+html,body,#root,.app-shell{
+  font-family:var(--font-family-ui)!important;
+  font-size:var(--font-size-body);
+  font-synthesis:none;
+}
+#root button,#root input,#root select,#root textarea{font-family:inherit}
+#root :where(
+  small,.eyebrow,.nav-label,.sidebar-bottom,.sync-status,
+  .stat-card small,.stat-card span,.task-info small,.stock-row small,
+  .mini-stat span,.priority-item small,.text-btn,.complete-btn,.status,
+  .empty,.footnote,.field,.muted,.mobile-nav-item,.mobile-nav-item i,
+  .about-eyebrow,.about-version,.about-contact-copy small,
+  .asset-filter-popover label,.asset-result-count,.asset-name-link small,
+  .asset-detail-field small,.asset-photo-thumb span,.archive-security-note,
+  .asset-qr-panel small,.asset-transfer-option small,.asset-code-preview small,
+  .asset-code-preview span,.inventory-name-link small,.checklist-overdue-note,
+  .employee-profile-details small,.plan-period-control,.plan-assets-heading,
+  .plan-asset-option small,.plan-assets-field>small,.plan-export-scope,
+  .scan-eyebrow,.scan-section-heading small,.scan-camera-note,.scan-divider,
+  .scan-manual-label,.scan-manual-help,.scan-checklist-note,
+  .detail-field small,.detail-notes small,.member-stat small,
+  .member-identity small,.member-confirm,.member-action,.member-protected,
+  .member-section-title small,.member-invite-section .field,.member-note,
+  .organization-name,.draft-recovery-row small,
+  .smart-id-tool-modal .field small,.smart-id-result small,
+  .table-wrap th,.table-wrap td small,.table-action-group button,
+  .platform-onboarding-step,.platform-onboarding-section>span,
+  .platform-plan-selected,.platform-plan-details span,.platform-plan-inline
+){font-size:var(--font-size-caption)!important;line-height:1.45}
+#root .platform-admin-modal :is(.panel-head p,.stat-card span,.stat-card small,
+  .platform-onboarding-intro p,.platform-onboarding-section p,
+  .platform-plan-card small,.platform-plan-summary,.platform-plan-summary p,
+  .platform-onboarding-review>div,.platform-onboarding-review>div span,
+  .platform-create-form .auth-note,.platform-create-form .field,
+  .platform-plan-inline,.platform-org-actions button){
+  font-size:var(--font-size-secondary)!important;
+}
+#root .platform-admin-modal :is(.platform-onboarding-step,
+  .platform-onboarding-section>span,.platform-plan-selected,
+  .platform-plan-details span,.platform-onboarding-kicker){
+  font-size:var(--font-size-caption)!important;
+}
+#root .table-standard-wrap :is(th,td,td b,td small){font-family:var(--font-family-ui)!important}
+
+/* Small third-party scanner controls and remaining metadata follow the same readable minimum. */
+#root .scan-modal #qr-reader__dashboard :is(select,button,a),
+#root .scan-modal .html5-qrcode-element,
+#root :where(.platform-action-kicker,.about-version b,.plan-asset-option b){
+  font-size:var(--font-size-caption)!important;
+}
+
+/* Final minimums for compact mobile/table/summary text and modal micro-labels. */
+#root :where(
+  .welcome p,.report-card p,.about-warning p,.scan-intro-copy p,
+  .platform-admin-modal .platform-onboarding-step span,
+  .platform-admin-modal .platform-onboarding-section>span,
+  .platform-admin-modal .platform-org-table table,
+  .platform-admin-modal .platform-org-table th,
+  .platform-admin-modal .platform-onboarding-kicker,
+  .table-wrap td,.maintenance-plan-table :is(th,td),
+  .primary-btn,.soft-btn,.complete-btn
+){font-size:var(--font-size-caption)!important}
+
+
+/* Danh mục thiết bị — bố cục tìm kiếm và bộ lọc thống nhất */
+.app-shell .asset-toolbar-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin:0 0 16px;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+.app-shell .asset-toolbar-panel .asset-searchbar{width:100%;height:46px;margin:0;padding:0 14px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--muted);box-shadow:0 1px 2px #173b3210}
+.app-shell .asset-toolbar-panel .asset-searchbar:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent)}
+.app-shell .asset-toolbar-panel .asset-searchbar input{font:inherit;font-size:13px;min-height:42px}
+.app-shell .asset-toolbar-panel .asset-searchbar input::placeholder{color:var(--muted);opacity:.82}
+.asset-filter-row{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr)) auto;align-items:end;gap:10px}
+.asset-filter-field{display:grid;gap:5px;min-width:0}
+.asset-filter-field>span{font-size:11px;font-weight:600;color:var(--muted);line-height:1.35}
+.asset-filter-field select{width:100%;min-width:0;height:39px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text);font:inherit;font-size:12px}
+.asset-filter-field select:focus{outline:2px solid color-mix(in srgb,var(--primary) 22%,transparent);outline-offset:1px}
+.asset-reset-btn{height:39px;white-space:nowrap;justify-content:center}
+@media(max-width:1050px){.asset-filter-row{grid-template-columns:repeat(2,minmax(0,1fr))}.asset-reset-btn{width:100%}}
+@media(max-width:600px){
+ .app-shell .asset-toolbar-panel{padding:11px;gap:10px}
+ .app-shell .asset-toolbar-panel .asset-searchbar{height:44px}
+ .app-shell .asset-toolbar-panel .asset-searchbar input{font-size:16px}
+ .asset-filter-row{grid-template-columns:minmax(0,1fr);gap:9px}
+ .asset-filter-field select,.asset-reset-btn{height:42px;font-size:13px}
+ .asset-filter-field>span{font-size:12px}
 }

@@ -2,9 +2,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 
 const OWNER_EMAIL='tuanluongpham1980@gmail.com'
 const ORIGIN='https://baotri.vieclamhp247.com'
+const ALLOWED_ORIGINS=new Set([ORIGIN,'https://baotri-mini-new-preview-eazlswbhd-tuanluongpham-8256.vercel.app','https://baotri-mini-new-preview-mutqeu613-tuanluongpham-8256.vercel.app','http://localhost:5173','http://127.0.0.1:5173'])
 const cors=(origin:string|null)=>({
- 'Access-Control-Allow-Origin':origin===ORIGIN||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173'?origin:ORIGIN,
- 'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info',
+ 'Access-Control-Allow-Origin':origin&&ALLOWED_ORIGINS.has(origin)?origin:ORIGIN,
+ 'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info, x-retry-count, traceparent, tracestate, baggage',
  'Access-Control-Allow-Methods':'POST, OPTIONS',
  'Vary':'Origin'
 })

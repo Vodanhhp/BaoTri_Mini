@@ -1126,3 +1126,62 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Lưu ý vận hành: các cập nhật được ghi trực tiếp lên `main`; workflow `.github/workflows/pages.yml` có trigger `push` trên `main`, vì vậy GitHub Actions đã tự chạy deploy GitHub Pages. Run `45016313747` hoàn tất **success**, source commit `b918fdcf37e02c7760aeb24fee3de815e4901808`; workflow có bước `actions/deploy-pages@v4`. Đây là lần cập nhật GitHub Pages trên domain production theo CNAME, không phải Vercel Staging. Việc này xảy ra ngoài dự kiến; không có thay đổi Supabase/Edge Functions hay dữ liệu nghiệp vụ.
 - Workflow CI run `45016313708` thất bại ở Unit tests nên bước Build của workflow CI bị skip. Kết quả test: 28/29 pass; test `member-facing Cloud asset list uses the UUID-free RPC` đang kiểm tra RPC cũ `list_cloud_assets`, trong khi `src/lib/cloudAssets.ts` hiện dùng RPC phân trang `list_cloud_assets_page`. Đây là test assertion chưa đồng bộ với implementation hiện tại, không phải lỗi từ các file UI bảng vừa sửa. Riêng workflow Pages đã chạy `npm run build` và build thành công trước khi deploy.
 - Không thực hiện rollback production vì cần quyết định rõ ràng của người dùng. Trước mọi lần cập nhật tiếp theo phải tránh push `main` nếu chưa xác định rõ tác động workflow; ưu tiên kiểm thử và xác nhận Staging trước. Chờ người dùng quyết định có cần rollback GitHub Pages về bản trước hay giữ giao diện mới.
+
+ 
+### Điều chỉnh bố cục bảng Gói dịch vụ và chuẩn bảng nhiều cột — 22/11/2026
+- Tiếp tục từ branch `feature/ui-table-layout-system`, tách khỏi `main`; không rollback hoặc di chuyển nhánh Production.
+- Nguyên nhân nhìn thấy ở source: modal Gói dịch vụ doanh nghiệp bị cố định `min(720px,96vw)`, trong khi bảng lịch sử có 4 cột và bảng Super Admin có 6 cột, kèm min-width lớn. Ở màn hình desktop, modal quá hẹp khiến bảng bị cuộn ngang và nội dung trông như bị dồn/chật.
+- Đã mở rộng modal Gói dịch vụ trên desktop lên tối đa 1120px/96vw; tablet thu về tối đa 760px; mobile dùng 96vw và giới hạn chiều cao phù hợp.
+- Chuẩn hóa bố cục hai bảng Plan: khai báo tỷ lệ cột, dùng table-layout fixed, cho phép cột ghi chú wrap; cột trạng thái/ngày gọn; giữ nhóm thao tác trên một hàng. Vùng bảng có cuộn độc lập và chiều cao giới hạn.
+- Bổ sung quy tắc modal/bảng nhiều cột vào `docs/UI_TABLE_STANDARD.md` để dùng cho các ứng dụng cùng hệ sinh thái.
+- Files thay đổi: `src/PlanChangePanels.tsx`, `src/style.css`, `docs/UI_TABLE_STANDARD.md`.
+- Chưa build/test trình duyệt; chưa deploy Staging hoặc Production. Không thay đổi nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu.
+- Bước tiếp theo: chạy CI/build trên branch, kiểm tra giao diện desktop/tablet/mobile; tiếp tục rà soát các bảng còn lại trước khi đề xuất merge/deploy.
+
+
+### Chuẩn hóa typography toàn website — 22/11/2026
+- Rà soát source cho thấy font Be Vietnam Pro đã được import và khai báo ở `:root`; vấn đề không phải thiếu font chung mà là cỡ chữ bị đặt rải rác, có nhiều quy tắc 7–10px và một khối CSS riêng trong Quản trị nền tảng.
+- Giữ Be Vietnam Pro làm font giao diện duy nhất; bổ sung token `--font-family-ui` và thang chữ thống nhất: 11px chú thích, 12px nội dung phụ, 13px nội dung chính, 15px tiêu đề khu vực, 18px tiêu đề hộp thoại, 22px tiêu đề trang.
+- Thêm lớp chuẩn hóa để các nhãn phụ, trạng thái, nội dung bảng, nút nhỏ và thành phần Quản trị nền tảng không còn bị thu nhỏ xuống 7–10px; giữ ngoại lệ font Tahoma cho bản in và Consolas cho mã kỹ thuật.
+- Sửa JSX trùng thuộc tính `className` tại modal Gói dịch vụ; giữ class `plan-request-modal` để áp dụng đúng kích thước bảng nhiều cột.
+- Cập nhật `docs/UI_TABLE_STANDARD.md` thêm chuẩn typography dùng lại cho các ứng dụng trong hệ sinh thái.
+- Phạm vi chỉ CSS/JSX/tài liệu; không đổi logic nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu. Chưa build và chưa kiểm tra trực quan trên browser; chưa deploy Staging/Production.
+
+### Kiểm tra typography và build sau chuẩn hóa — 22/11/2026
+- Kiểm tra lại source sau cập nhật: CSS cân bằng dấu ngoặc `{}`; font-family giao diện vẫn thống nhất Be Vietnam Pro, các khai báo font Tahoma/Consolas chỉ nằm trong vùng in và chuỗi mã kỹ thuật.
+- Xác nhận JSX modal Gói dịch vụ không còn thuộc tính `className` trùng; class `plan-request-modal` vẫn được giữ.
+- GitHub Actions `Validate BAOTRI Mini` run `45017871094` hoàn tất **success**, bước `npm run build` thành công ở commit `c2b4d81e6f8f4f185bf8f2669cff0e92af9b31db`.
+- GitHub Actions `Build and test` run `45017871083` thất bại tại test cũ `scripts/cloudAssetPublicApi.test.mjs`: test vẫn đòi `rpc('list_cloud_assets')`, trong khi implementation hiện tại dùng RPC phân trang `list_cloud_assets_page`. Đây là assertion chưa đồng bộ, không phải lỗi build/typography; không sửa test nghiệp vụ trong phạm vi công việc này.
+- PR #16 vẫn là Draft, chưa merge; không deploy Staging hoặc Production. Chưa có browser visual test trên PC/tablet/mobile.
+
+
+### Đồng bộ bài kiểm thử API Cloud với RPC phân trang — 22/11/2026
+- Đối chiếu CI run `45017934605` và log job: 28/29 unit tests pass; test duy nhất thất bại vì còn yêu cầu `list_cloud_assets` trong khi `src/lib/cloudAssets.ts` đã chuyển sang `list_cloud_assets_page`.
+- Kiểm tra migration `20261122055755_cloud_asset_sync_pagination_and_platform_read.sql`: RPC phân trang trả dữ liệu theo `items/has_more/next_cursor`, loại UUID nội bộ khỏi response và chỉ cấp quyền execute cho authenticated.
+- Cập nhật `scripts/cloudAssetPublicApi.test.mjs` để xác nhận đúng RPC phân trang, tham số keyset pagination, không SELECT trực tiếp bảng assets, và quyền/response trong migration tương ứng. Không thay đổi source nghiệp vụ, migration, Supabase hoặc dữ liệu.
+- Commit sửa test: `cb3a2670c1299b10a88c195cba76020314533ecd`. Đang chờ workflow chạy lại trên commit mới; chưa kết luận CI pass.
+- PR #16 vẫn Draft, chưa merge. Chưa tạo deployment Preview, chưa deploy Production; cần xác minh Vercel Preview tự động theo đúng commit mới trước khi kiểm tra trực quan.
+
+
+### Chỉnh giao diện Danh mục thiết bị theo phản hồi kiểm tra Staging — 22/11/2026
+- Tiếp nhận phản hồi trực tiếp trên màn hình Công ty C: một số cỡ chữ chưa đồng đều, khu vực tìm kiếm/bộ lọc chưa gọn và nút thử nghiệm “Sinh mã thử” không nên xuất hiện trong giao diện vận hành.
+- Trên nhánh `feature/ui-table-layout-system`: bỏ nút “Sinh mã thử” khỏi thanh đầu trang và bỏ đường mở công cụ thử mã từ màn hình đăng nhập; không đụng tới luồng Smart Equipment ID thực tế khi tạo/lưu hồ sơ thiết bị.
+- Tổ chức lại vùng tra cứu Danh mục thiết bị: ô tìm kiếm thành một hàng riêng, rộng toàn vùng; bộ lọc nhóm/vị trí/trạng thái và sắp xếp chuyển thành hàng có nhãn; nút Đặt lại nằm cùng hàng bộ lọc. Bổ sung responsive tablet/mobile và cỡ input mobile 16px để tránh tự zoom.
+- Chỉ thay đổi giao diện React/CSS và đường dẫn vào tiện ích thử nghiệm; không sửa logic nghiệp vụ, dữ liệu Local/Cloud, RPC, phân quyền, migrations, Supabase hoặc Edge Functions.
+- Cần CI/build và triển khai Staging đúng commit mới để người dùng kiểm tra trực quan; PR #16 vẫn Draft, không merge và không triển khai Production.
+
+
+### Giữ thông tin Plan hiện tại khi API yêu cầu đổi gói gặp lỗi — 22/11/2026
+- Khi mở “Thuê bao doanh nghiệp” trên Staging, trình duyệt báo `Failed to send a request to the Edge Function`; đồng thời UI còn hiển thị dòng “Tổ chức chưa có Plan hoặc Catalog Snapshot” dù trang Danh mục thiết bị của cùng phiên đang hiển thị Plan A và Catalog v1.1.0.
+- Nguyên nhân UI: `OrganizationPlanPanel` chờ kiểm tra lỗi RPC/Edge Function trước khi cập nhật state Plan/Catalog. Nếu Edge Function lỗi mạng/CORS, state Plan vẫn null nên thông báo “chưa có Plan” gây hiểu nhầm.
+- Sửa thứ tự: ghi nhận Plan/Catalog trả về thành công trước, sau đó mới kiểm tra lỗi đếm Cloud hoặc API yêu cầu. Nếu API yêu cầu lỗi, giữ Plan hiện tại trên màn hình và hiển thị lỗi riêng; không tự thay đổi Plan hoặc gửi yêu cầu.
+- CORS: Edge Function `organization-plan-requests` bản Test trước đó chỉ được allowlist domain Staging cũ; deployment mới dùng hostname khác `baotri-mini-new-preview-mjyccbxn2-tuanluongpham-8256.vercel.app`. Cần người dùng cho phép bổ sung origin mới và deploy lại Edge Function trên đúng Supabase Test để kiểm thử luồng yêu cầu Plan. Chưa thay đổi Edge Function hoặc Supabase trong bước này.
+
+
+### CORS cho giao diện Thuê bao doanh nghiệp trên Staging — 22/11/2026
+- Người dùng đồng ý cập nhật CORS trên Supabase Test và đề nghị hoàn tất nhanh trên nhánh main khi đủ điều kiện.
+- Project Test `dskeaiyvldiwlsfqkboq`: triển khai thành công phiên bản 3 cho hai Edge Functions `organization-plan-requests` và `platform-manage-plan-requests`; cả hai giữ `verify_jwt: true`.
+- Chỉ bổ sung origin `https://baotri-mini-new-preview-mutqeu613-tuanluongpham-8256.vercel.app` vào allowlist hiện có; không dùng wildcard, không đổi xác thực, phân quyền, RPC, dữ liệu hoặc Plan.
+- Đã đọc lại source sau deploy và xác nhận origin mới có trong allowlist. Chưa chạy được HTTP OPTIONS end-to-end từ môi trường thao tác hiện tại do không phân giải được hostname Supabase; cần kiểm thử trực tiếp từ trình duyệt người dùng trước khi kết luận luồng gọi API đã thông suốt.
+- Đồng bộ nguyên trạng source hai Edge Functions Test phiên bản 3 vào nhánh `feature/ui-table-layout-system` để Git không còn giữ source cũ và tránh deploy sau này ghi đè mất allowlist. Không triển khai bất kỳ Edge Function nào lên Production.
+- Tiếp tục giữ PR #16 Draft cho tới khi CI và staging được xác minh; chưa merge hoặc deploy Production trong bước cập nhật CORS này.
