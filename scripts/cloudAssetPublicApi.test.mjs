@@ -6,7 +6,7 @@ const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
 test('member-facing Cloud asset list uses the UUID-free RPC, not direct table SELECT', async () => {
   const source = await read('../src/lib/cloudAssets.ts')
-  assert.match(source, /rpc\('list_cloud_assets'/)
+  assert.match(source, /rpc\('list_cloud_assets_page'/)
   assert.doesNotMatch(source, /from\(['"]assets['"]\)\.select/)
   assert.match(source, /id: String\(row\.asset_key \?\? row\.code\)/)
 })
