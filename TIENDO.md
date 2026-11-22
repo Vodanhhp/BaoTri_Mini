@@ -945,3 +945,8 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
   - a724cb7c974c0867025eb79175deb33e59ce2ebe — trả kết quả từng hồ sơ để batch nhận biết thành công/thất bại.
 - Chỉ sửa source trên main; không tạo branch. Chưa chạy build/test, chưa apply migration, chưa deploy Edge Functions/Pages, chưa thao tác Supabase hoặc dữ liệu tổ chức.
 - Giới hạn cần rà soát tiếp: các hồ sơ preview thiếu UUID/mã/tên hoặc có reservation đều bị chặn; hồ sơ trùng code/UUID cần đối chiếu thủ công. Cần rà soát tĩnh lần cuối toàn bộ luồng và kiểm tra CI/build khi người dùng cho phép.
+
+
+- Bổ sung sau rà soát: hàm nhập từng hồ sơ trả về kết quả boolean để batch giữ lại chính xác các hồ sơ thất bại; sau thao tác refresh danh sách, lỗi của hồ sơ được đặt lại để không bị hàm reload xóa mất. Commit: e14d52d82f17f98ab06d564e7ce1ee424470596f.
+- Xác minh source cuối trên main: App có state tải Local Preview riêng và truyền prop vào panel; panel có khu vực chọn thủ công, kiểm tra UUID/code/reservation/tenant link, gọi import RPC hiện hữu, rồi mới chuyển scope trong transaction IndexedDB. Đây chỉ là rà soát source tĩnh, không thay thế build/test.
+- Main head tại checkpoint này: e14d52d82f17f98ab06d564e7ce1ee424470596f. Chưa build/test, chưa apply migration, chưa deploy, chưa thao tác Supabase.
