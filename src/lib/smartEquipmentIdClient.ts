@@ -17,6 +17,7 @@ export type SmartSequenceReservation = {
   sequence: number | string
   equipment_code: string
   group_code?: string | null
+  group_name_at_creation?: string | null
   site_code?: string | null
   month_year?: string | null
   source_data_version: string
@@ -125,7 +126,8 @@ export async function reserveSmartEquipmentId(
     sequence,
     month_year: reservation.month_year ?? null,
     standard_equipment_name: input.standardEquipmentName,
-    group_name_at_creation: groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null,
+    group_name_at_creation: reservation.group_name_at_creation
+      ?? (groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null),
     source_data_version: reservation.source_data_version,
     issued_at: new Date().toISOString()
   }
