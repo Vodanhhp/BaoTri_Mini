@@ -288,7 +288,7 @@ export default function App() {
   const locations = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt && !a.deletedAt).map(a => a.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
   const visibleAssets = useMemo(() => assets.filter(asset => {
     if (Boolean(asset.deletedAt) !== showDeleted) return false
-    if (!currentOrganization?.isAdmin && asset.deletedAt) return false
+    if (!organizationContexts.find(o=>o.id===organizationId)?.isAdmin && asset.deletedAt) return false
     if (!showDeleted && Boolean(asset.archivedAt) !== showArchived) return false
     const text = [asset.code, asset.name, asset.category, asset.brand, asset.model, asset.serial, asset.location].join(' ').toLocaleLowerCase('vi')
     return (!query || text.includes(query.toLocaleLowerCase('vi'))) &&
@@ -300,7 +300,7 @@ export default function App() {
     if (sortBy === 'code') return a.code.localeCompare(b.code,'vi', {numeric:true})
     if (sortBy === 'commissionedAt') return (a.commissionedAt || '').localeCompare(b.commissionedAt || '')
     return b.updatedAt.localeCompare(a.updatedAt)
-  }), [assets, query, categoryFilter, locationFilter, statusFilter, sortBy, showArchived, showDeleted, currentOrganization?.isAdmin])
+  }), [assets, query, categoryFilter, locationFilter, statusFilter, sortBy, showArchived, showDeleted, organizationContexts, organizationId])
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
@@ -312,6 +312,7 @@ export default function App() {
   })
 
   const openAssetEditor=async(asset:Asset)=>{
+    if(asset.deletedAt){alert('Thiết bị đã bị xóa mềm. Chưa thể chỉnh sửa hồ sơ này.');return}
     try{
       if(localPreview){setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true);return}
       if(!session||!organizationId||!supabase)throw new Error('Chưa có tổ chức đang hoạt động.')

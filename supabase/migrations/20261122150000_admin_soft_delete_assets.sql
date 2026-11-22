@@ -71,7 +71,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text||':'||p_mutation_id::text,0));
  select * into v_receipt from public.asset_mutation_receipts where organization_id=p_organization_id and mutation_id=p_mutation_id;
  if found then
-  if v_receipt.actor_user_id<>v_actor or v_receipt.expected_cloud_updated_at<>p_expected_cloud_updated_at or v_receipt.request_payload<>v_payload then raise exception 'Mutation ID reused with different request' using errcode='23505';end if;
+  if v_receipt.actor_user_id<>v_actor or v_receipt.expected_cloud_updated_at<>p_expected_cloud_updated_at or v_receipt.request_payload<>v_payload or v_receipt.result_snapshot->>'code'<>p_asset_code then raise exception 'Mutation ID reused with different request' using errcode='23505';end if;
   return jsonb_build_object('already_applied',true,'asset',(v_receipt.result_snapshot-'id')||jsonb_build_object('asset_key',p_asset_code),'applied_at',v_receipt.applied_at);
  end if;
  select id into v_asset_id from public.assets where organization_id=p_organization_id and code=p_asset_code for update;
