@@ -1210,3 +1210,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Hỗ trợ đóng bằng nút X, nhấn nền ngoài ảnh hoặc phím Esc; điều hướng ảnh trước/sau bằng nút và phím mũi tên; có nhãn thứ tự ảnh và hỗ trợ giảm kích thước trên màn hình nhỏ.
 - Áp dụng cho thumbnail trong màn hình chỉnh sửa và ảnh trong Chi tiết thiết bị. Không thay đổi dữ liệu ảnh, nén ảnh, IndexedDB, luồng mutation hoặc đồng bộ Cloud; ảnh vẫn chỉ lưu Local như hiện tại.
 - Thực hiện trên nhánh `feature/unified-image-lightbox`; chưa merge main, chưa triển khai Production.
+
+
+## Xóa mềm thiết bị – Admin only (22/11/2026, đang chờ kiểm thử)
+- Tách trường `deletedAt/deleted_at` khỏi `archivedAt/archived_at`; không dùng Lưu kho làm trạng thái xóa.
+- Admin mới có nút xóa và chế độ tìm/xem thiết bị đã xóa; dấu nhận diện đỏ `ĐÃ XÓA`. Chưa triển khai khôi phục.
+- Xóa chỉ áp dụng với thiết bị đã liên kết Cloud và đang có kết nối; Local ghi snapshot + mutation queue trước, Cloud xác nhận bằng RPC riêng, khóa chỉnh sửa, optimistic timestamp và receipt. Nếu Cloud chưa xác nhận, giữ mutation pending để retry.
+- Migration thêm `assets.deleted_at`, RPC xóa mềm, tombstone sync cho KTV (chỉ trả mã/trạng thái xóa, không trả hồ sơ), và lọc RLS/list để non-Admin không đọc được hồ sơ đã xóa.
+- Không xóa vật lý bản ghi thiết bị hoặc lịch sử liên quan. Không sửa dữ liệu Supabase Production. Migration chưa được áp dụng lên Supabase Test tại thời điểm ghi.
+- Cần CI build/test và kiểm thử thực tế Admin xóa → Cloud → PC/Mobile khác đồng bộ; KTV không thấy/tìm được; Admin tìm thấy; xác nhận hồ sơ/lịch sử vẫn còn.

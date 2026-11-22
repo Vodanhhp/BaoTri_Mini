@@ -47,7 +47,7 @@ export function toImportPayload(asset: Asset) {
     model: asset.model ?? '', serial: asset.serial ?? '', location: asset.location ?? '',
     commissioned_at: asset.commissionedAt || null, power: asset.power ?? '', cycle: asset.cycle ?? '',
     cycle_started_at: asset.cycleStartedAt || null, transferred_from_other_facility: Boolean(asset.transferredFromOtherFacility),
-    status: asset.status, notes: asset.notes ?? '', archived_at: asset.archivedAt || null, deleted_at: asset.deletedAt || null,
+    status: asset.status, notes: asset.notes ?? '', archived_at: asset.archivedAt || null,
     created_at: asset.createdAt, updated_at: asset.updatedAt,
     created_by_user_id: asset.createdByUserId ?? null, created_by_label: asset.createdByLabel ?? null
   }
@@ -153,7 +153,7 @@ export async function syncCloudAssetsToLocal(
   }while(true)
   const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
   if(tombstoneError)throw new Error('Không đồng bộ được dấu xóa thiết bị: '+tombstoneError.message)
-  for(const tombstone of (Array.isArray(data)?data:[]) as Array<{code:string;deleted_at:string;updated_at:string}>){
+  for(const tombstone of (Array.isArray(tombstones)?tombstones:[]) as Array<{code:string;deleted_at:string;updated_at:string}>){
     if(options.shouldContinue&&!options.shouldContinue())break
     const local=await db.assets.where('[localScope+code]').equals([organizationId,tombstone.code]).first()
     if(!local||local.deletedAt===tombstone.deleted_at)continue

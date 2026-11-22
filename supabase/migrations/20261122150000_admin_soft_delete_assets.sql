@@ -1,13 +1,25 @@
 -- Admin-only soft delete for equipment. Preserve all asset and history rows.
 begin;
 
+create or replace function private.is_org_admin(p_organization_id uuid)
+returns boolean language sql stable security definer set search_path='' set row_security=off as $function$
+ select auth.uid() is not null and exists(
+  select 1 from public.organization_members m
+  join public.member_roles mr on mr.organization_id=m.organization_id and mr.member_id=m.id
+  join public.roles r on r.organization_id=mr.organization_id and r.id=mr.role_id
+  where m.organization_id=p_organization_id and m.user_id=auth.uid() and m.status='active' and r.code='admin'
+ );
+$function$;
+revoke all on function private.is_org_admin(uuid) from public,anon;
+grant execute on function private.is_org_admin(uuid) to authenticated;
+
 alter table public.assets add column if not exists deleted_at timestamptz;
 create index if not exists assets_org_deleted_code_idx on public.assets(organization_id,deleted_at,code) where deleted_at is not null;
 
 -- Non-admins cannot read deleted equipment through direct table access.
 drop policy if exists assets_select_member on public.assets;
 create policy assets_select_member on public.assets for select to authenticated
-using (private.is_org_member(organization_id) and (deleted_at is null or private.has_org_permission(organization_id,'assets.delete')));
+using (private.is_org_member(organization_id) and (deleted_at is null or (private.is_org_admin(organization_id) and private.has_org_permission(organization_id,'assets.delete'))));
 
 -- The paginated list remains tenant-scoped. Admin can view deleted records; other members cannot.
 create or replace function public.list_cloud_assets_page(
@@ -25,7 +37,7 @@ begin
  if not exists(select 1 from public.organizations o where o.id=p_organization_id and o.status='active') then raise exception 'Active organization not found' using errcode='P0002';end if;
  with page_rows as (
   select a.* from public.assets a where a.organization_id=p_organization_id and (p_after_code is null or a.code>p_after_code)
-   and (a.deleted_at is null or p_platform_admin or private.has_org_permission(p_organization_id,'assets.delete'))
+   and (a.deleted_at is null or p_platform_admin or (private.is_org_admin(p_organization_id) and private.has_org_permission(p_organization_id,'assets.delete')))
   order by a.code limit v_page_size+1
  ), numbered as (select p.*,row_number() over(order by p.code) as rn from page_rows p)
  select coalesce(jsonb_agg((to_jsonb(n)-'id'-'rn')||jsonb_build_object('asset_key',n.code) order by n.code) filter(where n.rn<=v_page_size),'[]'::jsonb),
@@ -53,11 +65,7 @@ create or replace function public.soft_delete_cloud_asset_with_lock(
 declare v_actor uuid:=auth.uid();v_asset_id uuid;v_asset public.assets;v_lock public.asset_edit_locks;v_receipt public.asset_mutation_receipts;v_payload jsonb;
 begin
  if v_actor is null then raise exception 'Authentication required' using errcode='42501';end if;
- if not private.has_org_permission(p_organization_id,'assets.delete') or not exists(
-  select 1 from public.organization_members m join public.member_roles mr on mr.organization_id=m.organization_id and mr.member_id=m.id
-  join public.roles r on r.organization_id=mr.organization_id and r.id=mr.role_id
-  where m.organization_id=p_organization_id and m.user_id=v_actor and m.status='active' and r.code='admin'
- ) then raise exception 'Admin role required to delete equipment' using errcode='42501';end if;
+ if not private.has_org_permission(p_organization_id,'assets.delete') or not private.is_org_admin(p_organization_id) then raise exception 'Admin role required to delete equipment' using errcode='42501';end if;
  if p_mutation_id is null or p_expected_cloud_updated_at is null or p_deleted_at is null then raise exception 'Invalid delete request' using errcode='22023';end if;
  v_payload:=jsonb_build_object('deleted_at',p_deleted_at);
  perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text||':'||p_mutation_id::text,0));
@@ -88,7 +96,7 @@ declare v_result jsonb;
 begin
  if auth.uid() is null or not private.has_org_permission(p_organization_id,'assets.view') then raise exception 'Missing assets.view permission' using errcode='42501';end if;
  select coalesce(jsonb_agg((to_jsonb(a)-'id')||jsonb_build_object('asset_key',a.code) order by a.name,a.code),'[]'::jsonb) into v_result
- from public.assets a where a.organization_id=p_organization_id and (a.deleted_at is null or private.has_org_permission(p_organization_id,'assets.delete'));
+ from public.assets a where a.organization_id=p_organization_id and (a.deleted_at is null or (private.is_org_admin(p_organization_id) and private.has_org_permission(p_organization_id,'assets.delete')));
  return v_result;
 end;$function$;
 revoke all on function public.list_cloud_assets(uuid) from public,anon;
