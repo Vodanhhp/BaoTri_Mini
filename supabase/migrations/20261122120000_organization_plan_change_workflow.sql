@@ -40,6 +40,30 @@ create table if not exists private.organization_plan_change_history (
   review_note text not null default ''
 );
 
+-- Return only the tenant's Cloud asset count; do not expose asset rows or UUIDs.
+create or replace function public.count_organization_cloud_assets(p_organization_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare
+  v_count bigint;
+begin
+  if auth.uid() is null or not private.has_org_permission(p_organization_id, 'assets.view') then
+    raise exception 'Missing assets.view permission for this organization' using errcode='42501';
+  end if;
+  select count(*) into v_count
+  from public.assets a
+  where a.organization_id = p_organization_id;
+  return v_count;
+end;
+$function$;
+
+revoke all on function public.count_organization_cloud_assets(uuid) from public, anon;
+grant execute on function public.count_organization_cloud_assets(uuid) to authenticated;
+
 alter table private.organization_plan_change_requests enable row level security;
 alter table private.organization_plan_change_history enable row level security;
 revoke all on table private.organization_plan_change_requests from public, anon, authenticated, service_role;
