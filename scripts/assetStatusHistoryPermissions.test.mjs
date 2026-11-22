@@ -9,7 +9,7 @@ test('equipment status includes archive and is changed through the guarded statu
   assert.match(db, /'Lưu kho'/)
   assert.match(app, /Thay đổi trạng thái/)
   assert.match(app, /selectedAssetStatus/)
-  assert.match(app, /archivedAt:next==='Lưu kho'/)
+  assert.match(app, /archivedAt:statusOverride==='Lưu kho'/)
   assert.match(app, /status:archived\?'Lưu kho'/)
 })
 
