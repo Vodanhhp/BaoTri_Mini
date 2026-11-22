@@ -856,3 +856,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cả migration PLAN và migration đồng bộ khóa Smart ID đều chưa apply; đây chỉ là source. Không deploy hoặc kiểm thử runtime trong lượt này.
 - Điều chỉnh thêm RPC đếm: số lượng trả về nay khớp phép tính hạn mức của `reserve_asset_id_sequence`: tổng hồ sơ Cloud cộng các reservation `reserved/confirmed` chưa có asset row tương ứng; reservation đã có asset row không bị đếm hai lần. Nhờ đó cảnh báo UI phản ánh cả lượt giữ số chưa hoàn tất.
 - Commit đồng bộ cách đếm: `9b7f9e4ae20bb4675ac1a63c09469baa54cfd1fb`.
+
+### PLAN — bảo toàn reservation Smart ID qua thời điểm đổi Plan — 22/11/2026
+
+- Rà soát Edge Functions và RPC: Edge Function doanh nghiệp xác minh access token/email-confirmed, membership Admin active đúng organization; Edge Function Super Admin xác minh token, email owner allowlist và yêu cầu nhập lại mật khẩu trước approve/reject. Các RPC private ghi/list request chỉ cấp EXECUTE cho `service_role`; bảng request/history không cho client truy cập trực tiếp. RPC đếm thiết bị là SECURITY DEFINER nhưng kiểm tra `auth.uid()` + `assets.view` theo đúng organization.
+- Phát hiện lỗi nghiệp vụ: `reserve_asset_id_sequence` kiểm tra Plan/Catalog hiện tại trước khi tìm reservation cũ. Reservation đã được cấp theo Plan cũ có thể bị từ chối khi retry sau nâng/hạ Plan, trái nguyên tắc giữ nguyên mã đã cấp và retry thiết bị Local.
+- Đã tạo migration mới `supabase/migrations/20261122140000_preserve_smart_id_reservation_retries_after_plan_change.sql`: tìm reservation cũ trước khi kiểm tra Plan mới; xác minh actor, equipment code, group/site/date components theo Plan gốc của reservation; trả lại chính reservation cũ, không cấp sequence mới. Sau khi khóa Catalog Snapshot cho lượt cấp mới, kiểm tra reservation lần hai để xử lý hai request đồng thời; nhánh này cũng xác thực theo Plan gốc.
+- Luồng confirm reservation hiện tại đã xác minh mã thiết bị từ các thành phần lưu trong reservation và không phụ thuộc Plan hiện tại; do đó thiết bị Local cũ vẫn có thể được confirm sau đổi Plan.
+- Đã đổi nhãn UI số lượng thành “thiết bị/lượt giữ mã đang được tính vào hạn mức” vì RPC đếm cả Cloud assets và reservation chưa có asset row tương ứng; tránh mô tả sai là chỉ đếm hồ sơ Cloud.
+- Commit migration retry-safe: `5983625b78933f0a2fcf43cf69cc9122bf8b8f5b`; commit xử lý nhánh retry đồng thời: `8d3707efcd04d643d1a94828b1c72d56bbd5a1c6`; commit nhãn UI: `9279d6478a2fdc3002612a89766abaaece9c2e5a`.
+- Chưa apply migration, chưa chạy build/test, chưa deploy Edge Functions/Pages. Cần test riêng các trường hợp reservation Plan A→B, B→A, C→D; retry cùng reservation ID; cùng ID gửi đồng thời; confirm sau đổi Plan; bảo đảm không tăng sequence và không đếm hai lần.
