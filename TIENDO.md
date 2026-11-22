@@ -1202,3 +1202,21 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa guard so sánh `lease.assetId` với `value.code`, giữ nguyên UUID Local cho khóa IndexedDB/mutation và mã quản lý cho Cloud RPC.
 - Thêm `scripts/cloudEditLeaseIdentity.test.mjs` để kiểm tra hợp đồng định danh giữa lúc cấp lease và lúc lưu.
 - Thay đổi chỉ nằm trên nhánh `fix/cloud-edit-lock-code-check`; chưa merge main, chưa deploy, không thao tác Supabase hoặc dữ liệu Công ty C. Cần CI/build và kiểm tra Staging trước khi đề xuất merge.
+
+
+### Khôi phục hàm khóa neo thiết bị cho Cloud mutation — 22/11/2026
+- Sau khi sửa lỗi guard Local UUID/mã quản lý và thử lưu lại, ứng dụng đã ghi snapshot Local và giữ mutation để retry, nhưng Cloud từ chối với lỗi `function private.lock_asset_anchor(uuid, uuid) does not exist`.
+- Đối chiếu log PostgreSQL của đúng Supabase Test `dskeaiyvldiwlsfqkboq` xác nhận RPC `public.apply_cloud_asset_mutation_with_lock` gọi `private.apply_asset_mutation_with_lock`, và function này gọi `private.lock_asset_anchor(organization_id, asset_id)` tại dòng 35. Hàm helper không tồn tại trong catalog; danh sách migration đã áp dụng cũng không có migration tạo hàm đó.
+- Đối chiếu `private.acquire_asset_edit_lock`: quy tắc khóa hiện hành là khóa hàng `public.assets` bằng `SELECT ... FOR UPDATE` trước khi thao tác hàng `asset_edit_locks`. Hàm `lock_asset_anchor` được khôi phục theo cùng thứ tự: khóa hàng thiết bị trong đúng tổ chức, báo lỗi nếu không tìm thấy; không ghi/sửa dữ liệu thiết bị.
+- Đã tạo migration `20261122124403_add_cloud_asset_lock_anchor.sql` và áp dụng thành công trên Supabase Test; Supabase ghi nhận version `20261122124403` (`add_cloud_asset_lock_anchor`). Helper ở schema private, SECURITY DEFINER, search_path rỗng, tắt RLS; thu hồi quyền gọi trực tiếp từ PUBLIC/anon/authenticated. Hàm mutation nội bộ (owner postgres) gọi helper trong transaction.
+- Kiểm chứng catalog: đúng chữ ký `(uuid, uuid)`, owner `postgres`, SECURITY DEFINER; `authenticated` không có quyền EXECUTE trực tiếp. Gọi helper với một asset hiện có trả về thành công; thao tác chỉ khóa hàng trong transaction, không cập nhật dữ liệu.
+- Đã thêm `scripts/cloudAssetLockAnchor.test.mjs` kiểm tra migration có khóa đúng hàng asset, xử lý asset không tồn tại và không cấp quyền gọi helper trực tiếp. CI `Build and test` (unit tests + build) và `Validate BAOTRI Mini` đều thành công trên commit `1ec91fe`. Chưa retry mutation thực tế qua trình duyệt; cần người dùng thử lại đúng snapshot đang giữ.
+- Phạm vi: nhánh `fix/missing-cloud-asset-lock-anchor`, chỉ Supabase Test; không thay đổi Edge Function, cấu trúc bảng, dữ liệu thiết bị, ảnh Local, Smart ID, quyền nghiệp vụ hoặc Supabase Production. Mutation Local đang giữ nguyên; chỉ retry sau khi CI và kiểm tra cần thiết đạt, không tạo mutation mới.
+
+
+### Sửa lệch tên cột biên nhận mutation Cloud — 22/11/2026
+- Sau khi khôi phục `private.lock_asset_anchor`, lần retry tiếp theo đi sâu hơn nhưng dừng ở lỗi `column "applied_by_user_id" of relation "asset_mutation_receipts" does not exist`.
+- Đối chiếu schema thật: `public.asset_mutation_receipts` có cột `actor_user_id` (được tạo từ migration 008), không có `applied_by_user_id`. Function live đang dùng sai tên ở hai nhánh kiểm tra receipt và câu INSERT.
+- Đã áp dụng migration `20261122125135_fix_asset_mutation_receipt_actor_column` trên Supabase Test. Migration giữ nguyên nguyên văn function live, chỉ thay ba chỗ `applied_by_user_id` thành `actor_user_id`; không thêm cột và không sửa dữ liệu/receipt hiện có.
+- Kiểm chứng sau áp dụng: function definition không còn `applied_by_user_id`, dùng `actor_user_id` đúng với schema. Chưa thực hiện mutation thử qua ứng dụng; cần retry mutation Local đang giữ.
+- Bổ sung test hồi quy kiểm tra function migration sử dụng đúng tên cột. CI của commit mới sẽ chạy sau khi cập nhật PR.
