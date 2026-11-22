@@ -707,8 +707,9 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Hạ cấp vượt hạn mức: giữ nguyên thiết bị cũ, không xóa/khóa/lưu kho tự động; cảnh báo vượt hạn mức và chặn tạo mới cho đến khi số lượng phù hợp.
 - Plan mới do Super Admin áp dụng sau khi Admin doanh nghiệp gửi yêu cầu và Super Admin xác nhận; cần lưu lịch sử Plan cũ/mới, người yêu cầu/duyệt và thời điểm hiệu lực. Đổi Plan không được làm mất danh mục riêng hoặc dữ liệu thiết bị.
 - Đổi tên doanh nghiệp: cập nhật tên Organization hiện hữu, không tạo tenant mới và không đổi organization_id; cần lưu lịch sử tên cũ/mới, người sửa và thời điểm.
-- Quy trình thêm thiết bị bổ sung lựa chọn **Nơi khác chuyển đến**. Thiết bị ngoài phạm vi Organization được cấp UUID nội bộ và mã quản lý theo Plan/khu vực tiếp nhận; tên hiển thị có dấu `*`; lưu thông tin nơi nguồn, nơi nhận và lịch sử. Nếu thiết bị đã có mã nội bộ trong cùng Organization thì di chuyển khu vực chỉ cập nhật vị trí/lịch sử, không cấp mã mới.
-- Phân biệt rõ mã/serial cũ ở nơi chuyển đi (nếu có) là thông tin nguồn tham chiếu; mã quản lý BAOTRI Mini là định danh nghiệp vụ nội bộ mới của Organization tiếp nhận.
+- Quy trình thêm thiết bị bổ sung lựa chọn **Nơi khác chuyển đến**. Khi chuyển thiết bị từ Khu 1 sang Khu 2: giữ UUID/định danh hồ sơ gốc, cấp **mã quản lý mới theo Plan hiện hành và quy tắc của Khu 2**, lưu mã quản lý cũ trong lịch sử; tên hiển thị thêm dấu `*`.
+- Lịch sử phải ghi thành dòng: **“Thiết bị được chuyển từ [khu vực nguồn] tới [khu vực tiếp nhận]”**, kèm thời điểm và người thực hiện. Tên chuẩn/originalName không bị sửa thành tên có dấu `*`; dấu `*` chỉ dùng nhận biết trên giao diện.
+- Nếu thiết bị đến từ ngoài Organization, tạo UUID nội bộ và mã quản lý theo Plan/khu vực tiếp nhận; mã/serial cũ ở nơi chuyển đi (nếu có) chỉ lưu làm thông tin nguồn tham chiếu.
 - Rà soát source hiện tại: `Asset.transferredFromOtherFacility` mới là boolean; Cloud payload cũng chỉ có cờ boolean. Chưa có cấu trúc lưu nguồn/khu vực tiếp nhận và lịch sử di chuyển.
 - Chưa sửa code, chưa tạo migration, chưa apply SQL, chưa thay đổi dữ liệu Supabase. Cần thiết kế migration tương thích Local/Cloud và luồng mutation trước khi triển khai.
 - Nhánh làm việc: `feature/smart-equipment-id-engine`; repo `Vodanhhp/BaoTri_Mini`. PR #11 vẫn Draft/open; không merge/deploy theo chỉ đạo hiện hành.
