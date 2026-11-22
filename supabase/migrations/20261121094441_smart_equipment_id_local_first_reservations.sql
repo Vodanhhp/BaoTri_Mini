@@ -59,8 +59,13 @@ begin
     raise exception 'Equipment short code must contain 2 to 4 letters/digits' using errcode = '22023';
   end if;
 
+  -- Serialize ID reservations with Plan changes. The approval RPC locks this
+  -- same tenant catalog row before applying a new Plan, so a reservation can
+  -- never allocate under the old Plan after the new Plan becomes effective.
   select c.plan_code, c.snapshot, c.source_data_version into v_plan, v_snapshot, v_source_version
-  from public.organization_equipment_catalog c where c.organization_id = p_organization_id;
+  from public.organization_equipment_catalog c
+  where c.organization_id = p_organization_id
+  for update;
   if not found then raise exception 'Organization catalog snapshot and Plan have not been initialized' using errcode = '22023'; end if;
 
   select d into v_dictionary_entry from jsonb_array_elements(v_snapshot -> 'equipmentDictionary') d
