@@ -15,7 +15,7 @@ import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
-import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord } from './lib/smartEquipmentIdClient'
+import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý']
 
@@ -470,7 +470,7 @@ export default function App() {
           {id:draftAsset.id,organizationId,userId:session.user.id,reservationId,asset:draftAsset,createdAt:draftNow,updatedAt:draftNow}
         ])
 
-        let issuance
+        let issuance:SmartEquipmentIssuance
         try{
           issuance=await reserveSmartEquipmentId(supabase,{
             organizationId,reservationId,equipmentCode,groupCode,siteCode,
