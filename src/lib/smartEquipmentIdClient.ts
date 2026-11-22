@@ -97,7 +97,7 @@ export async function reserveSmartEquipmentId(
     || !reservation.source_data_version
     || !['reserved', 'confirmed'].includes(reservation.status)
     || (groupRequired && !reservation.group_code)
-    || (siteRequired && !/^\\d{2}$/.test(reservation.site_code ?? ''))
+    || (siteRequired && !/^\d{2}$/.test(reservation.site_code ?? ''))
     || (reservation.plan_code === 'A' && (reservation.group_code || reservation.site_code || reservation.month_year))
     || (!groupRequired && reservation.group_code)
     || (expectedGroup !== undefined && groupRequired && reservation.group_code !== expectedGroup)
@@ -125,7 +125,7 @@ export async function reserveSmartEquipmentId(
     sequence,
     month_year: reservation.month_year ?? null,
     standard_equipment_name: input.standardEquipmentName,
-    group_name_at_creation: input.groupNameAtCreation ?? null,
+    group_name_at_creation: groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null,
     source_data_version: reservation.source_data_version,
     issued_at: new Date().toISOString()
   }
