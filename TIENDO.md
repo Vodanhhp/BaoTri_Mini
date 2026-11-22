@@ -1009,3 +1009,24 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kiểm tra source tĩnh: migration có giới hạn page size và keyset cursor; bảng assets có unique index (organization_id,code) hỗ trợ truy vấn; App chỉ chạy auto-sync khi org context và assets.view hợp lệ; Super Admin chọn tenant cụ thể. Chưa chạy SQL parser, chưa build/test.
 - Chưa apply migration vào Supabase BAOTRI Mini New / BAOTRI Mini Test 02; chưa deploy Edge Functions/Pages; chưa thao tác dữ liệu tổ chức. Vì vậy đăng nhập vào bản đang chạy hiện tại chưa thể dùng auto-sync cho tới khi migration được apply và source được đưa lên môi trường thử nghiệm.
 - Bước cần người dùng xác nhận tiếp theo: cho phép apply riêng migration trên vào Supabase project BAOTRI Mini New (project ID dskeaiyvldiwlsfqkboq) để thử với tổ chức BAOTRI Mini Test 02 (UUID f11bb85f-0dbe-45f0-bffa-472e5f84f7bf). Không thao tác tổ chức BAOTRI Mini thật.
+
+
+### Cloud → Local — apply migration và chuẩn bị deploy preview — 22/11/2026
+
+- Người dùng xác nhận “ok tiếp” cho phép apply migration và triển khai bản thử nghiệm, giới hạn BAOTRI Mini Test 02; không tác động tổ chức BAOTRI Mini thật.
+- Đã xác minh Supabase project BAOTRI Mini New, ID dskeaiyvldiwlsfqkboq, trạng thái ACTIVE_HEALTHY, PostgreSQL 17.12.
+- Đã xác minh organization UUID f11bb85f-0dbe-45f0-bffa-472e5f84f7bf chính là BAOTRI Mini Test 02, trạng thái active; hiện có 1 asset Cloud. Không truy vấn/sửa dữ liệu tổ chức thật.
+- Đã apply thành công migration cloud_asset_sync_pagination_and_platform_read vào BAOTRI Mini New. Supabase ghi version 20261122055755.
+- Đã đồng bộ tên file migration source theo version đã apply: supabase/migrations/20261122055755_cloud_asset_sync_pagination_and_platform_read.sql (đã xóa tên file cũ 20261122170000 để không tạo migration duplicate khi CLI đối chiếu).
+- Kiểm tra SQL sau apply:
+  - RPC member list_cloud_assets_page(..., p_platform_admin=false) chạy thành công với JWT claim mô phỏng của user đang là active member BAOTRI Mini Test 02, có assets.view; trả đúng 1 asset, has_more=false.
+  - RPC Super Admin p_platform_admin=true chạy thành công với JWT claim mô phỏng của tài khoản owner allowlist, email confirmed; trả đúng 1 asset.
+  - private.has_org_permission xác nhận user test có assets.view.
+  - ACL sau apply: EXECUTE chỉ còn postgres, authenticated, service_role; không còn PUBLIC/anon cho hai RPC.
+  - Đây là SQL smoke test mô phỏng claim trong transaction có ROLLBACK, không phải đăng nhập qua trình duyệt hoặc test thực tế JWT từ Auth.
+- Supabase Security Advisor sau migration có cảnh báo authenticated_security_definer_function_executable gồm 9 function SECURITY DEFINER trong public; hai RPC mới nằm trong danh sách. Đây là function API chủ đích, đã revoke PUBLIC/anon, chỉ grant authenticated và kiểm tra auth/tenant/permission trong thân hàm. Các cảnh báo khác có từ các RPC Cloud Asset trước đó. Chưa xử lý các cảnh báo ngoài phạm vi này.
+- Performance Advisor không có cảnh báo mới đặc thù RPC phân trang; index unique (organization_id, code) đã tồn tại, phục vụ keyset cursor. Các findings khác là FK indexes/policies tồn tại trước đó.
+- Vercel: đã tìm thấy project baotri-mini-new-preview, ID prj_De80PT3JC04b3NqtXHRL6JD8QMoo, team team_VnC0cB9kMxYP31Thelm8Zz4C; có env Preview VITE_SUPABASE_URL trỏ đúng BAOTRI Mini New và VITE_SUPABASE_PUBLISHABLE_KEY. Project hiện chưa có deployment và không có linked Git project trong deployment context.
+- Lần gọi tạo deployment Preview từ repo Vodanhhp/BaoTri_Mini, branch main, commit f699235f559cbe63e80108f6d50e6c5f9b334c24 bị Vercel trả HTTP 429 rate_limited do GitHub API rate limit; không có deployment được tạo.
+- Commit GitHub sau khi rename migration: 63d4aecd98b175e45801385a667e2306f7b37130; cần xác minh HEAD mới nhất sau cập nhật TIENDO.
+- Chưa build/test ứng dụng; chưa đăng nhập trình duyệt; chưa deploy Preview. Bước tiếp: retry tạo deployment Preview khi rate limit hết, giữ đúng project/team/branch/commit, sau đó theo dõi build logs và chỉ gửi URL khi trạng thái READY.
