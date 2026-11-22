@@ -129,11 +129,24 @@ create table if not exists public.asset_activity_history (
 create index if not exists asset_activity_history_asset_time_idx
   on public.asset_activity_history(organization_id,asset_code,occurred_at desc);
 
+create or replace function private.can_view_asset_history(p_organization_id uuid,p_asset_id uuid)
+returns boolean language sql stable security definer set search_path='' set row_security=off as $function$
+  select auth.uid() is not null
+    and private.has_org_permission(p_organization_id,'assets.view')
+    and exists(
+      select 1 from public.assets a
+      where a.organization_id=p_organization_id and a.id=p_asset_id
+        and (a.deleted_at is null or (private.is_org_admin(p_organization_id) and private.has_org_permission(p_organization_id,'assets.delete')))
+    );
+$function$;
+revoke all on function private.can_view_asset_history(uuid,uuid) from public,anon;
+grant execute on function private.can_view_asset_history(uuid,uuid) to authenticated;
+
 alter table public.asset_activity_history enable row level security;
 drop policy if exists asset_activity_history_select_member on public.asset_activity_history;
 create policy asset_activity_history_select_member on public.asset_activity_history
   for select to authenticated
-  using (private.has_org_permission(organization_id,'assets.view'));
+  using (private.can_view_asset_history(organization_id,asset_id));
 
 revoke all on public.asset_activity_history from public,anon,authenticated;
 grant select on public.asset_activity_history to authenticated;
@@ -188,9 +201,15 @@ create or replace function public.list_cloud_asset_history(
   p_organization_id uuid,p_asset_code text,p_limit integer default 100
 ) returns jsonb
 language plpgsql security definer set search_path='' set row_security=off as $function$
+declare v_asset_id uuid;
 begin
   if auth.uid() is null or not private.has_org_permission(p_organization_id,'assets.view') then
     raise exception 'Missing assets.view permission' using errcode='42501';
+  end if;
+  select a.id into v_asset_id from public.assets a
+    where a.organization_id=p_organization_id and a.code=p_asset_code;
+  if not found or not private.can_view_asset_history(p_organization_id,v_asset_id) then
+    raise exception 'Equipment history is unavailable to this role' using errcode='42501';
   end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
