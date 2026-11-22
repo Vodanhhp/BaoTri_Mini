@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
+import { PlatformPlanRequestsPanel } from './PlanChangePanels'
 
 type Props={client:SupabaseClient;onClose:()=>void}
 type PlanCode='A'|'B'|'C'|'D'
@@ -241,6 +242,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
    </section>
   </div>}
 
+  <PlatformPlanRequestsPanel client={client}/>
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
   <form className="form-grid platform-create-form" onSubmit={submit}>
