@@ -657,3 +657,20 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Migration Public Key đã được sửa để chuyển 5 implementation UUID-based sang schema private trước khi tạo code-based public wrappers; xác nhận source có đủ 5 lệnh ALTER FUNCTION và wrapper import gọi private implementation.
 - Không chạy test/build, không apply migration, không deploy hoặc merge PR theo yêu cầu hiện tại.
 - Việc tiếp theo: rà soát tiếp toàn bộ hợp đồng RPC/grants và tương thích dữ liệu của migration Public Key với frontend; nếu còn lỗi source thì sửa trên Feature. Việc apply migration và deploy vẫn cần phê duyệt riêng.
+
+
+## Ưu tiên hoàn thiện Đăng nhập + Smart Equipment ID để người dùng chạy thử — 22/11/2026
+
+- Người dùng yêu cầu ưu tiên hoàn thiện hai phần Đăng nhập và Tạo mã thiết bị càng sớm càng tốt để tự chạy thử. Tiếp tục làm trực tiếp trên nhánh Feature; không chạy test/build tự động.
+- Supabase target `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`) đang `ACTIVE_HEALTHY`. Các migration nền tảng, RBAC và Smart ID đến `20261121120954` đã có trong lịch sử DB. Edge Functions nền tảng hiện có và ACTIVE: platform-manage-organization, platform-create-customer, platform-get-overview, invite-org-member, manage-organization-members.
+- DB có 2 tổ chức: `BAOTRI Mini` (2 active memberships) và `BAOTRI Mini Test 02` (1 active membership). Cả hai đều chưa có `organization_equipment_catalog`, chưa có Plan, chưa có sequence/reservation. Tổ chức chạy thử đã được người dùng xác nhận trước đây là `BAOTRI Mini Test 02`, tài khoản của người dùng có role Admin ở tổ chức này; `BAOTRI Mini` là Viewer. Người dùng chưa chọn Plan A/B/C/D, vì vậy không tự gán Plan.
+- Đây là blocker nghiệp vụ hiện tại của việc cấp mã chính thức: `reserve_asset_id_sequence` từ chối nếu tổ chức chưa có Plan + Catalog Snapshot. Public catalog file hiện có version `1.1.0`, 30 nhóm, 74 loại chuẩn, 44 ngành; snapshot cần được khởi tạo theo Plan được chọn (A/B/C/D sẽ lọc số nhóm/ngành tương ứng).
+- Migration `20261121130000_cloud_asset_public_key_api.sql` chưa được áp dụng lên DB. Migration này dành cho Cloud asset read/edit/lock API ẩn UUID; không phải blocker trực tiếp của login hoặc cấp số Smart ID (các migration Smart ID reservation hiện đã áp dụng). Chưa apply để tránh thay đổi schema không cần thiết cho lần chạy thử đầu tiên.
+- Source fixes trên Feature:
+  - `cfd5a436`: xử lý lỗi khôi phục session Supabase để giao diện không mắc vô hạn ở trạng thái “Đang kiểm tra phiên đăng nhập”.
+  - `80358dc` và `21c5ca4`: hiển thị lỗi khôi phục session ngay trên màn hình đăng nhập.
+  - `cd27467`: cập nhật README theo đúng kiến trúc Auth + Local-first + Smart ID, ghi rõ điều kiện Plan/Catalog.
+  - `d9d6e21`: Smart ID simulator dùng `import.meta.env.BASE_URL` khi tải catalog, tương thích base path của Vite.
+- AuthScreen hiện hỗ trợ signInWithPassword, email chưa xác nhận, quên mật khẩu và không cho đăng ký tự do. Supabase URL/publishable key được cấu hình trong `.env.example` cho đúng project mới; không đưa service-role key vào frontend. Email/password login không cần redirect; password recovery cần Supabase Auth Site URL/Redirect URLs khớp domain/local origin.
+- Bước tiếp theo để unblock: người dùng cần chọn Plan cho `BAOTRI Mini Test 02`. Sau đó khởi tạo Catalog Snapshot cho tổ chức này qua quy trình quản trị an toàn, apply chỉ những migration thực sự cần cho luồng đang thử, triển khai website/Edge Functions phù hợp rồi hướng dẫn người dùng đăng nhập và tạo mã đầu tiên.
+- Lưu ý triển khai: hiện chỉ có quyền sửa source qua GitHub connector; không có Cloudflare Pages deploy tool trong phiên. Branch Feature chưa được đưa lên production domain, PR #11 vẫn Draft/open. Không tuyên bố website live đã cập nhật cho đến khi có deployment thật.
