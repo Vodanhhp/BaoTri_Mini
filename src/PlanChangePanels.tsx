@@ -45,15 +45,20 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
     loadPlans(import.meta.env.BASE_URL),
     client.functions.invoke('organization-plan-requests',{body:{action:'list',organizationId}})
    ])
+   // Giữ Plan/Catalog đã tải được ngay cả khi API lịch sử yêu cầu bị lỗi (ví dụ CORS).
+   setCurrentPlan(catalog?.plan_code??null)
+   onCatalogLoaded?.(catalog)
+   setPlans(planOptions)
+   if(!assetCountResponse.error){
+    const assetCount=Number(assetCountResponse.data??0)
+    if(Number.isSafeInteger(assetCount)&&assetCount>=0)setDeviceCount(assetCount)
+   }
    if(assetCountResponse.error)throw new Error('Không tải được số lượng thiết bị Cloud: '+assetCountResponse.error.message)
    if(response.error)throw new Error(response.error.message)
    if(response.data?.error)throw new Error(response.data.error)
    const assetCount=Number(assetCountResponse.data??0)
    if(!Number.isSafeInteger(assetCount)||assetCount<0)throw new Error('Cloud trả về số lượng thiết bị không hợp lệ.')
-   setCurrentPlan(catalog?.plan_code??null)
-   onCatalogLoaded?.(catalog)
    setDeviceCount(assetCount)
-   setPlans(planOptions)
    setRequests((response.data?.requests??[]) as PlanRequest[])
    setTargetPlan('')
   }catch(e){setError(e instanceof Error?e.message:String(e))}
