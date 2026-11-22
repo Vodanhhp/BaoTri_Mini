@@ -1185,3 +1185,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã đọc lại source sau deploy và xác nhận origin mới có trong allowlist. Chưa chạy được HTTP OPTIONS end-to-end từ môi trường thao tác hiện tại do không phân giải được hostname Supabase; cần kiểm thử trực tiếp từ trình duyệt người dùng trước khi kết luận luồng gọi API đã thông suốt.
 - Đồng bộ nguyên trạng source hai Edge Functions Test phiên bản 3 vào nhánh `feature/ui-table-layout-system` để Git không còn giữ source cũ và tránh deploy sau này ghi đè mất allowlist. Không triển khai bất kỳ Edge Function nào lên Production.
 - Tiếp tục giữ PR #16 Draft cho tới khi CI và staging được xác minh; chưa merge hoặc deploy Production trong bước cập nhật CORS này.
+
+
+### Sửa CORS theo hostname Staging mới cho luồng Thuê bao doanh nghiệp — 22/11/2026
+- Người dùng gửi lại lỗi `Failed to send a request to the Edge Function` trên bản Staging hiện hành `https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app`.
+- Đối chiếu source hai Edge Function Test version 3 cho thấy allowlist chỉ có hai hostname Preview cũ (`eazlswbhd`, `mutqeu613`), thiếu hostname `l8hhedfwf`. Với origin không được phép, code CORS trả ACAO của domain Production, khiến trình duyệt có thể chặn request.
+- Log `function_edge_logs` ghi nhận các request OPTIONS tới `organization-plan-requests` trả 200 ở version 3 nhưng không có POST tương ứng trong các lần thử mới nhất; trước đó version 2 có POST 200. Đây là bằng chứng phù hợp với lỗi preflight/CORS, không phải bằng chứng lỗi RPC hoặc dữ liệu Plan.
+- Đã bổ sung chính xác origin `https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app` vào allowlist của cả `organization-plan-requests` và `platform-manage-plan-requests` trên **BAOTRI Mini New (Test)**.
+- Triển khai thành công cả hai Edge Function lên version **4**, trạng thái **ACTIVE**, `verify_jwt=true`. Giữ nguyên xác thực, phân quyền, RPC, nghiệp vụ; không dùng wildcard CORS.
+- Đã đọc lại source từ Supabase sau deploy và xác nhận hostname Staging mới có trong allowlist của cả hai function.
+- Đồng bộ source version 4 vào branch `fix/staging-plan-cors-current-origin` để tránh source trong Git ghi đè cấu hình Test khi deploy sau này.
+- Chưa có browser runtime test sau version 4; chưa gửi yêu cầu Plan, không duyệt/từ chối, không thay đổi Plan/Catalog Snapshot hoặc dữ liệu tổ chức. Không triển khai Production.
+- Việc tiếp theo: người dùng Ctrl+F5 bản Staging hiện hành, mở Thuê bao doanh nghiệp và kiểm tra tải lịch sử/gửi yêu cầu; chỉ gửi yêu cầu thật khi đã chọn Plan mong muốn và xác nhận thao tác.
