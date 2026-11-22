@@ -20,13 +20,14 @@ const readProvisionDraft=()=>{
  try{
   const value=JSON.parse(sessionStorage.getItem(PROVISION_DRAFT_KEY)||'null')
   if(!value||typeof value!=='object')return null
-  return value as {requestId?:string;organizationName?:string;adminEmail?:string;adminName?:string;planCode?:PlanCode}
+  return value as {requestId?:string;organizationName?:string;adminEmail?:string;adminName?:string;planCode?:PlanCode;businessType?:string}
  }catch{return null}
 }
 
 export default function PlatformAdminPanel({client,onClose}:Props){
  const [savedProvisionDraft]=useState(readProvisionDraft)
  const [organizationName,setOrganizationName]=useState(savedProvisionDraft?.organizationName??'')
+ const [businessType,setBusinessType]=useState(savedProvisionDraft?.businessType??'')
  const [adminEmail,setAdminEmail]=useState(savedProvisionDraft?.adminEmail??'')
  const [adminName,setAdminName]=useState(savedProvisionDraft?.adminName??'')
  const [planCode,setPlanCode]=useState<PlanOption['id']|''>(savedProvisionDraft?.planCode??'')
@@ -52,12 +53,12 @@ export default function PlatformAdminPanel({client,onClose}:Props){
   try{
    if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
    sessionStorage.setItem(PROVISION_DRAFT_KEY,JSON.stringify({
-    requestId:provisionRequestId,organizationName,adminEmail,adminName,planCode
+    requestId:provisionRequestId,organizationName,businessType,adminEmail,adminName,planCode
    }))
   }catch{
    // Provisioning remains protected by the in-memory request key for this open panel.
   }
- },[provisionRequestId,organizationName,adminEmail,adminName,planCode])
+ },[provisionRequestId,organizationName,businessType,adminEmail,adminName,planCode])
 
  const loadOverview=useCallback(async()=>{
   setLoadingOverview(true);setOverviewError('')
@@ -130,13 +131,13 @@ export default function PlatformAdminPanel({client,onClose}:Props){
    setCreated(data as Created)
    try{sessionStorage.removeItem(PROVISION_DRAFT_KEY)}catch{/* Storage may be disabled; the server request has still succeeded. */}
    setProvisionRequestId('')
-   setOrganizationName('');setAdminEmail('');setAdminName('');setPlanCode('');setRegistrationStep(1)
+   setOrganizationName('');setBusinessType('');setAdminEmail('');setAdminName('');setPlanCode('');setRegistrationStep(1)
    await loadOverview()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setBusy(false)}
  }
  if(!isPcPlatform())return <div className="modal-backdrop"><section className="modal member-modal"><div className="modal-head"><div><div className="eyebrow">GIỚI HẠN NỀN TẢNG</div><h2>Chỉ hỗ trợ trên PC</h2><p>Quản trị nền tảng chỉ sử dụng được trên máy tính để bàn hoặc máy tính xách tay.</p></div><button className="icon-btn" onClick={onClose}>×</button></div><div className="auth-note">Vui lòng sử dụng trình duyệt trên PC để quản trị tổ chức.</div><div className="modal-actions"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button></div></section></div>
- return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal member-modal platform-admin-modal" style={{width:'min(1000px,96vw)',maxHeight:'92vh',overflowY:'auto'}}>
+ return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal member-modal platform-admin-modal" style={{width:'min(780px,96vw)',maxHeight:'90vh',overflowY:'auto',padding:'18px 20px'}}>
   <div className="modal-head"><div><div className="eyebrow">CHỦ SỞ HỮU NỀN TẢNG</div><h2>Quản trị nền tảng</h2><p>Theo dõi toàn bộ doanh nghiệp và tài khoản trong BAOTRI Mini.</p></div><button className="icon-btn" onClick={onClose}>×</button></div>
 
   <style>{`.platform-admin-modal{font-size:13px;line-height:1.45}.platform-admin-modal h2{font-size:21px}.platform-admin-modal h3{font-size:15px}.platform-admin-modal p,.platform-admin-modal small{font-size:12px}.platform-admin-modal .stat-card{padding:12px;gap:10px}.platform-admin-modal .stat-card strong{font-size:21px}.platform-admin-modal .stat-card span{font-size:11px;line-height:1.4}.platform-admin-modal .stat-card small{font-size:11px}.platform-org-table{overflow-x:auto;border:1px solid var(--border,#e5e7eb);border-radius:10px}.platform-org-table table{width:100%;min-width:850px;border-collapse:collapse;font-size:12px}.platform-org-table th{font-size:11px;font-weight:650;white-space:nowrap;background:var(--surface-2,#f8fafc);padding:10px 9px}.platform-org-table td{padding:9px;vertical-align:middle;white-space:nowrap}.platform-org-table td:first-child{white-space:normal;min-width:155px;max-width:220px}.platform-org-table td:first-child b{font-size:12px}.platform-org-table .status{font-size:11px;padding:4px 7px}.platform-org-actions{display:flex;gap:5px;flex-wrap:nowrap}.platform-org-actions button{font-size:11px;padding:6px 9px;min-height:29px;white-space:nowrap}.platform-admin-modal .auth-note{font-size:11px;line-height:1.5;padding:9px 11px}.platform-onboarding-intro{display:grid;gap:14px;padding:16px;border:1px solid var(--border,#dbe1e8);border-radius:12px;background:var(--surface-2,#f8fafc)}.platform-onboarding-kicker,.platform-onboarding-section>span{font-size:10px;font-weight:750;letter-spacing:.09em;color:var(--primary,#2563eb)}.platform-onboarding-intro h4,.platform-onboarding-section h4,.platform-onboarding-review h4,.platform-onboarding-success h4{font-size:16px;margin:5px 0}.platform-onboarding-intro p,.platform-onboarding-section p{font-size:12px;color:var(--muted,#64748b);margin:0;line-height:1.5}.platform-onboarding-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.platform-onboarding-step{display:flex;align-items:center;gap:7px;min-width:0;color:var(--muted,#64748b);font-size:11px}.platform-onboarding-step span{width:25px;height:25px;flex:0 0 25px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--border,#cbd5e1);font-weight:750}.platform-onboarding-step.current{color:var(--primary,#2563eb)}.platform-onboarding-step.current span,.platform-onboarding-step.complete span{background:var(--primary,#2563eb);border-color:var(--primary,#2563eb);color:white}.platform-onboarding-section{padding:4px 0}.platform-onboarding-section h4{margin:4px 0}.platform-plan-card-top{display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px}.platform-plan-selected{font-size:9px;font-weight:700;color:var(--primary,#2563eb)}.platform-plan-summary p{margin:6px 0 0}.platform-onboarding-review{display:grid;gap:9px;padding:13px;border:1px solid var(--border,#dbe1e8);border-radius:10px}.platform-onboarding-review>div{display:flex;justify-content:space-between;gap:14px;font-size:12px}.platform-onboarding-review>div span{color:var(--muted,#64748b)}.platform-onboarding-review>div b{text-align:right;overflow-wrap:anywhere}.platform-onboarding-success{display:flex;gap:12px;padding:14px;border:1px solid rgba(22,163,74,.35);border-radius:11px;background:rgba(22,163,74,.06)}.platform-onboarding-success-icon{width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:grid;place-items:center;background:#16a34a;color:white;font-weight:800}.platform-onboarding-success p{font-size:12px;margin:5px 0;line-height:1.5}@media(max-width:520px){.platform-onboarding-steps{grid-template-columns:1fr;gap:6px}.platform-onboarding-review>div{display:grid;gap:2px}.platform-onboarding-review>div b{text-align:left}}.platform-plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.platform-plan-card{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;min-width:0;padding:12px;border:1px solid var(--border,#dbe1e8);border-radius:11px;background:var(--surface,#fff);color:var(--text,#172033);cursor:pointer;transition:border-color .15s,background .15s}.platform-plan-card[aria-pressed=true]{border:2px solid var(--primary,#2563eb);padding:11px;background:var(--primary-soft,rgba(37,99,235,.06))}.platform-plan-card:focus-visible{outline:2px solid var(--primary,#2563eb);outline-offset:2px}.platform-plan-card strong{font-size:14px}.platform-plan-card small{font-size:11px;color:var(--muted,#64748b);line-height:1.4}.platform-plan-capacity{font-size:17px;font-weight:750;line-height:1.2}.platform-plan-details{display:flex;flex-wrap:wrap;gap:6px}.platform-plan-details span{font-size:10px;border-radius:20px;padding:3px 7px;background:var(--surface-2,#f1f5f9)}.platform-plan-summary{font-size:11px;line-height:1.5;padding:10px 12px;border:1px solid var(--border,#e5e7eb);border-radius:9px;background:var(--surface-2,#f8fafc)}@media(max-width:760px){.platform-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:440px){.platform-plan-grid{grid-template-columns:1fr}}.platform-action-backdrop{position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.58);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(2px)}.platform-action-dialog{width:min(490px,96vw);max-height:90vh;overflow-y:auto;background:var(--card,#fff);color:var(--text,#172033);border:1px solid var(--border,#e5e7eb);border-radius:15px;box-shadow:0 22px 70px rgba(0,0,0,.28);padding:20px;font-size:13px}.platform-action-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.platform-action-kicker{font-size:10px;letter-spacing:.08em;font-weight:700;color:var(--muted,#64748b)}.platform-action-head h3{font-size:18px;margin:5px 0}.platform-action-head p{font-size:13px;font-weight:600;margin:0;overflow-wrap:anywhere}.platform-action-note,.platform-action-danger{font-size:12px;line-height:1.55;padding:11px 12px;border-radius:9px;margin-bottom:15px;background:var(--surface-2,#f1f5f9)}.platform-action-danger{background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.25);color:var(--danger,#b91c1c)}.platform-action-form{display:grid;gap:13px}.platform-action-form .field{font-size:12px;gap:6px}.platform-action-form input:not([type=radio]){font-size:13px;min-height:38px}.platform-confirm-choice{border:1px solid var(--border,#e5e7eb);border-radius:9px;padding:10px 12px;display:flex;gap:16px;flex-wrap:wrap;margin:0}.platform-confirm-choice legend{font-size:12px;font-weight:600;padding:0 4px}.platform-confirm-choice label{font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer}.platform-action-buttons{display:flex;justify-content:flex-end;gap:8px;margin-top:3px}.platform-action-buttons button{min-width:105px;font-size:12px}.platform-action-buttons .danger-btn{background:var(--danger,#b91c1c);color:white;border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer}.platform-action-buttons button:disabled{opacity:.55;cursor:not-allowed}`/* Compact, polished customer onboarding */
@@ -185,7 +186,30 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  .platform-admin-modal .platform-onboarding-steps{grid-template-columns:1fr}
  .platform-admin-modal .platform-onboarding-review{grid-template-columns:1fr}
  .platform-admin-modal .platform-onboarding-review h4{grid-column:auto}
-}`}</style>
+}`}
+.platform-admin-modal .platform-create-form{gap:8px;margin-top:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.platform-admin-modal .platform-onboarding-compact{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;padding:8px 12px;margin:0}
+.platform-admin-modal .platform-onboarding-compact h4{font-size:14px;margin:0}
+.platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{display:flex;justify-content:flex-end;gap:14px}
+.platform-admin-modal .platform-onboarding-compact .platform-onboarding-step{font-size:10px;gap:5px}
+.platform-admin-modal .platform-onboarding-compact .platform-onboarding-step span{width:20px;height:20px;flex-basis:20px}
+.platform-admin-modal .platform-onboarding-section{padding:0;display:flex;align-items:center;gap:9px}
+.platform-admin-modal .platform-onboarding-section h4{font-size:13px;margin:0}
+.platform-admin-modal .platform-onboarding-section>span{font-size:9px}
+.platform-admin-modal .platform-create-form .field{gap:4px;font-size:11px}
+.platform-admin-modal .platform-create-form .field input,.platform-admin-modal .platform-create-form .field select{min-height:34px;padding:6px 9px;font-size:12px}
+.platform-admin-modal .platform-create-form .auth-note{padding:7px 9px;font-size:10px;line-height:1.35}
+.platform-admin-modal .platform-plan-summary{padding:9px 11px;font-size:11px}
+.platform-admin-modal .platform-plan-summary p{font-size:10px;margin:3px 0 0}
+.platform-admin-modal .platform-plan-inline{display:block;color:var(--muted,#64748b);font-size:10px;margin-top:2px}
+.platform-admin-modal .platform-onboarding-review{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;padding:9px 11px}
+.platform-admin-modal .platform-onboarding-review h4{grid-column:1/-1;font-size:12px;margin:0}
+.platform-admin-modal .platform-onboarding-review>div{font-size:10px}
+.platform-admin-modal .platform-onboarding-review>div span{font-size:10px}
+.platform-admin-modal .platform-create-form .modal-actions{padding-top:0}
+.platform-admin-modal .platform-create-form .modal-actions button{min-height:33px;padding:7px 11px;font-size:11px}
+@media(max-width:620px){.platform-admin-modal .platform-create-form{grid-template-columns:1fr}.platform-admin-modal .platform-onboarding-compact{grid-template-columns:1fr;gap:6px}.platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{justify-content:space-between}.platform-admin-modal .platform-create-form .field{grid-column:1/-1}}
+</style>
   <div className="panel-head" style={{marginTop:8}}><div><h3>Tổng quan hệ thống</h3><p>Số liệu trực tiếp từ Supabase Auth và cơ sở dữ liệu.</p></div><button type="button" className="soft-btn" onClick={()=>void loadOverview()} disabled={loadingOverview}>{loadingOverview?'Đang tải…':'Làm mới số liệu'}</button></div>
   {overviewError&&<div className="auth-error">{overviewError}</div>}
   {loadingOverview&&!overview&&<div className="auth-note">Đang tải thống kê nền tảng…</div>}
@@ -222,38 +246,32 @@ export default function PlatformAdminPanel({client,onClose}:Props){
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
   <form className="form-grid platform-create-form" onSubmit={submit}>
-   <div className="platform-onboarding-intro full-field">
-    <div><span className="platform-onboarding-kicker">KHỞI TẠO KHÁCH HÀNG MỚI</span><h4>Thiết lập không gian quản lý cho doanh nghiệp</h4><p>Hoàn thành lần lượt 3 bước. Tổ chức, quyền Admin và Catalog Snapshot sẽ được khởi tạo trong cùng một giao dịch.</p></div>
+   <div className="platform-onboarding-intro full-field platform-onboarding-compact">
+    <div><span className="platform-onboarding-kicker">KHỞI TẠO DOANH NGHIỆP</span><h4>Thông tin khởi tạo</h4></div>
     <div className="platform-onboarding-steps" aria-label="Tiến trình đăng ký">
-     {[['1','Doanh nghiệp'],['2','Gói sử dụng'],['3','Admin đầu tiên']].map(([n,label])=><div key={n} className={registrationStep===Number(n)?'platform-onboarding-step current':registrationStep>Number(n)?'platform-onboarding-step complete':'platform-onboarding-step'}><span>{registrationStep>Number(n)?'✓':n}</span><b>{label}</b></div>)}
+     {[['1','Doanh nghiệp'],['2','Gói'],['3','Admin']].map(([n,label])=><div key={n} className={registrationStep===Number(n)?'platform-onboarding-step current':registrationStep>Number(n)?'platform-onboarding-step complete':'platform-onboarding-step'}><span>{registrationStep>Number(n)?'✓':n}</span><b>{label}</b></div>)}
     </div>
    </div>
    {registrationStep===1&&<>
-    <div className="platform-onboarding-section full-field"><span>BƯỚC 1 / 3</span><h4>Thông tin doanh nghiệp</h4><p>Đây là tên hiển thị và định danh tổ chức trong hệ thống BAOTRI Mini.</p></div>
-    <label className="field full-field">Tên doanh nghiệp / tổ chức *<input autoFocus required minLength={2} maxLength={120} value={organizationName} onChange={e=>setOrganizationName(e.target.value)} placeholder="Ví dụ: Công ty ABC"/></label>
-    <div className="auth-note full-field">Mỗi doanh nghiệp có vùng dữ liệu, thành viên, phân quyền và danh mục thiết bị riêng. Tên tổ chức có thể được rà soát trước khi khởi tạo.</div>
+    <div className="platform-onboarding-section full-field"><span>BƯỚC 1 / 3</span><h4>Doanh nghiệp</h4></div>
+    <label className="field">Tên doanh nghiệp *<input autoFocus required minLength={2} maxLength={120} value={organizationName} onChange={e=>setOrganizationName(e.target.value)} placeholder="Ví dụ: Công ty ABC"/></label>
+    <label className="field">Loại hình hoạt động *<select required value={businessType} onChange={e=>setBusinessType(e.target.value)}><option value="">Chọn lĩnh vực doanh nghiệp</option><option value="Y tế">Y tế · Phòng khám · Bệnh viện</option><option value="Bán lẻ">Cửa hàng tiện lợi · Bán lẻ</option><option value="Ẩm thực">Nhà hàng · Quán ăn · Đồ uống</option><option value="Sản xuất">Công ty sản xuất · Nhà máy</option><option value="Kho vận">Kho hàng · Logistics</option><option value="Văn phòng - dịch vụ">Văn phòng · Dịch vụ</option><option value="Giáo dục">Trường học · Đào tạo</option><option value="Khác">Loại hình khác</option></select></label>
+    <div className="auth-note full-field">Loại hình này giúp định hướng danh mục thiết bị và quy tắc mã phù hợp ở bước cấu hình tiếp theo. Việc chọn loại hình hiện chưa tự thay đổi quy tắc sinh mã đang gắn với Plan.</div>
     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose}>Đóng</button><button type="button" className="primary-btn" disabled={organizationName.trim().length<2} onClick={()=>{setError('');setRegistrationStep(2)}}>Tiếp tục: Chọn Plan →</button></div>
    </>}
    {registrationStep===2&&<>
-    <div className="platform-onboarding-section full-field"><span>BƯỚC 2 / 3</span><h4>Chọn gói sử dụng</h4><p>Chọn đúng quy mô vận hành. Plan được gắn vào Catalog Snapshot tại thời điểm khởi tạo và không tự suy đoán.</p></div>
+    <div className="platform-onboarding-section full-field"><span>BƯỚC 2 / 3</span><h4>Gói sử dụng</h4></div>
     {planLoadError&&<div className="auth-error full-field">{planLoadError}</div>}
     {!planCatalog&&!planLoadError&&<div className="auth-note full-field">Đang tải danh mục Plan chuẩn…</div>}
-    <div className="platform-plan-grid full-field" role="group" aria-label="Chọn gói sử dụng">
-     {planOptions.map(plan=><button type="button" key={plan.id} className="platform-plan-card" aria-pressed={planCode===plan.id} onClick={()=>setPlanCode(plan.id)}>
-      <div className="platform-plan-card-top"><small>PLAN {plan.id}</small>{planCode===plan.id&&<span className="platform-plan-selected">Đã chọn</span>}</div><strong>{plan.name}</strong>
-      <span className="platform-plan-capacity">{plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)}</span><small>{plan.maxDevices===null?'Thiết bị':'thiết bị tối đa'}</small>
-      <div className="platform-plan-details"><span>{plan.features.equipmentGroups?'Có nhóm thiết bị':'Không phân nhóm'}</span><span>{plan.features.multipleSites?'Nhiều cơ sở':'Một cơ sở'}</span></div>
-      <small>Quy tắc ID: {plan.idRule.replace('PLAN_','Plan ')}</small>
-     </button>)}
-    </div>
-    {selectedPlan&&<div className="platform-plan-summary full-field"><b>Đang chọn: Plan {selectedPlan.id} — {selectedPlan.name}</b><p>{selectedPlan.maxDevices===null?'Không giới hạn số thiết bị':`Tối đa ${number(selectedPlan.maxDevices)} thiết bị`}. {selectedPlan.features.equipmentGroups?'Có phân nhóm thiết bị.':'Không sử dụng nhóm thiết bị.'} {selectedPlan.features.multipleSites?'Hỗ trợ nhiều cơ sở và mã cơ sở.':'Quản lý một cơ sở.'}</p>{selectedPlanStats&&<p><b>Catalog Snapshot v{planCatalog?.dataVersion}</b>: {number(selectedPlanStats.groups)} nhóm · {number(selectedPlanStats.dictionary)} loại thiết bị · {number(selectedPlanStats.industries)} ngành nghề.</p>}<p>Quy tắc mã quản lý: {selectedPlan.idRule.replace('PLAN_','Plan ')}. Hạn mức sẽ được kiểm tra tại Cloud khi cấp số thứ tự.</p></div>}
+    <label className="field full-field">Chọn Plan *<select required value={planCode} onChange={e=>setPlanCode(e.target.value as PlanOption['id']|'')} disabled={!planOptions.length}><option value="">Chọn gói sử dụng</option>{planOptions.map(plan=><option key={plan.id} value={plan.id}>Plan {plan.id} — {plan.name} · {plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)+' thiết bị'}</option>)}</select></label>
+    {selectedPlan&&<div className="platform-plan-summary full-field"><b>Plan {selectedPlan.id} — {selectedPlan.name}</b><span className="platform-plan-inline">{selectedPlan.maxDevices===null?'Không giới hạn thiết bị':number(selectedPlan.maxDevices)+' thiết bị tối đa'} · {selectedPlan.features.equipmentGroups?'Có phân nhóm':'Không phân nhóm'} · {selectedPlan.features.multipleSites?'Nhiều cơ sở':'Một cơ sở'}</span><p>Snapshot v{planCatalog?.dataVersion}: {number(selectedPlanStats?.groups??0)} nhóm · {number(selectedPlanStats?.dictionary??0)} loại · {number(selectedPlanStats?.industries??0)} ngành. Quy tắc mã: {selectedPlan.idRule.replace('PLAN_','Plan ')}.</p></div>}
     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={()=>setRegistrationStep(1)}>← Quay lại</button><button type="button" className="primary-btn" disabled={!selectedPlan||!!planLoadError} onClick={()=>{setError('');setRegistrationStep(3)}}>Tiếp tục: Admin đầu tiên →</button></div>
    </>}
    {registrationStep===3&&<>
     <div className="platform-onboarding-section full-field"><span>BƯỚC 3 / 3</span><h4>Khai báo Admin đầu tiên</h4><p>Admin là người quản trị doanh nghiệp, quản lý thành viên, phân quyền và thiết bị.</p></div>
-    <label className="field full-field">Email Admin đầu tiên *<input autoFocus type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="admin@company.com"/></label>
-    <label className="field full-field">Tên người đại diện<input maxLength={120} value={adminName} onChange={e=>setAdminName(e.target.value)} placeholder="Họ và tên"/></label>
-    <div className="platform-onboarding-review full-field"><h4>Kiểm tra trước khi khởi tạo</h4><div><span>Doanh nghiệp</span><b>{organizationName.trim()}</b></div><div><span>Gói sử dụng</span><b>Plan {selectedPlan?.id} — {selectedPlan?.name}</b></div><div><span>Hạn mức thiết bị</span><b>{selectedPlan?.maxDevices===null?'Không giới hạn':selectedPlan?number(selectedPlan.maxDevices)+' thiết bị':'—'}</b></div><div><span>Email Admin</span><b>{adminEmail.trim()||'Chưa nhập'}</b></div>{selectedPlanStats&&<div><span>Snapshot v{planCatalog?.dataVersion}</span><b>{selectedPlanStats.groups} nhóm · {selectedPlanStats.dictionary} loại · {selectedPlanStats.industries} ngành</b></div>}</div>
+    <label className="field">Email Admin đầu tiên *<input autoFocus type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)} placeholder="admin@company.com"/></label>
+    <label className="field">Tên người đại diện<input maxLength={120} value={adminName} onChange={e=>setAdminName(e.target.value)} placeholder="Họ và tên"/></label>
+    <div className="platform-onboarding-review full-field"><h4>Kiểm tra trước khi khởi tạo</h4><div><span>Doanh nghiệp</span><b>{organizationName.trim()}</b></div><div><span>Loại hình</span><b>{businessType||'—'}</b></div><div><span>Gói sử dụng</span><b>Plan {selectedPlan?.id} — {selectedPlan?.name}</b></div><div><span>Hạn mức thiết bị</span><b>{selectedPlan?.maxDevices===null?'Không giới hạn':selectedPlan?number(selectedPlan.maxDevices)+' thiết bị':'—'}</b></div><div><span>Email Admin</span><b>{adminEmail.trim()||'Chưa nhập'}</b></div>{selectedPlanStats&&<div><span>Snapshot v{planCatalog?.dataVersion}</span><b>{selectedPlanStats.groups} nhóm · {selectedPlanStats.dictionary} loại · {selectedPlanStats.industries} ngành</b></div>}</div>
     <div className="auth-note full-field">Nếu email đã có tài khoản BAOTRI, hệ thống sẽ gắn tài khoản đó vào tổ chức mới. Nếu chưa có, hệ thống gửi thư mời để Admin xác nhận email và tự đặt mật khẩu. Không gửi mật khẩu qua biểu mẫu này. Nếu mất kết nối sau khi gửi, giữ nguyên thông tin và bấm lại; hệ thống dùng mã yêu cầu đã lưu để tránh tạo trùng doanh nghiệp.</div>
     {error&&<div className="auth-error full-field">{error}</div>}
     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={()=>setRegistrationStep(2)} disabled={busy}>← Quay lại</button><button type="submit" className="primary-btn" disabled={busy||!selectedPlan||!!planLoadError||!adminEmail.trim()}>{busy?'Đang khởi tạo…':'Xác nhận và tạo khách hàng'}</button></div>
