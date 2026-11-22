@@ -924,3 +924,24 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Lưu kho/khôi phục và các thay đổi Cloud đã được phân quyền vẫn phải được phản ánh về Local mà không biến thành thiết bị mới hoặc cấp mã mới. Các pending mutation/conflict phải được giữ và xử lý theo luồng hiện hữu; không được tự ý ghi đè hoặc giải quyết conflict thay người dùng.
 - Đây là **quyết định nghiệp vụ/kiến trúc đã chốt, chưa phải xác nhận tính năng đã triển khai**. Bước triển khai cần rà soát auth + organization context, quyền `assets.view`, Cloud query/pagination, Dexie Local scope, Cloud links, pending mutations/conflicts, tải lần đầu và đồng bộ gia tăng. Phải bảo đảm chỉ truy cập đúng organization ID và có thể retry an toàn khi mất mạng/đóng tab.
 - Chưa sửa source cho tính năng này; chưa build/test, chưa apply migration, chưa deploy và chưa thao tác dữ liệu Supabase.
+
+
+### PLAN — chuyển dữ liệu Local Preview cũ vào tổ chức có kiểm soát — 22/11/2026
+
+- Triển khai source bước đầu cho điểm tồn tại đã nêu ở checkpoint import/restore: các hồ sơ localScope=local-preview trước đây không xuất hiện trong danh sách Local chưa liên kết của tổ chức.
+- src/App.tsx: khi đã đăng nhập và chọn tổ chức, tải riêng danh sách Local Preview cũ vào state độc lập; không trộn vào danh sách thiết bị của tổ chức. Truyền danh sách này cho CloudAssetsPanel.
+- src/CloudAssetsPanel.tsx: thêm khu vực “Dữ liệu Local Preview cũ”. Chỉ hiển thị khi tài khoản có quyền assets.import; người dùng phải chọn hồ sơ cụ thể và xác nhận rõ rằng nguồn có thể chứa dữ liệu thử nghiệm. Không tự động nhập khi đăng nhập, mở panel hoặc tải Cloud.
+- Trước khi nhập từng hồ sơ: kiểm tra hồ sơ vẫn thuộc local-preview; bắt buộc có UUID hợp lệ, mã quản lý và tên; chặn mọi hồ sơ có idReservationId vì chưa xác định reservation thuộc organization/user nào; chặn UUID đã liên kết với tenant khác; chặn liên kết cùng tenant đang conflict hoặc sai mã; chặn mã đã có trong Local của tổ chức.
+- Tận dụng RPC hiện hữu import_asset_preserving_identity qua importLocalAsset; không tạo reservation mới, không cấp Smart ID/sequence mới. Backend tiếp tục kiểm tra quyền assets.import, UUID/code và receipt idempotent.
+- Chỉ sau khi RPC Cloud xác nhận và Local có Cloud link đúng organization + UUID + code + trạng thái linked, mới dùng transaction IndexedDB để chuyển localScope từ local-preview sang organizationId. Giữ nguyên UUID, mã, thông tin hồ sơ, createdAt/updatedAt, trạng thái, ảnh Local và lịch sử đang có; không thay đổi nội dung hồ sơ. Ảnh vẫn chỉ nằm trên trình duyệt, theo giới hạn hiện tại.
+- Nếu Cloud import thành công nhưng bước chuyển scope Local thất bại, hồ sơ vẫn ở local-preview; lần retry dùng cùng UUID/mutation ID qua receipt idempotent và không tạo hồ sơ/sequence mới. Nếu lỗi từng hồ sơ trong batch, các hồ sơ lỗi vẫn được giữ trong danh sách chọn để xử lý lại; hồ sơ thành công đã chuyển khỏi Local Preview.
+- Các hồ sơ có Smart ID reservation bị khóa khỏi thao tác chuyển tự động, kể cả reservation đã confirm; cần xử lý riêng sau khi xác minh đúng tenant/actor/reservation. Không tự giải phóng reservation.
+- Commit source:
+  - 3e9c3bb4cd3c1cc18de518d8407f7a4853ea73b3 — UI nhập Local Preview có chọn.
+  - f74cbfe83038f046eb1484fc733830712a0c998e — tải Local Preview độc lập trong App.
+  - 71cde3c96c1c04387767e900bf9b47ce13c98736 — truyền dữ liệu Local Preview vào panel.
+  - c496c50aa2df69e649354aa22b8a59781bf52ef2 — guard UUID, mã và liên kết cũ.
+  - 67a3b7be1ac36ee8f921e1e6495e2fff796d33b0 — giữ lại các lựa chọn lỗi trong batch và làm rõ quyền import.
+  - a724cb7c974c0867025eb79175deb33e59ce2ebe — trả kết quả từng hồ sơ để batch nhận biết thành công/thất bại.
+- Chỉ sửa source trên main; không tạo branch. Chưa chạy build/test, chưa apply migration, chưa deploy Edge Functions/Pages, chưa thao tác Supabase hoặc dữ liệu tổ chức.
+- Giới hạn cần rà soát tiếp: các hồ sơ preview thiếu UUID/mã/tên hoặc có reservation đều bị chặn; hồ sơ trùng code/UUID cần đối chiếu thủ công. Cần rà soát tĩnh lần cuối toàn bộ luồng và kiểm tra CI/build khi người dùng cho phép.
