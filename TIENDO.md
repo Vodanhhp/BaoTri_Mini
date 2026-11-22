@@ -1202,3 +1202,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa guard so sánh `lease.assetId` với `value.code`, giữ nguyên UUID Local cho khóa IndexedDB/mutation và mã quản lý cho Cloud RPC.
 - Thêm `scripts/cloudEditLeaseIdentity.test.mjs` để kiểm tra hợp đồng định danh giữa lúc cấp lease và lúc lưu.
 - Thay đổi chỉ nằm trên nhánh `fix/cloud-edit-lock-code-check`; chưa merge main, chưa deploy, không thao tác Supabase hoặc dữ liệu Công ty C. Cần CI/build và kiểm tra Staging trước khi đề xuất merge.
+
+
+### Khôi phục hàm khóa neo thiết bị cho Cloud mutation — 22/11/2026
+- Sau khi sửa lỗi guard Local UUID/mã quản lý và thử lưu lại, ứng dụng đã ghi snapshot Local và giữ mutation để retry, nhưng Cloud từ chối với lỗi `function private.lock_asset_anchor(uuid, uuid) does not exist`.
+- Đối chiếu log PostgreSQL của đúng Supabase Test `dskeaiyvldiwlsfqkboq` xác nhận RPC `public.apply_cloud_asset_mutation_with_lock` gọi `private.apply_asset_mutation_with_lock`, và function này gọi `private.lock_asset_anchor(organization_id, asset_id)` tại dòng 35. Hàm helper không tồn tại trong catalog; danh sách migration đã áp dụng cũng không có migration tạo hàm đó.
+- Đối chiếu `private.acquire_asset_edit_lock`: quy tắc khóa hiện hành là khóa hàng `public.assets` bằng `SELECT ... FOR UPDATE` trước khi thao tác hàng `asset_edit_locks`. Hàm `lock_asset_anchor` được khôi phục theo cùng thứ tự: khóa hàng thiết bị trong đúng tổ chức, báo lỗi nếu không tìm thấy; không ghi/sửa dữ liệu thiết bị.
+- Migration dự kiến `20261122160000_add_cloud_asset_lock_anchor.sql`; helper ở schema private, SECURITY DEFINER, search_path rỗng, tắt RLS theo cùng mẫu nội bộ; thu hồi quyền gọi trực tiếp từ PUBLIC/anon/authenticated. Hàm mutation nội bộ (owner postgres) gọi helper trong transaction.
+- Thêm test hồi quy kiểm tra migration có khóa đúng hàng asset, xử lý asset không tồn tại và không cấp quyền gọi helper trực tiếp.
+- Phạm vi: nhánh `fix/missing-cloud-asset-lock-anchor`, Supabase Test בלבד; không thay đổi Edge Function, schema bảng, dữ liệu Công ty C, ảnh Local, Smart ID, quyền nghiệp vụ hoặc Supabase Production. Chỉ retry mutation đang giữ sau khi migration được áp dụng và kiểm chứng; không tạo mutation mới.
