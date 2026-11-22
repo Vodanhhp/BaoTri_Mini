@@ -696,7 +696,7 @@ export default function App() {
         <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor} disabled={busy||reservationReleaseBusy}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||reservationReleaseBusy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
     </section></div>}
-    {organizationPlanPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationPlanPanel client={supabase} organizationId={organizationId} onClose={()=>setOrganizationPlanPanel(false)}/>}
+    {organizationPlanPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationPlanPanel client={supabase} organizationId={organizationId} onCatalogLoaded={setEquipmentCatalog} onClose={()=>setOrganizationPlanPanel(false)}/>}
     {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>{setProfilePanel(false);if(session?.user.id&&supabase)void supabase.from('profiles').select('display_name').eq('id',session.user.id).maybeSingle().then(({data})=>setProfileDisplayName(data?.display_name?.trim()||String(session.user.user_metadata?.full_name||'').trim()))}}/>}
     {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)}/>}
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
