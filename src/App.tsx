@@ -315,17 +315,55 @@ export default function App() {
     }))
     const kind = eventType ?? (!before ? 'created' : before.status !== after.status ? 'status_changed' : 'updated')
     if (before && !changes.length) return
-    await db.assetHistory.add({
+    const entry:AssetHistory={
       id:uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
       summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
       changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
       occurredAt:now(),syncStatus:localPreview?'synced':'pending'
+    }
+    await db.assetHistory.add(entry)
+    await syncAssetHistoryEntry(entry)
+  }
+  const syncAssetHistoryEntry = async (entry:AssetHistory) => {
+    if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced')return
+    const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
+      p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
+      p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
     })
+    if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
   }
-  const loadAssetHistory = async (assetId: string) => {
-    const rows=await db.assetHistory.where('[organizationId+assetId]').equals([organizationId||'local-preview',assetId]).toArray()
-    setAssetHistory(rows.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
+  const loadAssetHistory = async (assetId: string, assetCode?:string) => {
+    const scope=organizationId||'local-preview'
+    const localRows=await db.assetHistory.where('[organizationId+assetId]').equals([scope,assetId]).toArray()
+    let merged=localRows
+    if(!localPreview&&supabase&&navigator.onLine&&assetCode){
+      const {data,error:historyError}=await supabase.rpc('list_cloud_asset_history',{p_organization_id:organizationId,p_asset_code:assetCode,p_limit:150})
+      if(!historyError&&Array.isArray(data)){
+        const cloudRows=(data as Array<Record<string,unknown>>).map(row=>({
+          id:String(row.id),organizationId,assetId,assetCode:String(row.asset_code??assetCode),
+          eventType:String(row.event_type) as AssetHistory['eventType'],summary:String(row.summary??''),
+          changes:Array.isArray(row.changes)?row.changes as AssetHistory['changes']:[],
+          actorUserId:typeof row.actor_user_id==='string'?row.actor_user_id:undefined,
+          actorLabel:String(row.actor_label??''),occurredAt:String(row.occurred_at??''),syncStatus:'synced' as const
+        }))
+        const byId=new Map([...localRows,...cloudRows].map(row=>[row.id,row]))
+        merged=[...byId.values()]
+      }
+    }
+    setAssetHistory(merged.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
   }
+  useEffect(()=>{
+    if(localPreview||!supabase||!session?.user.id||!organizationId)return
+    let active=true
+    const retry=async()=>{
+      if(!navigator.onLine||!active)return
+      const pending=await db.assetHistory.where('organizationId').equals(organizationId).filter(row=>row.syncStatus==='pending').toArray()
+      for(const entry of pending){if(!active)break;try{await syncAssetHistoryEntry(entry)}catch{/* Keep the audit event pending for the next retry. */}}
+    }
+    void retry()
+    window.addEventListener('online',retry)
+    return()=>{active=false;window.removeEventListener('online',retry)}
+  },[session?.user.id,organizationId,localPreview])
 
   const assetMutationPayload=(asset:Asset):AssetMutationPayload=>({
     category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',
@@ -892,7 +930,7 @@ export default function App() {
           </div>
           <div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.map(asset=><tr key={asset.id} className={asset.deletedAt?'asset-deleted-row':''}>
-              <td><button className="asset-title-btn" onClick={()=>{setDetailAsset(asset);setSelectedAssetStatus(asset.archivedAt?'Lưu kho':asset.status);setStatusPickerOpen(false);void loadAssetHistory(asset.id)}}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
+              <td><button className="asset-title-btn" onClick={()=>{setDetailAsset(asset);setSelectedAssetStatus(asset.archivedAt?'Lưu kho':asset.status);setStatusPickerOpen(false);void loadAssetHistory(asset.id,asset.code)}}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
               <td><span className={'status '+(asset.deletedAt?'red':asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.deletedAt?'ĐÃ XÓA':asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
               <td className="actions">{showDeleted?null:showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}{canDelete&&!asset.deletedAt&&<button className="text-btn danger" onClick={()=>void deleteAsset(asset)} title="Đánh dấu xóa mềm"><Trash2 size={14}/> Xóa</button>}</>}</td>
