@@ -84,6 +84,7 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(!supabase)
   const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
+  const [localPreviewAssets, setLocalPreviewAssets] = useState<Asset[]>([])
   const [recoverableDrafts, setRecoverableDrafts] = useState<AssetDraft[]>([])
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả nhóm')
@@ -181,6 +182,14 @@ export default function App() {
     setAssets(await db.assets.where('localScope').equals(scope).toArray())
   }
   useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
+  useEffect(()=>{
+    if(!session?.user.id||!organizationId||localPreview){setLocalPreviewAssets([]);return}
+    let active=true
+    db.assets.where('localScope').equals('local-preview').toArray()
+      .then(rows=>{if(active)setLocalPreviewAssets(rows)})
+      .catch(cause=>{if(active)setError('Không tải được dữ liệu Local Preview cũ: '+(cause instanceof Error?cause.message:String(cause)))})
+    return()=>{active=false}
+  },[session?.user.id,organizationId,localPreview])
   useEffect(()=>{
     if(!session?.user.id||!organizationId||localPreview){setRecoverableDrafts([]);return}
     let active=true
