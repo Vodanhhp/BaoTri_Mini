@@ -18,6 +18,16 @@ export type EquipmentIdComponentsSnapshot = {
   reservation_id?: string
 }
 
+export type AssetDraft = {
+  id: string
+  organizationId: string
+  userId: string
+  reservationId: string
+  asset: Asset
+  createdAt: string
+  updatedAt: string
+}
+
 export type Asset = {
   id: string
   code: string
@@ -116,6 +126,7 @@ class BaoTriDatabase extends Dexie {
   assetCloudLinks!: Table<AssetCloudLink, string>
   assetMutations!: Table<AssetMutation, string>
   assetGroupChanges!: Table<AssetGroupChange, string>
+  assetDrafts!: Table<AssetDraft, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -151,6 +162,13 @@ class BaoTriDatabase extends Dexie {
       assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
       assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
       assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus'
+    })
+    this.version(5).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt'
     })
   }
 }
