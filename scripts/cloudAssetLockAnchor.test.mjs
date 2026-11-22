@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
 test('Cloud mutation migration restores the private asset anchor row lock', async () => {
-  const migration = await read('../supabase/migrations/20261122160000_add_cloud_asset_lock_anchor.sql')
+  const migration = await read('../supabase/migrations/20261122124403_add_cloud_asset_lock_anchor.sql')
   const source = await read('../supabase/migrations/20261121024405_010_private_cloud_sync_rpc_wrappers.sql')
 
   assert.match(migration, /create or replace function private\.lock_asset_anchor\(\s*p_organization_id uuid,\s*p_asset_id uuid\s*\) returns void/i)
