@@ -1111,3 +1111,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Chưa thể kiểm tra preflight HTTP trực tiếp từ môi trường thực thi hiện tại do DNS/network không khả dụng; chưa có browser runtime test sau deploy. Không gửi yêu cầu Plan, không duyệt/từ chối, không gán Plan hoặc tạo Catalog Snapshot.
 - Không deploy Production, không thay đổi dữ liệu nghiệp vụ hoặc cấu hình project khác.
 - Việc tiếp theo: người dùng tải lại Staging (Ctrl+F5), mở Gói dịch vụ và gửi lại thông báo mới nếu còn lỗi. Nếu CORS đã hết lỗi nhưng vẫn báo thiếu Plan/Catalog Snapshot thì xử lý riêng theo quyết định khởi tạo dữ liệu có chủ đích.
+
+### Chuẩn hóa giao diện bảng dữ liệu toàn hệ sinh thái — 22/11/2026
+- Rà soát các bảng dữ liệu chính đang hiển thị trong BAOTRI Mini: danh sách thiết bị Local, tổng quan tổ chức Super Admin và hai màn hình lịch sử/yêu cầu đổi Plan. Các bảng in hồ sơ/Checklist được giữ riêng theo tiêu chuẩn giấy, không áp dụng CSS giao diện màn hình.
+- Chuyển danh sách yêu cầu đổi Plan của doanh nghiệp và Super Admin từ các thẻ dòng rời rạc sang bảng dữ liệu có cột rõ ràng: nội dung thay đổi, ngày gửi, người gửi, ghi chú/phản hồi, trạng thái và thao tác. Giữ nguyên dữ liệu, trạng thái, luồng duyệt/từ chối và xác thực Super Admin.
+- Bổ sung quy chuẩn `.table-standard` / `.table-standard-wrap` dùng chung: header nền trung tính, chữ tiêu đề nhỏ và rõ, hàng dữ liệu gọn, căn giữa theo chiều dọc, đường phân cách nhẹ, hover tinh tế, trạng thái dùng màu có ý nghĩa, vùng cuộn ngang trên màn hình hẹp và header cố định khi cuộn.
+- Áp dụng cùng chuẩn cho bảng thiết bị Local và bảng tổng quan tổ chức Super Admin; CSS chỉ tác động bảng nằm trong `.table-wrap`, không làm thay đổi biểu mẫu/bảng in.
+- Thêm tài liệu chuẩn dùng lại: `docs/UI_TABLE_STANDARD.md`, mô tả nguyên tắc, kích thước, responsive, trạng thái rỗng và cách áp dụng cho ứng dụng mới trong hệ sinh thái.
+- Các commit source: `df9ebf883225d415d243a8efbbcb2ed7714dfdcd` (Plan tables), `524a3d8fc32285fd407e9e0ee489b88f04f5ee9b` (table CSS), `0ef1cf0076b36b4113ae5a923a19dc2d7ab563b8` (asset register), `49d43a708ce8079b3ddfc248f4d01329d76de4cd` (platform overview), `51c31541cc11de44648507fac2511cedf18587a5` (CSS selector compatibility).
+- Chưa chạy build hoặc browser test; chưa tạo deployment Staging mới. Không thay đổi Supabase, dữ liệu tổ chức, Edge Functions hoặc Production.
+- Bước tiếp theo: kiểm tra build và triển khai riêng lên Staging khi được yêu cầu; sau đó rà soát trực quan trên PC và mobile, đặc biệt bảng yêu cầu Plan và bảng tổng quan Super Admin.
