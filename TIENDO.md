@@ -686,3 +686,15 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Source đã rà soát: AuthScreen dùng signInWithPassword, thông báo lỗi khôi phục session, quên mật khẩu; App.tsx tải membership/role/permissions rồi tải Catalog Snapshot theo tổ chức. Luồng tạo thiết bị yêu cầu Plan + Snapshot, giữ sequence ở Cloud, ghi asset Local trước, sau đó confirm reservation.
 - Chưa chạy test/build tự động, chưa deploy Pages, chưa merge PR. Nhánh Feature chưa phải bản đang chạy trên domain production.
 - Blocker duy nhất để thử cấp mã chính thức: cần người dùng chọn Plan cho riêng `BAOTRI Mini Test 02`; sau đó mới được khởi tạo snapshot đúng Plan. Khuyến nghị Plan B nếu muốn thử luồng nhóm thiết bị mà vẫn giữ giới hạn test 500 thiết bị; Plan D chỉ nên chọn nếu cần thử các nhóm D và không giới hạn số lượng. Không tự gán thay người dùng.
+
+
+## Khởi tạo Plan B cho BAOTRI Mini Test 02 — 22/11/2026
+
+- Người dùng đã xác nhận đồng ý Plan B cho tổ chức thử nghiệm `BAOTRI Mini Test 02` trong Supabase `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`).
+- Trước khi ghi dữ liệu đã kiểm tra đúng organization UUID `f11bb85f-0dbe-45f0-bffa-472e5f84f7bf`, trạng thái active, Admin membership active; tổ chức chưa có Catalog Snapshot, chưa có Cloud assets, chưa có sequence/reservation.
+- Đã khởi tạo `public.organization_equipment_catalog` cho đúng tổ chức này từ catalog chuẩn hiện hành trong DB; không tạo tổ chức mới, không thay đổi `BAOTRI Mini`, không tác động project Supabase cũ.
+- Xác minh sau khởi tạo: Plan B / Tiêu chuẩn, tối đa 500 thiết bị; data version 1.1.0; snapshot có 9 nhóm thiết bị, 74 loại thiết bị, 21 ngành nghề. Bản ghi đã được trigger `validate_equipment_catalog_snapshot` kiểm tra khi insert thành công.
+- Xác minh lại: Test 02 hiện có 0 assets Cloud, 0 sequence, 0 reservation; chỉ cấu hình Plan + Snapshot, chưa tạo mã hay thiết bị.
+- Luồng frontend đã rà soát: sau khi chọn tổ chức, App tải Catalog Snapshot; khi tạo thiết bị mới sẽ phân tích tên theo catalog, yêu cầu chọn nhóm đối với Plan B, reserve sequence trên Cloud, ghi hồ sơ Local trước, sau đó confirm reservation lên Cloud. Nếu confirm lỗi thì hồ sơ Local giữ trạng thái reserved để retry.
+- Không chạy test/build tự động theo yêu cầu người dùng. Chưa deploy website Pages, chưa merge PR #11. Supabase Edge Function hiện có vẫn ACTIVE; chưa cần deploy function mới cho bước gán Plan này.
+- Việc còn lại trước khi người dùng chạy thử trên domain: đưa nhánh Feature lên môi trường website thực tế theo cách triển khai đã chọn; hiện chưa có công cụ Cloudflare Pages được kết nối trong phiên nên không tuyên bố website live đã cập nhật. Có thể chạy local theo README với `.env.local` trỏ đúng BAOTRI Mini New trong lúc chờ deploy.
