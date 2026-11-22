@@ -35,6 +35,7 @@ test('equipment activity history persists locally and uses append-only Cloud his
   assert.match(migration, /on delete restrict/i)
   assert.match(migration, /private\.has_org_permission\(p_organization_id,'assets.view'\)/)
   assert.match(migration, /private\.is_org_technician/)
+  assert.match(migration, /v_input\.status not in \('Đang hoạt động','Đang sửa chữa','Ngừng sử dụng','Thanh lý','Lưu kho'\)/)
   assert.match(migration, /lower\(r\.code\) in \('ktv','technician','maintenance_technician'\)/)
   assert.match(migration, /on conflict \(id\) do nothing/i)
 })
