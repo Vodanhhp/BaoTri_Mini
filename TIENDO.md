@@ -698,3 +698,142 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Luồng frontend đã rà soát: sau khi chọn tổ chức, App tải Catalog Snapshot; khi tạo thiết bị mới sẽ phân tích tên theo catalog, yêu cầu chọn nhóm đối với Plan B, reserve sequence trên Cloud, ghi hồ sơ Local trước, sau đó confirm reservation lên Cloud. Nếu confirm lỗi thì hồ sơ Local giữ trạng thái reserved để retry.
 - Không chạy test/build tự động theo yêu cầu người dùng. Chưa deploy website Pages, chưa merge PR #11. Supabase Edge Function hiện có vẫn ACTIVE; chưa cần deploy function mới cho bước gán Plan này.
 - Việc còn lại trước khi người dùng chạy thử trên domain: đưa nhánh Feature lên môi trường website thực tế theo cách triển khai đã chọn; hiện chưa có công cụ Cloudflare Pages được kết nối trong phiên nên không tuyên bố website live đã cập nhật. Có thể chạy local theo README với `.env.local` trỏ đúng BAOTRI Mini New trong lúc chờ deploy.
+
+## BỘ QUY TẮC PLAN — NGUYÊN TẮC NGHIỆP VỤ CHÍNH THỨC — 22/11/2026
+
+Phần này là quy tắc chuẩn để thiết kế, triển khai và kiểm tra mọi chức năng liên quan Plan A/B/C/D. Khi code cũ hoặc cách triển khai kỹ thuật mâu thuẫn với các nguyên tắc dưới đây, phải ưu tiên quy tắc nghiệp vụ này và sửa code cho phù hợp; không tự ý thay đổi quy tắc nếu chưa có xác nhận của người dùng.
+
+### 1. Vai trò của Plan
+
+- Plan là gói quy định **hạn mức và quyền sử dụng đối với thiết bị được tạo mới kể từ thời điểm Plan có hiệu lực**.
+- Plan không phải công cụ để tái phân loại, cấp lại mã, sửa hoặc can thiệp ngược vào thiết bị đã tồn tại.
+- Việc nâng/hạ Plan không được làm thay đổi organization_id, quyền sở hữu dữ liệu, danh mục riêng, lịch sử hoặc hồ sơ thiết bị của doanh nghiệp.
+- Mỗi tổ chức có Plan và Catalog Snapshot riêng. Không dùng việc đổi Plan để thay Snapshot riêng của tổ chức bằng toàn bộ catalog chuẩn, không ghi đè các tùy chỉnh do tổ chức đã tạo.
+
+### 2. Các gói Plan
+
+Hạn mức thiết bị theo catalog chuẩn hiện hành:
+
+| Plan | Tên gói | Hạn mức thiết bị | Phân nhóm thiết bị | Nhiều cơ sở |
+|---|---|---:|---|---|
+| A | Cơ bản | 200 | Không | Không |
+| B | Tiêu chuẩn | 500 | Có | Không |
+| C | Chuyên nghiệp | 1.000 | Có | Có |
+| D | Doanh nghiệp chuyên sâu | Không giới hạn | Có | Có |
+
+- Các nhóm, loại thiết bị, ngành nghề và quy tắc mã được hiển thị/áp dụng theo catalog snapshot của Plan được cấp.
+- Việc chọn Plan khi tạo tổ chức và việc nâng/hạ Plan sau này đều phải dùng đúng catalog chuẩn đang được công bố tại thời điểm xử lý, nhưng phải giữ dữ liệu tùy chỉnh riêng của tổ chức.
+- Không tự suy diễn tính năng ngoài catalog/đặc tả đã được xác nhận. Khi catalog chuẩn thay đổi, phải đối chiếu version và ghi nhận rõ thay đổi.
+
+### 3. Quy tắc bảo toàn thiết bị và mã đã cấp
+
+- Tất cả thiết bị đã được tạo và cấp mã trước thời điểm Plan mới có hiệu lực phải giữ nguyên mã quản lý/Smart Equipment ID, UUID, thông tin, nhóm, vị trí, lịch sử, ảnh và trạng thái hiện tại.
+- Không sinh lại mã; không đánh số lại; không chuyển mã; không xóa; không tự động lưu kho; không khóa quyền xem, sửa chữa hoặc bảo trì thiết bị cũ chỉ vì đổi Plan.
+- Không tự động ép thiết bị cũ vào nhóm, ngành nghề, quy tắc mã hoặc cấu trúc danh mục của Plan mới.
+- Không thay đổi hồ sơ cũ chỉ để làm cho số lượng thiết bị phù hợp với hạn mức Plan mới.
+- Quy tắc trên áp dụng cho cả nâng cấp lẫn hạ cấp, cả dữ liệu Local lẫn Cloud. Đồng bộ Cloud không được ghi đè hoặc làm mất định danh đã tồn tại tại Local.
+
+### 4. Quy tắc áp dụng Plan mới cho thiết bị tạo sau thời điểm hiệu lực
+
+- Chỉ thiết bị được tạo mới sau thời điểm Plan mới có hiệu lực mới phải tuân thủ hạn mức, nhóm thiết bị, ngành nghề, tính năng và quy tắc cấp mã của Plan mới.
+- Mã thiết bị mới phải được cấp theo đúng cơ chế Smart Equipment ID/sequence hiện hành, gắn đúng tổ chức và quy tắc Plan có hiệu lực tại thời điểm cấp.
+- Mọi điểm tạo mới/cấp mã phải kiểm tra Plan và hạn mức ở phía server/Cloud có thẩm quyền; không chỉ dựa vào kiểm tra giao diện hoặc số liệu Local.
+- Không được để thao tác Local, retry, đồng bộ trễ hoặc nhiều thiết bị cùng thao tác vượt qua hạn mức. Phải tính cả các lượt giữ số thứ tự/reservation chưa hoàn tất theo quy tắc cấp mã hiện hành để tránh cấp vượt hạn mức.
+- Thiết bị đã được tạo trước thời điểm hiệu lực không bị xem là thiết bị mới khi đồng bộ, import, retry hoặc khôi phục dữ liệu.
+
+### 5. Quy tắc hạ cấp khi số lượng thiết bị hiện có vượt hạn mức mới
+
+Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xuống Plan A (200).
+
+- Giữ nguyên toàn bộ 420 thiết bị và mã đã cấp. Doanh nghiệp vẫn được xem, quản lý, sửa chữa, bảo trì, tra cứu và khai thác hồ sơ cũ theo quyền hiện có.
+- Hiển thị cảnh báo rõ ràng: số lượng thiết bị hiện có đang vượt hạn mức Plan mới; nêu số hiện có và hạn mức.
+- Chặn việc tạo mới/cấp mã thiết bị mới cho đến khi số lượng được đưa về trong hạn mức. Việc chặn phải thực hiện ở backend/Cloud, frontend chỉ có nhiệm vụ thông báo và hỗ trợ người dùng.
+- Không tự xóa thiết bị, không tự lưu kho, không tự khóa thiết bị, không buộc doanh nghiệp xóa dữ liệu để được tiếp tục dùng hệ thống.
+- Khi số lượng thiết bị hợp lệ giảm xuống bằng hoặc thấp hơn hạn mức, cho phép tạo mới trở lại theo Plan hiện hành.
+- Không được hiểu thao tác lưu kho hoặc xóa mềm là cách tự động giải quyết vượt hạn mức; chỉ áp dụng cách tính số lượng theo quy tắc đếm thiết bị đã được định nghĩa riêng và thống nhất.
+
+### 6. Quy tắc nâng cấp
+
+- Thiết bị cũ vẫn giữ nguyên toàn bộ mã và hồ sơ.
+- Từ thời điểm Plan mới có hiệu lực, thiết bị mới được tạo theo hạn mức/tính năng/nhóm/quy tắc của Plan mới.
+- Các nhóm, loại, ngành nghề hoặc lựa chọn mới được mở theo Plan có thể được bổ sung vào catalog riêng của tổ chức nhưng không được ghi đè mục cũ hoặc tùy chỉnh riêng.
+- Nâng cấp không tự động chuyển đổi, phân nhóm lại hoặc sửa hồ sơ thiết bị cũ.
+
+### 7. Quy trình yêu cầu và phê duyệt đổi Plan
+
+- Admin đang hoạt động của đúng tổ chức được xem Plan hiện tại, hạn mức và số lượng thiết bị Cloud; được gửi yêu cầu chuyển sang Plan A/B/C/D và ghi chú lý do.
+- Gửi yêu cầu không làm Plan thay đổi ngay. Plan chỉ đổi khi Super Admin duyệt và thao tác áp dụng thành công.
+- Mỗi tổ chức chỉ có tối đa một yêu cầu đổi Plan ở trạng thái chờ xử lý tại một thời điểm. Không cho tạo yêu cầu chờ trùng.
+- Super Admin phải kiểm tra tổ chức, Plan hiện tại, Plan đề xuất, người gửi, ghi chú và điều kiện thương mại/thanh toán trước khi quyết định.
+- Khi duyệt phải xác thực lại danh tính/mật khẩu Super Admin; kiểm tra request vẫn pending và Plan hiện tại vẫn khớp Plan tại thời điểm gửi. Nếu trạng thái đã thay đổi hoặc request cũ thì từ chối áp dụng, yêu cầu đối chiếu lại.
+- Duyệt/từ chối phải được xử lý nguyên tử; không để cập nhật Plan thành công nhưng trạng thái yêu cầu/lịch sử không được ghi nhận.
+- Mỗi lần duyệt phải lưu lịch sử tối thiểu: tổ chức, Plan cũ, Plan mới, người yêu cầu, người duyệt, thời điểm, version catalog, ghi chú yêu cầu và ghi chú xử lý.
+- Từ chối không thay đổi Plan/Catalog Snapshot; phải lưu trạng thái, người xử lý, thời điểm và lý do/ghi chú.
+- Không tự động gia hạn, thu tiền, lập hóa đơn hoặc xác nhận thanh toán. Đây là bước kiểm tra thương mại do Super Admin thực hiện trước khi duyệt; việc tích hợp thanh toán chỉ làm khi có đặc tả riêng.
+
+### 8. Bảo toàn Catalog Snapshot riêng của tổ chức
+
+- Mỗi tổ chức tiếp tục sở hữu Catalog Snapshot riêng, có version nguồn và Plan hiện hành.
+- Khi nâng cấp, có thể bổ sung các nhóm/loại/ngành chuẩn mà Plan mới mở quyền sử dụng, nhưng chỉ thêm mục còn thiếu theo khóa định danh ổn định.
+- Không ghi đè tên, mã, cấu hình hoặc nội dung do tổ chức đã chỉnh sửa; không xóa mục riêng; không xóa mục cũ chỉ vì Plan mới không còn cung cấp cho việc tạo mới.
+- Khi hạ cấp, các mục catalog đã tồn tại và đang được hồ sơ cũ sử dụng phải được giữ nguyên để tra cứu/quản lý hồ sơ cũ. Giao diện tạo mới chỉ cho chọn nội dung được phép theo Plan mới.
+- Phải phân biệt rõ dữ liệu catalog được giữ để đọc/duy trì hồ sơ cũ với lựa chọn được phép dùng để tạo hồ sơ mới.
+- Ghi nhận catalog data version và Plan hiệu lực trong Snapshot/lịch sử để có thể truy vết.
+
+### 9. Phân quyền, tenant isolation và an toàn dữ liệu
+
+- Admin chỉ được xem/gửi yêu cầu cho tổ chức mà tài khoản đang là Admin active.
+- Super Admin mới có quyền xem danh sách yêu cầu toàn nền tảng và duyệt/từ chối.
+- Không tin organization_id, role, email hoặc user ID do frontend tự khai báo nếu backend chưa xác minh bằng access token và dữ liệu membership/allowlist có thẩm quyền.
+- Client không được tự cập nhật organization_equipment_catalog.plan_code, Snapshot, request status hoặc history trực tiếp.
+- Các thao tác nhạy cảm phải qua Edge Function/RPC server-side; bảng request/history không mở quyền đọc/ghi trực tiếp cho anon/authenticated.
+- Mọi truy vấn và mutation phải giới hạn đúng organization; tuyệt đối không để thao tác đổi Plan của một tổ chức ảnh hưởng tổ chức khác.
+- Không thử nghiệm, apply migration hoặc ghi dữ liệu vào tổ chức thật nếu chưa có chỉ đạo rõ ràng. Môi trường Supabase dự án mới duy nhất là BAOTRI Mini New (dskeaiyvldiwlsfqkboq); tổ chức thử nghiệm được chỉ định là BAOTRI Mini Test 02. Không thao tác project Supabase cũ BaoTRiMini.
+
+### 10. Các tình huống bắt buộc phải giữ đúng khi kiểm tra
+
+1. Nâng A → B: thiết bị cũ giữ mã/hồ sơ; thiết bị mới được dùng phân nhóm theo B và hạn mức B.
+2. Nâng B → C: thiết bị cũ không bị ép bổ sung ngày/nhóm/quy tắc mới; thiết bị mới tuân thủ tính năng C.
+3. Nâng C → D: thiết bị cũ không đổi; thiết bị mới theo D, không giới hạn số lượng theo catalog.
+4. Hạ B → A khi đang có 420 thiết bị: vẫn quản lý đủ 420 thiết bị; cảnh báo vượt 200; chặn tạo mới/cấp mã cho đến khi số lượng hợp lệ không quá 200.
+5. Hạ D → B khi đang có trên 500 thiết bị: giữ toàn bộ dữ liệu và quyền bảo trì cũ; chỉ chặn tạo mới cho đến khi trong hạn mức.
+6. Một tổ chức có catalog riêng đã chỉnh sửa: nâng/hạ Plan không được ghi đè hoặc xóa các mục tùy chỉnh.
+7. Có request pending nhưng Plan đã thay đổi bởi một thao tác hợp lệ khác: không được duyệt request theo Plan cũ; phải yêu cầu gửi lại/đối chiếu.
+8. Hai Admin hoặc hai phiên cùng gửi request: chỉ một request pending được tạo.
+9. Hai thao tác tạo thiết bị đồng thời ở sát hạn mức: backend phải khóa/kiểm soát nguyên tử để không cấp vượt hạn mức.
+10. Retry/sync/import một thiết bị cũ: không tính nhầm thành tạo mới, không sinh mã mới và không làm tăng số lượng thiết bị lần thứ hai.
+
+### 11. Trạng thái triển khai code Plan trên main — 22/11/2026
+
+Đã ghi source trực tiếp lên main theo yêu cầu làm việc hiện tại:
+
+- Migration source: supabase/migrations/20261122120000_organization_plan_change_workflow.sql — tạo request, history, private RPC và public wrapper chỉ cho service_role.
+- Edge Function source:
+  - supabase/functions/organization-plan-requests/index.ts — Admin doanh nghiệp xem/gửi yêu cầu.
+  - supabase/functions/platform-manage-plan-requests/index.ts — Super Admin xem/duyệt/từ chối.
+- UI source: src/PlanChangePanels.tsx — giao diện Admin doanh nghiệp và Super Admin.
+- src/App.tsx — thêm menu Cài đặt → Gói dịch vụ cho Admin doanh nghiệp.
+- src/PlatformAdminPanel.tsx — thêm khu vực yêu cầu nâng/hạ Plan cho Super Admin.
+- Các commit source liên quan trên main:
+  - 8fc44604fd772eae2c03859a33b4fb4b81a26ea6 — migration workflow ban đầu.
+  - 4111915d1dd6f95e1d166eb495fd34992c8a9fe8 — điều chỉnh cascade cho audit rows.
+  - 911f2994c1eb5b943f3a3db5cec5d8b5c93c17a3 — Edge Function Admin gửi yêu cầu.
+  - cbd7c9c2690bff0ced66650bd8ef5adc536316ee — Edge Function Super Admin xử lý.
+  - 639906550b2b83ccb6a5c491db30914b723b304c — UI hai vai trò.
+  - 7b235f4bbb4891df21361e74f24736e4c620ecad — gắn menu Gói dịch vụ.
+  - 5a6a71b2210defb42c2b36b1ba3cad1a3734b1c6 — tích hợp panel vào Platform Admin.
+  - 18937f3469a3f48c2d085f573e9c1a1df314182e — đồng bộ catalog về App khi tải lại panel.
+  - 5fbdb710c9fb07ffba538280d6ee6749e0f5fb25 — cập nhật catalog state sau khi panel tải.
+- **Trạng thái cần ghi nhớ:** các commit trên chỉ xác nhận source đã được ghi vào GitHub main; chưa có nghĩa là migration đã apply, Edge Functions đã deploy hoặc ứng dụng đã build/kiểm thử.
+- Chưa chạy build/test, chưa apply migration 20261122120000_organization_plan_change_workflow.sql, chưa deploy hai Edge Functions mới, chưa deploy Pages.
+- Chưa xác minh runtime contract của migration với schema thực tế, chưa kiểm thử luồng request/approve/reject, tenant isolation, giới hạn đồng thời và hành vi vượt hạn mức. Không được tuyên bố tính năng đã hoạt động production cho đến khi các bước này được kiểm tra.
+- Không tự động thay đổi tổ chức BAOTRI Mini hoặc bất kỳ dữ liệu khách hàng thật nào. Khi được phép kiểm tra runtime, chỉ dùng BAOTRI Mini Test 02 trên đúng Supabase BAOTRI Mini New.
+- Lưu ý kỹ thuật: quy tắc chặn tạo mới vượt hạn mức phải được kiểm tra lại trực tiếp trong đường cấp mã/reservation ở backend; cảnh báo UI không đủ để bảo vệ hạn mức. Cần bảo đảm đếm đúng thiết bị và xử lý reservation đồng thời, không để retry/import thiết bị cũ bị tính thành thiết bị mới.
+
+### 12. Điểm tiếp tục
+
+- Dùng bộ quy tắc PLAN ở trên làm chuẩn cho mọi thay đổi tiếp theo.
+- Rà soát migration và các RPC/catalog schema thực tế trước khi coi source migration là hợp lệ; đặc biệt kiểm tra tên bảng/cột, cấu trúc JSON catalog, quyền execute, và việc giữ nguyên catalog riêng.
+- Rà soát contract Edge Function ↔ frontend ↔ RPC, xác minh authentication/authorization và cấu hình deploy.
+- Rà soát mọi code path tạo thiết bị/cấp Smart ID để bảo đảm giới hạn Plan được enforce server-side, có tính đến reservation đồng thời và phân biệt thiết bị mới với thiết bị cũ.
+- Sau khi rà soát source, chỉ triển khai theo chỉ đạo riêng; không tự apply migration, deploy hoặc ghi dữ liệu.
