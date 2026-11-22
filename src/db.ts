@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 
-export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừng sử dụng' | 'Thanh lý'
+export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừng sử dụng' | 'Thanh lý' | 'Lưu kho'
 export type CloudLinkStatus = 'linked' | 'conflict'
 export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
 
@@ -77,6 +77,20 @@ export type AssetGroupChange = {
   syncStatus: 'pending' | 'synced'
 }
 
+export type AssetHistory = {
+  id: string
+  organizationId: string
+  assetId: string
+  assetCode: string
+  eventType: 'created' | 'updated' | 'status_changed' | 'archived' | 'restored' | 'deleted'
+  summary: string
+  changes: Array<{ field: string; label: string; before: string; after: string }>
+  actorUserId?: string
+  actorLabel: string
+  occurredAt: string
+  syncStatus: 'pending' | 'synced'
+}
+
 export type AssetCloudLink = {
   id: string
   organizationId: string
@@ -128,6 +142,7 @@ class BaoTriDatabase extends Dexie {
   assetCloudLinks!: Table<AssetCloudLink, string>
   assetMutations!: Table<AssetMutation, string>
   assetGroupChanges!: Table<AssetGroupChange, string>
+  assetHistory!: Table<AssetHistory, string>
   assetDrafts!: Table<AssetDraft, string>
 
   constructor() {
@@ -171,6 +186,14 @@ class BaoTriDatabase extends Dexie {
       assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
       assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
       assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt'
+    })
+    this.version(6).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
+      assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]'
     })
   }
 }
