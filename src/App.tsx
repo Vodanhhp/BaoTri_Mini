@@ -380,7 +380,7 @@ export default function App() {
       if(localPreview){setEditing({...asset,...(statusOverride?{status:statusOverride,archivedAt:statusOverride==='Lưu kho'?(asset.archivedAt||now()):undefined}:{}),images:asset.images??[]});setError('');setShowForm(true);return true}
       if(!session||!organizationId||!supabase)throw new Error('Chưa có tổ chức đang hoạt động.')
       const link=await db.assetCloudLinks.get(organizationId+':'+asset.id)
-      if(!link){setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true);return}
+      if(!link){setEditing({...asset,...(statusOverride?{status:statusOverride,archivedAt:statusOverride==='Lưu kho'?(asset.archivedAt||now()):undefined}:{}),images:asset.images??[]});setError('');setShowForm(true);return true}
       if(link.status!=='linked')throw new Error('Liên kết Cloud đang xung đột. Hãy đối chiếu trước khi sửa.')
       const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,asset.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
       if(pending)throw new Error('Thiết bị có mutation Cloud chưa được xác nhận. Không mở phiên sửa mới.')
