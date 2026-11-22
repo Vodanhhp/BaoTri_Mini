@@ -1161,3 +1161,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cập nhật `scripts/cloudAssetPublicApi.test.mjs` để xác nhận đúng RPC phân trang, tham số keyset pagination, không SELECT trực tiếp bảng assets, và quyền/response trong migration tương ứng. Không thay đổi source nghiệp vụ, migration, Supabase hoặc dữ liệu.
 - Commit sửa test: `cb3a2670c1299b10a88c195cba76020314533ecd`. Đang chờ workflow chạy lại trên commit mới; chưa kết luận CI pass.
 - PR #16 vẫn Draft, chưa merge. Chưa tạo deployment Preview, chưa deploy Production; cần xác minh Vercel Preview tự động theo đúng commit mới trước khi kiểm tra trực quan.
+
+
+### Chỉnh giao diện Danh mục thiết bị theo phản hồi kiểm tra Staging — 22/11/2026
+- Tiếp nhận phản hồi trực tiếp trên màn hình Công ty C: một số cỡ chữ chưa đồng đều, khu vực tìm kiếm/bộ lọc chưa gọn và nút thử nghiệm “Sinh mã thử” không nên xuất hiện trong giao diện vận hành.
+- Trên nhánh `feature/ui-table-layout-system`: bỏ nút “Sinh mã thử” khỏi thanh đầu trang và bỏ đường mở công cụ thử mã từ màn hình đăng nhập; không đụng tới luồng Smart Equipment ID thực tế khi tạo/lưu hồ sơ thiết bị.
+- Tổ chức lại vùng tra cứu Danh mục thiết bị: ô tìm kiếm thành một hàng riêng, rộng toàn vùng; bộ lọc nhóm/vị trí/trạng thái và sắp xếp chuyển thành hàng có nhãn; nút Đặt lại nằm cùng hàng bộ lọc. Bổ sung responsive tablet/mobile và cỡ input mobile 16px để tránh tự zoom.
+- Chỉ thay đổi giao diện React/CSS và đường dẫn vào tiện ích thử nghiệm; không sửa logic nghiệp vụ, dữ liệu Local/Cloud, RPC, phân quyền, migrations, Supabase hoặc Edge Functions.
+- Cần CI/build và triển khai Staging đúng commit mới để người dùng kiểm tra trực quan; PR #16 vẫn Draft, không merge và không triển khai Production.
