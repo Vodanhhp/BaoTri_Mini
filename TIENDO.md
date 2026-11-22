@@ -837,3 +837,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rà soát contract Edge Function ↔ frontend ↔ RPC, xác minh authentication/authorization và cấu hình deploy.
 - Rà soát mọi code path tạo thiết bị/cấp Smart ID để bảo đảm giới hạn Plan được enforce server-side, có tính đến reservation đồng thời và phân biệt thiết bị mới với thiết bị cũ.
 - Sau khi rà soát source, chỉ triển khai theo chỉ đạo riêng; không tự apply migration, deploy hoặc ghi dữ liệu.
+
+
+### Rà soát PLAN — đồng bộ khóa cấp mã với đổi Plan — 22/11/2026
+
+- Đã rà soát source migration Smart ID và migration workflow Plan trên `main`.
+- Phát hiện khe hở đồng thời: `reserve_asset_id_sequence` đọc Plan/Catalog Snapshot mà chưa khóa hàng `organization_equipment_catalog`; trong khi RPC duyệt Plan đã khóa chính hàng này bằng `FOR UPDATE`. Hai thao tác có thể chạy đua, khiến lượt cấp mã đọc Plan cũ trước khi Plan mới được áp dụng nhưng hoàn tất sau thời điểm đổi Plan.
+- Đã sửa source migration `supabase/migrations/20261121094441_smart_equipment_id_local_first_reservations.sql`: thêm `FOR UPDATE` vào truy vấn đọc Plan/Catalog Snapshot trong `reserve_asset_id_sequence`, kèm chú thích về mục đích đồng bộ khóa.
+- Sau sửa, thao tác cấp mã và thao tác duyệt đổi Plan cùng khóa hàng Catalog Snapshot của đúng tổ chức; thao tác đến sau phải chờ và đọc Plan đã có hiệu lực. Không thay đổi bảng thiết bị, mã đã cấp, sequence đã cấp hoặc dữ liệu tổ chức.
+- Commit sửa source: `30765bb1e5d8e719199ae7c1793c3ef28d6d9f71`.
+- Đây là sửa migration source chưa apply theo trạng thái TIENDO; không chạy SQL, không apply migration, không deploy Edge Function/Pages.
+- Chưa chạy build/test theo nguyên tắc dự án. Cần kiểm tra runtime sau khi được chỉ đạo, gồm: cấp mã đồng thời với duyệt Plan; reservation đã tạo trước thời điểm đổi Plan; retry xác nhận một thiết bị Local đã lưu; và hạ cấp vượt hạn mức.
