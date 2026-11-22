@@ -493,6 +493,8 @@ export default function App() {
         if(duplicate&&duplicate.id!==value.id){
           try{
             await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            await db.assetDrafts.delete(value.id)
+            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
             setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
           }catch{
             // Keep the reservation key so a later retry can safely reconcile it.
@@ -501,9 +503,13 @@ export default function App() {
         }
         try{
           await db.assets.add(value)
+          await db.assetDrafts.delete(value.id)
+          setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
         }catch(localError){
           try{
             await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            await db.assetDrafts.delete(value.id)
+            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
             setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
           }catch{
             // Keep the reservation key if Cloud could not confirm its release.
