@@ -28,8 +28,8 @@ create index if not exists organization_plan_change_requests_status_time
 
 create table if not exists private.organization_plan_change_history (
   id uuid primary key default gen_random_uuid(),
-  request_id uuid not null unique references private.organization_plan_change_requests(id),
-  organization_id uuid not null references public.organizations(id),
+  request_id uuid not null unique references private.organization_plan_change_requests(id) on delete cascade,
+  organization_id uuid not null references public.organizations(id) on delete cascade,
   previous_plan_code text not null check (previous_plan_code in ('A','B','C','D')),
   new_plan_code text not null check (new_plan_code in ('A','B','C','D')),
   requested_by_user_id uuid not null references auth.users(id),
