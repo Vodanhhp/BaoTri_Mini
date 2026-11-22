@@ -23,6 +23,9 @@ begin
 end;
 $function$;
 
+revoke all on function public.list_cloud_assets(uuid) from public, anon;
+grant execute on function public.list_cloud_assets(uuid) to authenticated;
+
 create or replace function public.list_cloud_assets_page(
   p_organization_id uuid,
   p_after_code text default null,
