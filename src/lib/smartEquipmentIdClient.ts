@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { EquipmentIdComponentsSnapshot } from '../db'
 import {
-  formatEquipmentId,
   type EquipmentCatalog,
   type PlanCode
 } from './smartEquipmentId'
@@ -82,39 +81,41 @@ export async function reserveSmartEquipmentId(
   if (error) throw new Error('Cloud không cấp được số thứ tự: ' + error.message)
 
   const reservation = data as SmartSequenceReservation
-  const expectedGroup = input.plan === 'A'
-    ? undefined
-    : (input.groupCode ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-  const expectedSite = input.plan === 'C' || input.plan === 'D'
-    ? (input.siteCode ?? '00')
+  const expectedGroup = input.groupCode?.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  const expectedSite = input.siteCode?.replace(/[^0-9]/g, '')
+  const expectedMonthYear = input.commissionedAt
+    ? input.commissionedAt.slice(5, 7) + input.commissionedAt.slice(2, 4)
     : undefined
-  const expectedMonthYear = input.plan === 'C' || input.plan === 'D'
-    ? (input.commissionedAt ? input.commissionedAt.slice(5, 7) + input.commissionedAt.slice(2, 4) : '')
-    : undefined
+  const validPlan = ['A', 'B', 'C', 'D'].includes(reservation?.plan_code)
+  const groupRequired = reservation?.plan_code !== 'A'
+  const siteRequired = reservation?.plan_code === 'C' || reservation?.plan_code === 'D'
   if (!reservation || reservation.reservation_id !== input.reservationId
-    || reservation.plan_code !== input.plan
-    || reservation.equipment_code !== input.equipmentCode
+    || !validPlan
+    || reservation.equipment_code !== input.equipmentCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
     || !Number.isSafeInteger(Number(reservation.sequence))
     || Number(reservation.sequence) < 1
     || !reservation.source_data_version
     || !['reserved', 'confirmed'].includes(reservation.status)
-    || (reservation.group_code ?? undefined) !== expectedGroup
-    || (reservation.site_code ?? undefined) !== expectedSite
-    || (expectedMonthYear !== undefined && reservation.month_year !== expectedMonthYear)) {
-    throw new Error('Cloud trả về thông tin giữ số thứ tự không khớp Plan hoặc thành phần mã đã yêu cầu.')
+    || (groupRequired && !reservation.group_code)
+    || (siteRequired && !/^\\d{2}$/.test(reservation.site_code ?? ''))
+    || (reservation.plan_code === 'A' && (reservation.group_code || reservation.site_code || reservation.month_year))
+    || (!groupRequired && reservation.group_code)
+    || (expectedGroup !== undefined && groupRequired && reservation.group_code !== expectedGroup)
+    || (expectedSite !== undefined && siteRequired && reservation.site_code !== expectedSite)
+    || (expectedMonthYear !== undefined && siteRequired && reservation.month_year !== expectedMonthYear)
+    || (siteRequired && !reservation.month_year)) {
+    throw new Error('Cloud trả về thông tin giữ số thứ tự không hợp lệ hoặc không khớp thành phần đã xác nhận.')
   }
 
   const sequence = Number(reservation.sequence)
   const groupCode = reservation.group_code ?? undefined
   const siteCode = reservation.site_code ?? undefined
-  const equipmentId = formatEquipmentId({
-    plan: reservation.plan_code,
-    equipmentCode: reservation.equipment_code,
-    groupCode,
-    siteCode,
-    sequence,
-    commissionedAt: input.commissionedAt
-  })
+  const sequenceText = String(sequence).padStart(3, '0')
+  const equipmentId = reservation.plan_code === 'A'
+    ? `${reservation.equipment_code}-${sequenceText}`
+    : reservation.plan_code === 'B'
+      ? `${reservation.equipment_code}-${groupCode}-${sequenceText}`
+      : `${reservation.equipment_code}-${groupCode}-${siteCode}-${sequenceText}-${reservation.month_year}`
 
   const components: EquipmentIdComponentsSnapshot = {
     plan: reservation.plan_code,
