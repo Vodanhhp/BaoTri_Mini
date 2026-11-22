@@ -674,3 +674,15 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - AuthScreen hiện hỗ trợ signInWithPassword, email chưa xác nhận, quên mật khẩu và không cho đăng ký tự do. Supabase URL/publishable key được cấu hình trong `.env.example` cho đúng project mới; không đưa service-role key vào frontend. Email/password login không cần redirect; password recovery cần Supabase Auth Site URL/Redirect URLs khớp domain/local origin.
 - Bước tiếp theo để unblock: người dùng cần chọn Plan cho `BAOTRI Mini Test 02`. Sau đó khởi tạo Catalog Snapshot cho tổ chức này qua quy trình quản trị an toàn, apply chỉ những migration thực sự cần cho luồng đang thử, triển khai website/Edge Functions phù hợp rồi hướng dẫn người dùng đăng nhập và tạo mã đầu tiên.
 - Lưu ý triển khai: hiện chỉ có quyền sửa source qua GitHub connector; không có Cloudflare Pages deploy tool trong phiên. Branch Feature chưa được đưa lên production domain, PR #11 vẫn Draft/open. Không tuyên bố website live đã cập nhật cho đến khi có deployment thật.
+
+
+## Xác minh trực tiếp BAOTRI Mini New trước khi cấp Plan chạy thử — 22/11/2026
+
+- Đối chiếu lại Project ID trong mọi truy vấn Supabase: chỉ thao tác đọc trên `dskeaiyvldiwlsfqkboq` (BAOTRI Mini New). Không truy cập hoặc thay đổi project `BaoTRiMini` cũ.
+- Xác minh DB: `BAOTRI Mini Test 02` đang active; membership tài khoản người dùng active, role `admin`, có role assignment `admin` và 27 quyền. Tổ chức `BAOTRI Mini` vẫn là tổ chức khác; không thay đổi.
+- Xác minh catalog chuẩn trong `private.standard_equipment_catalog_versions`: bản current `data_version=1.1.0`, `schema_version=1.0.0`, 30 nhóm và 74 loại thiết bị.
+- Xác minh `organization_equipment_catalog` hiện chưa có bản ghi cho bất kỳ tổ chức nào; Test 02 chưa có Plan/Snapshot. Chưa có dữ liệu sequence. Không tự chọn Plan hoặc ghi dữ liệu khi chưa được người dùng xác nhận.
+- Xác minh migration Smart ID đến `20261121120954` đã áp dụng; RPC reservation/confirmation/release là luồng frontend đang gọi. Migration Cloud Asset Public Key vẫn chưa áp dụng và không phải điều kiện trực tiếp để login hoặc cấp Smart ID.
+- Source đã rà soát: AuthScreen dùng signInWithPassword, thông báo lỗi khôi phục session, quên mật khẩu; App.tsx tải membership/role/permissions rồi tải Catalog Snapshot theo tổ chức. Luồng tạo thiết bị yêu cầu Plan + Snapshot, giữ sequence ở Cloud, ghi asset Local trước, sau đó confirm reservation.
+- Chưa chạy test/build tự động, chưa deploy Pages, chưa merge PR. Nhánh Feature chưa phải bản đang chạy trên domain production.
+- Blocker duy nhất để thử cấp mã chính thức: cần người dùng chọn Plan cho riêng `BAOTRI Mini Test 02`; sau đó mới được khởi tạo snapshot đúng Plan. Khuyến nghị Plan B nếu muốn thử luồng nhóm thiết bị mà vẫn giữ giới hạn test 500 thiết bị; Plan D chỉ nên chọn nếu cần thử các nhóm D và không giới hạn số lượng. Không tự gán thay người dùng.
