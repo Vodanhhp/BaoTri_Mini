@@ -6,7 +6,6 @@ import CloudAssetsPanel from './CloudAssetsPanel'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
 import PlatformAdminPanel from './PlatformAdminPanel'
-import SmartEquipmentIdTool from './SmartEquipmentIdTool'
 import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload } from './db'
@@ -97,7 +96,6 @@ export default function App() {
   const [detailAsset, setDetailAsset] = useState<Asset | null>(null)
   const [printAssetMode, setPrintAssetMode] = useState<null | 'sticker' | 'detail'>(null)
   const [showArchived, setShowArchived] = useState(false)
-  const [smartIdToolOpen, setSmartIdToolOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -742,7 +740,7 @@ export default function App() {
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
-  if (!session && !localPreview) return <><AuthScreen client={supabase} errorMessage={error} onLocalPreview={() => setLocalPreview(true)} onOpenSmartIdTool={() => setSmartIdToolOpen(true)}/>{smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}</>
+  if (!session && !localPreview) return <AuthScreen client={supabase} errorMessage={error} onLocalPreview={() => setLocalPreview(true)}/>
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
 
@@ -780,7 +778,7 @@ export default function App() {
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
         <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
-        <div className="top-actions"><button className="soft-btn" onClick={()=>setSmartIdToolOpen(true)}><Hash size={14}/> Sinh mã thử</button>{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="top-actions">{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
@@ -799,13 +797,15 @@ export default function App() {
         </div>
         <div className="panel">
           <div className="panel-head"><div><h2>{showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setSmartEquipmentChoice('');setSmartGroupChoice('');setSmartSiteCode('00');setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button></div></div>
-          <div className="asset-toolbar">
-            <label className="searchbar"><Search size={16}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm theo mã, tên, nhóm, vị trí…"/></label>
-            <select value={categoryFilter} onChange={event=>setCategoryFilter(event.target.value)}><option>Tất cả nhóm</option>{categories.map(item=><option key={item}>{item}</option>)}</select>
-            <select value={locationFilter} onChange={event=>setLocationFilter(event.target.value)}><option>Tất cả vị trí</option>{locations.map(item=><option key={item}>{item}</option>)}</select>
-            <select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option>Tất cả trạng thái</option>{STATUSES.map(item=><option key={item}>{item}</option>)}</select>
-            <select value={sortBy} onChange={event=>setSortBy(event.target.value)}><option value="updatedAt">Mới cập nhật</option><option value="code">Sắp xếp theo mã</option><option value="name">Sắp xếp theo tên</option><option value="commissionedAt">Ngày đưa vào sử dụng</option></select>
-            <button className="soft-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
+          <div className="asset-toolbar asset-toolbar-panel">
+            <label className="searchbar asset-searchbar"><Search size={17}/><input aria-label="Tìm kiếm thiết bị" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm theo mã quản lý, tên thiết bị, nhóm hoặc vị trí…"/></label>
+            <div className="asset-filter-row">
+              <label className="asset-filter-field"><span>Nhóm thiết bị</span><select aria-label="Lọc theo nhóm thiết bị" value={categoryFilter} onChange={event=>setCategoryFilter(event.target.value)}><option>Tất cả nhóm</option>{categories.map(item=><option key={item}>{item}</option>)}</select></label>
+              <label className="asset-filter-field"><span>Vị trí</span><select aria-label="Lọc theo vị trí" value={locationFilter} onChange={event=>setLocationFilter(event.target.value)}><option>Tất cả vị trí</option>{locations.map(item=><option key={item}>{item}</option>)}</select></label>
+              <label className="asset-filter-field"><span>Trạng thái</span><select aria-label="Lọc theo trạng thái" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option>Tất cả trạng thái</option>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
+              <label className="asset-filter-field"><span>Sắp xếp</span><select aria-label="Sắp xếp danh sách thiết bị" value={sortBy} onChange={event=>setSortBy(event.target.value)}><option value="updatedAt">Mới cập nhật</option><option value="code">Theo mã thiết bị</option><option value="name">Theo tên thiết bị</option><option value="commissionedAt">Ngày đưa vào sử dụng</option></select></label>
+              <button type="button" className="soft-btn asset-reset-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
+            </div>
           </div>
           <div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.map(asset=><tr key={asset.id}>
@@ -872,7 +872,6 @@ export default function App() {
     {platformPanel&&session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<PlatformAdminPanel client={supabase} onClose={()=>setPlatformPanel(false)} onSyncOrganization={async targetOrganizationId=>{if(!supabase)throw new Error('Chưa kết nối Supabase.');const summary=await syncCloudAssetsToLocal(supabase,targetOrganizationId,{platformAdmin:true});return 'Đã tải '+summary.downloaded+' mới, cập nhật '+summary.updated+', đã khớp '+summary.unchanged+', bảo vệ '+summary.protectedLocal+', xung đột '+summary.conflicts+'.'}}/>}
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} localPreviewAssets={localPreviewAssets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>{void loadAssets();void db.assets.where('localScope').equals('local-preview').toArray().then(setLocalPreviewAssets)}}/>}
-    {smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}
     {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{displayAssetName(detailAsset)}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
       <div className="detail-status-row"><span className={'status '+(detailAsset.archivedAt?'gray':detailAsset.status==='Đang hoạt động'?'green':detailAsset.status==='Đang sửa chữa'?'orange':detailAsset.status==='Thanh lý'?'red':'gray')}>{detailAsset.archivedAt?'Đã lưu kho':detailAsset.status}</span><span className="muted">Cập nhật: {dateText(detailAsset.updatedAt.slice(0,10))}</span></div>
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
