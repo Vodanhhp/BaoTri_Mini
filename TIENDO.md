@@ -849,3 +849,8 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Commit khôi phục migration lịch sử: `9e3cb6caa973cb95d3b99e0bd936f2678577d2fa`; commit thêm migration mới: `a91bcaa774883e972af43cb84d0114e5baf5cbae`.
 - Migration mới chỉ được ghi source vào GitHub; không chạy SQL, không apply migration, không deploy Edge Function/Pages.
 - Chưa chạy build/test theo nguyên tắc dự án. Cần kiểm tra runtime sau khi được chỉ đạo, gồm: cấp mã đồng thời với duyệt Plan; reservation đã tạo trước thời điểm đổi Plan; retry xác nhận một thiết bị Local đã lưu; và hạ cấp vượt hạn mức.
+
+- Phát hiện phụ thuộc triển khai: `OrganizationPlanPanel` trước đó gọi `listCloudAssets()`, tức RPC `list_cloud_assets` chỉ được tạo bởi migration Cloud Asset Public Key `20261121130000` (đang chưa apply theo TIENDO). Nếu chỉ apply migration PLAN thì panel không tải được.
+- Đã loại bỏ phụ thuộc này: bổ sung RPC `public.count_organization_cloud_assets(uuid)` ngay trong migration PLAN; RPC chỉ trả số lượng, tự kiểm tra `assets.view` đúng tổ chức, không trả danh sách/UUID thiết bị. Frontend `src/PlanChangePanels.tsx` chuyển sang gọi RPC đếm riêng và kiểm tra dữ liệu trả về.
+- Commit thêm RPC: `ed88ac40bd5165af355e5a92943468f98eea1d7e`; commit chuyển frontend: `9eb450f81e7900c2ed3cc82591e35bd5217eeed4`.
+- Cả migration PLAN và migration đồng bộ khóa Smart ID đều chưa apply; đây chỉ là source. Không deploy hoặc kiểm thử runtime trong lượt này.
