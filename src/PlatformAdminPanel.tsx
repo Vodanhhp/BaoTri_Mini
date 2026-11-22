@@ -186,8 +186,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
  .platform-admin-modal .platform-onboarding-steps{grid-template-columns:1fr}
  .platform-admin-modal .platform-onboarding-review{grid-template-columns:1fr}
  .platform-admin-modal .platform-onboarding-review h4{grid-column:auto}
-}`}
-.platform-admin-modal .platform-create-form{gap:8px;margin-top:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+}.platform-admin-modal .platform-create-form{gap:8px;margin-top:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
 .platform-admin-modal .platform-onboarding-compact{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;padding:8px 12px;margin:0}
 .platform-admin-modal .platform-onboarding-compact h4{font-size:14px;margin:0}
 .platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{display:flex;justify-content:flex-end;gap:14px}
@@ -208,8 +207,7 @@ export default function PlatformAdminPanel({client,onClose}:Props){
 .platform-admin-modal .platform-onboarding-review>div span{font-size:10px}
 .platform-admin-modal .platform-create-form .modal-actions{padding-top:0}
 .platform-admin-modal .platform-create-form .modal-actions button{min-height:33px;padding:7px 11px;font-size:11px}
-@media(max-width:620px){.platform-admin-modal .platform-create-form{grid-template-columns:1fr}.platform-admin-modal .platform-onboarding-compact{grid-template-columns:1fr;gap:6px}.platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{justify-content:space-between}.platform-admin-modal .platform-create-form .field{grid-column:1/-1}}
-</style>
+@media(max-width:620px){.platform-admin-modal .platform-create-form{grid-template-columns:1fr}.platform-admin-modal .platform-onboarding-compact{grid-template-columns:1fr;gap:6px}.platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{justify-content:space-between}.platform-admin-modal .platform-create-form .field{grid-column:1/-1}}`}</style>
   <div className="panel-head" style={{marginTop:8}}><div><h3>Tổng quan hệ thống</h3><p>Số liệu trực tiếp từ Supabase Auth và cơ sở dữ liệu.</p></div><button type="button" className="soft-btn" onClick={()=>void loadOverview()} disabled={loadingOverview}>{loadingOverview?'Đang tải…':'Làm mới số liệu'}</button></div>
   {overviewError&&<div className="auth-error">{overviewError}</div>}
   {loadingOverview&&!overview&&<div className="auth-note">Đang tải thống kê nền tảng…</div>}
