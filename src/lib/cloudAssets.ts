@@ -54,9 +54,20 @@ export function toImportPayload(asset: Asset) {
 }
 
 export async function listCloudAssets(client: SupabaseClient, organizationId: string): Promise<CloudAsset[]> {
-  const { data, error } = await client.rpc('list_cloud_assets',{p_organization_id:organizationId})
-  if (error) throw new Error('Tải danh sách Cloud thất bại: '+error.message)
-  return ((data ?? []) as Record<string,unknown>[]).map(row => fromRow(row))
+  const rows:CloudAsset[]=[]
+  let cursor:string|null=null
+  do{
+    const {data,error}=await client.rpc('list_cloud_assets_page',{
+      p_organization_id:organizationId,p_after_code:cursor,p_page_size:100,p_platform_admin:false
+    })
+    if(error)throw new Error('Tải danh sách Cloud thất bại: '+error.message)
+    const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
+    rows.push(...(page?.items??[]).map(fromRow))
+    cursor=page?.next_cursor??null
+    if(!page?.has_more)break
+    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
+  }while(true)
+  return rows
 }
 
 export type CloudSyncSummary = { downloaded:number; updated:number; unchanged:number; protectedLocal:number; conflicts:number; pages:number }
