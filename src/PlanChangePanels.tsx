@@ -118,10 +118,12 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
     </form>}
     <div className="divider" style={{margin:'18px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
     <h3 style={{fontSize:15}}>Lịch sử yêu cầu</h3>
-    {requests.length===0?<p className="muted">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</p>:<div className="cloud-list">{requests.map(request=><div className="cloud-row" key={request.id}>
-     <div className="cloud-row-main"><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b><small>{dateTime(request.requested_at)}{request.request_note?' · '+request.request_note:''}</small>{request.review_note&&<small>Phản hồi: {request.review_note}</small>}</div>
-     <span className={'status '+(request.status==='approved'?'green':request.status==='rejected'?'red':'orange')}>{request.status==='approved'?'Đã duyệt':request.status==='rejected'?'Từ chối':'Chờ duyệt'}</span>
-    </div>)}</div>}
+    {requests.length===0?<div className="table-empty-state">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-history-table-wrap"><table className="table-standard plan-history-table"><thead><tr><th>Nội dung thay đổi</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+      <td><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b></td>
+      <td className="table-date-cell">{dateTime(request.requested_at)}</td>
+      <td className="table-note-cell">{request.request_note&&<small>Lý do: {request.request_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{!request.request_note&&!request.review_note?'—':null}</td>
+      <td><span className={'status '+(request.status==='approved'?'green':request.status==='rejected'?'red':'orange')}>{request.status==='approved'?'Đã duyệt':request.status==='rejected'?'Từ chối':'Chờ duyệt'}</span></td>
+     </tr>)}</tbody></table></div>}
    </>}
    <div className="modal-actions"><button className="soft-btn" onClick={()=>void load()} disabled={loading||busy}>Làm mới</button><button className="soft-btn" onClick={onClose}>Đóng</button></div>
   </section>
@@ -177,19 +179,14 @@ export function PlatformPlanRequestsPanel({client}:{client:SupabaseClient}){
   <div className="panel-head"><div><h3>Yêu cầu nâng / hạ cấp Plan</h3><p>Yêu cầu từ Admin doanh nghiệp; thao tác duyệt được ghi lịch sử.</p></div><button className="soft-btn" onClick={()=>void load()} disabled={loading}>{loading?'Đang tải…':'Làm mới'}</button></div>
   {error&&<div className="auth-error">{error}</div>}
   {message&&<div className="cloud-message">{message}</div>}
-  {loading?<div className="auth-note">Đang tải yêu cầu Plan…</div>:requests.length===0?<p className="muted">Chưa có yêu cầu đổi Plan.</p>:<div className="cloud-list">{requests.map(request=><div className="cloud-row" key={request.id}>
-   <div className="cloud-row-main">
-    <b>{request.organization_name||request.organization_id}</b>
-    <small>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)} · {dateTime(request.requested_at)}</small>
-    <small>Người gửi: {request.requested_by_name||request.requested_by_email||request.requested_by_user_id}{request.requested_by_email?' · '+request.requested_by_email:''}</small>
-    {request.request_note&&<small>Lý do: {request.request_note}</small>}
-    {request.review_note&&<small>Phản hồi: {request.review_note}</small>}
-   </div>
-   <div className="cloud-row-actions">
-    <span className={'status '+(request.status==='approved'?'green':request.status==='rejected'?'red':'orange')}>{request.status==='approved'?'Đã duyệt':request.status==='rejected'?'Từ chối':'Chờ duyệt'}</span>
-    {request.status==='pending'&&<><button className="primary-btn small" onClick={()=>begin(request,'approve')}>Duyệt</button><button className="soft-btn small" onClick={()=>begin(request,'reject')}>Từ chối</button></>}
-   </div>
-  </div>)}</div>}
+  {loading?<div className="auth-note">Đang tải yêu cầu Plan…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-requests-table-wrap"><table className="table-standard plan-requests-table"><thead><tr><th>Doanh nghiệp</th><th>Thay đổi Plan</th><th>Người gửi</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+    <td><b>{request.organization_name||request.organization_id}</b><small className="table-subtext">{dateTime(request.requested_at)}</small></td>
+    <td><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b></td>
+    <td><b>{request.requested_by_name||request.requested_by_email||request.requested_by_user_id}</b>{request.requested_by_email&&request.requested_by_name&&<small className="table-subtext">{request.requested_by_email}</small>}</td>
+    <td className="table-note-cell">{request.request_note&&<small>Lý do: {request.request_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{!request.request_note&&!request.review_note?'—':null}</td>
+    <td><span className={'status '+(request.status==='approved'?'green':request.status==='rejected'?'red':'orange')}>{request.status==='approved'?'Đã duyệt':request.status==='rejected'?'Từ chối':'Chờ duyệt'}</span></td>
+    <td><div className="table-action-group">{request.status==='pending'&&<><button className="primary-btn small" onClick={()=>begin(request,'approve')}>Duyệt</button><button className="soft-btn small" onClick={()=>begin(request,'reject')}>Từ chối</button></>}</div></td>
+   </tr>)}</tbody></table></div>}
   {selected&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)cancel()}}>
    <section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="plan-review-title">
     <div className="platform-action-head"><div><span className="platform-action-kicker">XỬ LÝ YÊU CẦU PLAN</span><h3 id="plan-review-title">{decision==='approve'?'Duyệt và áp dụng Plan':'Từ chối yêu cầu Plan'}</h3><p>{selected.organization_name||selected.organization_id}</p></div><button className="icon-btn" onClick={cancel} disabled={busy}>×</button></div>
