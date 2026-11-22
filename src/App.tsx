@@ -373,11 +373,11 @@ export default function App() {
     transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined,deletedAt:asset.deletedAt||undefined
   })
 
-  const openAssetEditor=async(asset:Asset)=>{
-    if(!localPreview&&!canUpdate){alert('Tài khoản chỉ có quyền xem; không thể chỉnh sửa thiết bị.');return}
-    if(asset.deletedAt){alert('Thiết bị đã bị xóa mềm. Chưa thể chỉnh sửa hồ sơ này.');return}
+  const openAssetEditor=async(asset:Asset,statusOverride?:AssetStatus):Promise<boolean>=>{
+    if(!localPreview&&!canUpdate){alert('Tài khoản chỉ có quyền xem; không thể chỉnh sửa thiết bị.');return false}
+    if(asset.deletedAt){alert('Thiết bị đã bị xóa mềm. Chưa thể chỉnh sửa hồ sơ này.');return false}
     try{
-      if(localPreview){setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true);return}
+      if(localPreview){setEditing({...asset,...(statusOverride?{status:statusOverride,archivedAt:statusOverride==='Lưu kho'?(asset.archivedAt||now()):undefined}:{}),images:asset.images??[]});setError('');setShowForm(true);return true}
       if(!session||!organizationId||!supabase)throw new Error('Chưa có tổ chức đang hoạt động.')
       const link=await db.assetCloudLinks.get(organizationId+':'+asset.id)
       if(!link){setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true);return}
@@ -394,9 +394,9 @@ export default function App() {
         if(!data||data.code!==asset.code)throw new Error('Cloud không khớp mã quản lý của liên kết.')
         if(data.updatedAt!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud đã đổi. Đã đánh dấu conflict; tải Cloud về và đối chiếu trước khi sửa.')}
         setCloudLease({assetId:asset.code,token:acquired.lease.lock_token,expectedCloudUpdatedAt:data.updatedAt,deviceId,lost:false})
-        setEditing({...asset,images:asset.images??[]});setError('');setShowForm(true)
+        setEditing({...asset,...(statusOverride?{status:statusOverride,archivedAt:statusOverride==='Lưu kho'?(asset.archivedAt||now()):undefined}:{}),images:asset.images??[]});setError('');setShowForm(true);return true
       }catch(e){await releaseCloudAssetLock(supabase,organizationId,asset.code,acquired.lease.lock_token).catch(()=>false);throw e}
-    }catch(e){alert(e instanceof Error?e.message:String(e))}
+    }catch(e){alert(e instanceof Error?e.message:String(e));return false}
   }
 
   useEffect(()=>{
@@ -997,7 +997,7 @@ export default function App() {
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} localPreviewAssets={localPreviewAssets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>{void loadAssets();void db.assets.where('localScope').equals('local-preview').toArray().then(setLocalPreviewAssets)}}/>}
     {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{displayAssetName(detailAsset)}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
       <div className="detail-status-row"><span className={'status '+(detailAsset.archivedAt?'gray':detailAsset.status==='Đang hoạt động'?'green':detailAsset.status==='Đang sửa chữa'?'orange':detailAsset.status==='Thanh lý'?'red':'gray')}>{detailAsset.archivedAt?'Lưu kho':detailAsset.status}</span><span className="muted">Cập nhật: {dateText(detailAsset.updatedAt.slice(0,10))}</span>{canChangeStatus&&!detailAsset.deletedAt&&<button type="button" className="soft-btn" onClick={()=>setStatusPickerOpen(value=>!value)}>Thay đổi trạng thái</button>}</div>
-      {statusPickerOpen&&detailAsset&&canChangeStatus&&<div className="asset-status-editor"><label className="field">Trạng thái mới<select value={selectedAssetStatus} onChange={event=>setSelectedAssetStatus(event.target.value as AssetStatus)}>{STATUSES.map(item=><option key={item} value={item}>{item}</option>)}</select></label><button type="button" className="primary-btn" onClick={()=>{const selected=detailAsset;const next=selectedAssetStatus;setDetailAsset(null);setStatusPickerOpen(false);void openAssetEditor(selected).then(()=>setEditing(current=>current?{...current,status:next,archivedAt:next==='Lưu kho'?(current.archivedAt||now()):undefined}:current))}}>Tiếp tục cập nhật</button><small>Hệ thống mở phiên chỉnh sửa có khóa để lưu trạng thái và ghi lịch sử.</small></div>}
+      {statusPickerOpen&&detailAsset&&canChangeStatus&&<div className="asset-status-editor"><label className="field">Trạng thái mới<select value={selectedAssetStatus} onChange={event=>setSelectedAssetStatus(event.target.value as AssetStatus)}>{STATUSES.map(item=><option key={item} value={item}>{item}</option>)}</select></label><button type="button" className="primary-btn" onClick={async()=>{const selected=detailAsset;const next=selectedAssetStatus;const opened=await openAssetEditor(selected,next);if(opened){setDetailAsset(null);setStatusPickerOpen(false)}}}>Tiếp tục cập nhật</button><small>Hệ thống mở phiên chỉnh sửa có khóa để lưu trạng thái và ghi lịch sử.</small></div>}
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><button type="button" className="detail-photo-open" key={index} title="Xem ảnh phóng to" onClick={()=>setImageViewer({images:detailAsset.images || [],index})}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></button>)}</div>:<p className="muted">Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.</p>}</div>
