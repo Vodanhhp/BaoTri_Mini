@@ -102,14 +102,28 @@ begin
   end if;
   v_month_year := case when v_plan in ('C','D') then to_char(p_commissioned_at, 'MMYY') else null end;
 
+  -- Recheck after acquiring the catalog row lock: another request may have
+  -- created this reservation while this transaction was waiting. Validate it
+  -- against its original Plan, not whichever Plan became current in the meantime.
   select * into v_existing from private.asset_id_sequence_reservations r
-  where r.organization_id = p_organization_id and r.reservation_id = p_reservation_id;
+  where r.organization_id = p_organization_id and r.reservation_id = p_reservation_id
+  for update;
   if found then
-    if v_existing.actor_user_id <> auth.uid() or v_existing.plan_code <> v_plan
-      or v_existing.equipment_code <> v_equipment_code or v_existing.group_code <> v_group_code
-      or v_existing.site_code <> v_site_code or v_existing.month_year is distinct from v_month_year
+    if v_existing.actor_user_id <> auth.uid()
+      or v_existing.equipment_code <> v_equipment_code
       or v_existing.status = 'released' then
       raise exception 'Reservation ID already exists with different or released details' using errcode = '23505';
+    end if;
+    v_group_code := case when v_existing.plan_code = 'A' then ''
+      else regexp_replace(upper(coalesce(p_group_code, '')), '[^A-Z0-9]', '', 'g') end;
+    v_site_code := case when v_existing.plan_code in ('C','D')
+      then coalesce(nullif(btrim(p_site_code), ''), '00') else '' end;
+    v_month_year := case when v_existing.plan_code in ('C','D')
+      then to_char(p_commissioned_at, 'MMYY') else null end;
+    if v_existing.group_code <> v_group_code
+      or v_existing.site_code <> v_site_code
+      or v_existing.month_year is distinct from v_month_year then
+      raise exception 'Reservation ID already exists with different original components' using errcode = '23505';
     end if;
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
