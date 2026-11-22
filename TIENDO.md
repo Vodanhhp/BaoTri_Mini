@@ -1055,3 +1055,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Chẩn đoán bổ sung sau khi deployment lỗi: Vercel Git deployment context của team trả `linkedProjects=[]`, không có Git-linked project; deployment event log rỗng. Container hiện tại không có checkout repo/source local (kiểm tra root và /mnt/data). Vì vậy không có nguồn files để dùng deployment inline/local an toàn.
 - Không tạo project mới, không sửa Git connection/project settings, không thử thêm deployment. Chờ người dùng kết nối repo Git trong Vercel Dashboard hoặc cung cấp checkout local/cho phép một phương án cụ thể; sau đó kiểm tra target preview trước khi deploy.
+
+
+### Vercel staging build retry — 22/11/2026
+- Người dùng xác nhận đã kết nối Vercel với repo; kiểm tra deployment context vẫn báo linkedProjects=[] (không thấy project Git link trong context API), nhưng gọi deployment trực tiếp từ GitHub source đã clone được repo và chạy build.
+- Deployment ID: dpl_C4qzUDBMBT84To7xhJhy4sustZ1R; project baotri-mini-new-preview (prj_De80PT3JC04b3NqtXHRL6JD8QMoo); team team_VnC0cB9kMxYP31Thelm8Zz4C.
+- API không chấp nhận target "preview" (chỉ production/staging/custom env); không có custom environment. Để tránh Production, deployment được tạo target **staging**, không phải Preview/Production.
+- Source: repo Vodanhhp/BaoTri_Mini, main, commit a00107a80ae78159a911f18eb5b904ba23c1dc57. Clone thành công, npm ci cài 82 packages, báo 0 vulnerabilities; chạy npm run build (tsc -b && vite build).
+- Build ERROR: TypeScript TS2345 tại src/App.tsx dòng 872 cột 317: SupabaseClient | null truyền vào syncCloudAssetsToLocal, yêu cầu SupabaseClient không nullable. Đây là lỗi build được xác nhận qua Vercel logs; chưa chỉnh source.
+- URL deployment staging (không READY, không dùng để đăng nhập): baotri-mini-new-preview-qr98jtnjg-tuanluongpham-8256.vercel.app.
+- Không có Production deployment thành công/live, không apply migration mới, không thay đổi Supabase hoặc dữ liệu tenant. Bước tiếp theo: sửa lỗi narrowing/nullability ở callback onSyncOrganization trong App.tsx, sau đó build/deploy lại staging theo commit mới; chỉ tiếp tục khi được người dùng yêu cầu.
