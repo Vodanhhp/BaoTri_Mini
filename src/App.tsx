@@ -322,8 +322,9 @@ export default function App() {
       setReservationReleaseBusy(true)
       try{
         await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+        setEditing(current=>current?{...current,idReservationId:undefined}:current)
         if(editing){
-          await db.assetDrafts.delete(editing.id)
+          await db.assetDrafts.delete(editing.id).catch(()=>false)
           setRecoverableDrafts(current=>current.filter(item=>item.id!==editing.id))
         }
       }catch(cause){
@@ -770,7 +771,7 @@ export default function App() {
           {!equipmentCatalogLoading&&!equipmentCatalog&&<div className="auth-error full-field">Tổ chức chưa được khởi tạo Plan và Catalog Snapshot. Chưa thể cấp mã thiết bị.</div>}
           {equipmentCatalog&&<>
             <div className="field full-field"><span>Smart Equipment ID · Plan {equipmentCatalog.plan_code}</span><small>Hệ thống phân tích tên theo Snapshot riêng của tổ chức. Số thứ tự chỉ được giữ khi bạn lưu hồ sơ.</small></div>
-            {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>setSmartEquipmentChoice(event.target.value)}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
+            {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>{const value=event.target.value;void updateSmartDraft({},()=>setSmartEquipmentChoice(value))}}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
             {smartAnalysis?.status==='matched'&&<div className="field full-field"><span>Loại chuẩn đề xuất</span><b>{smartAnalysis.normalizedName} · {smartAnalysis.equipmentCode}</b></div>}
             {smartAnalysis&&smartAnalysis.status!=='matched'&&smartAnalysis.status!=='ambiguous'&&<div className="auth-error full-field">{smartAnalysis.message}</div>}
             {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required disabled={reservationReleaseBusy} value={smartGroupChoice} onChange={event=>{
