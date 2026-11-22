@@ -1335,3 +1335,15 @@ html,body,#root,.app-shell{
 #root :where(.platform-action-kicker,.about-version b,.plan-asset-option b){
   font-size:var(--font-size-caption)!important;
 }
+
+/* Final minimums for compact mobile/table/summary text and modal micro-labels. */
+#root :where(
+  .welcome p,.report-card p,.about-warning p,.scan-intro-copy p,
+  .platform-admin-modal .platform-onboarding-step span,
+  .platform-admin-modal .platform-onboarding-section>span,
+  .platform-admin-modal .platform-org-table table,
+  .platform-admin-modal .platform-org-table th,
+  .platform-admin-modal .platform-onboarding-kicker,
+  .table-wrap td,.maintenance-plan-table :is(th,td),
+  .primary-btn,.soft-btn,.complete-btn
+){font-size:var(--font-size-caption)!important}
