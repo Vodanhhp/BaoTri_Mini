@@ -46,17 +46,23 @@ begin
       raise exception 'Reservation ID already exists with different or released details' using errcode = '23505';
     end if;
 
-    v_group_code := case when v_existing.plan_code = 'A' then ''
-      else regexp_replace(upper(coalesce(p_group_code, '')), '[^A-Z0-9]', '', 'g') end;
-    v_site_code := case when v_existing.plan_code in ('C','D')
-      then coalesce(nullif(btrim(p_site_code), ''), '00') else '' end;
-    v_month_year := case when v_existing.plan_code in ('C','D')
-      then to_char(p_commissioned_at, 'MMYY') else null end;
-
-    if v_existing.group_code <> v_group_code
-      or v_existing.site_code <> v_site_code
-      or v_existing.month_year is distinct from v_month_year then
-      raise exception 'Reservation ID already exists with different original components' using errcode = '23505';
+    -- A retry may come from a form loaded under a newer Plan. Compare only
+    -- original components that the caller actually supplied; never require
+    -- fields that the current Plan no longer asks the user to enter.
+    if v_existing.plan_code in ('B','C','D')
+      and nullif(btrim(p_group_code), '') is not null
+      and v_existing.group_code <> regexp_replace(upper(p_group_code), '[^A-Z0-9]', '', 'g') then
+      raise exception 'Reservation ID already exists with a different original group code' using errcode = '23505';
+    end if;
+    if v_existing.plan_code in ('C','D') then
+      if nullif(btrim(p_site_code), '') is not null
+        and v_existing.site_code <> regexp_replace(upper(p_site_code), '[^A-Z0-9]', '', 'g') then
+        raise exception 'Reservation ID already exists with a different original site code' using errcode = '23505';
+      end if;
+      if p_commissioned_at is not null
+        and v_existing.month_year is distinct from to_char(p_commissioned_at, 'MMYY') then
+        raise exception 'Reservation ID already exists with a different original commissioning date' using errcode = '23505';
+      end if;
     end if;
 
     select c.source_data_version into v_source_version
@@ -119,16 +125,23 @@ begin
       or v_existing.status = 'released' then
       raise exception 'Reservation ID already exists with different or released details' using errcode = '23505';
     end if;
-    v_group_code := case when v_existing.plan_code = 'A' then ''
-      else regexp_replace(upper(coalesce(p_group_code, '')), '[^A-Z0-9]', '', 'g') end;
-    v_site_code := case when v_existing.plan_code in ('C','D')
-      then coalesce(nullif(btrim(p_site_code), ''), '00') else '' end;
-    v_month_year := case when v_existing.plan_code in ('C','D')
-      then to_char(p_commissioned_at, 'MMYY') else null end;
-    if v_existing.group_code <> v_group_code
-      or v_existing.site_code <> v_site_code
-      or v_existing.month_year is distinct from v_month_year then
-      raise exception 'Reservation ID already exists with different original components' using errcode = '23505';
+    -- A retry may come from a form loaded under a newer Plan. Compare only
+    -- original components that the caller actually supplied; never require
+    -- fields that the current Plan no longer asks the user to enter.
+    if v_existing.plan_code in ('B','C','D')
+      and nullif(btrim(p_group_code), '') is not null
+      and v_existing.group_code <> regexp_replace(upper(p_group_code), '[^A-Z0-9]', '', 'g') then
+      raise exception 'Reservation ID already exists with a different original group code' using errcode = '23505';
+    end if;
+    if v_existing.plan_code in ('C','D') then
+      if nullif(btrim(p_site_code), '') is not null
+        and v_existing.site_code <> regexp_replace(upper(p_site_code), '[^A-Z0-9]', '', 'g') then
+        raise exception 'Reservation ID already exists with a different original site code' using errcode = '23505';
+      end if;
+      if p_commissioned_at is not null
+        and v_existing.month_year is distinct from to_char(p_commissioned_at, 'MMYY') then
+        raise exception 'Reservation ID already exists with a different original commissioning date' using errcode = '23505';
+      end if;
     end if;
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
