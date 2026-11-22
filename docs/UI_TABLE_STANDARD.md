@@ -88,3 +88,13 @@ Bảng hiện tại trong BAOTRI Mini cần được bọc bằng `.table-wrap`;
 - Trên desktop ưu tiên hiển thị đủ các cột trong vùng nhìn. Chỉ bật cuộn ngang khi viewport thực sự hẹp; không thu nhỏ chữ đến mức khó đọc để cố nhét bảng.
 - Nội dung dài phải wrap trong chính ô dữ liệu, không làm cả hàng hoặc modal phình theo chiều dọc bất thường.
 - Modal có bảng dài cần giới hạn chiều cao vùng bảng và cho phép cuộn độc lập; tiêu đề modal và thao tác chính không bị cuộn khuất.
+
+## Chuẩn typography dùng chung cho toàn hệ sinh thái
+
+- Font giao diện duy nhất: **Be Vietnam Pro**, khai báo tại `:root` qua `--font-family-ui`; fallback `Arial, sans-serif` khi không tải được font web.
+- Không tự khai báo font-family trong component hoặc từng màn hình. Nút, ô nhập, select, textarea và nội dung modal phải kế thừa font từ gốc.
+- Thang chữ giao diện: chú thích/metadata 11px; nội dung phụ 12px; nội dung chính 13px; tiêu đề khu vực 15px; tiêu đề hộp thoại 18px; tiêu đề trang 22px.
+- Không dùng chữ 7–10px cho nội dung có ý nghĩa hoặc thao tác. Nhãn phụ, trạng thái, ngày tháng, ghi chú và nút nhỏ tối thiểu 11px; không thu nhỏ chữ để ép vừa màn hình.
+- Chỉ cho phép font chuyên dụng trong vùng in theo biểu mẫu hoặc chuỗi mã kỹ thuật cần font monospace; các ngoại lệ phải có phạm vi CSS rõ ràng và không lan sang giao diện thường.
+- Trên mobile ưu tiên tăng khả năng đọc và vùng chạm; điều chỉnh bố cục/cho cuộn thay vì giảm chữ xuống dưới chuẩn.
+- Khi thêm màn hình mới, dùng token typography thay vì đặt giá trị font-size rời rạc. Không nhúng một thang chữ riêng trong component.
