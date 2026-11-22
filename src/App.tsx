@@ -512,6 +512,27 @@ export default function App() {
         try{
           await db.assets.add(value)
         }catch(localError){
+          // Another tab may have committed this same persisted draft first.
+          // Reuse that exact Local snapshot; never release its reservation.
+          const savedByOtherTab=await db.assets.get(value.id)
+          if(savedByOtherTab?.idReservationId===reservationId){
+            if(savedByOtherTab.code!==value.code||!savedByOtherTab.idComponentsSnapshot||!savedByOtherTab.equipmentTypeCode){
+              throw new Error('Draft đã được lưu ở phiên khác nhưng snapshot định danh không khớp. Không giải phóng reservation; cần Admin kiểm tra.')
+            }
+            await confirmSmartEquipmentIdReservation(supabase,{
+              organizationId,reservationId,assetId:savedByOtherTab.id,equipmentId:savedByOtherTab.code,
+              originalName:savedByOtherTab.originalName||savedByOtherTab.name,
+              normalizedNameAtCreation:savedByOtherTab.normalizedNameAtCreation||savedByOtherTab.name,
+              equipmentTypeCode:savedByOtherTab.equipmentTypeCode,
+              components:savedByOtherTab.idComponentsSnapshot
+            })
+            await db.assets.update(savedByOtherTab.id,{idReservationStatus:'confirmed'})
+            await db.assetDrafts.delete(value.id).catch(()=>false)
+            setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
+            await loadAssets();setShowForm(false);setEditing(null)
+            notify('Thiết bị đã được lưu và xác nhận từ phiên khác.')
+            return
+          }
           let released=false
           try{
             await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
