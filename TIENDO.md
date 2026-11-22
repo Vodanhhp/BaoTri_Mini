@@ -1098,3 +1098,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Chưa thực hiện browser runtime test, chưa gửi yêu cầu Plan, chưa duyệt/từ chối yêu cầu, chưa thay đổi Plan/Catalog Snapshot hoặc dữ liệu tổ chức. Tổ chức `BAOTRI Mini` trong project Test vẫn chưa có Plan/Snapshot; cần xử lý riêng theo quyết định có chủ đích, không tự gán Plan.
 - Không deploy Production, không thay đổi cấu hình project hoặc dữ liệu nghiệp vụ.
 - Việc tiếp theo: người dùng tải lại Staging và kiểm tra Gói dịch vụ; nếu vẫn lỗi, cung cấp nguyên văn thông báo mới.
+
+
+### Sửa CORS cho Edge Functions Gói dịch vụ trên Staging — 22/11/2026
+- Người dùng xác nhận cho phép sửa CORS và triển khai lại hai Edge Functions trên đúng Supabase project **BAOTRI Mini New (Test)**, project ID `dskeaiyvldiwlsfqkboq`.
+- Đối chiếu source hai function version 1: CORS chỉ cho phép domain production `https://baotri.vieclamhp247.com` và localhost; chưa cho phép domain Vercel Staging đang kiểm thử `https://baotri-mini-new-preview-eazlswbhd-tuanluongpham-8256.vercel.app`. Đây là nguyên nhân có cơ sở giải thích lỗi trình duyệt `Failed to send a request to the Edge Function`.
+- Đã cập nhật CORS cho cả hai function theo allowlist cụ thể gồm domain production, domain Staging nêu trên và hai địa chỉ localhost; không dùng wildcard. Bổ sung các header trace/retry vào allow-headers; giữ nguyên logic xác thực JWT, quyền Admin/Super Admin, RPC và quy trình duyệt.
+- Triển khai thành công trên **Test**:
+  - `organization-plan-requests`: version **2**, trạng thái **ACTIVE**, `verify_jwt=true`, SHA `2140f9a0e781e168c64f8d68e8f7186a4fee2a8fef88f8b60bd787bec0856935`.
+  - `platform-manage-plan-requests`: version **2**, trạng thái **ACTIVE**, `verify_jwt=true`, SHA `c20c9fffe6ac234562eded7fe2f24fa16ab35acab5e198c14546fcb41af9bd8a`.
+- Gọi `list_edge_functions` sau deploy xác nhận cả hai function đang ACTIVE ở version 2, JWT verification vẫn bật.
+- Chưa thể kiểm tra preflight HTTP trực tiếp từ môi trường thực thi hiện tại do DNS/network không khả dụng; chưa có browser runtime test sau deploy. Không gửi yêu cầu Plan, không duyệt/từ chối, không gán Plan hoặc tạo Catalog Snapshot.
+- Không deploy Production, không thay đổi dữ liệu nghiệp vụ hoặc cấu hình project khác.
+- Việc tiếp theo: người dùng tải lại Staging (Ctrl+F5), mở Gói dịch vụ và gửi lại thông báo mới nếu còn lỗi. Nếu CORS đã hết lỗi nhưng vẫn báo thiếu Plan/Catalog Snapshot thì xử lý riêng theo quyết định khởi tạo dữ liệu có chủ đích.
