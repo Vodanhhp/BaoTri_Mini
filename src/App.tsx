@@ -99,9 +99,33 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setSessionReady(true) })
-    const { data } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if(event==='PASSWORD_RECOVERY') setPasswordRecovery(true); if(event==='SIGNED_OUT'){setOrganizationContexts([]);setOrganizationId('');setOrganizationReady(false);setPasswordRecovery(false)} })
-    return () => data.subscription.unsubscribe()
+    let active = true
+    supabase.auth.getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!active) return
+        if (sessionError) setError('Không khôi phục được phiên đăng nhập: ' + sessionError.message)
+        setSession(data.session)
+        setSessionReady(true)
+      })
+      .catch(cause => {
+        if (!active) return
+        setError('Không kết nối được dịch vụ đăng nhập Supabase: ' + (cause instanceof Error ? cause.message : String(cause)))
+        setSessionReady(true)
+      })
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next)
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      if (event === 'SIGNED_OUT') {
+        setOrganizationContexts([])
+        setOrganizationId('')
+        setOrganizationReady(false)
+        setPasswordRecovery(false)
+      }
+    })
+    return () => {
+      active = false
+      data.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
