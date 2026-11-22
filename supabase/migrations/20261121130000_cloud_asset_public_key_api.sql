@@ -5,11 +5,8 @@ begin;
 -- Move UUID-based implementations behind the private schema before exposing
 -- code-based public RPC wrappers. Preserve the permission checks in the
 -- existing SECURITY DEFINER implementations.
-alter function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) set schema private;
-alter function public.acquire_asset_edit_lock(uuid,uuid,text,text) set schema private;
-alter function public.heartbeat_asset_edit_lock(uuid,uuid,uuid) set schema private;
-alter function public.release_asset_edit_lock(uuid,uuid,uuid) set schema private;
-alter function public.list_asset_edit_locks(uuid) set schema private;
+-- The UUID-based implementations already exist in private (migration 010).
+-- Keep them there and replace the public compatibility wrappers with code-based APIs.
 
 -- Only the SECURITY DEFINER public wrappers below may invoke these internals.
 revoke all on function private.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public,anon,authenticated;
