@@ -1169,3 +1169,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Tổ chức lại vùng tra cứu Danh mục thiết bị: ô tìm kiếm thành một hàng riêng, rộng toàn vùng; bộ lọc nhóm/vị trí/trạng thái và sắp xếp chuyển thành hàng có nhãn; nút Đặt lại nằm cùng hàng bộ lọc. Bổ sung responsive tablet/mobile và cỡ input mobile 16px để tránh tự zoom.
 - Chỉ thay đổi giao diện React/CSS và đường dẫn vào tiện ích thử nghiệm; không sửa logic nghiệp vụ, dữ liệu Local/Cloud, RPC, phân quyền, migrations, Supabase hoặc Edge Functions.
 - Cần CI/build và triển khai Staging đúng commit mới để người dùng kiểm tra trực quan; PR #16 vẫn Draft, không merge và không triển khai Production.
+
+
+### Giữ thông tin Plan hiện tại khi API yêu cầu đổi gói gặp lỗi — 22/11/2026
+- Khi mở “Thuê bao doanh nghiệp” trên Staging, trình duyệt báo `Failed to send a request to the Edge Function`; đồng thời UI còn hiển thị dòng “Tổ chức chưa có Plan hoặc Catalog Snapshot” dù trang Danh mục thiết bị của cùng phiên đang hiển thị Plan A và Catalog v1.1.0.
+- Nguyên nhân UI: `OrganizationPlanPanel` chờ kiểm tra lỗi RPC/Edge Function trước khi cập nhật state Plan/Catalog. Nếu Edge Function lỗi mạng/CORS, state Plan vẫn null nên thông báo “chưa có Plan” gây hiểu nhầm.
+- Sửa thứ tự: ghi nhận Plan/Catalog trả về thành công trước, sau đó mới kiểm tra lỗi đếm Cloud hoặc API yêu cầu. Nếu API yêu cầu lỗi, giữ Plan hiện tại trên màn hình và hiển thị lỗi riêng; không tự thay đổi Plan hoặc gửi yêu cầu.
+- CORS: Edge Function `organization-plan-requests` bản Test trước đó chỉ được allowlist domain Staging cũ; deployment mới dùng hostname khác `baotri-mini-new-preview-mjyccbxn2-tuanluongpham-8256.vercel.app`. Cần người dùng cho phép bổ sung origin mới và deploy lại Edge Function trên đúng Supabase Test để kiểm thử luồng yêu cầu Plan. Chưa thay đổi Edge Function hoặc Supabase trong bước này.
