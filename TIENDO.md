@@ -1220,3 +1220,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Không xóa vật lý bản ghi thiết bị hoặc lịch sử liên quan. Không sửa dữ liệu Supabase Production.
 - Migration đã áp dụng thành công lên Supabase Test `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`), ghi nhận version `20261122133229` / `admin_soft_delete_assets`; xác minh cột `deleted_at`, helper Admin, RPC xóa mềm, RPC tombstone và policy RLS đều tồn tại.
 - Cần CI build/test và kiểm thử thực tế Admin xóa → Cloud → PC/Mobile khác đồng bộ; KTV không thấy/tìm được; Admin tìm thấy; xác nhận hồ sơ/lịch sử vẫn còn.
+
+
+### Bổ sung trạng thái thiết bị, lịch sử hoạt động và quyền Người xem — 22/11/2026
+- Thêm trạng thái `Lưu kho` vào cùng danh mục trạng thái thiết bị; trong chi tiết thiết bị có nút **Thay đổi trạng thái**, mở lựa chọn trạng thái và chỉ tiếp tục vào phiên sửa khi đã có quyền/khóa Cloud hợp lệ.
+- Đồng bộ giá trị `Lưu kho` với cờ `archivedAt` hiện có để giữ tương thích danh sách Lưu kho, khôi phục và đồng bộ Cloud; không dùng Lưu kho thay cho xóa mềm.
+- Thêm kho lịch sử thiết bị Local (Dexie v6), ghi sự kiện tạo mới, cập nhật hồ sơ, đổi trạng thái, lưu kho, khôi phục và xóa mềm; không ghi dữ liệu ảnh. Hiển thị lịch sử theo thời gian trong chi tiết thiết bị.
+- Chuẩn bị migration `20261122210000_asset_activity_history.sql` tạo lịch sử Cloud append-only, RLS chỉ cho thành viên có `assets.view` đọc; RPC ghi lịch sử chỉ chấp nhận Admin/KTV theo vai trò và quyền nghiệp vụ. App thử đồng bộ lịch sử Cloud, giữ bản Local ở trạng thái pending nếu RPC/migration chưa sẵn sàng.
+- Giới hạn năng lực ghi dữ liệu giao diện theo whitelist Admin/KTV; Người xem không có nút sửa/thêm/lưu kho/xóa, không mở chỉnh sửa hồ sơ hoặc chỉnh sửa hồ sơ cá nhân, không được thao tác với draft. Kiểm tra quyền ở các handler chính, không chỉ ẩn nút.
+- Bổ sung unit test cho trạng thái Lưu kho, phân quyền Người xem và hợp đồng lịch sử.
+- **Chưa áp dụng migration lịch sử lên Supabase Test**; cần xác nhận riêng trước khi chạy migration. Migration xóa mềm trước đó vẫn đã áp dụng trên Supabase Test. Chưa merge PR #21, không thay đổi main/Production.
+- Chưa hoàn tất kiểm thử CI/build và chưa kiểm thử trình duyệt thực tế. Cần xác nhận mã vai trò KTV trong dữ liệu tổ chức khớp một trong các code `ktv`, `technician`, `maintenance_technician`; nếu khác phải bổ sung đúng code trước khi test quyền.
