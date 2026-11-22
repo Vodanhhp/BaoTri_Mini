@@ -149,7 +149,7 @@ create or replace function public.record_cloud_asset_history_event(
   p_occurred_at timestamptz
 ) returns boolean
 language plpgsql security definer set search_path='' set row_security=off as $function$
-declare v_uid uuid:=auth.uid(); v_asset_id uuid;
+declare v_uid uuid:=auth.uid(); v_asset_id uuid; v_actor_label text;
 begin
   if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
   if p_event_id is null or p_asset_code is null or p_summary is null or p_changes is null
@@ -169,11 +169,13 @@ begin
   select a.id into v_asset_id from public.assets a
     where a.organization_id=p_organization_id and a.code=p_asset_code;
   if not found then raise exception 'Equipment not found in organization' using errcode='P0002'; end if;
+  select coalesce(nullif(btrim(p.display_name),''),u.email,'') into v_actor_label
+    from auth.users u left join public.profiles p on p.id=u.id where u.id=v_uid;
   insert into public.asset_activity_history(
     id,organization_id,asset_id,asset_code,event_type,summary,changes,actor_user_id,actor_label,occurred_at
   ) values (
     p_event_id,p_organization_id,v_asset_id,p_asset_code,p_event_type,p_summary,p_changes,v_uid,
-    left(coalesce(p_actor_label,''),160),p_occurred_at
+    left(coalesce(v_actor_label,''),160),clock_timestamp()
   ) on conflict (id) do nothing;
   return true;
 end;
