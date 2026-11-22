@@ -321,8 +321,11 @@ export default function App() {
     // Release a sequence reserved for an unsaved draft. A Local asset that was
     // already persisted keeps its reservation for the confirmation retry path.
     if(draft?.idReservationId&&supabase&&organizationId){
+      const client=supabase
+      const orgId=organizationId
+      const reservationId=draft.idReservationId
       void db.assets.get(draft.id).then(existing=>{
-        if(!existing)return releaseSmartEquipmentIdReservation(supabase,organizationId,draft.idReservationId!)
+        if(!existing)return releaseSmartEquipmentIdReservation(client,orgId,reservationId)
       }).catch(()=>false)
     }
   }
