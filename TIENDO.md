@@ -1202,3 +1202,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa guard so sánh `lease.assetId` với `value.code`, giữ nguyên UUID Local cho khóa IndexedDB/mutation và mã quản lý cho Cloud RPC.
 - Thêm `scripts/cloudEditLeaseIdentity.test.mjs` để kiểm tra hợp đồng định danh giữa lúc cấp lease và lúc lưu.
 - Thay đổi chỉ nằm trên nhánh `fix/cloud-edit-lock-code-check`; chưa merge main, chưa deploy, không thao tác Supabase hoặc dữ liệu Công ty C. Cần CI/build và kiểm tra Staging trước khi đề xuất merge.
+
+
+### Chuẩn hóa xem ảnh phóng to dùng chung toàn ứng dụng — 22/11/2026
+- Đã rà soát toàn bộ mã nguồn giao diện: các ảnh nghiệp vụ hiện có nằm ở màn hình chỉnh sửa thiết bị và Chi tiết thiết bị; chưa có thành phần ảnh Cloud riêng vì ảnh hiện vẫn lưu Local.
+- Thêm thành phần dùng chung `ImageLightbox`: nhấn thumbnail để mở ảnh trong lớp phủ toàn màn hình; vùng xem tối đa 90vw × 85vh (giới hạn 1200 × 820px), giữ nguyên tỷ lệ ảnh bằng `object-fit: contain`.
+- Hỗ trợ đóng bằng nút X, nhấn nền ngoài ảnh hoặc phím Esc; điều hướng ảnh trước/sau bằng nút và phím mũi tên; có nhãn thứ tự ảnh và hỗ trợ giảm kích thước trên màn hình nhỏ.
+- Áp dụng cho thumbnail trong màn hình chỉnh sửa và ảnh trong Chi tiết thiết bị. Không thay đổi dữ liệu ảnh, nén ảnh, IndexedDB, luồng mutation hoặc đồng bộ Cloud; ảnh vẫn chỉ lưu Local như hiện tại.
+- Thực hiện trên nhánh `feature/unified-image-lightbox`; chưa merge main, chưa triển khai Production.
