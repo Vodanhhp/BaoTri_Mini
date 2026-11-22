@@ -1153,3 +1153,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - GitHub Actions `Validate BAOTRI Mini` run `45017871094` hoàn tất **success**, bước `npm run build` thành công ở commit `c2b4d81e6f8f4f185bf8f2669cff0e92af9b31db`.
 - GitHub Actions `Build and test` run `45017871083` thất bại tại test cũ `scripts/cloudAssetPublicApi.test.mjs`: test vẫn đòi `rpc('list_cloud_assets')`, trong khi implementation hiện tại dùng RPC phân trang `list_cloud_assets_page`. Đây là assertion chưa đồng bộ, không phải lỗi build/typography; không sửa test nghiệp vụ trong phạm vi công việc này.
 - PR #16 vẫn là Draft, chưa merge; không deploy Staging hoặc Production. Chưa có browser visual test trên PC/tablet/mobile.
+
+
+### Đồng bộ bài kiểm thử API Cloud với RPC phân trang — 22/11/2026
+- Đối chiếu CI run `45017934605` và log job: 28/29 unit tests pass; test duy nhất thất bại vì còn yêu cầu `list_cloud_assets` trong khi `src/lib/cloudAssets.ts` đã chuyển sang `list_cloud_assets_page`.
+- Kiểm tra migration `20261122055755_cloud_asset_sync_pagination_and_platform_read.sql`: RPC phân trang trả dữ liệu theo `items/has_more/next_cursor`, loại UUID nội bộ khỏi response và chỉ cấp quyền execute cho authenticated.
+- Cập nhật `scripts/cloudAssetPublicApi.test.mjs` để xác nhận đúng RPC phân trang, tham số keyset pagination, không SELECT trực tiếp bảng assets, và quyền/response trong migration tương ứng. Không thay đổi source nghiệp vụ, migration, Supabase hoặc dữ liệu.
+- Commit sửa test: `cb3a2670c1299b10a88c195cba76020314533ecd`. Đang chờ workflow chạy lại trên commit mới; chưa kết luận CI pass.
+- PR #16 vẫn Draft, chưa merge. Chưa tạo deployment Preview, chưa deploy Production; cần xác minh Vercel Preview tự động theo đúng commit mới trước khi kiểm tra trực quan.
