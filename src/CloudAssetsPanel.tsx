@@ -119,7 +119,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    })
    setMessage((result.alreadyPresent?'Cloud đã có hồ sơ cùng UUID và mã; đã xác nhận lại.':'Đã nhập Cloud và chuyển hồ sơ vào tổ chức.')+' UUID và mã quản lý được giữ nguyên; ảnh vẫn ở trình duyệt này.')
    await reload();onChanged()
-  }catch(e){setError(e instanceof Error?e.message:String(e));await reload()}
+   return true
+  }catch(e){setError(e instanceof Error?e.message:String(e));await reload();return false}
   finally{setBusyId('')}
  }
  const importSelectedPreview=async()=>{
