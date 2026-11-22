@@ -59,6 +59,80 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
   return ((data ?? []) as Record<string,unknown>[]).map(row => fromRow(row))
 }
 
+export type CloudSyncSummary = { downloaded:number; updated:number; unchanged:number; protectedLocal:number; conflicts:number; pages:number }
+
+export async function syncCloudAssetsToLocal(
+  client: SupabaseClient,
+  organizationId: string,
+  options: { platformAdmin?:boolean; shouldContinue?:()=>boolean } = {}
+): Promise<CloudSyncSummary> {
+  const summary:CloudSyncSummary={downloaded:0,updated:0,unchanged:0,protectedLocal:0,conflicts:0,pages:0}
+  let cursor:string|null=null
+  do {
+    if(options.shouldContinue&&!options.shouldContinue())break
+    const {data,error}=await client.rpc('list_cloud_assets_page',{
+      p_organization_id:organizationId,
+      p_after_code:cursor,
+      p_page_size:100,
+      p_platform_admin:options.platformAdmin===true
+    })
+    if(error)throw new Error('Đồng bộ Cloud thất bại: '+error.message)
+    const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
+    const rows=(page?.items??[]).map(fromRow)
+    summary.pages++
+    for(const cloud of rows){
+      if(options.shouldContinue&&!options.shouldContinue())return summary
+      const local=await db.assets.where('[localScope+code]').equals([organizationId,cloud.code]).first()
+      if(!local){
+        await downloadCloudAsset(organizationId,cloud)
+        summary.downloaded++
+        continue
+      }
+      const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
+      if(!link||link.cloudCode!==cloud.code){
+        summary.protectedLocal++
+        continue
+      }
+      if(link.status==='conflict'){
+        summary.conflicts++
+        continue
+      }
+      const mutations=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+        .filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').toArray()
+      if(mutations.length){
+        summary.protectedLocal++
+        continue
+      }
+      const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
+      const cloudChanged=cloud.updatedAt!==link.cloudUpdatedAt
+      if(localChanged&&cloudChanged){
+        await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+        const existing=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+          .filter(m=>m.status==='conflict').first()
+        if(!existing)await db.assetMutations.add({
+          mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
+          expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
+          status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),
+          lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'
+        })
+        summary.conflicts++
+      }else if(localChanged){
+        summary.protectedLocal++
+      }else if(cloudChanged){
+        await downloadCloudAsset(organizationId,cloud,local)
+        summary.updated++
+      }else{
+        await db.assetCloudLinks.update(link.id,{lastVerifiedAt:now()})
+        summary.unchanged++
+      }
+    }
+    cursor=page?.next_cursor??null
+    if(!page?.has_more)break
+    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
+  }while(true)
+  return summary
+}
+
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
   if(asset.idReservationId&&asset.idReservationStatus!=='confirmed'){
     if(!asset.idComponentsSnapshot||!asset.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; chưa thể nhập thiết bị Smart ID lên Cloud.')
