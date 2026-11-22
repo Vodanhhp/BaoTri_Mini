@@ -1,0 +1,83 @@
+# Chuẩn giao diện bảng dữ liệu — BAOTRI Ecosystem
+
+## Mục tiêu
+Mọi ứng dụng trong hệ sinh thái BAOTRI dùng cùng một ngôn ngữ trình bày bảng: gọn, rõ, nhất quán, dễ thao tác bằng chuột và cảm ứng. Ưu tiên khả năng đọc dữ liệu hơn trang trí.
+
+## Nguyên tắc thiết kế
+- **Một bảng = một mục đích:** tiêu đề cột ngắn, dễ hiểu; không nhồi thông tin không cần thiết.
+- **Mật độ vừa phải:** header khoảng 10px; nội dung khoảng 11–12px; padding ô 10–13px; tránh hàng quá cao.
+- **Phân cấp thị giác:** header nền trung tính; nội dung chính đậm vừa phải; thông tin phụ đặt dưới bằng chữ nhỏ và màu muted.
+- **Đường kẻ nhẹ:** dùng border theo token giao diện; không kẻ ô dày hoặc dùng màu nền rực rỡ.
+- **Hover kín đáo:** chỉ làm nổi nhẹ hàng đang trỏ; không dùng hiệu ứng gây xao nhãng.
+- **Trạng thái có ngữ nghĩa:** xanh = thành công/đã duyệt; vàng cam = đang chờ/cần chú ý; đỏ = từ chối/lỗi/nguy hiểm; xám = không hoạt động/chưa xác định.
+- **Hành động ngắn gọn:** nhóm nút ở cuối hàng; hành động chính nổi bật, hành động phụ trung tính; xác nhận thao tác nguy hiểm riêng.
+- **Không làm biến dạng bảng in:** bảng phục vụ giấy tờ dùng class riêng và CSS trong `@media print`.
+
+## Kích thước mặc định
+| Thành phần | Chuẩn |
+|---|---:|
+| Header | 10px, đậm, padding 11px 13px |
+| Nội dung | 11–12px, line-height 1.5 |
+| Padding ô | 10px 13px |
+| Bo góc khung | 12px desktop, 9px mobile |
+| Viền | 1px theo `--border` |
+| Chiều rộng tối thiểu | 620px; tùy nghiệp vụ có thể lớn hơn |
+| Nút thao tác nhỏ | cao tối thiểu khoảng 30px |
+
+## Responsive
+- Bọc bảng trong vùng cuộn ngang, không ép chữ thành nhiều dòng đến mức khó đọc.
+- Cho phép sticky header khi bảng dài; vùng cuộn có `overscroll-behavior-x: contain`.
+- Mobile giảm nhẹ padding và cỡ chữ, giữ thao tác đủ lớn; không ẩn cột chứa trạng thái hoặc hành động thiết yếu.
+- Với bảng rất rộng, đặt `min-width` riêng theo nghiệp vụ và ghi rõ trong CSS.
+
+## Cách áp dụng trong React
+Dùng wrapper và class chuẩn:
+
+```tsx
+<div className="table-wrap table-standard-wrap">
+  <table className="table-standard">
+    <thead>
+      <tr><th>Mã</th><th>Tên</th><th>Trạng thái</th><th>Thao tác</th></tr>
+    </thead>
+    <tbody>
+      {rows.map(row => (
+        <tr key={row.id}>
+          <td><b>{row.code}</b></td>
+          <td>{row.name}</td>
+          <td><span className="status green">Đang hoạt động</span></td>
+          <td><div className="table-action-group">{/* actions */}</div></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+
+- Không có dữ liệu: dùng `.table-empty-state`, không tạo một hàng trống khó hiểu.
+- Thông tin phụ: dùng `.table-subtext`; ghi chú dài dùng `.table-note-cell`.
+- Ngày tháng dùng `.table-date-cell` nếu cần giữ trên một dòng.
+- Các nút thao tác dùng `.table-action-group`.
+- Tên cột căn trái; số lượng/giá trị có thể căn phải; trạng thái và thao tác căn theo nội dung.
+- Bảng có nhiều dữ liệu phải có phân trang/lọc phù hợp; không tải vô hạn toàn bộ dữ liệu chỉ để hiển thị.
+
+## CSS dùng chung
+Các class chuẩn được định nghĩa tại cuối `src/style.css`:
+- `.table-standard-wrap`
+- `.table-standard`
+- `.table-subtext`
+- `.table-date-cell`
+- `.table-note-cell`
+- `.table-action-group`
+- `.table-empty-state`
+
+Bảng hiện tại trong BAOTRI Mini cần được bọc bằng `.table-wrap`; chỉ bảng màn hình nằm trong wrapper này nhận quy chuẩn. Bảng in nằm ngoài wrapper nên giữ nguyên định dạng giấy.
+
+## Checklist khi thêm bảng mới
+1. Tiêu đề cột ngắn và không trùng nghĩa.
+2. Có trạng thái tải, lỗi và rỗng rõ ràng.
+3. Có khóa định danh ổn định cho từng hàng.
+4. Không làm mất thao tác quan trọng trên mobile.
+5. Dữ liệu dài có xuống dòng hợp lý hoặc tooltip/chi tiết; không làm vỡ layout.
+6. Kiểm tra light/dark theme nếu màn hình hỗ trợ.
+7. Kiểm tra bàn phím, focus và nhãn truy cập cho nút thao tác.
+8. Không thay đổi nghiệp vụ, quyền hoặc dữ liệu chỉ vì mục tiêu trình bày.
