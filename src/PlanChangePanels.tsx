@@ -1,6 +1,5 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
 import type {SupabaseClient} from '@supabase/supabase-js'
-import {listCloudAssets} from './lib/cloudAssets'
 import {loadOrganizationEquipmentCatalog,type OrganizationEquipmentCatalogRecord} from './lib/smartEquipmentIdClient'
 
 type PlanCode='A'|'B'|'C'|'D'
@@ -40,17 +39,20 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
  const load=useCallback(async()=>{
   setLoading(true);setError('')
   try{
-   const [catalog,assets,planOptions,response]=await Promise.all([
+   const [catalog,assetCountResponse,planOptions,response]=await Promise.all([
     loadOrganizationEquipmentCatalog(client,organizationId),
-    listCloudAssets(client,organizationId),
+    client.rpc('count_organization_cloud_assets',{p_organization_id:organizationId}),
     loadPlans(import.meta.env.BASE_URL),
     client.functions.invoke('organization-plan-requests',{body:{action:'list',organizationId}})
    ])
+   if(assetCountResponse.error)throw new Error('Không tải được số lượng thiết bị Cloud: '+assetCountResponse.error.message)
    if(response.error)throw new Error(response.error.message)
    if(response.data?.error)throw new Error(response.data.error)
+   const assetCount=Number(assetCountResponse.data??0)
+   if(!Number.isSafeInteger(assetCount)||assetCount<0)throw new Error('Cloud trả về số lượng thiết bị không hợp lệ.')
    setCurrentPlan(catalog?.plan_code??null)
    onCatalogLoaded?.(catalog)
-   setDeviceCount(assets.length)
+   setDeviceCount(assetCount)
    setPlans(planOptions)
    setRequests((response.data?.requests??[]) as PlanRequest[])
    setTargetPlan('')
