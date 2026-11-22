@@ -1233,10 +1233,36 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
   font-size:12px;
   text-align:center;
 }
-.plan-requests-table-wrap{max-height:min(58vh,560px)}
-.plan-requests-table{min-width:880px!important}
-.plan-history-table-wrap{max-height:260px}
-.plan-history-table{min-width:600px!important}
+.plan-request-modal{width:min(1120px,96vw)!important;max-width:1120px}
+.plan-request-modal .modal-head{position:sticky;top:-1px;z-index:3;background:var(--panel);padding-bottom:12px}
+.plan-requests-table-wrap{max-height:min(58vh,560px);width:100%}
+.plan-requests-table{min-width:820px!important;table-layout:fixed!important}
+.plan-requests-table th:nth-child(1),.plan-requests-table td:nth-child(1){width:18%}
+.plan-requests-table th:nth-child(2),.plan-requests-table td:nth-child(2){width:14%}
+.plan-requests-table th:nth-child(3),.plan-requests-table td:nth-child(3){width:18%}
+.plan-requests-table th:nth-child(4),.plan-requests-table td:nth-child(4){width:27%}
+.plan-requests-table th:nth-child(5),.plan-requests-table td:nth-child(5){width:11%}
+.plan-requests-table th:nth-child(6),.plan-requests-table td:nth-child(6){width:12%}
+.plan-requests-table td:nth-child(1),.plan-requests-table td:nth-child(3){overflow-wrap:anywhere}
+.plan-requests-table td:nth-child(4){white-space:normal}
+.plan-requests-table .table-action-group{flex-wrap:nowrap}
+.plan-history-table-wrap{max-height:280px;width:100%}
+.plan-history-table{min-width:760px!important;table-layout:fixed!important}
+.plan-history-table th:nth-child(1),.plan-history-table td:nth-child(1){width:25%}
+.plan-history-table th:nth-child(2),.plan-history-table td:nth-child(2){width:19%}
+.plan-history-table th:nth-child(3),.plan-history-table td:nth-child(3){width:40%;white-space:normal}
+.plan-history-table th:nth-child(4),.plan-history-table td:nth-child(4){width:16%}
+@media(max-width:900px){
+ .plan-request-modal{width:min(96vw,760px)!important}
+ .plan-requests-table{min-width:820px!important}
+ .plan-history-table{min-width:760px!important}
+}
+@media(max-width:680px){
+ .plan-request-modal{width:96vw!important;max-height:94vh!important;padding:14px!important}
+ .plan-request-modal .modal-head{gap:10px}
+ .plan-requests-table-wrap{max-height:48vh}
+ .plan-history-table-wrap{max-height:34vh}
+}
 .platform-org-table table{min-width:900px}
 @media(max-width:680px){
   .table-standard-wrap{border-radius:9px}
