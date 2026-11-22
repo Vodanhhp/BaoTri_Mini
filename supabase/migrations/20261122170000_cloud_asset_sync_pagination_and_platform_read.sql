@@ -1,6 +1,28 @@
 -- Tenant-scoped, keyset-paginated Cloud asset reads for member sync and Platform Super Admin.
 begin;
 
+-- Tighten the legacy non-paginated endpoint too; clients are migrated to the page API below.
+create or replace function public.list_cloud_assets(p_organization_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare v_result jsonb;
+begin
+  if auth.uid() is null or not private.has_org_permission(p_organization_id, 'assets.view') then
+    raise exception 'Missing assets.view permission for this organization' using errcode = '42501';
+  end if;
+  select coalesce(jsonb_agg(
+    (to_jsonb(a) - 'id') || jsonb_build_object('asset_key',a.code)
+    order by a.name,a.code
+  ),'[]'::jsonb) into v_result
+  from public.assets a where a.organization_id=p_organization_id;
+  return v_result;
+end;
+$function$;
+
 create or replace function public.list_cloud_assets_page(
   p_organization_id uuid,
   p_after_code text default null,
