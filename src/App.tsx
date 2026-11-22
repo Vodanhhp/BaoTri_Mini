@@ -470,11 +470,19 @@ export default function App() {
           {id:draftAsset.id,organizationId,userId:session.user.id,reservationId,asset:draftAsset,createdAt:draftNow,updatedAt:draftNow}
         ])
 
-        const issuance=await reserveSmartEquipmentId(supabase,{
-          organizationId,reservationId,equipmentCode,groupCode,siteCode,
-          commissionedAt:draftAsset.commissionedAt||undefined,
-          standardEquipmentName,groupNameAtCreation
-        })
+        let issuance
+        try{
+          issuance=await reserveSmartEquipmentId(supabase,{
+            organizationId,reservationId,equipmentCode,groupCode,siteCode,
+            commissionedAt:draftAsset.commissionedAt||undefined,
+            standardEquipmentName,groupNameAtCreation
+          })
+        }catch(reservationError){
+          // The organization Plan/Catalog may have changed in another session.
+          const refreshedCatalog=await loadOrganizationEquipmentCatalog(supabase,organizationId).catch(()=>null)
+          if(refreshedCatalog)setEquipmentCatalog(refreshedCatalog)
+          throw reservationError
+        }
         const value:Asset={
           ...draftAsset,
           localScope,
