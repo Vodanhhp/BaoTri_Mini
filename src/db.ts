@@ -57,6 +57,7 @@ export type Asset = {
   createdByLabel?: string
   createdByUserId?: string
   archivedAt?: string
+  deletedAt?: string
   createdAt: string
   updatedAt: string
   /** Local scope: organization UUID, or 'local-preview' for demo data. */
@@ -103,6 +104,7 @@ export type AssetMutationPayload = {
   status: AssetStatus
   notes: string
   archivedAt?: string
+  deletedAt?: string
 }
 
 export type AssetMutation = {

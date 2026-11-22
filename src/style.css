@@ -1385,3 +1385,6 @@ html,body,#root,.app-shell{
  .asset-filter-field select,.asset-reset-btn{height:42px;font-size:13px}
  .asset-filter-field>span{font-size:12px}
 }
+
+/* Soft-deleted equipment remains visible only in the Admin deleted-items view. */
+.asset-deleted-row td{background:rgba(194,88,80,.075)}.asset-deleted-row .asset-title-btn{color:var(--danger-text)}

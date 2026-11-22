@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu } from 'lucide-react'
+import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2 } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import ImageLightbox from './ImageLightbox'
@@ -98,6 +98,7 @@ export default function App() {
   const [imageViewer, setImageViewer] = useState<{ images: string[]; index: number } | null>(null)
   const [printAssetMode, setPrintAssetMode] = useState<null | 'sticker' | 'detail'>(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [showDeleted, setShowDeleted] = useState(false)
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -283,10 +284,12 @@ export default function App() {
   },[equipmentCatalog])
   const smartSelectedGroup=smartAvailableGroups.find(group=>group.code===smartGroupChoice)
     ?? smartAnalysis?.group
-  const categories = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
-  const locations = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt).map(a => a.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
+  const categories = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt && !a.deletedAt).map(a => a.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
+  const locations = useMemo(() => [...new Set(assets.filter(a => !a.archivedAt && !a.deletedAt).map(a => a.location).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')), [assets])
   const visibleAssets = useMemo(() => assets.filter(asset => {
-    if (Boolean(asset.archivedAt) !== showArchived) return false
+    if (Boolean(asset.deletedAt) !== showDeleted) return false
+    if (!currentOrganization?.isAdmin && asset.deletedAt) return false
+    if (!showDeleted && Boolean(asset.archivedAt) !== showArchived) return false
     const text = [asset.code, asset.name, asset.category, asset.brand, asset.model, asset.serial, asset.location].join(' ').toLocaleLowerCase('vi')
     return (!query || text.includes(query.toLocaleLowerCase('vi'))) &&
       (categoryFilter === 'Tất cả nhóm' || asset.category === categoryFilter) &&
@@ -297,7 +300,7 @@ export default function App() {
     if (sortBy === 'code') return a.code.localeCompare(b.code,'vi', {numeric:true})
     if (sortBy === 'commissionedAt') return (a.commissionedAt || '').localeCompare(b.commissionedAt || '')
     return b.updatedAt.localeCompare(a.updatedAt)
-  }), [assets, query, categoryFilter, locationFilter, statusFilter, sortBy, showArchived])
+  }), [assets, query, categoryFilter, locationFilter, statusFilter, sortBy, showArchived, showDeleted, currentOrganization?.isAdmin])
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
@@ -305,7 +308,7 @@ export default function App() {
   const assetMutationPayload=(asset:Asset):AssetMutationPayload=>({
     category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',
     commissionedAt:asset.commissionedAt||'',power:asset.power??'',cycle:asset.cycle??'',cycleStartedAt:asset.cycleStartedAt||undefined,
-    transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined
+    transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined,deletedAt:asset.deletedAt||undefined
   })
 
   const openAssetEditor=async(asset:Asset)=>{
@@ -696,6 +699,45 @@ export default function App() {
       setEditing({ ...editing, images: [...(editing.images || []), ...converted] })
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)) }
   }
+  const deleteAsset = async (asset: Asset) => {
+    if(!currentOrganization?.isAdmin||!session||!supabase||!organizationId){alert('Chỉ Admin mới được xóa thiết bị.');return}
+    if(asset.deletedAt)return
+    if(!window.confirm('Đánh dấu xóa thiết bị '+asset.code+' – '+asset.name+'? Hồ sơ và lịch sử sẽ được giữ nguyên; thiết bị sẽ đồng bộ trạng thái xóa lên Cloud.'))return
+    const link=await db.assetCloudLinks.get(organizationId+':'+asset.id)
+    if(!link||link.status!=='linked'){alert('Thiết bị chưa liên kết Cloud hoặc đang xung đột. Hãy đồng bộ/đối chiếu Cloud trước khi xóa.');return}
+    if(!navigator.onLine){alert('Cần kết nối Internet để xác thực quyền và đồng bộ xóa thiết bị lên Cloud.');return}
+    const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,asset.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
+    if(pending){alert('Thiết bị đang có mutation chưa được xác nhận. Hãy xử lý mutation trước khi xóa.');return}
+    let lease:{token:string;expectedCloudUpdatedAt:string}|null=null
+    try{
+      const got=await acquireCloudAssetLock(supabase,organizationId,asset.code,getLocalDeviceId(),getDeviceLabel())
+      if(!got.acquired)throw new Error('Thiết bị đang được khóa bởi '+got.lock.holder_label+'.')
+      lease={token:got.lease.lock_token,expectedCloudUpdatedAt:link.cloudUpdatedAt}
+      const cloudRows=await listCloudAssets(supabase,organizationId)
+      const cloud=cloudRows.find(row=>row.code===asset.code)
+      if(!cloud||cloud.deletedAt||cloud.updatedAt!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud đã thay đổi hoặc thiết bị không còn hợp lệ. Hãy đồng bộ/đối chiếu trước khi xóa.')}
+      const candidate={...asset,deletedAt:now(),updatedAt:now()}
+      const payload=assetMutationPayload(candidate);const mutationId=uid()
+      await db.transaction('rw',[db.assets,db.assetMutations],async()=>{
+        await db.assets.put(candidate)
+        await db.assetMutations.add({mutationId,organizationId,assetId:asset.id,payload,expectedCloudUpdatedAt:lease!.expectedCloudUpdatedAt,localUpdatedAt:candidate.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
+      })
+      await db.assetMutations.update(mutationId,{status:'processing',attempts:1,updatedAt:now()})
+      try{
+        const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
+        await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+          await db.assetMutations.update(mutationId,{status:'applied',appliedAt:now(),cloudUpdatedAt:applied.asset.updatedAt,updatedAt:now()})
+          await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
+        })
+        notify('Đã đánh dấu xóa thiết bị và đồng bộ Cloud.')
+      }catch(cloudError){
+        await db.assetMutations.update(mutationId,{status:'pending',lastError:cloudError instanceof Error?cloudError.message:String(cloudError),updatedAt:now()})
+        throw new Error('Local đã đánh dấu xóa nhưng Cloud chưa xác nhận. Mutation được giữ lại để retry: '+(cloudError instanceof Error?cloudError.message:String(cloudError)))
+      }
+    }catch(e){alert(e instanceof Error?e.message:String(e))}
+    finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.code,lease.token).catch(()=>false);await loadAssets()}
+  }
+
   const archiveAsset = async (asset: Asset) => {
     if (!window.confirm('Đưa thiết bị ' + asset.code + ' – ' + asset.name + ' vào Lưu kho? Hồ sơ sẽ được giữ lại và có thể khôi phục.')) return
     const link=!localPreview&&organizationId?await db.assetCloudLinks.get(organizationId+':'+asset.id):undefined
@@ -753,9 +795,10 @@ export default function App() {
   const canUpdate=Boolean(currentOrganization?.permissions.includes('assets.update'))
   const canView=Boolean(currentOrganization?.permissions.includes('assets.view'))
   const canCreate=Boolean(currentOrganization?.permissions.includes('assets.create'))
-  const activeAssets = assets.filter(item => !item.archivedAt && item.status !== 'Thanh lý')
-  const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt).length
-  const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt).length
+  const canDelete=Boolean(currentOrganization?.isAdmin)
+  const activeAssets = assets.filter(item => !item.archivedAt && !item.deletedAt && item.status !== 'Thanh lý')
+  const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt && !item.deletedAt).length
+  const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt && !item.deletedAt).length
 
   return <div className="app-shell">
     {mobileMenuOpen&&<button type="button" className="mobile-menu-backdrop" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}/>}
@@ -798,7 +841,7 @@ export default function App() {
           <div className="stat-card"><div className="stat-icon red"><SlidersHorizontal size={20}/></div><div><small>Đang sửa chữa</small><strong>{repairingCount}</strong><span>{stoppedCount} thiết bị ngừng sử dụng</span></div></div>
         </div>
         <div className="panel">
-          <div className="panel-head"><div><h2>{showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setSmartEquipmentChoice('');setSmartGroupChoice('');setSmartSiteCode('00');setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button></div></div>
+          <div className="panel-head"><div><h2>{showDeleted?'Thiết bị đã xóa':showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&!showDeleted&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setSmartEquipmentChoice('');setSmartGroupChoice('');setSmartSiteCode('00');setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}{!showDeleted&&<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button>}{canDelete&&<button className={showDeleted?'soft-btn active':'soft-btn'} onClick={()=>{setShowDeleted(v=>!v);setShowArchived(false);resetFilters()}}>{showDeleted?'Quay lại danh sách':'Thiết bị đã xóa'}</button>}</div></div>
           <div className="asset-toolbar asset-toolbar-panel">
             <label className="searchbar asset-searchbar"><Search size={17}/><input aria-label="Tìm kiếm thiết bị" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm theo mã quản lý, tên thiết bị, nhóm hoặc vị trí…"/></label>
             <div className="asset-filter-row">
@@ -810,11 +853,11 @@ export default function App() {
             </div>
           </div>
           <div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-            {visibleAssets.map(asset=><tr key={asset.id}>
+            {visibleAssets.map(asset=><tr key={asset.id} className={asset.deletedAt?'asset-deleted-row':''}>
               <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
-              <td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
-              <td className="actions">{showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}</>}</td>
+              <td><span className={'status '+(asset.deletedAt?'red':asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.deletedAt?'ĐÃ XÓA':asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
+              <td className="actions">{showDeleted?null:showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}{canDelete&&!asset.deletedAt&&<button className="text-btn danger" onClick={()=>void deleteAsset(asset)} title="Đánh dấu xóa mềm"><Trash2 size={14}/> Xóa</button>}</>}</td>
             </tr>)}
           </tbody></table></div>
         </div>
