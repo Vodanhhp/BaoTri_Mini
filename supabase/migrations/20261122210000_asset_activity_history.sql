@@ -14,6 +14,19 @@ $function$;
 revoke all on function private.is_org_technician(uuid) from public,anon;
 grant execute on function private.is_org_technician(uuid) to authenticated;
 
+-- Keep this migration self-contained: the Cloud mutation function relies on the row anchor lock.
+create or replace function private.lock_asset_anchor(p_organization_id uuid,p_asset_id uuid)
+returns void language plpgsql security definer set search_path='' set row_security=off as $function$
+begin
+  if p_organization_id is null or p_asset_id is null then
+    raise exception 'Organization and asset are required' using errcode='22023';
+  end if;
+  perform 1 from public.assets a where a.organization_id=p_organization_id and a.id=p_asset_id for update;
+  if not found then raise exception 'Asset not found in this organization' using errcode='P0002'; end if;
+end;
+$function$;
+revoke all on function private.lock_asset_anchor(uuid,uuid) from public,anon,authenticated;
+
 -- Extend the canonical Cloud mutation guard with the new Luu kho status and role whitelist.
 -- This keeps direct RPC calls read-only for Viewer even if a permission is misassigned.
 create or replace function private.apply_asset_mutation_with_lock(
