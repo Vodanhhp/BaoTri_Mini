@@ -1073,3 +1073,18 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Vercel deployment ID `dpl_hW1GrFDMnH3y46AgDL6zH8YM49zz` trên đúng project `baotri-mini-new-preview`, target `staging`, state **READY**. URL: `baotri-mini-new-preview-eazlswbhd-tuanluongpham-8256.vercel.app`.
 - Build logs xác nhận `npm ci` thành công (82 packages), `tsc -b` không còn lỗi, Vite v6.4.6 transform 1640 modules; deployment READY. Build chỉ chạy trên Vercel, không chạy local.
 - Không deploy Production, không promote, không thay đổi project settings hoặc Supabase/database. Runtime đăng nhập và các chức năng ứng dụng chưa được browser-test; cần người dùng mở deployment và thử.
+
+
+## Khắc phục lỗi đếm thiết bị Cloud / đồng bộ migration Plan (22/11/2026)
+- Người dùng gặp lỗi trên Staging khi mở Gói dịch vụ: `Could not find the function public.count_organization_cloud_assets(p_organization_id) in the schema cache`.
+- Đã đối chiếu source `main` với migration history của đúng Supabase project `dskeaiyvldiwlsfqkboq`. DB đang dừng ở migration `20261122055755_cloud_asset_sync_pagination_and_platform_read`; thiếu ba migration Plan workflow và bảo toàn Smart ID phía sau.
+- Migration source `20261122110000_remove_unreliable_jwt_guard_inner_customer_provisioning.sql` đã được áp dụng trước đó trong DB dưới version `20261122034910_remove_unreliable_jwt_guard_inner_customer_provisioning`; đã xác minh function private không còn legacy JWT role guard, không chạy lại.
+- Đã áp dụng thành công theo thứ tự trên **BAOTRI Mini New (Test)**:
+  1. `20261122120000_organization_plan_change_workflow.sql` — tạo RPC đếm thiết bị Cloud có kiểm tra `assets.view`, luồng yêu cầu/duyệt đổi Plan và audit history.
+  2. `20261122130000_serialize_smart_id_reservations_with_plan_changes.sql` — khóa đồng bộ việc giữ mã Smart ID với thao tác đổi Plan.
+  3. `20261122140000_preserve_smart_id_reservation_retries_after_plan_change.sql` — giữ khả năng retry reservation cũ sau khi Plan thay đổi, bổ sung metadata version và group name tại thời điểm tạo.
+- Supabase xác nhận cả ba migration thành công; migration history hiện có các version do Supabase cấp lần lượt `20261122105818`, `20261122105819`, `20261122105821`.
+- Đã xác minh `public.count_organization_cloud_assets(p_organization_id uuid)` tồn tại; role `authenticated` có EXECUTE, `anon` không có. Hai RPC `reserve_asset_id_sequence` và count có quyền authenticated; các RPC quản trị Plan vẫn chỉ dành cho service_role. Hai cột reservation mới đã tồn tại.
+- Đã gửi `NOTIFY pgrst, 'reload schema'` để yêu cầu PostgREST nạp lại schema cache.
+- Không tạo/sửa/xóa organization, user, asset hay reservation; không thay đổi dữ liệu nghiệp vụ. Không đụng project/org Production.
+- Còn cần người dùng tải lại Staging và kiểm tra giao diện Gói dịch vụ; xác minh RPC/ACL ở database chưa thay thế cho browser runtime test.
