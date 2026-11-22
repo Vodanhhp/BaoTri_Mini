@@ -1273,3 +1273,58 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
   .plan-requests-table{min-width:820px!important}
   .plan-history-table{min-width:570px!important}
 }
+
+
+/* Typography system — one Vietnamese UI font and a readable shared scale */
+:root{
+  --font-family-ui:'Be Vietnam Pro',Arial,sans-serif;
+  --font-size-caption:11px;
+  --font-size-secondary:12px;
+  --font-size-body:13px;
+  --font-size-section:15px;
+  --font-size-dialog-title:18px;
+  --font-size-page-title:22px;
+}
+html,body,#root,.app-shell{
+  font-family:var(--font-family-ui)!important;
+  font-size:var(--font-size-body);
+  font-synthesis:none;
+}
+#root button,#root input,#root select,#root textarea{font-family:inherit}
+#root :where(
+  small,.eyebrow,.nav-label,.sidebar-bottom,.sync-status,
+  .stat-card small,.stat-card span,.task-info small,.stock-row small,
+  .mini-stat span,.priority-item small,.text-btn,.complete-btn,.status,
+  .empty,.footnote,.field,.muted,.mobile-nav-item,.mobile-nav-item i,
+  .about-eyebrow,.about-version,.about-contact-copy small,
+  .asset-filter-popover label,.asset-result-count,.asset-name-link small,
+  .asset-detail-field small,.asset-photo-thumb span,.archive-security-note,
+  .asset-qr-panel small,.asset-transfer-option small,.asset-code-preview small,
+  .asset-code-preview span,.inventory-name-link small,.checklist-overdue-note,
+  .employee-profile-details small,.plan-period-control,.plan-assets-heading,
+  .plan-asset-option small,.plan-assets-field>small,.plan-export-scope,
+  .scan-eyebrow,.scan-section-heading small,.scan-camera-note,.scan-divider,
+  .scan-manual-label,.scan-manual-help,.scan-checklist-note,
+  .detail-field small,.detail-notes small,.member-stat small,
+  .member-identity small,.member-confirm,.member-action,.member-protected,
+  .member-section-title small,.member-invite-section .field,.member-note,
+  .organization-name,.draft-recovery-row small,
+  .smart-id-tool-modal .field small,.smart-id-result small,
+  .table-wrap th,.table-wrap td small,.table-action-group button,
+  .platform-onboarding-step,.platform-onboarding-section>span,
+  .platform-plan-selected,.platform-plan-details span,.platform-plan-inline
+){font-size:var(--font-size-caption)!important;line-height:1.45}
+#root .platform-admin-modal :is(.panel-head p,.stat-card span,.stat-card small,
+  .platform-onboarding-intro p,.platform-onboarding-section p,
+  .platform-plan-card small,.platform-plan-summary,.platform-plan-summary p,
+  .platform-onboarding-review>div,.platform-onboarding-review>div span,
+  .platform-create-form .auth-note,.platform-create-form .field,
+  .platform-plan-inline,.platform-org-actions button){
+  font-size:var(--font-size-secondary)!important;
+}
+#root .platform-admin-modal :is(.platform-onboarding-step,
+  .platform-onboarding-section>span,.platform-plan-selected,
+  .platform-plan-details span,.platform-onboarding-kicker){
+  font-size:var(--font-size-caption)!important;
+}
+#root .table-standard-wrap :is(th,td,td b,td small){font-family:var(--font-family-ui)!important}
