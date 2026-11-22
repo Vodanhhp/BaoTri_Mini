@@ -406,44 +406,87 @@ export default function App() {
       if(!previous&&!localPreview){
         if(!supabase||!organizationId||!session)throw new Error('Cần đăng nhập và chọn tổ chức để cấp mã thiết bị.')
         if(!navigator.onLine)throw new Error('Cần Internet để giữ số thứ tự. Chưa thể cấp mã chính thức khi ngoại tuyến.')
-        if(!equipmentCatalog)throw new Error('Tổ chức chưa được khởi tạo Plan và Catalog Snapshot.')
-        if(!smartAnalysis||smartAnalysis.status!=='matched'||!smartAnalysis.canPrepareId||!smartAnalysis.equipmentCode){
-          throw new Error(smartAnalysis?.message||'Chưa xác định được loại thiết bị trong Catalog Snapshot.')
-        }
-        const plan=equipmentCatalog.plan_code
-        const selectedGroup=plan==='A'?undefined:smartAvailableGroups.find(group=>group.code===smartGroupChoice)
-        if(plan!=='A'&&!selectedGroup)throw new Error('Bạn cần chọn và xác nhận nhóm thiết bị trước khi lưu.')
-        if((plan==='C'||plan==='D')&&!editing.commissionedAt)throw new Error('Plan C/D yêu cầu ngày đưa vào sử dụng.')
-        // Keep the same reservation key while the form remains open. If the
-        // request reaches Cloud but its response is lost, retrying is idempotent.
+
         const reservationId=editing.idReservationId||uid()
-        if(!editing.idReservationId)setEditing({...editing,idReservationId:reservationId})
+        let draftAsset:Asset
+        let equipmentCode:string
+        let groupCode:string|undefined
+        let siteCode:string|undefined
+        let standardEquipmentName:string
+        let groupNameAtCreation:string|undefined
+
+        // Once a reservation key exists, retry only from its persisted issuance
+        // inputs. Do not require the current Catalog/Plan to still expose old fields.
+        if(editing.idReservationId&&editing.equipmentTypeCode){
+          draftAsset={
+            ...editing,localScope,idReservationId:reservationId,
+            originalName:editing.originalName||editing.name.trim(),
+            normalizedNameAtCreation:editing.normalizedNameAtCreation||editing.name.trim()
+          }
+          equipmentCode=draftAsset.equipmentTypeCode
+          groupCode=draftAsset.groupCodeAtCreation
+          siteCode=draftAsset.siteCodeAtCreation
+          standardEquipmentName=draftAsset.normalizedNameAtCreation||draftAsset.name
+          groupNameAtCreation=draftAsset.category||undefined
+        }else{
+          if(!equipmentCatalog)throw new Error('Tổ chức chưa được khởi tạo Plan và Catalog Snapshot.')
+          if(!smartAnalysis||smartAnalysis.status!=='matched'||!smartAnalysis.canPrepareId||!smartAnalysis.equipmentCode){
+            throw new Error(smartAnalysis?.message||'Chưa xác định được loại thiết bị trong Catalog Snapshot.')
+          }
+          const plan=equipmentCatalog.plan_code
+          const selectedGroup=plan==='A'?undefined:smartAvailableGroups.find(group=>group.code===smartGroupChoice)
+          if(plan!=='A'&&!selectedGroup)throw new Error('Bạn cần chọn và xác nhận nhóm thiết bị trước khi lưu.')
+          if((plan==='C'||plan==='D')&&!editing.commissionedAt)throw new Error('Plan C/D yêu cầu ngày đưa vào sử dụng.')
+          equipmentCode=smartAnalysis.equipmentCode
+          groupCode=selectedGroup?.code
+          siteCode=plan==='C'||plan==='D'?smartSiteCode:undefined
+          standardEquipmentName=smartAnalysis.normalizedName||smartAnalysis.matches[0]?.standardName||editing.name.trim()
+          groupNameAtCreation=selectedGroup?.name
+          draftAsset={
+            ...editing,localScope,idReservationId:reservationId,
+            originalName:editing.name.trim(),
+            normalizedNameAtCreation:standardEquipmentName,
+            equipmentTypeCode:equipmentCode,
+            groupCodeAtCreation:groupCode,
+            siteCodeAtCreation:siteCode,
+            category:groupNameAtCreation||'Thiết bị'
+          }
+        }
+
+        // Persist the draft and idempotency key before calling Cloud. If the
+        // response is lost or the browser closes, the same reservation can resume.
+        const draftNow=now()
+        await db.assetDrafts.put({
+          id:draftAsset.id,organizationId,userId:session.user.id,reservationId,
+          asset:draftAsset,createdAt:draftNow,updatedAt:draftNow
+        })
+        setEditing(draftAsset)
+        setRecoverableDrafts(current=>[
+          ...current.filter(item=>item.id!==draftAsset.id),
+          {id:draftAsset.id,organizationId,userId:session.user.id,reservationId,asset:draftAsset,createdAt:draftNow,updatedAt:draftNow}
+        ])
+
         const issuance=await reserveSmartEquipmentId(supabase,{
-          organizationId,
-          reservationId,
-          equipmentCode:smartAnalysis.equipmentCode,
-          groupCode:selectedGroup?.code,
-          siteCode:plan==='C'||plan==='D'?smartSiteCode:undefined,
-          commissionedAt:editing.commissionedAt||undefined,
-          standardEquipmentName:smartAnalysis.normalizedName||smartAnalysis.matches[0]?.standardName||editing.name.trim(),
-          groupNameAtCreation:selectedGroup?.name
+          organizationId,reservationId,equipmentCode,groupCode,siteCode,
+          commissionedAt:draftAsset.commissionedAt||undefined,
+          standardEquipmentName,groupNameAtCreation
         })
         const value:Asset={
-          ...editing,
+          ...draftAsset,
           localScope,
           code:issuance.equipmentId,
-          name:editing.name.trim(),
+          name:draftAsset.name.trim(),
           category:issuance.components.group_name_at_creation||'Thiết bị',
-          originalName:editing.name.trim(),
-          normalizedNameAtCreation:smartAnalysis.normalizedName||smartAnalysis.matches[0]?.standardName||editing.name.trim(),
+          originalName:draftAsset.originalName||draftAsset.name.trim(),
+          normalizedNameAtCreation:draftAsset.normalizedNameAtCreation||standardEquipmentName,
           equipmentTypeCode:issuance.components.equipment_code,
           groupCodeAtCreation:issuance.components.group_code||undefined,
           siteCodeAtCreation:issuance.components.site_code||undefined,
           idComponentsSnapshot:{...issuance.components,reservation_id:reservationId},
           idReservationId:reservationId,
           idReservationStatus:'reserved',
-          createdByLabel:editing.transferredFromOtherFacility?'Chuyển nơi khác tới':(editing.createdByLabel||session.user.email||''),
-          createdByUserId:editing.createdByUserId||session.user.id,
+          createdByLabel:draftAsset.transferredFromOtherFacility?'Chuyển nơi khác tới':(draftAsset.createdByLabel||session.user.email||''),
+          createdByUserId:draftAsset.createdByUserId||session.user.id,
           updatedAt:now()
         }
         const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
