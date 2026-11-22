@@ -57,6 +57,22 @@ begin
   select count(*) into v_count
   from public.assets a
   where a.organization_id = p_organization_id;
+
+  -- Match the authoritative capacity calculation used by reserve_asset_id_sequence:
+  -- include reservations not yet represented by a Cloud asset, without double-counting
+  -- a reservation whose asset row already exists.
+  v_count := v_count + (
+    select count(*)
+    from private.asset_id_sequence_reservations r
+    where r.organization_id = p_organization_id
+      and r.status in ('reserved','confirmed')
+      and (r.asset_id is null or not exists (
+        select 1
+        from public.assets a
+        where a.organization_id = r.organization_id
+          and a.id = r.asset_id
+      ))
+  );
   return v_count;
 end;
 $function$;
