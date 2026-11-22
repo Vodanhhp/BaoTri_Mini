@@ -1230,4 +1230,4 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Giới hạn năng lực ghi dữ liệu giao diện theo whitelist Admin/KTV; Người xem không có nút sửa/thêm/lưu kho/xóa, không mở chỉnh sửa hồ sơ hoặc chỉnh sửa hồ sơ cá nhân, không được thao tác với draft. Kiểm tra quyền ở các handler chính, không chỉ ẩn nút.
 - Bổ sung unit test cho trạng thái Lưu kho, phân quyền Người xem và hợp đồng lịch sử.
 - **Chưa áp dụng migration lịch sử lên Supabase Test**; cần xác nhận riêng trước khi chạy migration. Migration xóa mềm trước đó vẫn đã áp dụng trên Supabase Test. Chưa merge PR #21, không thay đổi main/Production.
-- Chưa hoàn tất kiểm thử CI/build và chưa kiểm thử trình duyệt thực tế. Cần xác nhận mã vai trò KTV trong dữ liệu tổ chức khớp một trong các code `ktv`, `technician`, `maintenance_technician`; nếu khác phải bổ sung đúng code trước khi test quyền.
+- Chưa hoàn tất kiểm thử CI/build và chưa kiểm thử trình duyệt thực tế. Đã truy vấn Supabase Test: mã vai trò thực tế là `admin`, `technician`, `viewer`; KTV dùng code `technician`. Permission map hiện cấp `assets.update` cho Admin/KTV, chỉ cấp `assets.view` cho Viewer.
