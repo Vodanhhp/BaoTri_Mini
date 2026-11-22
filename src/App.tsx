@@ -368,7 +368,10 @@ export default function App() {
   const discardAssetDraft=async(draft:AssetDraft)=>{
     try{
       const existing=await db.assets.get(draft.id)
-      if(!existing&&supabase)await releaseSmartEquipmentIdReservation(supabase,draft.organizationId,draft.reservationId)
+      if(!existing){
+        if(!supabase)throw new Error('Cần kết nối Cloud để giải phóng reservation an toàn.')
+        await releaseSmartEquipmentIdReservation(supabase,draft.organizationId,draft.reservationId)
+      }
       await db.assetDrafts.delete(draft.id)
       setRecoverableDrafts(current=>current.filter(item=>item.id!==draft.id))
       notify('Đã hủy thao tác cấp mã chưa hoàn tất.')
