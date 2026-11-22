@@ -35,6 +35,7 @@ const emptyAsset = (): Asset => ({
   location: '', commissionedAt: '', power: '', cycle: '', transferredFromOtherFacility: false,
   status: 'Đang hoạt động', notes: '', images: [], createdAt: now(), updatedAt: now()
 })
+const displayAssetName = (asset: Pick<Asset,'name'|'transferredFromOtherFacility'>) => asset.transferredFromOtherFacility && !asset.name.endsWith('*') ? asset.name + '*' : asset.name
 const dateText = (value: string) => value ? new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('vi-VN') : '—'
 const imageToDataUrl = async (file: File): Promise<string> => {
   if (!file.type.startsWith('image/')) throw new Error('Chỉ chấp nhận tệp hình ảnh.')
@@ -95,12 +96,37 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [reservationReleaseBusy,setReservationReleaseBusy]=useState(false)
 
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setSessionReady(true) })
-    const { data } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); if(event==='PASSWORD_RECOVERY') setPasswordRecovery(true); if(event==='SIGNED_OUT'){setOrganizationContexts([]);setOrganizationId('');setOrganizationReady(false);setPasswordRecovery(false)} })
-    return () => data.subscription.unsubscribe()
+    let active = true
+    supabase.auth.getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!active) return
+        if (sessionError) setError('Không khôi phục được phiên đăng nhập: ' + sessionError.message)
+        setSession(data.session)
+        setSessionReady(true)
+      })
+      .catch(cause => {
+        if (!active) return
+        setError('Không kết nối được dịch vụ đăng nhập Supabase: ' + (cause instanceof Error ? cause.message : String(cause)))
+        setSessionReady(true)
+      })
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next)
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      if (event === 'SIGNED_OUT') {
+        setOrganizationContexts([])
+        setOrganizationId('')
+        setOrganizationReady(false)
+        setPasswordRecovery(false)
+      }
+    })
+    return () => {
+      active = false
+      data.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -184,6 +210,7 @@ export default function App() {
     return()=>{active=false;window.removeEventListener('online',retryPendingLocalReservations)}
   },[session?.user.id,organizationId])
 
+  const isNewAssetDraft=Boolean(editing&&!assets.some(a=>a.id===editing.id))
   const isNewSmartAsset=Boolean(editing&&!localPreview&&!assets.some(a=>a.id===editing.id))
   const smartAnalysis=useMemo(()=>{
     if(!editing||!isNewSmartAsset||!equipmentCatalog)return null
@@ -270,10 +297,39 @@ export default function App() {
     return()=>{window.clearInterval(timer);window.removeEventListener('offline',offline)}
   },[cloudLease?.assetId,cloudLease?.token,cloudLease?.lost,organizationId])
 
+  const updateSmartDraft=async(patch:Partial<Asset>,afterChange?:()=>void)=>{
+    const reservationId=editing?.idReservationId
+    if(reservationId&&supabase&&organizationId){
+      setReservationReleaseBusy(true)
+      try{
+        await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+      }catch(cause){
+        setError('Chưa giải phóng được số thứ tự đang giữ. Kiểm tra kết nối rồi thử lại trước khi đổi thông tin. '+(cause instanceof Error?cause.message:String(cause)))
+        return
+      }finally{
+        setReservationReleaseBusy(false)
+      }
+    }
+    setError('')
+    setEditing(current=>current?{...current,...patch,idReservationId:undefined}:current)
+    afterChange?.()
+  }
+
   const closeEditor=()=>{
+    const draft=editing
     setShowForm(false);setEditing(null);setError('')
     const lease=cloudLease;setCloudLease(null)
     if(lease&&supabase&&!lease.lost)void releaseCloudAssetLock(supabase,organizationId,lease.assetId,lease.token).catch(()=>false)
+    // Release a sequence reserved for an unsaved draft. A Local asset that was
+    // already persisted keeps its reservation for the confirmation retry path.
+    if(draft?.idReservationId&&supabase&&organizationId){
+      const client=supabase
+      const orgId=organizationId
+      const reservationId=draft.idReservationId
+      void db.assets.get(draft.id).then(existing=>{
+        if(!existing)return releaseSmartEquipmentIdReservation(client,orgId,reservationId)
+      }).catch(()=>false)
+    }
   }
 
   const saveAsset = async (event: FormEvent<HTMLFormElement>) => {
@@ -313,7 +369,10 @@ export default function App() {
         const selectedGroup=plan==='A'?undefined:smartAvailableGroups.find(group=>group.code===smartGroupChoice)
         if(plan!=='A'&&!selectedGroup)throw new Error('Bạn cần chọn và xác nhận nhóm thiết bị trước khi lưu.')
         if((plan==='C'||plan==='D')&&!editing.commissionedAt)throw new Error('Plan C/D yêu cầu ngày đưa vào sử dụng.')
-        const reservationId=uid()
+        // Keep the same reservation key while the form remains open. If the
+        // request reaches Cloud but its response is lost, retrying is idempotent.
+        const reservationId=editing.idReservationId||uid()
+        if(!editing.idReservationId)setEditing({...editing,idReservationId:reservationId})
         const issuance=await reserveSmartEquipmentId(supabase,{
           organizationId,
           reservationId,
@@ -339,19 +398,29 @@ export default function App() {
           idComponentsSnapshot:{...issuance.components,reservation_id:reservationId},
           idReservationId:reservationId,
           idReservationStatus:'reserved',
-          createdByLabel:editing.createdByLabel||session.user.email||'',
+          createdByLabel:editing.transferredFromOtherFacility?'Chuyển nơi khác tới':(editing.createdByLabel||session.user.email||''),
           createdByUserId:editing.createdByUserId||session.user.id,
           updatedAt:now()
         }
         const duplicate=await db.assets.where('[localScope+code]').equals([localScope,value.code]).first()
         if(duplicate&&duplicate.id!==value.id){
-          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          try{
+            await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
+          }catch{
+            // Keep the reservation key so a later retry can safely reconcile it.
+          }
           throw new Error('Mã vừa được giữ đã tồn tại trong Local. Không lưu hồ sơ; hãy thử lại để nhận số khác.')
         }
         try{
           await db.assets.add(value)
         }catch(localError){
-          await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId).catch(()=>{})
+          try{
+            await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+            setEditing(current=>current?.id===editing.id?{...current,idReservationId:undefined}:current)
+          }catch{
+            // Keep the reservation key if Cloud could not confirm its release.
+          }
           throw localError
         }
         try{
@@ -378,7 +447,7 @@ export default function App() {
       const value:Asset={
         ...editing,
         localScope,
-        createdByLabel:editing.createdByLabel||previous?.createdByLabel||session?.user.email||(localPreview?'Chế độ thử nghiệm Local':''),
+        createdByLabel:!previous&&editing.transferredFromOtherFacility?'Chuyển nơi khác tới':(editing.createdByLabel||previous?.createdByLabel||session?.user.email||(localPreview?'Chế độ thử nghiệm Local':'')),
         createdByUserId:editing.createdByUserId||previous?.createdByUserId||session?.user.id,
         code:previous?.code??editing.code.trim().toUpperCase(),
         name:editing.name.trim(),
@@ -507,7 +576,7 @@ export default function App() {
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
-  if (!session && !localPreview) return <><AuthScreen client={supabase} onLocalPreview={() => setLocalPreview(true)} onOpenSmartIdTool={() => setSmartIdToolOpen(true)}/>{smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}</>
+  if (!session && !localPreview) return <><AuthScreen client={supabase} errorMessage={error} onLocalPreview={() => setLocalPreview(true)} onOpenSmartIdTool={() => setSmartIdToolOpen(true)}/>{smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}</>
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
 
@@ -566,7 +635,7 @@ export default function App() {
           </div>
           <div className="table-wrap"><table><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.map(asset=><tr key={asset.id}>
-              <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{asset.name}</small></button></td>
+              <td><button className="asset-title-btn" onClick={()=>setDetailAsset(asset)}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
               <td><span className={'status '+(asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
               <td className="actions">{showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}</>}</td>
@@ -576,10 +645,12 @@ export default function App() {
         <div className="footnote"><ShieldCheck size={15}/> Thiết bị Local thuộc phạm vi tổ chức hiện chọn. Dùng Local ↔ Cloud để nhập hoặc tải hồ sơ có kiểm soát. Ảnh chưa đồng bộ Cloud.</div>
       </div>
     </main>
-    {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor}><X size={17}/></button></div>
+    {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor} disabled={busy||reservationReleaseBusy}><X size={17}/></button></div>
       <form className="form-grid" onSubmit={saveAsset}>
         {isNewSmartAsset ? <>
-          <label className="field full-field">Tên thiết bị *<input required value={editing.name} onChange={event=>{setEditing({...editing,name:event.target.value});setSmartEquipmentChoice('');setSmartGroupChoice('')}} placeholder="Ví dụ: Máy bơm nước làm mát"/></label>
+          <label className="field full-field">Tên thiết bị *<input required disabled={reservationReleaseBusy} value={editing.name} onChange={event=>{
+            void updateSmartDraft({name:event.target.value},()=>{setSmartEquipmentChoice('');setSmartGroupChoice('')})
+          }} placeholder="Ví dụ: Máy bơm nước làm mát"/></label>
           {equipmentCatalogLoading&&<div className="field full-field muted">Đang tải danh mục thiết bị của tổ chức…</div>}
           {equipmentCatalogError&&<div className="auth-error full-field">{equipmentCatalogError}</div>}
           {!equipmentCatalogLoading&&!equipmentCatalog&&<div className="auth-error full-field">Tổ chức chưa được khởi tạo Plan và Catalog Snapshot. Chưa thể cấp mã thiết bị.</div>}
@@ -588,9 +659,15 @@ export default function App() {
             {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>setSmartEquipmentChoice(event.target.value)}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
             {smartAnalysis?.status==='matched'&&<div className="field full-field"><span>Loại chuẩn đề xuất</span><b>{smartAnalysis.normalizedName} · {smartAnalysis.equipmentCode}</b></div>}
             {smartAnalysis&&smartAnalysis.status!=='matched'&&smartAnalysis.status!=='ambiguous'&&<div className="auth-error full-field">{smartAnalysis.message}</div>}
-            {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required value={smartGroupChoice} onChange={event=>setSmartGroupChoice(event.target.value)}><option value="">-- Chọn / xác nhận nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select>{smartAnalysis?.group&&<small>Gợi ý từ điển: {smartAnalysis.group.name}. Hãy chọn nhóm trong danh sách để xác nhận.</small>}</label>}
+            {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required disabled={reservationReleaseBusy} value={smartGroupChoice} onChange={event=>{
+              const value=event.target.value
+              void updateSmartDraft({},()=>setSmartGroupChoice(value))
+            }}><option value="">-- Chọn / xác nhận nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select>{smartAnalysis?.group&&<small>Gợi ý từ điển: {smartAnalysis.group.name}. Hãy chọn nhóm trong danh sách để xác nhận.</small>}</label>}
             {equipmentCatalog.plan_code==='A'&&<div className="field"><span>Nhóm thiết bị</span><b>Không áp dụng trong Plan A</b></div>}
-            {(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')&&<label className="field">Mã cơ sở (2 chữ số) *<input required inputMode="numeric" maxLength={2} pattern="[0-9]{2}" value={smartSiteCode} onChange={event=>setSmartSiteCode(event.target.value)}/></label>}
+            {(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')&&<label className="field">Mã cơ sở (2 chữ số) *<input required inputMode="numeric" maxLength={2} pattern="[0-9]{2}" value={smartSiteCode} disabled={reservationReleaseBusy} onChange={event=>{
+              const value=event.target.value
+              void updateSmartDraft({},()=>setSmartSiteCode(value))
+            }}/></label>}
             <div className="field full-field"><span>Mã quản lý dự kiến</span><b>{smartAnalysis?.status==='matched'?'Sẽ được Local ghép sau khi giữ số thứ tự':'Chờ xác nhận loại và nhóm thiết bị'}</b><small>Cloud chỉ cấp số thứ tự; mã hoàn chỉnh được tạo và lưu tại Local.</small></div>
           </>}
         </> : <>
@@ -603,14 +680,17 @@ export default function App() {
         <label className="field">Model<input value={editing.model} onChange={event=>setEditing({...editing,model:event.target.value})}/></label>
         <label className="field">Số serial<input value={editing.serial} onChange={event=>setEditing({...editing,serial:event.target.value})}/></label>
         <label className="field">Công suất / thông số<input value={editing.power} onChange={event=>setEditing({...editing,power:event.target.value})}/></label>
-        <label className="field">Ngày đưa vào sử dụng{isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')?' *':''}<input type="date" required={Boolean(isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D'))} value={editing.commissionedAt} onChange={event=>setEditing({...editing,commissionedAt:event.target.value})}/></label>
+        <label className="field">Ngày đưa vào sử dụng{isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')?' *':''}<input type="date" required={Boolean(isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D'))} value={editing.commissionedAt} disabled={reservationReleaseBusy} onChange={event=>{
+          const value=event.target.value
+          void updateSmartDraft({commissionedAt:value})
+        }}/></label>
         <label className="field">Chu kỳ bảo trì<select value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})}><option value="">Chưa thiết lập</option>{ASSET_CYCLES.map(item=><option key={item} value={item}>{item}</option>)}{editing.cycle&&!ASSET_CYCLES.includes(editing.cycle as typeof ASSET_CYCLES[number])&&<option value={editing.cycle}>{editing.cycle} · giá trị cũ</option>}</select></label>
         <label className="field">Trạng thái<select value={editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
-        <label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked})}/> Thiết bị được chuyển từ cơ sở khác đến</span></label>
+        {isNewAssetDraft?<label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked,createdByLabel:event.target.checked?'Chuyển nơi khác tới':undefined})}/> Thiết bị được chuyển từ cơ sở khác đến</span><small>Khi chọn, tên thiết bị sẽ hiển thị thêm dấu * và trường Người thêm ghi “Chuyển nơi khác tới”. Mã quản lý vẫn sinh theo quy tắc bình thường.</small></label>:editing.transferredFromOtherFacility?<div className="field full-field muted">* Thiết bị được chuyển từ cơ sở khác đến</div>:null}
         <label className="field full-field">Ghi chú<textarea rows={3} value={editing.notes} onChange={event=>setEditing({...editing,notes:event.target.value})}/></label>
         <div className="field full-field"><span>Ảnh thiết bị ({editing.images?.length || 0}/8)</span><label className="image-upload-btn"><ImagePlus size={16}/> Thêm ảnh<input type="file" accept="image/*" multiple disabled={(editing.images?.length || 0)>=8} onChange={event=>{void addImages(event.target.files);event.target.value=''}}/></label><div className="asset-image-grid">{(editing.images || []).map((src,index)=><div className="asset-image-item" key={index}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/><button type="button" title="Xóa ảnh" onClick={()=>setEditing({...editing,images:editing.images.filter((_,i)=>i!==index)})}>×</button></div>)}</div><small>Ảnh được thu nhỏ và lưu trong trình duyệt hiện tại; chưa đồng bộ Cloud.</small></div>
         {error&&<div className="auth-error full-field">{error}</div>}
-        <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
+        <div className="modal-actions"><button type="button" className="soft-btn" onClick={closeEditor} disabled={busy||reservationReleaseBusy}>Hủy</button><button type="submit" className="primary-btn" disabled={busy||reservationReleaseBusy||(cloudLease?.assetId===editing.id&&cloudLease.lost)}>{busy?'Đang lưu…':<><Check size={15}/> Lưu thiết bị</>}</button></div>
       </form>
     </section></div>}
     {profilePanel&&session&&supabase&&<AccountProfilePanel client={supabase} onClose={()=>{setProfilePanel(false);if(session?.user.id&&supabase)void supabase.from('profiles').select('display_name').eq('id',session.user.id).maybeSingle().then(({data})=>setProfileDisplayName(data?.display_name?.trim()||String(session.user.user_metadata?.full_name||'').trim()))}}/>}
@@ -618,7 +698,7 @@ export default function App() {
     {membersPanel&&session&&supabase&&organizationId&&currentOrganization?.isAdmin&&<OrganizationMembersPanel client={supabase} organizationId={organizationId} onClose={()=>setMembersPanel(false)}/>}
     {cloudPanel&&session&&supabase&&organizationId&&<CloudAssetsPanel client={supabase} organizationId={organizationId} localAssets={assets} canImport={canImport} canView={canView} canUpdate={canUpdate} onClose={()=>setCloudPanel(false)} onChanged={()=>void loadAssets()}/>}
     {smartIdToolOpen&&<SmartEquipmentIdTool onClose={()=>setSmartIdToolOpen(false)}/>}
-    {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{detailAsset.name}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
+    {detailAsset&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setDetailAsset(null)}}><section className="modal detail-modal"><div className="modal-head"><div><div className="eyebrow">HỒ SƠ THIẾT BỊ</div><h2>{displayAssetName(detailAsset)}</h2><p>{detailAsset.code} · {detailAsset.category}</p></div><button className="icon-btn" onClick={()=>setDetailAsset(null)}><X size={17}/></button></div>
       <div className="detail-status-row"><span className={'status '+(detailAsset.archivedAt?'gray':detailAsset.status==='Đang hoạt động'?'green':detailAsset.status==='Đang sửa chữa'?'orange':detailAsset.status==='Thanh lý'?'red':'gray')}>{detailAsset.archivedAt?'Đã lưu kho':detailAsset.status}</span><span className="muted">Cập nhật: {dateText(detailAsset.updatedAt.slice(0,10))}</span></div>
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
@@ -629,7 +709,7 @@ export default function App() {
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
       {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><strong>{detailAsset.code}</strong></div>}
-      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{detailAsset.name}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',detailAsset.name],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
+      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{displayAssetName(detailAsset)}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',displayAssetName(detailAsset)],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
     </div>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>

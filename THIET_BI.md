@@ -260,3 +260,57 @@ Danh mục hiện có các nhóm nền tảng: điện, cấp thoát nước, HV
 ---
 
 **Lưu ý:** Tài liệu này ghi nhận phần phân chia gói và cấu trúc mã ID đã thống nhất ở bước thảo luận hiện tại. Chưa phải đặc tả triển khai kỹ thuật hoàn chỉnh; không tự ý thay đổi cơ sở dữ liệu, migration hoặc mã nguồn chỉ dựa trên tài liệu này.
+
+
+## 10. Quy tắc đổi Plan và thiết bị đã được cấp mã (22/11/2026)
+
+### 10.1. Nguyên tắc bất biến
+- Khi Organization nâng cấp hoặc hạ cấp Plan, mọi thiết bị đã được cấp mã trước thời điểm đổi Plan giữ nguyên UUID, mã quản lý, mã thành phần tại thời điểm cấp và toàn bộ lịch sử.
+- Không sinh lại mã, không đổi mã hàng loạt, không xóa, không khóa và không làm mất khả năng quản lý/bảo trì thiết bị cũ chỉ vì thay đổi Plan.
+- Plan hiện hành chỉ chi phối việc tạo thiết bị mới sau thời điểm Plan mới có hiệu lực.
+
+### 10.2. Thiết bị tạo mới sau khi đổi Plan
+- Thiết bị được tạo sau thời điểm nâng cấp áp dụng cấu trúc mã, nhóm, cơ sở, từ điển và hạn mức của Plan mới.
+- Thiết bị được tạo sau thời điểm hạ cấp áp dụng quy tắc của Plan thấp hơn đang có hiệu lực.
+- Mỗi hồ sơ giữ snapshot thành phần cấp mã và Plan tại thời điểm cấp; không suy diễn lại mã cũ từ Plan hiện tại.
+- Thời điểm hiệu lực Plan phải được ghi nhận để xử lý đúng các yêu cầu cấp mã đang chờ hoặc gửi đồng thời khi đổi Plan.
+
+### 10.3. Hạ cấp khi đang vượt hạn mức
+- Nếu số thiết bị hiện có lớn hơn hạn mức Plan mới, giữ nguyên toàn bộ hồ sơ và quyền xem/sửa/bảo trì theo quyền nghiệp vụ.
+- Hiển thị cảnh báo vượt hạn mức.
+- Không cho tạo thêm thiết bị mới cho đến khi số lượng thiết bị được tính theo chính sách hạn mức nằm trong giới hạn mới.
+- Không tự xóa, lưu kho, khóa hoặc đổi mã thiết bị để ép số lượng xuống hạn mức.
+
+### 10.4. Quy trình quản trị Plan
+- Admin doanh nghiệp xem Plan hiện tại và gửi yêu cầu nâng cấp/hạ cấp Plan.
+- Super Admin tiếp nhận, xác nhận điều kiện thương mại/thanh toán và là người áp dụng Plan mới.
+- Ghi lịch sử Plan cũ, Plan mới, người yêu cầu, người duyệt, thời điểm yêu cầu và thời điểm hiệu lực.
+- Việc áp dụng Plan không được làm mất danh mục riêng của Organization hoặc dữ liệu thiết bị hiện có.
+- Không tự ý thay đổi Plan hoặc Snapshot của tổ chức thật trong lúc chưa có yêu cầu/phê duyệt cụ thể.
+
+## 11. Đổi tên doanh nghiệp và lịch sử
+- Admin của Organization được đề xuất có quyền sửa tên hiển thị doanh nghiệp trong thông tin doanh nghiệp.
+- Chỉ cập nhật `organizations.name`; không thay đổi `organization_id`, Auth account, membership, mã thiết bị, lịch sử bảo trì hoặc dữ liệu liên quan.
+- Ghi lịch sử tên cũ, tên mới, người thực hiện và thời điểm thay đổi.
+- Không coi đổi tên doanh nghiệp là tạo Organization mới.
+
+## 12. Thiết bị từ nơi khác chuyển đến khi thêm vào hệ thống (22/11/2026)
+
+### 12.1. Lựa chọn trong quy trình thêm thiết bị
+- Bổ sung lựa chọn loại hồ sơ: **Thiết bị mới** hoặc **Nơi khác chuyển đến**.
+- Khi chọn **Nơi khác chuyển đến**, yêu cầu khai báo nơi/khu vực tiếp nhận (ví dụ Khu 2) và thông tin nguồn chuyển đến để truy vết.
+- Mã quản lý mới của hệ thống được sinh theo quy tắc Plan hiện hành và khu vực/cơ sở tiếp nhận; không lấy bộ đếm của khu vực nguồn.
+- Tên hiển thị có dấu `*` ở cuối để nhận biết thiết bị chuyển từ nơi khác đến. Tên gốc/tên chuẩn vẫn được lưu riêng, không chèn dấu `*` vào dữ liệu dùng để phân tích mã.
+- Lưu nguồn chuyển đến, khu vực tiếp nhận, người ghi nhận và thời điểm tiếp nhận trong lịch sử.
+
+### 12.2. Bảo toàn định danh
+- Nếu đây là thiết bị được đưa từ ngoài phạm vi quản lý của Organization vào hệ thống, UUID nội bộ được tạo cho hồ sơ mới; mã quản lý nội bộ được cấp theo Plan và khu vực tiếp nhận. Mã/serial cũ ở nơi chuyển đi (nếu có) chỉ lưu như thông tin nguồn tham chiếu, không thay thế mã nội bộ.
+- Nếu thiết bị đang được quản lý trong cùng Organization và chuyển từ Khu 1 sang Khu 2: giữ nguyên UUID/định danh hồ sơ gốc, nhưng **cấp mã quản lý mới theo quy tắc của khu vực tiếp nhận (Khu 2)**. Mã quản lý trước khi chuyển phải được lưu trong lịch sử để tra cứu, không ghi đè mất dấu vết.
+- Tên hiển thị được thêm dấu `*` ở cuối để nhận biết thiết bị đã chuyển đến; tên chuẩn/originalName vẫn giữ nguyên, dấu `*` chỉ là quy ước hiển thị.
+- Lịch sử phải có một dòng ghi chú rõ ràng theo mẫu: **“Thiết bị được chuyển từ [khu vực nguồn] tới [khu vực tiếp nhận]”**, kèm thời điểm và người thực hiện.
+- Mã quản lý mới được sinh theo Plan đang có hiệu lực và quy tắc mã của khu vực tiếp nhận. Việc cấp mã mới do chuyển khu vực là ngoại lệ nghiệp vụ có chủ đích; không thay đổi UUID gốc hoặc lịch sử thiết bị.
+
+### 12.3. Phạm vi triển khai
+- Trường dữ liệu hiện có `transferredFromOtherFacility` mới chỉ là cờ boolean; chưa đủ để lưu lịch sử nơi nguồn/nơi nhận và phân biệt thiết bị ngoài Organization với thiết bị di chuyển nội bộ.
+- Khi triển khai cần bổ sung mô hình dữ liệu lịch sử chuyển đến/chuyển khu vực và đồng bộ Local-first → Cloud tương ứng; không chỉ sửa tên hiển thị hoặc dùng ghi chú thay cho lịch sử có cấu trúc.
+- Cần bảo đảm tương thích dữ liệu thiết bị cũ, payload Cloud, RPC mutation và luồng khóa chỉnh sửa hiện tại.

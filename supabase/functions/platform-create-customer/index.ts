@@ -24,6 +24,8 @@ Deno.serve(async(req)=>{
   const adminEmail=String(body.adminEmail??'').trim().toLowerCase()
   const adminName=String(body.adminName??'').trim().slice(0,120)
   const planCode=String(body.planCode??'').trim().toUpperCase()
+  const requestId=String(body.requestId??'').trim().toLowerCase()
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestId))return response({error:'Thiếu hoặc sai mã yêu cầu khởi tạo. Hãy tải lại biểu mẫu và thực hiện lại.'},400,origin)
   if(organizationName.length<2||organizationName.length>120||!/^\S+@\S+\.\S+$/.test(adminEmail))return response({error:'Tên tổ chức hoặc email Admin không hợp lệ.'},400,origin)
   if(!['A','B','C','D'].includes(planCode))return response({error:'Bạn phải chọn Plan A, B, C hoặc D trước khi tạo doanh nghiệp.'},400,origin)
 
@@ -49,7 +51,8 @@ Deno.serve(async(req)=>{
 
   // One database transaction creates the Organization, seeds its three roles,
   // assigns the first Admin and copies the selected Plan's catalog snapshot.
-  const {data:provision,error:provisionError}=await admin.rpc('platform_provision_customer',{
+  const {data:provision,error:provisionError}=await admin.rpc('platform_provision_customer_idempotent',{
+   p_request_id:requestId,
    p_organization_name:organizationName,
    p_actor_user_id:auth.user.id,
    p_admin_user_id:target.id,

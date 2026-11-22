@@ -217,3 +217,33 @@ Groups are filtered by `availableFromPlan`. Dictionary entries remain searchable
 - The provisioning RPC is executable by service_role only; authenticated and anon cannot execute it.
 - Source changes to `platform-create-customer` and `platform-get-overview` are committed on `feature/smart-equipment-id-engine`, but the Edge Functions are not redeployed until the new Pages UI is merged, avoiding a mismatch with the currently deployed UI.
 - The two existing Organizations still have no Plan/Snapshot. Their Plan must be decided separately; onboarding does not silently assign one to existing tenants.
+
+## 13. Current integrated implementation status (21/11/2026)
+
+### Official equipment creation
+- The official Smart Equipment ID path is integrated into the real Add Equipment form in App.tsx. It loads the active Organization's own Plan/Catalog Snapshot; it does not use the standard JSON as a live fallback.
+- The name analyzer requires explicit selection when the match is ambiguous and requires explicit group confirmation for Plan B/C/D. Unknown equipment names are not assigned guessed codes.
+- Cloud reserves only the next numeric sequence. Local constructs the final code, saves the asset and UUID to IndexedDB, then confirms the exact code and immutable issuance snapshot in Cloud.
+- The draft retains its reservation UUID across an uncertain network response. Retrying the save uses the same reservation instead of consuming a second sequence. Changing name/group/site/date or closing an unsaved form attempts to release the unused reservation; an already saved Local asset keeps its pending confirmation data.
+- The client verifies that returned Plan, equipment/group/site codes, month-year, sequence, reservation status and catalog version match the requested components before accepting the ID.
+- Plan A uses EQUIPMENT-SEQUENCE; Plan B adds GROUP; Plan C/D add SITE, SEQUENCE and MMYY. Plan C/D sequence does not reset by month. Sequence values are padded to at least three digits and are never truncated.
+
+### First-time customer onboarding
+- The Super Admin UI is a three-step wizard: organization → explicit Plan A/B/C/D → first Admin and final review. It displays capacity, features, ID rule and the exact Plan-filtered Catalog Snapshot counts.
+- The form sends a UUID requestId and persists the request draft in sessionStorage for retry within the same browser tab.
+- Edge Function source platform-create-customer validates requestId and invokes public.platform_provision_customer_idempotent. A retry after a lost response returns the same committed Organization instead of provisioning a duplicate.
+- The private idempotency table binds requestId to actor, first Admin, email, organization name, Plan and the committed result. The request lock serializes concurrent retries. Reusing the same requestId with different details is rejected.
+- Auth invitation remains separate from the database transaction. If invitation succeeds but provisioning does not, the existing Auth account can be reused on retry; the database transaction never leaves a partially provisioned Organization.
+
+### Additional Supabase migrations on BAOTRI-Mini-New
+- 20261121120907_platform_customer_provisioning_idempotency: private request ledger, RLS enabled, no direct browser/service_role table grants, private SECURITY DEFINER implementation and public SECURITY INVOKER wrapper.
+- 20261121120954_grant_service_role_customer_provisioning_idempotency: EXECUTE grant for service_role on the private implementation, required because the public wrapper is SECURITY INVOKER.
+- The public wrapper is executable by service_role only; authenticated cannot execute it. The private table remains inaccessible directly.
+- Rollback-only verification through the public wrapper with role service_role called the same request twice and returned the same organizationId and Plan A snapshot metadata. Reusing the request UUID with a different payload is rejected. The transaction was rolled back.
+
+### Release status
+- Code and migration source are on feature/smart-equipment-id-engine and PR #11. The PR remains Draft and is still divergent from main by three commits.
+- The two existing Organizations have no Plan or tenant Catalog Snapshot; no Plan has been guessed or assigned.
+- No customer organization, Auth account, membership, asset, or sequence was created during this work.
+- Supabase Edge Functions platform-create-customer and platform-get-overview have not been redeployed; Pages has not been merged/deployed. Backend and frontend source are ready to be released together, but production still runs the previous versions.
+- SmartEquipmentIdTool remains an informational formatter/simulator only; official IDs are issued only by the integrated Add Equipment workflow.

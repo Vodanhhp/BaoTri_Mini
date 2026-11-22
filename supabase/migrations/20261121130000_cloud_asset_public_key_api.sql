@@ -2,6 +2,19 @@
 -- All member-facing Cloud reads and mutations use the immutable business code.
 begin;
 
+-- Move UUID-based implementations behind the private schema before exposing
+-- code-based public RPC wrappers. Preserve the permission checks in the
+-- existing SECURITY DEFINER implementations.
+-- The UUID-based implementations already exist in private (migration 010).
+-- Keep them there and replace the public compatibility wrappers with code-based APIs.
+
+-- Only the SECURITY DEFINER public wrappers below may invoke these internals.
+revoke all on function private.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public,anon,authenticated;
+revoke all on function private.acquire_asset_edit_lock(uuid,uuid,text,text) from public,anon,authenticated;
+revoke all on function private.heartbeat_asset_edit_lock(uuid,uuid,uuid) from public,anon,authenticated;
+revoke all on function private.release_asset_edit_lock(uuid,uuid,uuid) from public,anon,authenticated;
+revoke all on function private.list_asset_edit_locks(uuid) from public,anon,authenticated;
+
 create or replace function public.list_cloud_assets(p_organization_id uuid)
 returns jsonb
 language plpgsql

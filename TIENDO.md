@@ -548,3 +548,168 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Sau khi provisioning thành công, hiển thị kết quả gồm tổ chức, Plan, Admin, Snapshot, số nhóm/từ điển/ngành và hạn mức; biểu mẫu được đưa về bước 1 để sẵn sàng tạo khách hàng tiếp theo.
 - Giữ nguyên Edge Function `platform-create-customer` và luồng provisioning giao dịch hiện có; không phát sinh thao tác ghi dữ liệu mới từ giao diện ngoài lời gọi API đã được bảo vệ.
 - Thay đổi giao diện nằm trên nhánh `feature/smart-equipment-id-engine`, PR #11. Chưa merge, chưa deploy Pages và chưa deploy Edge Functions. Chưa có CI/build mới xác nhận cho các commit giao diện này; migration Cloud Asset Public Key vẫn chưa apply.
+
+## Hoàn thiện Smart Equipment ID và đăng ký khách hàng lần đầu (21/11/2026)
+### Smart Equipment ID
+- Luồng cấp mã chính thức tiếp tục theo Local-first: bộ phân tích đọc Catalog Snapshot riêng của Organization; Cloud chỉ giữ số thứ tự nguyên tử; Local ghép mã hoàn chỉnh và ghi hồ sơ IndexedDB; Cloud xác nhận reservation + snapshot thành phần mã.
+- Sửa luồng retry reservation: reservation_id được giữ trên bản nháp khi RPC có thể đã thành công nhưng phản hồi bị mất. Bấm lưu lại dùng đúng reservation key, không cấp số thứ tự mới.
+- Khi người dùng đổi tên/nhóm/cơ sở/ngày vận hành trước khi lưu, reservation cũ được giải phóng best-effort và khóa reservation của bản nháp được làm mới. Khi đóng form chưa lưu, hệ thống thử giải phóng reservation; nếu Local đã ghi hồ sơ thì giữ reservation để retry xác nhận.
+- Client kiểm tra chặt dữ liệu Cloud trả về: request ID, Plan, mã loại, nhóm, cơ sở, MMYY, sequence, trạng thái và source catalog version phải khớp với đầu vào trước khi ghép ID.
+- Không tự đoán mã nếu tên không khớp; trường hợp mơ hồ buộc người dùng chọn loại. Plan B/C/D bắt buộc xác nhận nhóm; Plan C/D yêu cầu mã cơ sở 2 chữ số và ngày đưa vào sử dụng.
+### Đăng ký khách hàng lần đầu
+- Wizard 3 bước giữ nguyên: thông tin doanh nghiệp → Plan A/B/C/D → Admin đầu tiên + review. Plan/Snapshot hiển thị hạn mức, nhóm, ngành, từ điển và quy tắc ID.
+- Thêm request UUID idempotency cho provisioning. Nếu HTTP response bị mất sau khi transaction đã commit, thao tác retry trả về cùng Organization thay vì tạo tổ chức thứ hai.
+- Bản nháp provisioning lưu trong sessionStorage của tab, gồm request ID và dữ liệu form; sau reload/đóng-mở panel trong cùng tab có thể tiếp tục đúng yêu cầu. Xóa bản nháp sau khi nhận kết quả thành công.
+- Edge Function source platform-create-customer yêu cầu request UUID hợp lệ và gọi RPC idempotent; vẫn xác minh token, email chủ nền tảng đã xác nhận, Auth user + profile Admin, Plan hợp lệ. Không đưa mật khẩu Admin qua form.
+- Overview source đọc Plan và Catalog Snapshot để hiển thị đúng thông tin khách hàng.
+### Supabase BAOTRI-Mini-New
+- Đã áp dụng migration 20261121120907_platform_customer_provisioning_idempotency: bảng request private, RLS bật, không cấp quyền đọc trực tiếp; function khóa advisory theo request UUID, ràng buộc request vào payload và lưu kết quả provision trong cùng transaction.
+- Đã áp dụng migration 20261121120954_grant_service_role_customer_provisioning_idempotency: cấp EXECUTE cho service_role trên private implementation; public wrapper SECURITY INVOKER chỉ cho service_role gọi.
+- Kiểm tra rollback-only qua public RPC với role service_role: hai lần gọi cùng request UUID trả cùng organizationId; kết quả có Plan A, Snapshot v1.1.0, 74 dictionary entries và 11 industries. Transaction đã ROLLBACK; không tạo khách hàng thật.
+- Security Advisor: INFO cho private tables bật RLS nhưng không có policy (đúng chủ đích vì không cho client truy cập trực tiếp); WARN hiện hữu về Leaked Password Protection đang tắt. Performance Advisor có cảnh báo FK/index và permissive profiles policy từ schema trước; chưa thuộc phạm vi thay đổi lần này.
+- Không áp dụng migration 20261121130000_cloud_asset_public_key_api.sql trong công việc này.
+### Ranh giới phát hành
+- Các thay đổi code và migration source chỉ được commit trên feature/smart-equipment-id-engine / PR #11. Chưa merge main, chưa deploy Pages, chưa redeploy Edge Functions; do đó website production vẫn giữ phiên bản cũ và Edge Functions trên BAOTRI-Mini-New vẫn là bản cũ cho đến khi phát hành đồng bộ frontend + functions.
+- Không tạo Organization, Auth user, membership, asset hoặc sequence thật trong quá trình này.
+
+## Chốt tiến trình và lịch theo dõi PR #11 (21/11/2026)
+
+### Trạng thái công việc tại thời điểm chốt
+- Repository: `Vodanhhp/BaoTri_Mini`; PR #11 – Smart Equipment ID Engine; branch `feature/smart-equipment-id-engine`; base `main`.
+- Supabase đích duy nhất: `BAOTRI-Mini-New`, project ref `dskeaiyvldiwlsfqkboq`.
+- Các phần code đã ghi ở các mục phía trên: Smart Equipment ID Local-first, wizard tạo khách hàng theo Plan, provisioning idempotency và hai migration liên quan đã apply trên BAOTRI-Mini-New.
+- Kiểm thử provisioning gần nhất là rollback-only; cùng request UUID trả cùng Organization, tái sử dụng UUID với payload khác bị từ chối. Transaction đã ROLLBACK, không tạo khách hàng thật.
+- Migration `20261121130000_cloud_asset_public_key_api.sql` chưa apply.
+- PR #11 chưa merge; chưa deploy Pages frontend hoặc Edge Functions `platform-create-customer` và `platform-get-overview`. Không chạy migration phát hành, không tạo Organization/Auth user/membership/asset/reservation/sequence thật.
+- Không coi các trạng thái ahead/behind, conflict hoặc CI lịch sử là trạng thái hiện tại; phải kiểm tra lại GitHub trước khi ra quyết định phát hành.
+
+### Điều kiện phát hành bắt buộc
+1. Branch `feature/smart-equipment-id-engine` đồng bộ hoàn toàn với `main` (ahead=0, behind=0).
+2. PR #11 không conflict và GitHub xác nhận mergeable.
+3. Các workflow/CI checks bắt buộc trên đúng head commit đều thành công; phân biệt Build với unit/integration/browser tests, không suy diễn build thành nghiệm thu nghiệp vụ.
+4. Đọc và đối chiếu source frontend với hai Edge Functions `platform-create-customer`, `platform-get-overview`; xác minh tương thích contract, Plan/Catalog Snapshot và request idempotency.
+5. Lập kế hoạch phát hành đồng bộ Pages frontend + hai Edge Functions trên đúng Supabase project `BAOTRI-Mini-New`. Migration nào còn cần apply phải được liệt kê, kiểm tra thứ tự và phê duyệt riêng.
+6. Chỉ phát hành sau khi người dùng phê duyệt rõ ràng. Không tự merge PR, deploy Pages/Edge Functions, chạy migration hoặc tạo dữ liệu khách hàng.
+
+### Lịch theo dõi tự động
+- Đã tạo và cập nhật automation theo dõi PR #11 hằng ngày, automation ID: `6b018b61709481918244f3737ac65288`.
+- Nội dung lịch: kiểm tra trạng thái PR, ahead/behind, mergeability/conflict, workflow/CI mới nhất trên head commit và tương thích frontend/backend.
+- Nếu chưa đạt đủ điều kiện: giữ im lặng, tiếp tục kiểm tra ở lịch sau; không gửi báo cáo trạng thái không đổi hoặc lỗi kiểm tra tạm thời.
+- Khi lần đầu xác minh đủ điều kiện: gửi báo cáo ngắn nêu bằng chứng, commit và các bước phát hành cần người dùng phê duyệt; sau đó dừng theo dõi.
+- Lịch không được phép tự merge, deploy, chạy migration hoặc tạo dữ liệu khách hàng.
+- Lịch theo dõi DEEP C đã được tắt theo yêu cầu người dùng.
+
+### Điểm bắt đầu phiên làm việc tiếp theo
+- Đọc lại file TIENDO này và kiểm tra trạng thái GitHub mới nhất của PR #11/branch/main.
+- Xác minh lại các CI checks trên head commit thực tế.
+- Rà soát source hiện hành của frontend và hai Edge Functions trước khi đề xuất bước phát hành.
+- Không yêu cầu người dùng lặp lại các quyết định đã ghi; không sửa hai Supabase project cũ.
+
+## Tiếp tục rà soát PR #11 — 22/11/2026
+
+- Kiểm tra GitHub trực tiếp: PR #11 vẫn OPEN, Draft, chưa merge; head branch `feature/smart-equipment-id-engine` hiện là `6a12ad98fcfe1e290b2ecb226094bb31bce2698f` (commit cập nhật TIENDO), main hiện là `41328767da804b382901fa9da3e3e02ebd7dfd01`.
+- PR ghi base SHA `c88d59fc0c928e9ef87d145989c2cebf12b05e5f`; main đã tiến thêm 3 commit sau base (merge Smart ID simulator PR #12 và hai commit thêm lối vào công cụ ở màn hình đăng nhập). Branch PR #11 cần cập nhật main trước khi đánh giá release.
+- GitHub hiện trả `mergeable=false`; coi là blocker, chưa kết luận conflict cụ thể nếu chưa có kết quả cập nhật/đối chiếu đầy đủ.
+- Head commit `6a12ad98...` hiện không có check-runs/status: check-runs total_count=0, commit status state=pending và total_count=0; wrapper workflow-runs cũng trả danh sách rỗng. Các CI success ghi ở commit cũ không phải bằng chứng cho head hiện tại.
+- PR hiện báo 154 commits, 31 files changed. Changed files bao gồm `src/App.tsx`, `src/AuthScreen.tsx`, `src/SmartEquipmentIdTool.tsx`, CI/tests, migration Cloud Asset Public API và hai Edge Functions.
+- Đã đọc source hiện hành trên branch: package có `npm test` chạy `scripts/*.test.mjs`, CI workflow thực hiện `npm ci` → `npm test` → `npm run build`; hai Edge Function source có Plan-aware provisioning và idempotent request UUID; Cloud Asset client dùng RPC code-based thay vì SELECT trực tiếp bảng assets.
+- Chưa thể xác minh CI trên head mới; chưa hoàn thành kiểm tra source-to-deployed contract hoặc browser E2E. Migration `20261121130000_cloud_asset_public_key_api.sql` vẫn chưa apply.
+- Công cụ GitHub hiện có không cung cấp thao tác tạo merge commit/update branch an toàn; không tự force-move ref hoặc merge PR. Việc cập nhật main vào feature branch cần xử lý qua Git merge/rebase và review conflict.
+- Việc tiếp theo: cập nhật branch với main, xử lý xung đột (đặc biệt App/AuthScreen và SmartEquipmentIdTool), chạy unit tests/build CI trên head mới, sau đó tiếp tục rà soát release checklist. Không merge/deploy/migration/ghi dữ liệu nếu chưa được phê duyệt.
+
+
+## Tiếp tục xử lý đồng bộ Main–Feature theo chỉ đạo mới — 22/11/2026
+
+- Người dùng xác nhận appweb hiện đang trong giai đoạn xây dựng, chưa có khách hàng; yêu cầu làm trực tiếp trên website/nhánh đang phát triển, không dựng môi trường thử nghiệm riêng và không chạy test theo quy trình cũ. Không được hiểu yêu cầu này thành cho phép ghi dữ liệu khách hàng thật, tự merge PR hoặc deploy production.
+- Kiểm tra lại PR #11: OPEN, Draft, chưa merge; head hiện tại tại thời điểm kiểm tra là `3beab678b1741ee47fcc7722202b09af00601c8e`. Main là `41328767da804b382901fa9da3e3e02ebd7dfd01`. Compare xác nhận feature ahead 155, behind 3, status diverged; merge-base vẫn là `c88d59fc0c928e9ef87d145989c2cebf12b05e5f`.
+- Đọc compare main từ merge-base: 3 commit mới trên main gồm commit đưa Smart ID simulator vào Local mode và các cập nhật lối vào giao diện. Main thay đổi `.github/workflows/ci.yml`, `package.json`, `scripts/smartEquipmentId.test.mjs`, `src/App.tsx`, `src/AuthScreen.tsx`, `src/SmartEquipmentIdTool.tsx`, `src/lib/smartEquipmentId.ts`, `src/style.css`.
+- Đối chiếu blob: CI workflow, AuthScreen, SmartEquipmentIdTool và smartEquipmentId.ts hiện giống hệt giữa main và feature. package.json khác ở script test: main chỉ chạy smartEquipmentId.test.mjs, feature chạy toàn bộ scripts/*.test.mjs; giữ cách của feature để không bỏ test Cloud Asset API. src/style.css của feature đã chứa CSS Smart ID simulator của main cùng phần plan-context; không cần ghi đè CSS.
+- src/App.tsx là vùng cần hợp nhất cẩn thận: feature có luồng Smart ID chính thức tích hợp Add Equipment, Cloud reservation, Local-first persistence và Cloud confirmation; main có thay đổi liên quan simulator/đường dẫn mở công cụ. Không thay toàn bộ App.tsx bằng bản main vì sẽ làm mất luồng Smart ID chính thức và các thay đổi Cloud Asset của feature.
+- Chưa thực hiện cập nhật ref, tạo commit merge hoặc sửa file nguồn trong lượt này. Chưa deploy, chưa apply migration Cloud Asset Public Key, chưa tạo dữ liệu khách hàng.
+- Quy trình làm việc từ nay theo yêu cầu người dùng: không dựng staging/preview hoặc chạy test theo checklist cũ; làm trực tiếp trên appweb/nhánh phát triển. Vẫn phải giữ nguyên bảo vệ dữ liệu và không thực hiện hành động không thể đảo ngược (merge PR, deploy production, migration ghi dữ liệu, tạo Organization/Auth user/asset/sequence thật) nếu chưa được cho phép rõ ràng.
+- Việc tiếp theo: xử lý riêng các thay đổi main trong App.tsx theo hướng giữ luồng Smart ID chính thức của feature và đưa lối mở simulator nếu vẫn cần; sau đó đồng bộ nhánh theo cách tạo merge commit có hai parent, không force-push và không thay thế toàn bộ file feature bằng file main.
+
+
+## Đồng bộ Main vào Feature — 22/11/2026
+
+- Đã đối chiếu toàn bộ 3 commit mới trên Main với nội dung Feature. Các phần Smart ID simulator, entry trên màn hình đăng nhập, nút mở công cụ trong appweb, SmartEquipmentIdTool, AuthScreen, smartEquipmentId.ts, CSS và CI workflow đều đã hiện diện trên Feature. package.json của Feature giữ script `node --test scripts/*.test.mjs`, bao gồm bộ test Cloud Asset API ngoài bộ Smart ID, nên không thay bằng script hẹp hơn của Main.
+- Giữ nguyên toàn bộ tree của Feature (bao gồm Smart ID Local-first chính thức, Cloud reservation/mutation, provisioning và các cập nhật TIENDO), tạo merge commit hai parent để ghi nhận Main đã được hợp nhất mà không ghi đè code Feature.
+- Merge commit: `854f8e39efc1b1a63eb1bf2a24eb9ea8891af90e`; parent Feature trước merge `b82253fba752704ff780948cc773b7b40f9df601`; parent Main `41328767da804b382901fa9da3e3e02ebd7dfd01`. Cập nhật branch bằng fast-forward, không force-push.
+- Kiểm tra lại GitHub sau cập nhật: compare Main → Feature trả `ahead=157, behind=0`, merge-base đúng bằng Main SHA `41328767da804b382901fa9da3e3e02ebd7dfd01`. PR #11 vẫn OPEN và Draft; GitHub trả `mergeable=true`, `mergeable_state=unstable`. Đây mới là trạng thái mergeability, không phải xác nhận CI/build hoặc nghiệm thu nghiệp vụ.
+- Theo chỉ đạo hiện tại, không chạy test/build, không dựng preview/staging. Không merge PR, không deploy Pages/Edge Functions, không apply migration và không tạo dữ liệu khách hàng thật.
+- Bước tiếp theo: tiếp tục hoàn thiện trực tiếp phần appweb trên Feature, ưu tiên rà soát chức năng đang thiếu theo yêu cầu sản phẩm; chỉ xem xét release khi người dùng yêu cầu và phê duyệt rõ ràng.
+
+
+## Sửa lỗi migration Cloud Asset Public Key — 22/11/2026
+
+- Khi rà soát source migration `20261121130000_cloud_asset_public_key_api.sql` với migration gốc `20261121023532_008_cloud_asset_sync_and_locking.sql` và migration wrapper `20261121094809_smart_equipment_id_private_rpc_wrappers.sql`, phát hiện migration Public Key gọi các implementation `private.import_asset_preserving_identity`, `private.acquire_asset_edit_lock`, `private.heartbeat_asset_edit_lock`, `private.release_asset_edit_lock`, `private.list_asset_edit_locks` nhưng các hàm gốc này chưa được chuyển từ schema public sang private. Migration 010 mới chuyển các hàm apply mutation và mirror history, không chuyển 5 hàm nêu trên.
+- Đã sửa migration Public Key trên Feature: chuyển 5 implementation hiện hữu vào schema `private` trước khi tạo các RPC wrapper code-based; thu hồi EXECUTE trực tiếp của public/anon/authenticated trên implementation private. Các public wrapper giữ nguyên hợp đồng gọi bằng mã thiết bị, tiếp tục thực thi qua implementation cũ có kiểm tra `auth.uid()` và permission của tổ chức.
+- Commit sửa migration: `c3fa7a6acab86d90012c73b4cf44f3c98b352744`.
+- Chỉ sửa source migration trong GitHub. Chưa apply migration lên Supabase BAOTRI-Mini-New; chưa thay đổi schema/database runtime, chưa deploy, chưa tạo dữ liệu.
+- Không chạy test/build theo yêu cầu người dùng. Trước khi apply sau này cần rà soát thứ tự migration và trạng thái thực tế của schema trên đúng project `dskeaiyvldiwlsfqkboq`; không áp dụng lên hai project Supabase cũ.
+- Tiếp tục rà soát migration Public Key và contract frontend↔RPC trước khi xin phê duyệt apply. Các điều kiện phát hành khác vẫn giữ nguyên: chưa merge PR #11, chưa deploy Pages hoặc Edge Functions.
+
+
+## Chốt phiên rà soát migration Public Key — 22/11/2026
+
+- Head trước khi ghi checkpoint: `5df38d09ef44c6250cf3f64e546353527466c102`. Compare Main → Feature: ahead 160, behind 0; merge-base là Main `41328767da804b382901fa9da3e3e02ebd7dfd01`.
+- PR #11 vẫn OPEN, Draft; GitHub báo mergeable=true, mergeable_state=unstable. Không coi đây là CI/build success.
+- Migration Public Key đã được sửa để chuyển 5 implementation UUID-based sang schema private trước khi tạo code-based public wrappers; xác nhận source có đủ 5 lệnh ALTER FUNCTION và wrapper import gọi private implementation.
+- Không chạy test/build, không apply migration, không deploy hoặc merge PR theo yêu cầu hiện tại.
+- Việc tiếp theo: rà soát tiếp toàn bộ hợp đồng RPC/grants và tương thích dữ liệu của migration Public Key với frontend; nếu còn lỗi source thì sửa trên Feature. Việc apply migration và deploy vẫn cần phê duyệt riêng.
+
+
+## Ưu tiên hoàn thiện Đăng nhập + Smart Equipment ID để người dùng chạy thử — 22/11/2026
+
+- Người dùng yêu cầu ưu tiên hoàn thiện hai phần Đăng nhập và Tạo mã thiết bị càng sớm càng tốt để tự chạy thử. Tiếp tục làm trực tiếp trên nhánh Feature; không chạy test/build tự động.
+- Supabase target `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`) đang `ACTIVE_HEALTHY`. Các migration nền tảng, RBAC và Smart ID đến `20261121120954` đã có trong lịch sử DB. Edge Functions nền tảng hiện có và ACTIVE: platform-manage-organization, platform-create-customer, platform-get-overview, invite-org-member, manage-organization-members.
+- DB có 2 tổ chức: `BAOTRI Mini` (2 active memberships) và `BAOTRI Mini Test 02` (1 active membership). Cả hai đều chưa có `organization_equipment_catalog`, chưa có Plan, chưa có sequence/reservation. Tổ chức chạy thử đã được người dùng xác nhận trước đây là `BAOTRI Mini Test 02`, tài khoản của người dùng có role Admin ở tổ chức này; `BAOTRI Mini` là Viewer. Người dùng chưa chọn Plan A/B/C/D, vì vậy không tự gán Plan.
+- Đây là blocker nghiệp vụ hiện tại của việc cấp mã chính thức: `reserve_asset_id_sequence` từ chối nếu tổ chức chưa có Plan + Catalog Snapshot. Public catalog file hiện có version `1.1.0`, 30 nhóm, 74 loại chuẩn, 44 ngành; snapshot cần được khởi tạo theo Plan được chọn (A/B/C/D sẽ lọc số nhóm/ngành tương ứng).
+- Migration `20261121130000_cloud_asset_public_key_api.sql` chưa được áp dụng lên DB. Migration này dành cho Cloud asset read/edit/lock API ẩn UUID; không phải blocker trực tiếp của login hoặc cấp số Smart ID (các migration Smart ID reservation hiện đã áp dụng). Chưa apply để tránh thay đổi schema không cần thiết cho lần chạy thử đầu tiên.
+- Source fixes trên Feature:
+  - `cfd5a436`: xử lý lỗi khôi phục session Supabase để giao diện không mắc vô hạn ở trạng thái “Đang kiểm tra phiên đăng nhập”.
+  - `80358dc` và `21c5ca4`: hiển thị lỗi khôi phục session ngay trên màn hình đăng nhập.
+  - `cd27467`: cập nhật README theo đúng kiến trúc Auth + Local-first + Smart ID, ghi rõ điều kiện Plan/Catalog.
+  - `d9d6e21`: Smart ID simulator dùng `import.meta.env.BASE_URL` khi tải catalog, tương thích base path của Vite.
+- AuthScreen hiện hỗ trợ signInWithPassword, email chưa xác nhận, quên mật khẩu và không cho đăng ký tự do. Supabase URL/publishable key được cấu hình trong `.env.example` cho đúng project mới; không đưa service-role key vào frontend. Email/password login không cần redirect; password recovery cần Supabase Auth Site URL/Redirect URLs khớp domain/local origin.
+- Bước tiếp theo để unblock: người dùng cần chọn Plan cho `BAOTRI Mini Test 02`. Sau đó khởi tạo Catalog Snapshot cho tổ chức này qua quy trình quản trị an toàn, apply chỉ những migration thực sự cần cho luồng đang thử, triển khai website/Edge Functions phù hợp rồi hướng dẫn người dùng đăng nhập và tạo mã đầu tiên.
+- Lưu ý triển khai: hiện chỉ có quyền sửa source qua GitHub connector; không có Cloudflare Pages deploy tool trong phiên. Branch Feature chưa được đưa lên production domain, PR #11 vẫn Draft/open. Không tuyên bố website live đã cập nhật cho đến khi có deployment thật.
+
+
+## Xác minh trực tiếp BAOTRI Mini New trước khi cấp Plan chạy thử — 22/11/2026
+
+- Đối chiếu lại Project ID trong mọi truy vấn Supabase: chỉ thao tác đọc trên `dskeaiyvldiwlsfqkboq` (BAOTRI Mini New). Không truy cập hoặc thay đổi project `BaoTRiMini` cũ.
+- Xác minh DB: `BAOTRI Mini Test 02` đang active; membership tài khoản người dùng active, role `admin`, có role assignment `admin` và 27 quyền. Tổ chức `BAOTRI Mini` vẫn là tổ chức khác; không thay đổi.
+- Xác minh catalog chuẩn trong `private.standard_equipment_catalog_versions`: bản current `data_version=1.1.0`, `schema_version=1.0.0`, 30 nhóm và 74 loại thiết bị.
+- Xác minh `organization_equipment_catalog` hiện chưa có bản ghi cho bất kỳ tổ chức nào; Test 02 chưa có Plan/Snapshot. Chưa có dữ liệu sequence. Không tự chọn Plan hoặc ghi dữ liệu khi chưa được người dùng xác nhận.
+- Xác minh migration Smart ID đến `20261121120954` đã áp dụng; RPC reservation/confirmation/release là luồng frontend đang gọi. Migration Cloud Asset Public Key vẫn chưa áp dụng và không phải điều kiện trực tiếp để login hoặc cấp Smart ID.
+- Source đã rà soát: AuthScreen dùng signInWithPassword, thông báo lỗi khôi phục session, quên mật khẩu; App.tsx tải membership/role/permissions rồi tải Catalog Snapshot theo tổ chức. Luồng tạo thiết bị yêu cầu Plan + Snapshot, giữ sequence ở Cloud, ghi asset Local trước, sau đó confirm reservation.
+- Chưa chạy test/build tự động, chưa deploy Pages, chưa merge PR. Nhánh Feature chưa phải bản đang chạy trên domain production.
+- Blocker duy nhất để thử cấp mã chính thức: cần người dùng chọn Plan cho riêng `BAOTRI Mini Test 02`; sau đó mới được khởi tạo snapshot đúng Plan. Khuyến nghị Plan B nếu muốn thử luồng nhóm thiết bị mà vẫn giữ giới hạn test 500 thiết bị; Plan D chỉ nên chọn nếu cần thử các nhóm D và không giới hạn số lượng. Không tự gán thay người dùng.
+
+
+## Khởi tạo Plan B cho BAOTRI Mini Test 02 — 22/11/2026
+
+- Người dùng đã xác nhận đồng ý Plan B cho tổ chức thử nghiệm `BAOTRI Mini Test 02` trong Supabase `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`).
+- Trước khi ghi dữ liệu đã kiểm tra đúng organization UUID `f11bb85f-0dbe-45f0-bffa-472e5f84f7bf`, trạng thái active, Admin membership active; tổ chức chưa có Catalog Snapshot, chưa có Cloud assets, chưa có sequence/reservation.
+- Đã khởi tạo `public.organization_equipment_catalog` cho đúng tổ chức này từ catalog chuẩn hiện hành trong DB; không tạo tổ chức mới, không thay đổi `BAOTRI Mini`, không tác động project Supabase cũ.
+- Xác minh sau khởi tạo: Plan B / Tiêu chuẩn, tối đa 500 thiết bị; data version 1.1.0; snapshot có 9 nhóm thiết bị, 74 loại thiết bị, 21 ngành nghề. Bản ghi đã được trigger `validate_equipment_catalog_snapshot` kiểm tra khi insert thành công.
+- Xác minh lại: Test 02 hiện có 0 assets Cloud, 0 sequence, 0 reservation; chỉ cấu hình Plan + Snapshot, chưa tạo mã hay thiết bị.
+- Luồng frontend đã rà soát: sau khi chọn tổ chức, App tải Catalog Snapshot; khi tạo thiết bị mới sẽ phân tích tên theo catalog, yêu cầu chọn nhóm đối với Plan B, reserve sequence trên Cloud, ghi hồ sơ Local trước, sau đó confirm reservation lên Cloud. Nếu confirm lỗi thì hồ sơ Local giữ trạng thái reserved để retry.
+- Không chạy test/build tự động theo yêu cầu người dùng. Chưa deploy website Pages, chưa merge PR #11. Supabase Edge Function hiện có vẫn ACTIVE; chưa cần deploy function mới cho bước gán Plan này.
+- Việc còn lại trước khi người dùng chạy thử trên domain: đưa nhánh Feature lên môi trường website thực tế theo cách triển khai đã chọn; hiện chưa có công cụ Cloudflare Pages được kết nối trong phiên nên không tuyên bố website live đã cập nhật. Có thể chạy local theo README với `.env.local` trỏ đúng BAOTRI Mini New trong lúc chờ deploy.
+
+
+## Chốt quy tắc đổi Plan, đổi tên doanh nghiệp và tiếp nhận thiết bị chuyển đến — 22/11/2026
+
+- Người dùng đã đồng ý các quy tắc nghiệp vụ được bổ sung trong `THIET_BI.md`.
+- Đổi Plan: thiết bị đã có mã giữ nguyên UUID, mã quản lý và lịch sử; không cấp lại mã. Chỉ thiết bị tạo mới sau thời điểm hiệu lực mới theo quy tắc Plan hiện hành.
+- Hạ cấp vượt hạn mức: giữ nguyên thiết bị cũ, không xóa/khóa/lưu kho tự động; cảnh báo vượt hạn mức và chặn tạo mới cho đến khi số lượng phù hợp.
+- Plan mới do Super Admin áp dụng sau khi Admin doanh nghiệp gửi yêu cầu và Super Admin xác nhận; cần lưu lịch sử Plan cũ/mới, người yêu cầu/duyệt và thời điểm hiệu lực. Đổi Plan không được làm mất danh mục riêng hoặc dữ liệu thiết bị.
+- Đổi tên doanh nghiệp: cập nhật tên Organization hiện hữu, không tạo tenant mới và không đổi organization_id; cần lưu lịch sử tên cũ/mới, người sửa và thời điểm.
+- Quy trình thêm thiết bị bổ sung lựa chọn **Nơi khác chuyển đến**. Khi chuyển thiết bị từ Khu 1 sang Khu 2: giữ UUID/định danh hồ sơ gốc, cấp **mã quản lý mới theo Plan hiện hành và quy tắc của Khu 2**, lưu mã quản lý cũ trong lịch sử; tên hiển thị thêm dấu `*`.
+- Lịch sử phải ghi thành dòng: **“Thiết bị được chuyển từ [khu vực nguồn] tới [khu vực tiếp nhận]”**, kèm thời điểm và người thực hiện. Tên chuẩn/originalName không bị sửa thành tên có dấu `*`; dấu `*` chỉ dùng nhận biết trên giao diện.
+- Nếu thiết bị đến từ ngoài Organization, tạo UUID nội bộ và mã quản lý theo Plan/khu vực tiếp nhận; mã/serial cũ ở nơi chuyển đi (nếu có) chỉ lưu làm thông tin nguồn tham chiếu.
+- Rà soát source hiện tại: `Asset.transferredFromOtherFacility` mới là boolean; Cloud payload cũng chỉ có cờ boolean. Chưa có cấu trúc lưu nguồn/khu vực tiếp nhận và lịch sử di chuyển.
+- Chưa sửa code, chưa tạo migration, chưa apply SQL, chưa thay đổi dữ liệu Supabase. Cần thiết kế migration tương thích Local/Cloud và luồng mutation trước khi triển khai.
+- Nhánh làm việc: `feature/smart-equipment-id-engine`; repo `Vodanhhp/BaoTri_Mini`. PR #11 vẫn Draft/open; không merge/deploy theo chỉ đạo hiện hành.

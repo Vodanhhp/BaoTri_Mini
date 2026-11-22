@@ -82,13 +82,26 @@ export async function reserveSmartEquipmentId(
   if (error) throw new Error('Cloud không cấp được số thứ tự: ' + error.message)
 
   const reservation = data as SmartSequenceReservation
+  const expectedGroup = input.plan === 'A'
+    ? undefined
+    : (input.groupCode ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+  const expectedSite = input.plan === 'C' || input.plan === 'D'
+    ? (input.siteCode ?? '00')
+    : undefined
+  const expectedMonthYear = input.plan === 'C' || input.plan === 'D'
+    ? (input.commissionedAt ? input.commissionedAt.slice(5, 7) + input.commissionedAt.slice(2, 4) : '')
+    : undefined
   if (!reservation || reservation.reservation_id !== input.reservationId
     || reservation.plan_code !== input.plan
     || reservation.equipment_code !== input.equipmentCode
     || !Number.isSafeInteger(Number(reservation.sequence))
     || Number(reservation.sequence) < 1
-    || !reservation.source_data_version) {
-    throw new Error('Cloud trả về thông tin giữ số thứ tự không hợp lệ.')
+    || !reservation.source_data_version
+    || !['reserved', 'confirmed'].includes(reservation.status)
+    || (reservation.group_code ?? undefined) !== expectedGroup
+    || (reservation.site_code ?? undefined) !== expectedSite
+    || (expectedMonthYear !== undefined && reservation.month_year !== expectedMonthYear)) {
+    throw new Error('Cloud trả về thông tin giữ số thứ tự không khớp Plan hoặc thành phần mã đã yêu cầu.')
   }
 
   const sequence = Number(reservation.sequence)
