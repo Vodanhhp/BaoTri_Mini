@@ -1328,3 +1328,10 @@ html,body,#root,.app-shell{
   font-size:var(--font-size-caption)!important;
 }
 #root .table-standard-wrap :is(th,td,td b,td small){font-family:var(--font-family-ui)!important}
+
+/* Small third-party scanner controls and remaining metadata follow the same readable minimum. */
+#root .scan-modal #qr-reader__dashboard :is(select,button,a),
+#root .scan-modal .html5-qrcode-element,
+#root :where(.platform-action-kicker,.about-version b,.plan-asset-option b){
+  font-size:var(--font-size-caption)!important;
+}
