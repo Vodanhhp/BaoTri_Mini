@@ -1036,3 +1036,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Migration source được đổi tên ở commit 30a400a9ba01e7d61d84eddf7ce64cd77f0883b0 và xóa file cũ ở commit 63d4aecd98b175e45801385a667e2306f7b37130. TIENDO hiện ghi nhận lần apply thành công và kết quả smoke test.
 - Lần retry deploy Preview tiếp tục bị Vercel 429 GitHub API rate limit; chưa có deployment URL.
 - HEAD trước khi append mục này: 446510b1a5034dbc82c7ac501a3d06d755aa3fe3.
+
+
+- Lần thử tạo deployment Preview thứ ba cho HEAD faaf8352b118335c6a812f2855a7d8bc0d28c31b tiếp tục nhận HTTP 429 rate_limited (GitHub API rate limit exceeded). Đã dừng retry theo hướng dẫn dịch vụ; không tạo deployment và không có URL để đăng nhập.
+- Trạng thái hiện tại: migration đã apply + SQL smoke test member/Super Admin/denied đã có kết quả; phần frontend đã commit main nhưng chưa được build/deploy. Cần chờ Vercel/GitHub API hết rate limit hoặc dùng phương thức deploy khác có quyền truy cập repo. Không chuyển sang production.
