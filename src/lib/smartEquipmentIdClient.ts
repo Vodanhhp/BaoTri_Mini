@@ -62,7 +62,6 @@ export async function reserveSmartEquipmentId(
   input: {
     organizationId: string
     reservationId: string
-    plan: PlanCode
     equipmentCode: string
     groupCode?: string
     siteCode?: string
