@@ -3,6 +3,11 @@
 -- originally issued reservation and its original Plan/components.
 begin;
 
+-- Retain the catalog version that governed each newly issued reservation so
+-- retries after a Plan transition preserve the original issuance metadata.
+alter table private.asset_id_sequence_reservations
+  add column if not exists source_data_version text;
+
 create or replace function public.reserve_asset_id_sequence(
   p_organization_id uuid, p_reservation_id uuid, p_equipment_code text,
   p_group_code text default null, p_site_code text default null, p_commissioned_at date default null
@@ -64,7 +69,7 @@ begin
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
       'group_code',nullif(v_existing.group_code,''),'site_code',nullif(v_existing.site_code,''),
-      'month_year',v_existing.month_year,'source_data_version',v_source_version,'status',v_existing.status);
+      'month_year',v_existing.month_year,'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
   end if;
 
   -- Serialize new reservations with Plan changes. The approval RPC locks this
@@ -128,7 +133,7 @@ begin
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
       'group_code',nullif(v_existing.group_code,''),'site_code',nullif(v_existing.site_code,''),
-      'month_year',v_existing.month_year,'source_data_version',v_source_version,'status',v_existing.status);
+      'month_year',v_existing.month_year,'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text, 0));
@@ -152,8 +157,8 @@ begin
   returning last_value into v_sequence;
 
   insert into private.asset_id_sequence_reservations(
-    organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,sequence_value,month_year
-  ) values(p_organization_id,p_reservation_id,auth.uid(),v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year);
+    organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,sequence_value,month_year,source_data_version
+  ) values(p_organization_id,p_reservation_id,auth.uid(),v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,v_source_version);
 
   return jsonb_build_object('reservation_id',p_reservation_id,'plan_code',v_plan,'sequence',v_sequence,
     'equipment_code',v_equipment_code,'group_code',nullif(v_group_code,''),'site_code',nullif(v_site_code,''),
