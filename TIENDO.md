@@ -1197,3 +1197,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đồng bộ source version 4 vào branch `fix/staging-plan-cors-current-origin` để tránh source trong Git ghi đè cấu hình Test khi deploy sau này.
 - Chưa có browser runtime test sau version 4; chưa gửi yêu cầu Plan, không duyệt/từ chối, không thay đổi Plan/Catalog Snapshot hoặc dữ liệu tổ chức. Không triển khai Production.
 - Việc tiếp theo: người dùng Ctrl+F5 bản Staging hiện hành, mở Thuê bao doanh nghiệp và kiểm tra tải lịch sử/gửi yêu cầu; chỉ gửi yêu cầu thật khi đã chọn Plan mong muốn và xác nhận thao tác.
+
+
+### Sửa CORS cho Tổng quan hệ thống Chủ sở hữu nền tảng — 22/11/2026
+- Người dùng xác nhận cho phép cập nhật riêng Edge Function `platform-get-overview` trên Supabase Test sau khi xác định hostname Staging hiện tại chưa nằm trong allowlist CORS.
+- Đã bổ sung chính xác origin `https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app` vào allowlist; giữ nguyên domain Production và localhost hiện có.
+- Triển khai thành công `platform-get-overview` lên **version 3**, trạng thái **ACTIVE**, `verify_jwt=true`.
+- Đọc lại source sau deploy và xác nhận origin Staging mới có trong allowlist. Không thay đổi xác thực chủ sở hữu, truy vấn thống kê, quyền truy cập, dữ liệu hoặc logic nghiệp vụ.
+- Đồng bộ nguyên trạng source version 3 từ Supabase Test vào nhánh `fix/staging-plan-cors-current-origin` để Git phản ánh đúng source đã triển khai.
+- Chưa có request POST/browser runtime test sau deploy; do đó mới xác nhận deploy và source, chưa kết luận giao diện Tổng quan đã tải số liệu thành công. Không thay đổi Production, không sửa dữ liệu.
+- Việc tiếp theo: người dùng Ctrl+F5 bản Staging, đăng nhập tài khoản Chủ sở hữu nền tảng và mở lại **Tổng quan hệ thống** để kiểm tra số liệu.
