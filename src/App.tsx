@@ -11,7 +11,7 @@ import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
@@ -85,6 +85,7 @@ export default function App() {
   const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
   const [localPreviewAssets, setLocalPreviewAssets] = useState<Asset[]>([])
+  const [cloudSyncMessage,setCloudSyncMessage] = useState('')
   const [recoverableDrafts, setRecoverableDrafts] = useState<AssetDraft[]>([])
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('Tất cả nhóm')
@@ -190,6 +191,26 @@ export default function App() {
       .catch(cause=>{if(active)setError('Không tải được dữ liệu Local Preview cũ: '+(cause instanceof Error?cause.message:String(cause)))})
     return()=>{active=false}
   },[session?.user.id,organizationId,localPreview])
+  useEffect(()=>{
+    if(!session?.user.id||!supabase||!organizationReady||!organizationId||localPreview){
+      setCloudSyncMessage('')
+      return
+    }
+    const context=organizationContexts.find(item=>item.id===organizationId)
+    if(!context?.permissions.includes('assets.view')){setCloudSyncMessage('Tài khoản không có quyền xem thiết bị của tổ chức; bỏ qua đồng bộ Cloud.');return}
+    let active=true
+    setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
+    void syncCloudAssetsToLocal(supabase,organizationId,{shouldContinue:()=>active})
+      .then(async summary=>{
+        if(!active)return
+        await loadAssets(organizationId)
+        if(!active)return
+        setCloudSyncMessage('Cloud → Local hoàn tất: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột.')
+      })
+      .catch(cause=>{if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))})
+    return()=>{active=false}
+  },[session?.user.id,organizationReady,organizationId,localPreview,organizationContexts])
+
   useEffect(()=>{
     if(!session?.user.id||!organizationId||localPreview){setRecoverableDrafts([]);return}
     let active=true
@@ -758,7 +779,7 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1>{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
         <div className="top-actions"><button className="soft-btn" onClick={()=>setSmartIdToolOpen(true)}><Hash size={14}/> Sinh mã thử</button>{session&&organizationId&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
