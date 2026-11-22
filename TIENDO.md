@@ -1030,3 +1030,9 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Lần gọi tạo deployment Preview từ repo Vodanhhp/BaoTri_Mini, branch main, commit f699235f559cbe63e80108f6d50e6c5f9b334c24 bị Vercel trả HTTP 429 rate_limited do GitHub API rate limit; không có deployment được tạo.
 - Commit GitHub sau khi rename migration: 63d4aecd98b175e45801385a667e2306f7b37130; cần xác minh HEAD mới nhất sau cập nhật TIENDO.
 - Chưa build/test ứng dụng; chưa đăng nhập trình duyệt; chưa deploy Preview. Bước tiếp: retry tạo deployment Preview khi rate limit hết, giữ đúng project/team/branch/commit, sau đó theo dõi build logs và chỉ gửi URL khi trạng thái READY.
+
+
+- Bổ sung smoke test từ SQL transaction: user UUID không có membership thử gọi RPC member thì bị chặn bởi 42501; transaction ROLLBACK, không ghi dữ liệu.
+- Migration source được đổi tên ở commit 30a400a9ba01e7d61d84eddf7ce64cd77f0883b0 và xóa file cũ ở commit 63d4aecd98b175e45801385a667e2306f7b37130. TIENDO hiện ghi nhận lần apply thành công và kết quả smoke test.
+- Lần retry deploy Preview tiếp tục bị Vercel 429 GitHub API rate limit; chưa có deployment URL.
+- HEAD trước khi append mục này: 446510b1a5034dbc82c7ac501a3d06d755aa3fe3.
