@@ -322,6 +322,10 @@ export default function App() {
       setReservationReleaseBusy(true)
       try{
         await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
+        if(editing){
+          await db.assetDrafts.delete(editing.id)
+          setRecoverableDrafts(current=>current.filter(item=>item.id!==editing.id))
+        }
       }catch(cause){
         setError('Chưa giải phóng được số thứ tự đang giữ. Kiểm tra kết nối rồi thử lại trước khi đổi thông tin. '+(cause instanceof Error?cause.message:String(cause)))
         return
@@ -339,15 +343,37 @@ export default function App() {
     setShowForm(false);setEditing(null);setError('')
     const lease=cloudLease;setCloudLease(null)
     if(lease&&supabase&&!lease.lost)void releaseCloudAssetLock(supabase,organizationId,lease.assetId,lease.token).catch(()=>false)
-    // Release a sequence reserved for an unsaved draft. A Local asset that was
-    // already persisted keeps its reservation for the confirmation retry path.
+    // A persisted Local asset keeps its reservation for confirmation retry.
     if(draft?.idReservationId&&supabase&&organizationId){
       const client=supabase
       const orgId=organizationId
       const reservationId=draft.idReservationId
-      void db.assets.get(draft.id).then(existing=>{
-        if(!existing)return releaseSmartEquipmentIdReservation(client,orgId,reservationId)
+      void db.assets.get(draft.id).then(async existing=>{
+        if(!existing)await releaseSmartEquipmentIdReservation(client,orgId,reservationId)
+        await db.assetDrafts.delete(draft.id)
+        setRecoverableDrafts(current=>current.filter(item=>item.id!==draft.id))
       }).catch(()=>false)
+    }
+  }
+
+  const resumeAssetDraft=(draft:AssetDraft)=>{
+    setEditing({...draft.asset,localScope:organizationId})
+    setSmartEquipmentChoice(draft.asset.equipmentTypeCode||'')
+    setSmartGroupChoice(draft.asset.groupCodeAtCreation||'')
+    setSmartSiteCode(draft.asset.siteCodeAtCreation||'00')
+    setError('')
+    setShowForm(true)
+  }
+
+  const discardAssetDraft=async(draft:AssetDraft)=>{
+    try{
+      const existing=await db.assets.get(draft.id)
+      if(!existing&&supabase)await releaseSmartEquipmentIdReservation(supabase,draft.organizationId,draft.reservationId)
+      await db.assetDrafts.delete(draft.id)
+      setRecoverableDrafts(current=>current.filter(item=>item.id!==draft.id))
+      notify('Đã hủy thao tác cấp mã chưa hoàn tất.')
+    }catch(cause){
+      setError('Chưa thể hủy giữ số trên Cloud. Hãy kiểm tra Internet rồi thử lại. '+(cause instanceof Error?cause.message:String(cause)))
     }
   }
 
