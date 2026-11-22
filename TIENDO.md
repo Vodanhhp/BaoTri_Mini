@@ -971,3 +971,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
   7. Chạy cùng một cơ chế sau login và khi người dùng đổi tổ chức; tránh chạy trùng bằng single-flight/cancel token.
 - Kết luận: chưa sửa source cho auto-sync. Cần hoàn tất thiết kế và migration phân trang + RBAC trước khi bật luồng tự động; không dùng RPC list toàn bộ hiện tại cho dữ liệu lớn.
 - Không apply migration, không deploy, không thao tác dữ liệu Supabase. Không chạy build/test.
+
+
+### Quyết định Super Admin truy cập Cloud → Local theo tenant context — 22/11/2026
+
+- Người dùng chốt phương án Super Admin riêng, không tự động thêm Super Admin thành thành viên của mọi tổ chức.
+- Luồng dự kiến: Super Admin mở Quản trị nền tảng, chọn một tổ chức cụ thể; backend xác minh owner allowlist bằng thông tin phía máy chủ; chỉ sau khi xác minh mới cho phép đọc danh sách thiết bị Cloud của đúng organization_id đang chọn để tải Cloud → Local.
+- Không cho client tự truyền organization_id để vượt membership/RBAC; không mở quyền sửa, xóa, import hoặc thay đổi dữ liệu tổ chức. Đây chỉ là quyền đọc phục vụ tải xuống Local, giới hạn tenant cụ thể và được audit.
+- Người dùng thuộc tổ chức vẫn dùng RPC dành cho thành viên với quyền assets.view; không phụ thuộc Plan.
+- Bước kỹ thuật tiếp theo: thiết kế RPC phân trang có kiểm soát riêng cho member và Super Admin, xác minh owner allowlist ở backend, sau đó tích hợp lựa chọn tổ chức vào PlatformAdminPanel. Chưa triển khai source ở checkpoint này.
+- Commit ghi quyết định: sẽ cập nhật ở commit TIENDO hiện tại; chưa apply migration, deploy, build/test hoặc thao tác dữ liệu Supabase.
