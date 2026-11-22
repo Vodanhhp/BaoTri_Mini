@@ -605,3 +605,14 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Rà soát source hiện hành của frontend và hai Edge Functions trước khi đề xuất bước phát hành.
 - Không yêu cầu người dùng lặp lại các quyết định đã ghi; không sửa hai Supabase project cũ.
 
+## Tiếp tục rà soát PR #11 — 22/11/2026
+
+- Kiểm tra GitHub trực tiếp: PR #11 vẫn OPEN, Draft, chưa merge; head branch `feature/smart-equipment-id-engine` hiện là `6a12ad98fcfe1e290b2ecb226094bb31bce2698f` (commit cập nhật TIENDO), main hiện là `41328767da804b382901fa9da3e3e02ebd7dfd01`.
+- PR ghi base SHA `c88d59fc0c928e9ef87d145989c2cebf12b05e5f`; main đã tiến thêm 3 commit sau base (merge Smart ID simulator PR #12 và hai commit thêm lối vào công cụ ở màn hình đăng nhập). Branch PR #11 cần cập nhật main trước khi đánh giá release.
+- GitHub hiện trả `mergeable=false`; coi là blocker, chưa kết luận conflict cụ thể nếu chưa có kết quả cập nhật/đối chiếu đầy đủ.
+- Head commit `6a12ad98...` hiện không có check-runs/status: check-runs total_count=0, commit status state=pending và total_count=0; wrapper workflow-runs cũng trả danh sách rỗng. Các CI success ghi ở commit cũ không phải bằng chứng cho head hiện tại.
+- PR hiện báo 154 commits, 31 files changed. Changed files bao gồm `src/App.tsx`, `src/AuthScreen.tsx`, `src/SmartEquipmentIdTool.tsx`, CI/tests, migration Cloud Asset Public API và hai Edge Functions.
+- Đã đọc source hiện hành trên branch: package có `npm test` chạy `scripts/*.test.mjs`, CI workflow thực hiện `npm ci` → `npm test` → `npm run build`; hai Edge Function source có Plan-aware provisioning và idempotent request UUID; Cloud Asset client dùng RPC code-based thay vì SELECT trực tiếp bảng assets.
+- Chưa thể xác minh CI trên head mới; chưa hoàn thành kiểm tra source-to-deployed contract hoặc browser E2E. Migration `20261121130000_cloud_asset_public_key_api.sql` vẫn chưa apply.
+- Công cụ GitHub hiện có không cung cấp thao tác tạo merge commit/update branch an toàn; không tự force-move ref hoặc merge PR. Việc cập nhật main vào feature branch cần xử lý qua Git merge/rebase và review conflict.
+- Việc tiếp theo: cập nhật branch với main, xử lý xung đột (đặc biệt App/AuthScreen và SmartEquipmentIdTool), chạy unit tests/build CI trên head mới, sau đó tiếp tục rà soát release checklist. Không merge/deploy/migration/ghi dữ liệu nếu chưa được phê duyệt.
