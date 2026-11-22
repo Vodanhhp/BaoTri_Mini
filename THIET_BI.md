@@ -305,9 +305,10 @@ Danh mục hiện có các nhóm nền tảng: điện, cấp thoát nước, HV
 
 ### 12.2. Bảo toàn định danh
 - Nếu đây là thiết bị được đưa từ ngoài phạm vi quản lý của Organization vào hệ thống, UUID nội bộ được tạo cho hồ sơ mới; mã quản lý nội bộ được cấp theo Plan và khu vực tiếp nhận. Mã/serial cũ ở nơi chuyển đi (nếu có) chỉ lưu như thông tin nguồn tham chiếu, không thay thế mã nội bộ.
-- Nếu thiết bị đã có hồ sơ và mã nội bộ trong chính Organization này, việc di chuyển giữa các khu vực chỉ cập nhật vị trí và lịch sử di chuyển; tuyệt đối không cấp lại UUID hoặc mã quản lý.
-- Dấu `*` là ký hiệu nhận biết trên tên hiển thị, không phải một phần của UUID, mã quản lý, tên chuẩn hoặc mã rút gọn.
-- Việc chuyển đến không được làm thay đổi mã đã cấp của thiết bị cũ; Plan và khu vực tiếp nhận chỉ được dùng khi cấp mã cho hồ sơ mới thuộc trường hợp chuyển từ ngoài vào.
+- Nếu thiết bị đang được quản lý trong cùng Organization và chuyển từ Khu 1 sang Khu 2: giữ nguyên UUID/định danh hồ sơ gốc, nhưng **cấp mã quản lý mới theo quy tắc của khu vực tiếp nhận (Khu 2)**. Mã quản lý trước khi chuyển phải được lưu trong lịch sử để tra cứu, không ghi đè mất dấu vết.
+- Tên hiển thị được thêm dấu `*` ở cuối để nhận biết thiết bị đã chuyển đến; tên chuẩn/originalName vẫn giữ nguyên, dấu `*` chỉ là quy ước hiển thị.
+- Lịch sử phải có một dòng ghi chú rõ ràng theo mẫu: **“Thiết bị được chuyển từ [khu vực nguồn] tới [khu vực tiếp nhận]”**, kèm thời điểm và người thực hiện.
+- Mã quản lý mới được sinh theo Plan đang có hiệu lực và quy tắc mã của khu vực tiếp nhận. Việc cấp mã mới do chuyển khu vực là ngoại lệ nghiệp vụ có chủ đích; không thay đổi UUID gốc hoặc lịch sử thiết bị.
 
 ### 12.3. Phạm vi triển khai
 - Trường dữ liệu hiện có `transferredFromOtherFacility` mới chỉ là cờ boolean; chưa đủ để lưu lịch sử nơi nguồn/nơi nhận và phân biệt thiết bị ngoài Organization với thiết bị di chuyển nội bộ.
