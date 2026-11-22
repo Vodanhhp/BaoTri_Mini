@@ -1,6 +1,19 @@
 -- Append-only equipment activity history. No image payloads are stored here.
 begin;
 
+create or replace function private.is_org_technician(p_organization_id uuid)
+returns boolean language sql stable security definer set search_path='' set row_security=off as $function$
+  select auth.uid() is not null and exists(
+    select 1 from public.organization_members m
+    join public.member_roles mr on mr.organization_id=m.organization_id and mr.member_id=m.id
+    join public.roles r on r.organization_id=mr.organization_id and r.id=mr.role_id
+    where m.organization_id=p_organization_id and m.user_id=auth.uid() and m.status='active'
+      and lower(r.code) in ('ktv','technician','maintenance_technician')
+  );
+$function$;
+revoke all on function private.is_org_technician(uuid) from public,anon;
+grant execute on function private.is_org_technician(uuid) to authenticated;
+
 create table if not exists public.asset_activity_history (
   id uuid primary key,
   organization_id uuid not null references public.organizations(id) on delete restrict,
@@ -49,11 +62,11 @@ begin
     raise exception 'Unsupported equipment history event' using errcode='22023';
   end if;
   if p_event_type='created' then
-    if not private.has_org_permission(p_organization_id,'assets.create') then raise exception 'Missing assets.create permission' using errcode='42501'; end if;
+    if not (private.is_org_admin(p_organization_id) or private.is_org_technician(p_organization_id)) or not private.has_org_permission(p_organization_id,'assets.create') then raise exception 'Missing assets.create permission' using errcode='42501'; end if;
   elsif p_event_type='deleted' then
     if not private.is_org_admin(p_organization_id) or not private.has_org_permission(p_organization_id,'assets.delete') then raise exception 'Admin role required' using errcode='42501'; end if;
   else
-    if not private.has_org_permission(p_organization_id,'assets.update') then raise exception 'Missing assets.update permission' using errcode='42501'; end if;
+    if not (private.is_org_admin(p_organization_id) or private.is_org_technician(p_organization_id)) or not private.has_org_permission(p_organization_id,'assets.update') then raise exception 'Missing assets.update permission' using errcode='42501'; end if;
   end if;
   select a.id into v_asset_id from public.assets a
     where a.organization_id=p_organization_id and a.code=p_asset_code;
