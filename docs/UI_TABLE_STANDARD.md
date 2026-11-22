@@ -81,3 +81,9 @@ Bảng hiện tại trong BAOTRI Mini cần được bọc bằng `.table-wrap`;
 6. Kiểm tra light/dark theme nếu màn hình hỗ trợ.
 7. Kiểm tra bàn phím, focus và nhãn truy cập cho nút thao tác.
 8. Không thay đổi nghiệp vụ, quyền hoặc dữ liệu chỉ vì mục tiêu trình bày.
+## Bản điều chỉnh bố cục ngang v2 — 22/11/2026
+- Bảng chuẩn dùng table-layout: fixed và phân bổ chiều rộng cột theo nghiệp vụ; không để trình duyệt tự co cột thành các khối dọc.
+- Trên desktop, bảng dùng toàn bộ chiều rộng vùng chứa; modal Gói dịch vụ được mở rộng đến 1080px (giới hạn theo viewport), không giữ khung hẹp 720px.
+- Nội dung ô được phép xuống dòng có kiểm soát; tiêu đề cột, ngày tháng và nút thao tác giữ bố cục một dòng khi phù hợp.
+- Ghi chú dài được cấp cột riêng đủ rộng; trên màn hình nhỏ, bảng nằm trong vùng cuộn ngang có chủ đích thay vì ép mỗi trường thành một dòng dọc.
+- Bảng tổng quan tổ chức và danh sách thiết bị tiếp tục dùng cùng nguyên tắc; bảng in không thay đổi.
