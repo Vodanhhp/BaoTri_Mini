@@ -1135,3 +1135,8 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa test assertion đã lỗi thời để kiểm tra RPC phân trang thực tế list_cloud_assets_page thay vì tên RPC cũ list_cloud_assets.
 - Các thay đổi lần này nằm trên nhánh feature/unified-table-layout-fix, tách khỏi main; không kích hoạt GitHub Pages Production. Chưa triển khai Staging, chưa thay đổi Supabase/Edge Functions/dữ liệu.
 - Cần kiểm tra CI/build và xem trực quan ở Staging trước khi đưa vào main hoặc triển khai Production.
+### Kiểm tra CI cho bản sửa bố cục ngang — 22/11/2026
+- PR nháp #15: https://github.com/Vodanhhp/BaoTri_Mini/pull/15 — chưa merge.
+- GitHub Actions Build and test run `45016919095`: **success**, 29/29 unit tests pass, 0 fail; bước Build hoàn tất thành công.
+- GitHub Actions Validate BAOTRI Mini run `45016919088`: **success**, `npm ci` và `npm run build` hoàn tất.
+- Các workflow trên chạy theo pull request, không chạy deploy GitHub Pages. Chưa có kiểm thử trực quan browser/PC/mobile; chưa deploy Staging. Production vẫn chưa nhận bản sửa này.
