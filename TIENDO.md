@@ -843,8 +843,9 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Đã rà soát source migration Smart ID và migration workflow Plan trên `main`.
 - Phát hiện khe hở đồng thời: `reserve_asset_id_sequence` đọc Plan/Catalog Snapshot mà chưa khóa hàng `organization_equipment_catalog`; trong khi RPC duyệt Plan đã khóa chính hàng này bằng `FOR UPDATE`. Hai thao tác có thể chạy đua, khiến lượt cấp mã đọc Plan cũ trước khi Plan mới được áp dụng nhưng hoàn tất sau thời điểm đổi Plan.
-- Đã sửa source migration `supabase/migrations/20261121094441_smart_equipment_id_local_first_reservations.sql`: thêm `FOR UPDATE` vào truy vấn đọc Plan/Catalog Snapshot trong `reserve_asset_id_sequence`, kèm chú thích về mục đích đồng bộ khóa.
-- Sau sửa, thao tác cấp mã và thao tác duyệt đổi Plan cùng khóa hàng Catalog Snapshot của đúng tổ chức; thao tác đến sau phải chờ và đọc Plan đã có hiệu lực. Không thay đổi bảng thiết bị, mã đã cấp, sequence đã cấp hoặc dữ liệu tổ chức.
-- Commit sửa source: `30765bb1e5d8e719199ae7c1793c3ef28d6d9f71`.
-- Đây là sửa migration source chưa apply theo trạng thái TIENDO; không chạy SQL, không apply migration, không deploy Edge Function/Pages.
+- Đối chiếu lại migration history trong TIENDO xác nhận migration `20261121094441_smart_equipment_id_local_first_reservations.sql` đã được áp dụng trên BAOTRI-Mini-New. Vì vậy không sửa nội dung migration lịch sử đã chạy; file gốc đã được khôi phục nguyên trạng.
+- Đã tạo migration mới `supabase/migrations/20261122130000_serialize_smart_id_reservations_with_plan_changes.sql`, chứa `CREATE OR REPLACE FUNCTION public.reserve_asset_id_sequence(...)` với `FOR UPDATE` trên hàng `organization_equipment_catalog`.
+- Sau khi migration mới được apply, thao tác cấp mã và thao tác duyệt đổi Plan sẽ cùng khóa hàng Catalog Snapshot của đúng tổ chức; thao tác đến sau phải chờ và đọc Plan đã có hiệu lực. Không thay đổi bảng thiết bị, mã đã cấp, sequence đã cấp hoặc dữ liệu tổ chức.
+- Commit khôi phục migration lịch sử: `9e3cb6caa973cb95d3b99e0bd936f2678577d2fa`; commit thêm migration mới: `a91bcaa774883e972af43cb84d0114e5baf5cbae`.
+- Migration mới chỉ được ghi source vào GitHub; không chạy SQL, không apply migration, không deploy Edge Function/Pages.
 - Chưa chạy build/test theo nguyên tắc dự án. Cần kiểm tra runtime sau khi được chỉ đạo, gồm: cấp mã đồng thời với duyệt Plan; reservation đã tạo trước thời điểm đổi Plan; retry xác nhận một thiết bị Local đã lưu; và hạ cấp vượt hạn mức.
