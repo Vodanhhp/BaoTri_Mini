@@ -950,3 +950,24 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung sau rà soát: hàm nhập từng hồ sơ trả về kết quả boolean để batch giữ lại chính xác các hồ sơ thất bại; sau thao tác refresh danh sách, lỗi của hồ sơ được đặt lại để không bị hàm reload xóa mất. Commit: e14d52d82f17f98ab06d564e7ce1ee424470596f.
 - Xác minh source cuối trên main: App có state tải Local Preview riêng và truyền prop vào panel; panel có khu vực chọn thủ công, kiểm tra UUID/code/reservation/tenant link, gọi import RPC hiện hữu, rồi mới chuyển scope trong transaction IndexedDB. Đây chỉ là rà soát source tĩnh, không thay thế build/test.
 - Main head tại checkpoint này: e14d52d82f17f98ab06d564e7ce1ee424470596f. Chưa build/test, chưa apply migration, chưa deploy, chưa thao tác Supabase.
+
+
+### Rà soát kiến trúc tự động Cloud → Local khi đăng nhập — 22/11/2026
+
+- Đọc lại nguyên tắc đã chốt ở phần PLAN: chỉ tải sau khi có đúng ngữ cảnh tổ chức và quyền assets.view; không phụ thuộc Plan/role nếu quyền xem hợp lệ; không import Local Preview; không đẩy Local lên Cloud; không ghi đè thay đổi Local hoặc tự xử lý conflict.
+- Source hiện tại chưa có auto-sync khi đăng nhập. App chỉ load IndexedDB theo localScope; CloudAssetsPanel mới gọi listCloudAssets khi người dùng mở panel và việc tải từng hồ sơ phải bấm thủ công.
+- listCloudAssets gọi RPC public.list_cloud_assets(p_organization_id) và nhận toàn bộ JSON array trong một lần. Migration 20261121130000_cloud_asset_public_key_api.sql đang aggregate toàn bộ public.assets theo organization bằng jsonb_agg, không có limit/cursor/page. Không phù hợp để dùng làm cơ chế đồng bộ tự động khi dữ liệu tăng lớn.
+- Kiểm tra quyền backend: RPC list_cloud_assets hiện chỉ kiểm tra auth.uid() và private.is_org_member(p_organization_id), chưa kiểm tra riêng private.has_org_permission(...,'assets.view'). Mặc dù các built-in role hiện có assets.view, custom role có thể không có; cần sửa backend để đúng nguyên tắc RBAC đã chốt trước khi auto-sync.
+- listCloudAssets đang ánh xạ Cloud asset_key (mã quản lý) thành id phía client; Cloud internal UUID không được trả ra theo thiết kế migration 013000. Local mới tải xuống được gán UUID Local riêng qua downloadCloudAsset; không được giả định Cloud key chính là UUID Local.
+- Luồng downloadOne hiện có quy tắc so sánh phiên bản qua AssetCloudLink: nếu Local không đổi và Cloud đổi thì cập nhật Cloud → Local; nếu Local đổi và Cloud không đổi thì giữ Local; nếu cả hai cùng đổi thì đánh dấu conflict và yêu cầu người dùng chọn. Nếu Local có mã trùng nhưng chưa có Cloud link thì chặn ghi đè. Auto-sync phải tái sử dụng hoặc tách helper từ đúng quy tắc này, không viết đường tải mới bỏ qua conflict.
+- RPC list hiện tại yêu cầu membership, nên Super Admin owner không phải thành viên tổ chức sẽ không thể dùng trực tiếp. PlatformAdminPanel hiện có quản trị tổ chức nhưng không có tenant context/selection dành cho Cloud asset browsing. Không được cho Super Admin truyền organization_id tùy ý để bypass membership; cần một cơ chế backend Super Admin riêng, xác minh owner allowlist ở server, hoặc yêu cầu Super Admin được gán membership rõ ràng. Chưa chọn giải pháp.
+- Kiến trúc cần có trước khi triển khai:
+  1. RPC phân trang ổn định (keyset cursor theo thứ tự cố định, ví dụ name + code hoặc updated_at + code), có giới hạn page size phía server; response chứa items + cursor/has_more.
+  2. RPC kiểm tra đúng assets.view và đúng tenant; không dựa vào client-supplied role/permission.
+  3. Auto-sync chỉ chạy sau khi Auth session ổn định, organization context đã tải xong, organizationId cụ thể và quyền assets.view đã xác nhận. Mỗi lần đổi user/org phải hủy lượt cũ để tránh ghi nhầm tenant.
+  4. Trang đầu/thiết bị mới: tải lần lượt từng page; thiết bị đã có Local dùng AssetCloudLink + updatedAt để đối chiếu; không có link nhưng có Local cùng code thì tạo conflict/đòi đối chiếu, không overwrite.
+  5. Pending mutations/processing/conflicts phải giữ nguyên và không bị auto-download ghi đè; không auto push Local.
+  6. Ghi từng page hoặc từng asset an toàn vào IndexedDB; cursor/progress có thể retry sau mất mạng/reload, không đánh dấu sync hoàn tất khi một page lỗi.
+  7. Chạy cùng một cơ chế sau login và khi người dùng đổi tổ chức; tránh chạy trùng bằng single-flight/cancel token.
+- Kết luận: chưa sửa source cho auto-sync. Cần hoàn tất thiết kế và migration phân trang + RBAC trước khi bật luồng tự động; không dùng RPC list toàn bộ hiện tại cho dữ liệu lớn.
+- Không apply migration, không deploy, không thao tác dữ liệu Supabase. Không chạy build/test.
