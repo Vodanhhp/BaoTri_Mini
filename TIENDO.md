@@ -1222,19 +1222,29 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cần CI build/test và kiểm thử thực tế Admin xóa → Cloud → PC/Mobile khác đồng bộ; KTV không thấy/tìm được; Admin tìm thấy; xác nhận hồ sơ/lịch sử vẫn còn.
 
 
-### Bổ sung trạng thái thiết bị, lịch sử hoạt động và quyền Người xem — 22/11/2026
-- Thêm trạng thái `Lưu kho` vào cùng danh mục trạng thái thiết bị; trong chi tiết thiết bị có nút **Thay đổi trạng thái**, mở lựa chọn trạng thái và chỉ tiếp tục vào phiên sửa khi đã có quyền/khóa Cloud hợp lệ.
-- Đồng bộ giá trị `Lưu kho` với cờ `archivedAt` hiện có để giữ tương thích danh sách Lưu kho, khôi phục và đồng bộ Cloud; không dùng Lưu kho thay cho xóa mềm.
-- Thêm kho lịch sử thiết bị Local (Dexie v6), ghi sự kiện tạo mới, cập nhật hồ sơ, đổi trạng thái, lưu kho, khôi phục và xóa mềm; ghi giá trị trước/sau cho các trường hồ sơ (kể cả giá trị Có/Không), không ghi dữ liệu ảnh. Hiển thị lịch sử theo thời gian trong chi tiết thiết bị.
-- Chuẩn bị migration `20261122210000_asset_activity_history.sql` tạo lịch sử Cloud append-only, RLS chỉ cho thành viên có `assets.view` đọc; RPC ghi lịch sử chỉ chấp nhận Admin/KTV theo vai trò và quyền nghiệp vụ. RLS/RPC đọc lịch sử của thiết bị đã xóa cũng chỉ cho Admin có `assets.delete`. Cập nhật `private.apply_asset_mutation_with_lock` để chấp nhận trạng thái `Lưu kho` và chặn Viewer ở tầng DB; đóng gói `private.lock_asset_anchor` trong migration để tránh phụ thuộc PR #19 chưa merge. App đồng bộ lịch sử Cloud theo ID mutation để chống ghi trùng, giữ bản Local ở trạng thái pending nếu RPC/migration chưa sẵn sàng.
-- Giới hạn năng lực ghi dữ liệu giao diện theo whitelist Admin/KTV; Người xem không có nút sửa/thêm/lưu kho/xóa, không mở chỉnh sửa hồ sơ hoặc chỉnh sửa hồ sơ cá nhân, không được thao tác với draft. Kiểm tra quyền ở các handler chính, không chỉ ẩn nút.
-- Bổ sung unit test cho trạng thái Lưu kho, phân quyền Người xem và hợp đồng lịch sử.
-- **Chưa áp dụng migration lịch sử lên Supabase Test**; cần xác nhận riêng trước khi chạy migration. Migration xóa mềm trước đó vẫn đã áp dụng trên Supabase Test. Chưa merge PR #21, không thay đổi main/Production.
-- GitHub Actions trên commit mới nhất đã xác nhận Unit tests + Build thành công (run `45030903136`); Validate BAOTRI Mini cũng thành công (run `45030894541`). Chưa kiểm thử trình duyệt thực tế. Đã truy vấn Supabase Test: mã vai trò thực tế là `admin`, `technician`, `viewer`; KTV dùng code `technician`. Permission map hiện cấp `assets.update` cho Admin/KTV, chỉ cấp `assets.view` cho Viewer.
+### Bổ sung trạng thái thiết bị, lịch sử hoạt động, xóa mềm và quyền Người xem — 22/11/2026
 
+- Thêm trạng thái `Lưu kho` vào danh mục trạng thái thiết bị; trong Chi tiết thiết bị có chức năng Thay đổi trạng thái, chỉ tiếp tục phiên chỉnh sửa khi đã có quyền và khóa Cloud hợp lệ.
+- Đồng bộ `Lưu kho` với `archivedAt/archived_at` để tương thích danh sách lưu kho, khôi phục và Cloud; không sử dụng trạng thái Lưu kho thay cho xóa mềm.
+- Bổ sung lịch sử hoạt động thiết bị Local (Dexie v6): tạo mới, cập nhật hồ sơ, đổi trạng thái, lưu kho, khôi phục, xóa mềm; ghi giá trị trước/sau, không lưu nội dung ảnh.
+- Bổ sung lịch sử Cloud append-only, RPC ghi lịch sử giới hạn Admin/KTV, RLS đọc theo quyền `assets.view`; lịch sử thiết bị đã xóa chỉ Admin có quyền `assets.delete` được xem.
+- Cập nhật `private.apply_asset_mutation_with_lock` để chấp nhận trạng thái Lưu kho và chặn Viewer ở tầng DB; đóng gói `private.lock_asset_anchor` để tránh phụ thuộc PR #19 chưa merge.
+- App đồng bộ lịch sử Cloud theo ID mutation để tránh ghi trùng; giữ lịch sử Local pending khi Cloud chưa sẵn sàng.
+- Viewer chỉ đọc; không được thêm, sửa, lưu kho, xóa, chỉnh sửa hồ sơ cá nhân hoặc thao tác draft. Kiểm tra quyền tại handler, không chỉ ẩn nút.
+- Xóa mềm thiết bị dành riêng cho Admin; dùng `deleted_at` độc lập với `archived_at`. Thiết bị xóa được đánh dấu `ĐÃ XÓA`; non-Admin không được đọc hồ sơ đã xóa. Không xóa vật lý thiết bị hoặc lịch sử.
+- Migration xóa mềm đã áp dụng trên Supabase Test `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`), version `20261122133229` / `admin_soft_delete_assets`.
+- Migration lịch sử `asset_activity_history` đã áp dụng trên Supabase Test, version `20261122141731`; đã xác minh bảng, RPC, RLS, policy và ACL: anon không được SELECT/EXECUTE; authenticated truy cập theo RLS và kiểm tra quyền trong RPC.
+- Đã bỏ nút Lưu kho riêng khỏi danh sách thiết bị; thao tác thay đổi trạng thái thực hiện trong form Sửa. Danh sách lưu kho vẫn hỗ trợ Khôi phục.
+- Cập nhật hiển thị trạng thái danh sách: thiết bị xóa mềm hiển thị `ĐÃ XÓA` màu đỏ; lưu kho màu xám; đang hoạt động màu xanh; đang sửa chữa màu cam; thanh lý màu đỏ.
+- PR #21 `admin-soft-delete-assets` đang OPEN, chưa merge. Head trước cập nhật tài liệu: `314b762a414d5c2f111d92c9b366da92b92fc8f8`; base `66a75b0b10b5aafc5f149737f6bacf926b96c50c`.
+- CI trên head PR #21 đã pass: Validate run `45031764581`; Build and test run `45031764540`. Chưa kiểm thử trình duyệt E2E thực tế.
+- Supabase Security Advisor còn cảnh báo SECURITY DEFINER trên một số RPC; đã ghi nhận, chưa mở rộng xử lý ngoài phạm vi PR.
+- Chưa merge PR #21; không thay đổi main/Production. Chỉ làm việc với Supabase Test.
 
-### Gộp thao tác Lưu kho vào màn hình Sửa thiết bị — 22/11/2026
-- Theo xác nhận của người dùng, bỏ nút **Lưu kho** riêng khỏi cột Thao tác ở danh sách thiết bị vì trạng thái `Lưu kho` đã có trong trường Trạng thái của màn hình Sửa.
-- Giữ nguyên lựa chọn Lưu kho trong màn hình Sửa, logic `archivedAt`, lịch sử hoạt động, danh sách thiết bị đã lưu kho và chức năng khôi phục. Không thay đổi quyền Admin/KTV/Viewer, RPC, migration hoặc dữ liệu Supabase.
-- Cột Thao tác ở danh sách thiết bị còn **Sửa** và **Xóa** (Xóa chỉ Admin); danh sách Lưu kho vẫn có thao tác Khôi phục theo quyền hiện tại.
-- Chỉ cập nhật giao diện trên nhánh `feature/admin-soft-delete-assets`; chưa merge PR #21, chưa deploy Production. Cần CI và kiểm tra trình duyệt sau khi cập nhật.
+#### Trạng thái workspace Local ngày 23/11/2026
+- Thư mục local `E:\\BaoTri_Mini`, branch `feature/admin-soft-delete-assets`, HEAD mã ngắn `314b762` tại thời điểm checkpoint trước khi cập nhật tài liệu.
+- `TIENDO.md`: cập nhật checkpoint này.
+- `src/App.tsx`: còn 1 thay đổi local về màu/nhãn status badge; đã kiểm tra logic, phù hợp và nên giữ.
+- `.env.local`: file local untracked, phải giữ trên máy, không add/commit/push.
+- Trước cập nhật GitHub lần này, các thay đổi local chưa được commit hoặc push.
+- Bước tiếp theo: đồng bộ branch qua GitHub Desktop, sau đó chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo từng kịch bản.
