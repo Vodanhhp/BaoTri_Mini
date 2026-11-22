@@ -1231,3 +1231,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung unit test cho trạng thái Lưu kho, phân quyền Người xem và hợp đồng lịch sử.
 - **Chưa áp dụng migration lịch sử lên Supabase Test**; cần xác nhận riêng trước khi chạy migration. Migration xóa mềm trước đó vẫn đã áp dụng trên Supabase Test. Chưa merge PR #21, không thay đổi main/Production.
 - GitHub Actions trên commit mới nhất đã xác nhận Unit tests + Build thành công (run `45030903136`); Validate BAOTRI Mini cũng thành công (run `45030894541`). Chưa kiểm thử trình duyệt thực tế. Đã truy vấn Supabase Test: mã vai trò thực tế là `admin`, `technician`, `viewer`; KTV dùng code `technician`. Permission map hiện cấp `assets.update` cho Admin/KTV, chỉ cấp `assets.view` cho Viewer.
+
+
+### Gộp thao tác Lưu kho vào màn hình Sửa thiết bị — 22/11/2026
+- Theo xác nhận của người dùng, bỏ nút **Lưu kho** riêng khỏi cột Thao tác ở danh sách thiết bị vì trạng thái `Lưu kho` đã có trong trường Trạng thái của màn hình Sửa.
+- Giữ nguyên lựa chọn Lưu kho trong màn hình Sửa, logic `archivedAt`, lịch sử hoạt động, danh sách thiết bị đã lưu kho và chức năng khôi phục. Không thay đổi quyền Admin/KTV/Viewer, RPC, migration hoặc dữ liệu Supabase.
+- Cột Thao tác ở danh sách thiết bị còn **Sửa** và **Xóa** (Xóa chỉ Admin); danh sách Lưu kho vẫn có thao tác Khôi phục theo quyền hiện tại.
+- Chỉ cập nhật giao diện trên nhánh `feature/admin-soft-delete-assets`; chưa merge PR #21, chưa deploy Production. Cần CI và kiểm tra trình duyệt sau khi cập nhật.
