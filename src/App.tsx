@@ -426,7 +426,7 @@ export default function App() {
             originalName:editing.originalName||editing.name.trim(),
             normalizedNameAtCreation:editing.normalizedNameAtCreation||editing.name.trim()
           }
-          equipmentCode=draftAsset.equipmentTypeCode
+          equipmentCode=editing.equipmentTypeCode
           groupCode=draftAsset.groupCodeAtCreation
           siteCode=draftAsset.siteCodeAtCreation
           standardEquipmentName=draftAsset.normalizedNameAtCreation||draftAsset.name
