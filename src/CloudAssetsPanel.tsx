@@ -101,9 +101,12 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setBusyId('preview:'+asset.id);setError('');setMessage('')
   try{
    if(asset.localScope!=='local-preview')throw new Error('Hồ sơ không còn thuộc Local Preview; hãy tải lại danh sách.')
+   if(!asset.id||!asset.code.trim()||!asset.name.trim())throw new Error('Hồ sơ thiếu UUID, mã quản lý hoặc tên thiết bị; cần bổ sung dữ liệu trước khi chuyển.')
+   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(asset.id))throw new Error('UUID hồ sơ không hợp lệ; không thể nhập an toàn.')
    if(asset.idReservationId)throw new Error('Hồ sơ có Smart ID reservation gắn với Local Preview. Không tự chuyển vì chưa xác định được reservation thuộc tổ chức nào.')
    const links=await db.assetCloudLinks.where('assetId').equals(asset.id).toArray()
    if(links.some(link=>link.organizationId!==organizationId))throw new Error('UUID này đã được liên kết với Cloud của tổ chức khác; không thể chuyển tự động.')
+   if(links.some(link=>link.organizationId===organizationId&&(link.status!=='linked'||link.cloudCode!==asset.code)))throw new Error('Liên kết Cloud hiện có đang xung đột hoặc không khớp mã; cần đối chiếu thủ công.')
    const duplicate=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
    if(duplicate&&duplicate.id!==asset.id)throw new Error('Tổ chức đã có hồ sơ Local cùng mã quản lý. Cần đối chiếu thủ công.')
    const result=await importLocalAsset(client,organizationId,asset)
