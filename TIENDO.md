@@ -1088,3 +1088,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã gửi `NOTIFY pgrst, 'reload schema'` để yêu cầu PostgREST nạp lại schema cache.
 - Không tạo/sửa/xóa organization, user, asset hay reservation; không thay đổi dữ liệu nghiệp vụ. Không đụng project/org Production.
 - Còn cần người dùng tải lại Staging và kiểm tra giao diện Gói dịch vụ; xác minh RPC/ACL ở database chưa thay thế cho browser runtime test.
+
+
+### Triển khai Edge Functions cho luồng Gói dịch vụ — 22/11/2026
+- Người dùng xác nhận triển khai hai Edge Functions còn thiếu lên đúng Supabase project **BAOTRI Mini New (Test)**, project ID `dskeaiyvldiwlsfqkboq`.
+- Đã triển khai `organization-plan-requests` version 1, trạng thái **ACTIVE**, `verify_jwt=true`. Function xác thực access token và email đã xác nhận; chỉ Admin active của đúng tổ chức được xem/gửi yêu cầu Plan; các thao tác dữ liệu đi qua RPC Plan đã triển khai trong migration.
+- Đã triển khai `platform-manage-plan-requests` version 1, trạng thái **ACTIVE**, `verify_jwt=true`. Function xác thực access token, email Super Admin allowlist; khi duyệt/từ chối còn xác thực lại mật khẩu và yêu cầu xác nhận điều kiện thương mại/thanh toán.
+- Đã gọi danh sách Edge Functions sau deploy và xác nhận cả hai function xuất hiện trạng thái ACTIVE, JWT verification bật.
+- Chưa thực hiện browser runtime test, chưa gửi yêu cầu Plan, chưa duyệt/từ chối yêu cầu, chưa thay đổi Plan/Catalog Snapshot hoặc dữ liệu tổ chức. Tổ chức `BAOTRI Mini` trong project Test vẫn chưa có Plan/Snapshot; cần xử lý riêng theo quyết định có chủ đích, không tự gán Plan.
+- Không deploy Production, không thay đổi cấu hình project hoặc dữ liệu nghiệp vụ.
+- Việc tiếp theo: người dùng tải lại Staging và kiểm tra Gói dịch vụ; nếu vẫn lỗi, cung cấp nguyên văn thông báo mới.
