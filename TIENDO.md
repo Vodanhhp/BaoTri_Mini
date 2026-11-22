@@ -698,3 +698,17 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Luồng frontend đã rà soát: sau khi chọn tổ chức, App tải Catalog Snapshot; khi tạo thiết bị mới sẽ phân tích tên theo catalog, yêu cầu chọn nhóm đối với Plan B, reserve sequence trên Cloud, ghi hồ sơ Local trước, sau đó confirm reservation lên Cloud. Nếu confirm lỗi thì hồ sơ Local giữ trạng thái reserved để retry.
 - Không chạy test/build tự động theo yêu cầu người dùng. Chưa deploy website Pages, chưa merge PR #11. Supabase Edge Function hiện có vẫn ACTIVE; chưa cần deploy function mới cho bước gán Plan này.
 - Việc còn lại trước khi người dùng chạy thử trên domain: đưa nhánh Feature lên môi trường website thực tế theo cách triển khai đã chọn; hiện chưa có công cụ Cloudflare Pages được kết nối trong phiên nên không tuyên bố website live đã cập nhật. Có thể chạy local theo README với `.env.local` trỏ đúng BAOTRI Mini New trong lúc chờ deploy.
+
+
+## Chốt quy tắc đổi Plan, đổi tên doanh nghiệp và tiếp nhận thiết bị chuyển đến — 22/11/2026
+
+- Người dùng đã đồng ý các quy tắc nghiệp vụ được bổ sung trong `THIET_BI.md`.
+- Đổi Plan: thiết bị đã có mã giữ nguyên UUID, mã quản lý và lịch sử; không cấp lại mã. Chỉ thiết bị tạo mới sau thời điểm hiệu lực mới theo quy tắc Plan hiện hành.
+- Hạ cấp vượt hạn mức: giữ nguyên thiết bị cũ, không xóa/khóa/lưu kho tự động; cảnh báo vượt hạn mức và chặn tạo mới cho đến khi số lượng phù hợp.
+- Plan mới do Super Admin áp dụng sau khi Admin doanh nghiệp gửi yêu cầu và Super Admin xác nhận; cần lưu lịch sử Plan cũ/mới, người yêu cầu/duyệt và thời điểm hiệu lực. Đổi Plan không được làm mất danh mục riêng hoặc dữ liệu thiết bị.
+- Đổi tên doanh nghiệp: cập nhật tên Organization hiện hữu, không tạo tenant mới và không đổi organization_id; cần lưu lịch sử tên cũ/mới, người sửa và thời điểm.
+- Quy trình thêm thiết bị bổ sung lựa chọn **Nơi khác chuyển đến**. Thiết bị ngoài phạm vi Organization được cấp UUID nội bộ và mã quản lý theo Plan/khu vực tiếp nhận; tên hiển thị có dấu `*`; lưu thông tin nơi nguồn, nơi nhận và lịch sử. Nếu thiết bị đã có mã nội bộ trong cùng Organization thì di chuyển khu vực chỉ cập nhật vị trí/lịch sử, không cấp mã mới.
+- Phân biệt rõ mã/serial cũ ở nơi chuyển đi (nếu có) là thông tin nguồn tham chiếu; mã quản lý BAOTRI Mini là định danh nghiệp vụ nội bộ mới của Organization tiếp nhận.
+- Rà soát source hiện tại: `Asset.transferredFromOtherFacility` mới là boolean; Cloud payload cũng chỉ có cờ boolean. Chưa có cấu trúc lưu nguồn/khu vực tiếp nhận và lịch sử di chuyển.
+- Chưa sửa code, chưa tạo migration, chưa apply SQL, chưa thay đổi dữ liệu Supabase. Cần thiết kế migration tương thích Local/Cloud và luồng mutation trước khi triển khai.
+- Nhánh làm việc: `feature/smart-equipment-id-engine`; repo `Vodanhhp/BaoTri_Mini`. PR #11 vẫn Draft/open; không merge/deploy theo chỉ đạo hiện hành.
