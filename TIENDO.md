@@ -1146,3 +1146,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa JSX trùng thuộc tính `className` tại modal Gói dịch vụ; giữ class `plan-request-modal` để áp dụng đúng kích thước bảng nhiều cột.
 - Cập nhật `docs/UI_TABLE_STANDARD.md` thêm chuẩn typography dùng lại cho các ứng dụng trong hệ sinh thái.
 - Phạm vi chỉ CSS/JSX/tài liệu; không đổi logic nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu. Chưa build và chưa kiểm tra trực quan trên browser; chưa deploy Staging/Production.
+
+### Kiểm tra typography và build sau chuẩn hóa — 22/11/2026
+- Kiểm tra lại source sau cập nhật: CSS cân bằng dấu ngoặc `{}`; font-family giao diện vẫn thống nhất Be Vietnam Pro, các khai báo font Tahoma/Consolas chỉ nằm trong vùng in và chuỗi mã kỹ thuật.
+- Xác nhận JSX modal Gói dịch vụ không còn thuộc tính `className` trùng; class `plan-request-modal` vẫn được giữ.
+- GitHub Actions `Validate BAOTRI Mini` run `45017871094` hoàn tất **success**, bước `npm run build` thành công ở commit `c2b4d81e6f8f4f185bf8f2669cff0e92af9b31db`.
+- GitHub Actions `Build and test` run `45017871083` thất bại tại test cũ `scripts/cloudAssetPublicApi.test.mjs`: test vẫn đòi `rpc('list_cloud_assets')`, trong khi implementation hiện tại dùng RPC phân trang `list_cloud_assets_page`. Đây là assertion chưa đồng bộ, không phải lỗi build/typography; không sửa test nghiệp vụ trong phạm vi công việc này.
+- PR #16 vẫn là Draft, chưa merge; không deploy Staging hoặc Production. Chưa có browser visual test trên PC/tablet/mobile.
