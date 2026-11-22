@@ -1212,3 +1212,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kiểm chứng catalog: đúng chữ ký `(uuid, uuid)`, owner `postgres`, SECURITY DEFINER; `authenticated` không có quyền EXECUTE trực tiếp. Gọi helper với một asset hiện có trả về thành công; thao tác chỉ khóa hàng trong transaction, không cập nhật dữ liệu.
 - Đã thêm `scripts/cloudAssetLockAnchor.test.mjs` kiểm tra migration có khóa đúng hàng asset, xử lý asset không tồn tại và không cấp quyền gọi helper trực tiếp. CI `Build and test` (unit tests + build) và `Validate BAOTRI Mini` đều thành công trên commit `1ec91fe`. Chưa retry mutation thực tế qua trình duyệt; cần người dùng thử lại đúng snapshot đang giữ.
 - Phạm vi: nhánh `fix/missing-cloud-asset-lock-anchor`, chỉ Supabase Test; không thay đổi Edge Function, cấu trúc bảng, dữ liệu thiết bị, ảnh Local, Smart ID, quyền nghiệp vụ hoặc Supabase Production. Mutation Local đang giữ nguyên; chỉ retry sau khi CI và kiểm tra cần thiết đạt, không tạo mutation mới.
+
+
+### Sửa lệch tên cột biên nhận mutation Cloud — 22/11/2026
+- Sau khi khôi phục `private.lock_asset_anchor`, lần retry tiếp theo đi sâu hơn nhưng dừng ở lỗi `column "applied_by_user_id" of relation "asset_mutation_receipts" does not exist`.
+- Đối chiếu schema thật: `public.asset_mutation_receipts` có cột `actor_user_id` (được tạo từ migration 008), không có `applied_by_user_id`. Function live đang dùng sai tên ở hai nhánh kiểm tra receipt và câu INSERT.
+- Đã áp dụng migration `20261122125135_fix_asset_mutation_receipt_actor_column` trên Supabase Test. Migration giữ nguyên nguyên văn function live, chỉ thay ba chỗ `applied_by_user_id` thành `actor_user_id`; không thêm cột và không sửa dữ liệu/receipt hiện có.
+- Kiểm chứng sau áp dụng: function definition không còn `applied_by_user_id`, dùng `actor_user_id` đúng với schema. Chưa thực hiện mutation thử qua ứng dụng; cần retry mutation Local đang giữ.
+- Bổ sung test hồi quy kiểm tra function migration sử dụng đúng tên cột. CI của commit mới sẽ chạy sau khi cập nhật PR.
