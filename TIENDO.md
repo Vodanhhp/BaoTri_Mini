@@ -981,3 +981,31 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Người dùng thuộc tổ chức vẫn dùng RPC dành cho thành viên với quyền assets.view; không phụ thuộc Plan.
 - Bước kỹ thuật tiếp theo: thiết kế RPC phân trang có kiểm soát riêng cho member và Super Admin, xác minh owner allowlist ở backend, sau đó tích hợp lựa chọn tổ chức vào PlatformAdminPanel. Chưa triển khai source ở checkpoint này.
 - Commit ghi quyết định: sẽ cập nhật ở commit TIENDO hiện tại; chưa apply migration, deploy, build/test hoặc thao tác dữ liệu Supabase.
+
+
+### PLAN — triển khai Cloud → Local tự động để chuẩn bị đăng nhập thử nghiệm — 22/11/2026
+
+- Theo quyết định đã chốt: thành viên tổ chức có quyền assets.view tự động tải/đối chiếu Cloud → Local sau khi session và organization context sẵn sàng; không phụ thuộc Plan/role nếu quyền xem hợp lệ. Không chạy ở Local Preview, không tự import Local Preview, không đẩy Local lên Cloud.
+- Tạo migration source supabase/migrations/20261122170000_cloud_asset_sync_pagination_and_platform_read.sql:
+  - Thêm RPC public.list_cloud_assets_page dùng keyset cursor theo mã thiết bị code, page size server-side tối đa 100, trả items, has_more, next_cursor.
+  - Thành viên thường phải có private.has_org_permission(organization_id,'assets.view').
+  - Super Admin dùng cờ platform_admin riêng; backend xác minh auth.uid(), email allowlist tuanluongpham1980@gmail.com và email_confirmed_at trong auth.users. Chỉ đọc tổ chức đang active, không bypass theo client-provided role.
+  - Siết cả RPC legacy public.list_cloud_assets để yêu cầu assets.view.
+  - EXECUTE page RPC chỉ cấp authenticated; revoke public/anon.
+- src/lib/cloudAssets.ts:
+  - listCloudAssets chuyển sang đọc hết các trang bằng cursor.
+  - Thêm syncCloudAssetsToLocal: tải thiết bị chưa có Local; dùng AssetCloudLink để đối chiếu thiết bị đã liên kết; cập nhật Cloud → Local khi Local không đổi; giữ Local nếu có thay đổi Local chưa đẩy; đánh dấu conflict nếu hai bên cùng thay đổi; bảo vệ hồ sơ có pending/processing/conflict mutation hoặc hồ sơ Local cùng mã chưa có link. Không xóa hồ sơ, không cấp Smart ID, không import Local Preview.
+- src/App.tsx: sau khi đăng nhập, session ổn định, tổ chức cụ thể đã được chọn và quyền assets.view đã có, tự chạy đồng bộ; hủy lượt cũ khi đổi user/org hoặc rời ngữ cảnh. Hiển thị kết quả mới/cập nhật/đã khớp/được bảo vệ/conflict.
+- src/PlatformAdminPanel.tsx + App: Super Admin có nút “Tải Cloud → Local” theo từng tổ chức active. Backend vẫn tự xác minh allowlist; không thêm membership, không có thao tác sửa/xóa Cloud.
+- Commits source:
+  - 8a90b179dfafb95c4f29a14b788fc4584927b0c2 — migration phân trang và xác thực Super Admin.
+  - 2b19822a3486d427210f1d5533824779d9d8e72e — helper đồng bộ Cloud → Local an toàn.
+  - 89f0c7a67c280c2dc2c511a8783756aad5fabb33 — auto-sync sau khi organization context sẵn sàng.
+  - 347a48a862c04671ced6550ec8fe7ba9f3cd2cd1 — nút tải Cloud theo tổ chức cho Super Admin.
+  - 93361f8b26f29a105a256f28c723a3adb4f32f28 — nối callback Super Admin vào sync helper.
+  - a3db6d47a80857c0eaccbe3ad29e7757d3d09d7a — listCloudAssets chuyển sang phân trang.
+  - 3e471c4c07d9f19a5529de6ae37b0881b500c82b — siết quyền assets.view cả RPC legacy.
+- Cơ sở kỹ thuật: Supabase Database Functions docs cập nhật 18/11/2026; changelog đã rà soát, không có breaking change liên quan trực tiếp tới RPC PostgreSQL dùng ở đây. SECURITY DEFINER đặt search_path rỗng, revoke PUBLIC/anon, grant authenticated có kiểm tra auth/permission phía server.
+- Kiểm tra source tĩnh: migration có giới hạn page size và keyset cursor; bảng assets có unique index (organization_id,code) hỗ trợ truy vấn; App chỉ chạy auto-sync khi org context và assets.view hợp lệ; Super Admin chọn tenant cụ thể. Chưa chạy SQL parser, chưa build/test.
+- Chưa apply migration vào Supabase BAOTRI Mini New / BAOTRI Mini Test 02; chưa deploy Edge Functions/Pages; chưa thao tác dữ liệu tổ chức. Vì vậy đăng nhập vào bản đang chạy hiện tại chưa thể dùng auto-sync cho tới khi migration được apply và source được đưa lên môi trường thử nghiệm.
+- Bước cần người dùng xác nhận tiếp theo: cho phép apply riêng migration trên vào Supabase project BAOTRI Mini New (project ID dskeaiyvldiwlsfqkboq) để thử với tổ chức BAOTRI Mini Test 02 (UUID f11bb85f-0dbe-45f0-bffa-472e5f84f7bf). Không thao tác tổ chức BAOTRI Mini thật.
