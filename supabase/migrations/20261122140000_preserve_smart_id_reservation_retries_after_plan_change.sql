@@ -6,7 +6,8 @@ begin;
 -- Retain the catalog version that governed each newly issued reservation so
 -- retries after a Plan transition preserve the original issuance metadata.
 alter table private.asset_id_sequence_reservations
-  add column if not exists source_data_version text;
+  add column if not exists source_data_version text,
+  add column if not exists group_name_at_creation text;
 
 create or replace function public.reserve_asset_id_sequence(
   p_organization_id uuid, p_reservation_id uuid, p_equipment_code text,
@@ -19,7 +20,7 @@ declare
   v_group_code text; v_site_code text; v_group jsonb; v_dictionary_entry jsonb;
   v_available_plan text; v_plan_rank integer; v_available_rank integer;
   v_sequence bigint; v_existing private.asset_id_sequence_reservations;
-  v_asset_count bigint; v_month_year text;
+  v_asset_count bigint; v_month_year text; v_group_name text;
 begin
   if auth.uid() is null then raise exception 'Authentication required' using errcode = '42501'; end if;
   if not private.has_org_permission(p_organization_id, 'assets.create') then
@@ -65,7 +66,14 @@ begin
       end if;
     end if;
 
-    select c.source_data_version into v_source_version
+    select c.source_data_version,
+      coalesce(v_existing.group_name_at_creation, (
+        select g ->> 'name'
+        from jsonb_array_elements(c.snapshot -> 'equipmentGroups') g
+        where regexp_replace(upper(coalesce(g ->> 'code', '')), '[^A-Z0-9]', '', 'g') = v_existing.group_code
+        limit 1
+      ))
+    into v_source_version, v_group_name
     from public.organization_equipment_catalog c
     where c.organization_id = p_organization_id;
     if v_source_version is null then
@@ -74,8 +82,9 @@ begin
 
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
-      'group_code',nullif(v_existing.group_code,''),'site_code',nullif(v_existing.site_code,''),
-      'month_year',v_existing.month_year,'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
+      'group_code',nullif(v_existing.group_code,''),'group_name_at_creation',v_group_name,
+      'site_code',nullif(v_existing.site_code,''),'month_year',v_existing.month_year,
+      'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
   end if;
 
   -- Serialize new reservations with Plan changes. The approval RPC locks this
@@ -143,10 +152,17 @@ begin
         raise exception 'Reservation ID already exists with a different original commissioning date' using errcode = '23505';
       end if;
     end if;
+    select coalesce(v_existing.group_name_at_creation, (
+      select g ->> 'name'
+      from jsonb_array_elements(v_snapshot -> 'equipmentGroups') g
+      where regexp_replace(upper(coalesce(g ->> 'code', '')), '[^A-Z0-9]', '', 'g') = v_existing.group_code
+      limit 1
+    )) into v_group_name;
     return jsonb_build_object('reservation_id',v_existing.reservation_id,'plan_code',v_existing.plan_code,
       'sequence',v_existing.sequence_value,'equipment_code',v_existing.equipment_code,
-      'group_code',nullif(v_existing.group_code,''),'site_code',nullif(v_existing.site_code,''),
-      'month_year',v_existing.month_year,'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
+      'group_code',nullif(v_existing.group_code,''),'group_name_at_creation',v_group_name,
+      'site_code',nullif(v_existing.site_code,''),'month_year',v_existing.month_year,
+      'source_data_version',coalesce(v_existing.source_data_version,v_source_version),'status',v_existing.status);
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text, 0));
@@ -169,13 +185,15 @@ begin
   do update set last_value=private.asset_id_sequences.last_value+1,updated_at=now()
   returning last_value into v_sequence;
 
+  v_group_name := case when v_plan = 'A' then null else v_group ->> 'name' end;
+
   insert into private.asset_id_sequence_reservations(
-    organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,sequence_value,month_year,source_data_version
-  ) values(p_organization_id,p_reservation_id,auth.uid(),v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,v_source_version);
+    organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,sequence_value,month_year,source_data_version,group_name_at_creation
+  ) values(p_organization_id,p_reservation_id,auth.uid(),v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,v_source_version,v_group_name);
 
   return jsonb_build_object('reservation_id',p_reservation_id,'plan_code',v_plan,'sequence',v_sequence,
-    'equipment_code',v_equipment_code,'group_code',nullif(v_group_code,''),'site_code',nullif(v_site_code,''),
-    'month_year',v_month_year,'source_data_version',v_source_version,'status','reserved');
+    'equipment_code',v_equipment_code,'group_code',nullif(v_group_code,''),'group_name_at_creation',v_group_name,
+    'site_code',nullif(v_site_code,''),'month_year',v_month_year,'source_data_version',v_source_version,'status','reserved');
 end;
 $function$;
 
