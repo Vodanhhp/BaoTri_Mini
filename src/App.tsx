@@ -624,7 +624,7 @@ export default function App() {
 
       if(link){
         const lease=cloudLease
-        if(!lease||lease.assetId!==value.id||lease.lost||!supabase)throw new Error('Không còn khóa Cloud hợp lệ; không lưu.')
+        if(!lease||lease.assetId!==value.code||lease.lost||!supabase)throw new Error('Không còn khóa Cloud hợp lệ; không lưu.')
         const payload=assetMutationPayload(value)
         const groupChanged=Boolean(previous&&isAdmin&&previous.category!==value.category)
         const groupChangeId=groupChanged?uid():undefined
