@@ -1044,3 +1044,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Retry kiểm tra/khởi tạo Preview tiếp theo ngày 22/11/2026: xác nhận HEAD main vẫn là `2962d3e2b49444ca422ae406c1cf9e38c6dd3ce2`; project Preview vẫn có 0 deployment. Gọi tạo deployment một lần nữa cho đúng project/team/branch/commit tiếp tục bị HTTP 429 `rate_limited` (GitHub API rate limit exceeded). Không có deployment ID/URL; đã dừng retry, không dùng Production và không thay đổi Supabase/dữ liệu.
 - Hướng xử lý tiếp: chờ API hết rate limit hoặc dùng quy trình deploy từ source local/CI đã được liên kết đúng project nếu có quyền và cấu hình hợp lệ. Không dùng CLI fallback khi chưa có source local đã xác minh và chưa xác nhận liên kết project; không tự chuyển sang project khác.
+
+
+### Thử lại Vercel Preview — 22/11/2026
+- Đọc lại TIENDO trên main; HEAD trước cập nhật là ae223932e4fad937d2da925aaa6fce025ac12444. Kiểm tra đúng Vercel project baotri-mini-new-preview (prj_De80PT3JC04b3NqtXHRL6JD8QMoo), team team_VnC0cB9kMxYP31Thelm8Zz4C; project framework Vite, chưa có deployment trước lần thử.
+- Sau khoảng thời gian chờ, thử tạo deployment từ repo Vodanhhp/BaoTri_Mini, main, commit ae223932e4fad937d2da925aaa6fce025ac12444. Lần này không còn lỗi 429; Vercel tạo deployment ID dpl_8noG3YiyPcDTAraFiuGcsfc8HgET, URL baotri-mini-new-preview-dypobrpdv-tuanluongpham-8256.vercel.app.
+- Tuy nhiên phản hồi deployment ghi target=production dù yêu cầu target=preview. Deployment kết thúc ERROR (errorCode git_info_fail), không READY; danh sách deployments xác nhận chỉ có deployment này và state ERROR. Không thể cancel do đã chuyển sang trạng thái terminal ERROR. Không có production deployment thành công/live; tuyệt đối không truy cập/promote/tiếp tục deploy theo đường này.
+- Nguyên nhân thực tế đang cần xác định: project không có linked Git project trong deployment context, Vercel Git metadata resolution thất bại (git_info_fail). Trước khi thử deploy lần tiếp, cần làm rõ/khắc phục liên kết Git hoặc chọn quy trình deploy file/source local đã xác minh, đồng thời bảo đảm target Preview được Vercel xác nhận rõ ràng. Repo không có checkout tại runtime hiện tại (đã kiểm tra các thư mục làm việc và /mnt/data); chưa build/test.
+- Không thay đổi Supabase, không thao tác dữ liệu tenant, không chạy build/test. Dừng tại đây để tránh deploy nhầm Production.
