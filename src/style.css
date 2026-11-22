@@ -1151,3 +1151,10 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
  .smart-id-wide{grid-column:auto}
  .smart-id-result strong{font-size:21px}
 }
+
+
+/* Nhận diện doanh nghiệp đang làm việc trong header */
+.organization-name{display:flex;align-items:center;gap:6px;margin-top:4px;max-width:min(420px,42vw);color:var(--primary);font-size:11px;font-weight:650;line-height:1.25;min-width:0}
+.organization-name svg{flex:0 0 auto}
+.organization-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:680px){.organization-name{font-size:9px;max-width:42vw;margin-top:3px;gap:4px}.organization-name svg{width:11px;height:11px}}
