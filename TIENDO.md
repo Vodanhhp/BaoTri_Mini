@@ -628,3 +628,13 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Chưa thực hiện cập nhật ref, tạo commit merge hoặc sửa file nguồn trong lượt này. Chưa deploy, chưa apply migration Cloud Asset Public Key, chưa tạo dữ liệu khách hàng.
 - Quy trình làm việc từ nay theo yêu cầu người dùng: không dựng staging/preview hoặc chạy test theo checklist cũ; làm trực tiếp trên appweb/nhánh phát triển. Vẫn phải giữ nguyên bảo vệ dữ liệu và không thực hiện hành động không thể đảo ngược (merge PR, deploy production, migration ghi dữ liệu, tạo Organization/Auth user/asset/sequence thật) nếu chưa được cho phép rõ ràng.
 - Việc tiếp theo: xử lý riêng các thay đổi main trong App.tsx theo hướng giữ luồng Smart ID chính thức của feature và đưa lối mở simulator nếu vẫn cần; sau đó đồng bộ nhánh theo cách tạo merge commit có hai parent, không force-push và không thay thế toàn bộ file feature bằng file main.
+
+
+## Đồng bộ Main vào Feature — 22/11/2026
+
+- Đã đối chiếu toàn bộ 3 commit mới trên Main với nội dung Feature. Các phần Smart ID simulator, entry trên màn hình đăng nhập, nút mở công cụ trong appweb, SmartEquipmentIdTool, AuthScreen, smartEquipmentId.ts, CSS và CI workflow đều đã hiện diện trên Feature. package.json của Feature giữ script `node --test scripts/*.test.mjs`, bao gồm bộ test Cloud Asset API ngoài bộ Smart ID, nên không thay bằng script hẹp hơn của Main.
+- Giữ nguyên toàn bộ tree của Feature (bao gồm Smart ID Local-first chính thức, Cloud reservation/mutation, provisioning và các cập nhật TIENDO), tạo merge commit hai parent để ghi nhận Main đã được hợp nhất mà không ghi đè code Feature.
+- Merge commit: `854f8e39efc1b1a63eb1bf2a24eb9ea8891af90e`; parent Feature trước merge `b82253fba752704ff780948cc773b7b40f9df601`; parent Main `41328767da804b382901fa9da3e3e02ebd7dfd01`. Cập nhật branch bằng fast-forward, không force-push.
+- Kiểm tra lại GitHub sau cập nhật: compare Main → Feature trả `ahead=157, behind=0`, merge-base đúng bằng Main SHA `41328767da804b382901fa9da3e3e02ebd7dfd01`. PR #11 vẫn OPEN và Draft; GitHub trả `mergeable=true`, `mergeable_state=unstable`. Đây mới là trạng thái mergeability, không phải xác nhận CI/build hoặc nghiệm thu nghiệp vụ.
+- Theo chỉ đạo hiện tại, không chạy test/build, không dựng preview/staging. Không merge PR, không deploy Pages/Edge Functions, không apply migration và không tạo dữ liệu khách hàng thật.
+- Bước tiếp theo: tiếp tục hoàn thiện trực tiếp phần appweb trên Feature, ưu tiên rà soát chức năng đang thiếu theo yêu cầu sản phẩm; chỉ xem xét release khi người dùng yêu cầu và phê duyệt rõ ràng.
