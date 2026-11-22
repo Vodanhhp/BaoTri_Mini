@@ -1185,3 +1185,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã đọc lại source sau deploy và xác nhận origin mới có trong allowlist. Chưa chạy được HTTP OPTIONS end-to-end từ môi trường thao tác hiện tại do không phân giải được hostname Supabase; cần kiểm thử trực tiếp từ trình duyệt người dùng trước khi kết luận luồng gọi API đã thông suốt.
 - Đồng bộ nguyên trạng source hai Edge Functions Test phiên bản 3 vào nhánh `feature/ui-table-layout-system` để Git không còn giữ source cũ và tránh deploy sau này ghi đè mất allowlist. Không triển khai bất kỳ Edge Function nào lên Production.
 - Tiếp tục giữ PR #16 Draft cho tới khi CI và staging được xác minh; chưa merge hoặc deploy Production trong bước cập nhật CORS này.
+
+
+### Hoàn thiện tính nguyên tử khi tải thiết bị Cloud → Local — 22/11/2026
+
+- Rà soát lại luồng tải Cloud → Local phát hiện một khe hở khi ghi IndexedDB: hàm `downloadCloudAsset` ghi hồ sơ Local trước rồi mới ghi `AssetCloudLink`. Nếu tab bị đóng hoặc IndexedDB lỗi giữa hai lần ghi, hồ sơ Local có thể tồn tại nhưng thiếu link; lần đồng bộ sau sẽ bảo vệ hồ sơ không link thay vì tự ghép, đúng về an toàn dữ liệu nhưng khiến thiết bị đó không tự cập nhật được.
+- Sửa trên nhánh `fix/cloud-local-atomic-download`: ghi hồ sơ và Cloud link trong cùng một Dexie transaction. Nếu một bước lỗi, cả hai cùng rollback; lần retry không tạo hồ sơ Local mồ côi.
+- Bổ sung unit test kiểm tra hai ghi được đặt trong cùng transaction.
+- Không thay đổi RPC, migration, quyền, dữ liệu Cloud, Smart ID, UUID/mã quản lý, Local Preview hoặc luồng import. Chưa deploy và không chạm Production.
+- Chờ CI/build trên branch. Sau khi đạt, tạo PR về main. Lưu ý push trực tiếp main kích hoạt GitHub Pages production workflow; vì vậy chưa push/merge main cho tới khi xử lý rõ tác động triển khai Production.

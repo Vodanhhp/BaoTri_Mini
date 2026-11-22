@@ -48,3 +48,11 @@ test('database migrations protect the assets table and expose the paginated UUID
   assert.match(paginationApi, /revoke all on function public\.list_cloud_assets_page\(uuid,text,integer,boolean\) from public, anon/i)
   assert.match(paginationApi, /grant execute on function public\.list_cloud_assets_page\(uuid,text,integer,boolean\) to authenticated/i)
 })
+
+test('Cloud → Local download writes the asset and its link in one IndexedDB transaction', async () => {
+  const source = await read('../src/lib/cloudAssets.ts')
+  const download = source.slice(source.indexOf('export async function downloadCloudAsset'), source.indexOf('export async function acquireCloudAssetLock'))
+  assert.match(download, /db\.transaction\('rw',\s*\[db\.assets,\s*db\.assetCloudLinks\]/)
+  assert.match(download, /await db\.assets\.put\(local\)/)
+  assert.match(download, /await db\.assetCloudLinks\.put\(link\)/)
+})

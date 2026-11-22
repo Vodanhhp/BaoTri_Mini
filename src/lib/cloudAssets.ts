@@ -197,10 +197,15 @@ export async function downloadCloudAsset(organizationId: string, cloud: CloudAss
     createdByLabel: cloud.createdByLabel ?? existing?.createdByLabel,
     createdByUserId: cloud.createdByUserId ?? existing?.createdByUserId
   }
-  await db.assets.put(local)
-  await db.assetCloudLinks.put({
+  const link: AssetCloudLink = {
     id: organizationId+':'+local.id, organizationId, assetId:local.id, cloudCode:cloud.code,
     cloudUpdatedAt:cloud.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:now()
+  }
+  // Keep the Local asset and its Cloud link atomic. If either write fails,
+  // Dexie rolls back both so a retry cannot strand an unlinked Local row.
+  await db.transaction('rw',[db.assets,db.assetCloudLinks],async()=>{
+    await db.assets.put(local)
+    await db.assetCloudLinks.put(link)
   })
   return local
 }
