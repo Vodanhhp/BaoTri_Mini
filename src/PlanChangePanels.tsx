@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {listCloudAssets} from './lib/cloudAssets'
-import {loadOrganizationEquipmentCatalog} from './lib/smartEquipmentIdClient'
+import {loadOrganizationEquipmentCatalog,type OrganizationEquipmentCatalogRecord} from './lib/smartEquipmentIdClient'
 
 type PlanCode='A'|'B'|'C'|'D'
 type PlanOption={id:PlanCode;name:string;maxDevices:number|null;features:{equipmentGroups:boolean;multipleSites:boolean};idRule:string}
@@ -26,7 +26,7 @@ const loadPlans=async(baseUrl:string)=>{
  return config.plans as PlanOption[]
 }
 
-export function OrganizationPlanPanel({client,organizationId,onClose}:{client:SupabaseClient;organizationId:string;onClose:()=>void}){
+export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLoaded}:{client:SupabaseClient;organizationId:string;onClose:()=>void;onCatalogLoaded?:(catalog:OrganizationEquipmentCatalogRecord|null)=>void}){
  const [plans,setPlans]=useState<PlanOption[]>([])
  const [currentPlan,setCurrentPlan]=useState<PlanCode|null>(null)
  const [deviceCount,setDeviceCount]=useState(0)
@@ -49,13 +49,14 @@ export function OrganizationPlanPanel({client,organizationId,onClose}:{client:Su
    if(response.error)throw new Error(response.error.message)
    if(response.data?.error)throw new Error(response.data.error)
    setCurrentPlan(catalog?.plan_code??null)
+   onCatalogLoaded?.(catalog)
    setDeviceCount(assets.length)
    setPlans(planOptions)
    setRequests((response.data?.requests??[]) as PlanRequest[])
    setTargetPlan('')
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setLoading(false)}
- },[client,organizationId])
+ },[client,organizationId,onCatalogLoaded])
  useEffect(()=>{void load()},[load])
  const selected=plans.find(plan=>plan.id===targetPlan)
  const overLimit=Boolean(selected&&selected.maxDevices!==null&&deviceCount>selected.maxDevices)
