@@ -1040,3 +1040,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Lần thử tạo deployment Preview thứ ba cho HEAD faaf8352b118335c6a812f2855a7d8bc0d28c31b tiếp tục nhận HTTP 429 rate_limited (GitHub API rate limit exceeded). Đã dừng retry theo hướng dẫn dịch vụ; không tạo deployment và không có URL để đăng nhập.
 - Trạng thái hiện tại: migration đã apply + SQL smoke test member/Super Admin/denied đã có kết quả; phần frontend đã commit main nhưng chưa được build/deploy. Cần chờ Vercel/GitHub API hết rate limit hoặc dùng phương thức deploy khác có quyền truy cập repo. Không chuyển sang production.
+
+
+- Retry kiểm tra/khởi tạo Preview tiếp theo ngày 22/11/2026: xác nhận HEAD main vẫn là `2962d3e2b49444ca422ae406c1cf9e38c6dd3ce2`; project Preview vẫn có 0 deployment. Gọi tạo deployment một lần nữa cho đúng project/team/branch/commit tiếp tục bị HTTP 429 `rate_limited` (GitHub API rate limit exceeded). Không có deployment ID/URL; đã dừng retry, không dùng Production và không thay đổi Supabase/dữ liệu.
+- Hướng xử lý tiếp: chờ API hết rate limit hoặc dùng quy trình deploy từ source local/CI đã được liên kết đúng project nếu có quyền và cấu hình hợp lệ. Không dùng CLI fallback khi chưa có source local đã xác minh và chưa xác nhận liên kết project; không tự chuyển sang project khác.
