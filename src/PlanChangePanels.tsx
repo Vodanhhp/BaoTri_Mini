@@ -90,7 +90,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
      const limit=plan?.maxDevices
      return <div className="platform-plan-summary" style={{marginBottom:14}}>
       <b>{planLabel(currentPlan,plans)}</b>
-      <p>{limit===null?'Không giới hạn thiết bị':typeof limit==='number'?'Hạn mức '+number(limit)+' thiết bị':'Chưa xác định hạn mức'} · {number(deviceCount)} hồ sơ thiết bị Cloud hiện có</p>
+      <p>{limit===null?'Không giới hạn thiết bị':typeof limit==='number'?'Hạn mức '+number(limit)+' thiết bị':'Chưa xác định hạn mức'} · {number(deviceCount)} thiết bị/lượt giữ mã đang được tính vào hạn mức</p>
      </div>
     })():<div className="auth-note">Tổ chức chưa có Plan hoặc Catalog Snapshot. Vui lòng liên hệ Super Admin.</div>}
     {pending&&<div className="auth-note" style={{marginBottom:14}}>
