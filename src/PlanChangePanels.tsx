@@ -80,7 +80,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
   finally{setBusy(false)}
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
-  <section className="modal member-modal" style={{width:'min(720px,96vw)',maxHeight:'90vh',overflowY:'auto'}}>
+  <section className="modal member-modal organization-plan-modal">
    <div className="modal-head"><div><div className="eyebrow">THUÊ BAO DOANH NGHIỆP</div><h2>Gói dịch vụ</h2><p>Xem Plan hiện tại và gửi yêu cầu thay đổi gói sử dụng.</p></div><button className="icon-btn" onClick={onClose} disabled={busy}>×</button></div>
    {error&&<div className="auth-error">{error}</div>}
    {message&&<div className="cloud-message">{message}</div>}
@@ -118,7 +118,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
     </form>}
     <div className="divider" style={{margin:'18px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
     <h3 style={{fontSize:15}}>Lịch sử yêu cầu</h3>
-    {requests.length===0?<div className="table-empty-state">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-history-table-wrap"><table className="table-standard plan-history-table"><thead><tr><th>Nội dung thay đổi</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+    {requests.length===0?<div className="table-empty-state">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-history-table-wrap"><table className="table-standard plan-history-table"><colgroup><col style={{width:"27%"}}/><col style={{width:"22%"}}/><col style={{width:"36%"}}/><col style={{width:"15%"}}/></colgroup><thead><tr><th>Nội dung thay đổi</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
       <td><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b></td>
       <td className="table-date-cell">{dateTime(request.requested_at)}</td>
       <td className="table-note-cell">{request.request_note&&<small>Lý do: {request.request_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{!request.request_note&&!request.review_note?'—':null}</td>
@@ -179,7 +179,7 @@ export function PlatformPlanRequestsPanel({client}:{client:SupabaseClient}){
   <div className="panel-head"><div><h3>Yêu cầu nâng / hạ cấp Plan</h3><p>Yêu cầu từ Admin doanh nghiệp; thao tác duyệt được ghi lịch sử.</p></div><button className="soft-btn" onClick={()=>void load()} disabled={loading}>{loading?'Đang tải…':'Làm mới'}</button></div>
   {error&&<div className="auth-error">{error}</div>}
   {message&&<div className="cloud-message">{message}</div>}
-  {loading?<div className="auth-note">Đang tải yêu cầu Plan…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-requests-table-wrap"><table className="table-standard plan-requests-table"><thead><tr><th>Doanh nghiệp</th><th>Thay đổi Plan</th><th>Người gửi</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+  {loading?<div className="auth-note">Đang tải yêu cầu Plan…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-requests-table-wrap"><table className="table-standard plan-requests-table"><colgroup><col className="plan-col-organization"/><col className="plan-col-change"/><col className="plan-col-requester"/><col className="plan-col-note"/><col className="plan-col-status"/><col className="plan-col-actions"/></colgroup><thead><tr><th>Doanh nghiệp</th><th>Thay đổi Plan</th><th>Người gửi</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
     <td><b>{request.organization_name||request.organization_id}</b><small className="table-subtext">{dateTime(request.requested_at)}</small></td>
     <td><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b></td>
     <td><b>{request.requested_by_name||request.requested_by_email||request.requested_by_user_id}</b>{request.requested_by_email&&request.requested_by_name&&<small className="table-subtext">{request.requested_by_email}</small>}</td>

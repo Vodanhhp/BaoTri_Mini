@@ -1247,3 +1247,35 @@ button:disabled{opacity:.42!important;filter:grayscale(.35);cursor:not-allowed!i
   .plan-requests-table{min-width:820px!important}
   .plan-history-table{min-width:570px!important}
 }
+
+/* Điều chỉnh chuẩn bảng v2: ưu tiên chiều ngang, kiểm soát chiều cao hàng */
+.table-wrap > table.table-standard{width:100%;min-width:0;table-layout:fixed;white-space:normal}
+.table-wrap > table.table-standard thead th{padding:10px 11px;white-space:nowrap;font-size:10px}
+.table-wrap > table.table-standard tbody td{padding:9px 11px;white-space:normal;overflow-wrap:anywhere;font-size:11px;line-height:1.4}
+.table-wrap > table.table-standard tbody td b{display:inline;font-size:11px;line-height:1.35}
+.table-wrap > table.table-standard tbody td small{display:block;margin-top:3px;font-size:10px;line-height:1.35}
+.organization-plan-modal{width:min(1080px,96vw)!important;max-width:1080px;max-height:92vh;overflow:auto}
+.organization-plan-modal .modal-head{margin-bottom:12px}
+.plan-history-table{min-width:720px!important}
+.plan-requests-table{min-width:960px!important}
+.plan-requests-table .plan-col-organization{width:19%}
+.plan-requests-table .plan-col-change{width:18%}
+.plan-requests-table .plan-col-requester{width:19%}
+.plan-requests-table .plan-col-note{width:25%}
+.plan-requests-table .plan-col-status{width:10%}
+.plan-requests-table .plan-col-actions{width:9%}
+.plan-requests-table .table-note-cell{min-width:0;max-width:none}
+.plan-requests-table .table-action-group{flex-wrap:nowrap}
+.plan-requests-table .table-action-group button{min-width:58px}
+.platform-org-table{max-width:100%;overflow:auto}
+.platform-org-table table{min-width:980px}
+.platform-org-table td{white-space:normal;overflow-wrap:anywhere}
+.platform-org-table .platform-org-actions{display:flex;gap:5px;flex-wrap:nowrap}
+.platform-org-table .platform-org-actions button{white-space:nowrap}
+@media(max-width:760px){
+ .organization-plan-modal{width:96vw!important;max-width:96vw;max-height:94dvh;padding:14px}
+ .plan-history-table{min-width:680px!important}
+ .plan-requests-table{min-width:900px!important}
+ .table-wrap > table.table-standard thead th{padding:9px 9px;font-size:9px}
+ .table-wrap > table.table-standard tbody td{padding:8px 9px;font-size:10px}
+}
