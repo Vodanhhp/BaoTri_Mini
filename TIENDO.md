@@ -1137,3 +1137,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Files thay đổi: `src/PlanChangePanels.tsx`, `src/style.css`, `docs/UI_TABLE_STANDARD.md`.
 - Chưa build/test trình duyệt; chưa deploy Staging hoặc Production. Không thay đổi nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu.
 - Bước tiếp theo: chạy CI/build trên branch, kiểm tra giao diện desktop/tablet/mobile; tiếp tục rà soát các bảng còn lại trước khi đề xuất merge/deploy.
+
+
+### Chuẩn hóa typography toàn website — 22/11/2026
+- Rà soát source cho thấy font Be Vietnam Pro đã được import và khai báo ở `:root`; vấn đề không phải thiếu font chung mà là cỡ chữ bị đặt rải rác, có nhiều quy tắc 7–10px và một khối CSS riêng trong Quản trị nền tảng.
+- Giữ Be Vietnam Pro làm font giao diện duy nhất; bổ sung token `--font-family-ui` và thang chữ thống nhất: 11px chú thích, 12px nội dung phụ, 13px nội dung chính, 15px tiêu đề khu vực, 18px tiêu đề hộp thoại, 22px tiêu đề trang.
+- Thêm lớp chuẩn hóa để các nhãn phụ, trạng thái, nội dung bảng, nút nhỏ và thành phần Quản trị nền tảng không còn bị thu nhỏ xuống 7–10px; giữ ngoại lệ font Tahoma cho bản in và Consolas cho mã kỹ thuật.
+- Sửa JSX trùng thuộc tính `className` tại modal Gói dịch vụ; giữ class `plan-request-modal` để áp dụng đúng kích thước bảng nhiều cột.
+- Cập nhật `docs/UI_TABLE_STANDARD.md` thêm chuẩn typography dùng lại cho các ứng dụng trong hệ sinh thái.
+- Phạm vi chỉ CSS/JSX/tài liệu; không đổi logic nghiệp vụ, quyền, Supabase, Edge Functions hoặc dữ liệu. Chưa build và chưa kiểm tra trực quan trên browser; chưa deploy Staging/Production.
