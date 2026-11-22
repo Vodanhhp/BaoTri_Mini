@@ -648,3 +648,12 @@ Các mã trên là ví dụ định dạng, không phải mã đã cấp cho thi
 - Chỉ sửa source migration trong GitHub. Chưa apply migration lên Supabase BAOTRI-Mini-New; chưa thay đổi schema/database runtime, chưa deploy, chưa tạo dữ liệu.
 - Không chạy test/build theo yêu cầu người dùng. Trước khi apply sau này cần rà soát thứ tự migration và trạng thái thực tế của schema trên đúng project `dskeaiyvldiwlsfqkboq`; không áp dụng lên hai project Supabase cũ.
 - Tiếp tục rà soát migration Public Key và contract frontend↔RPC trước khi xin phê duyệt apply. Các điều kiện phát hành khác vẫn giữ nguyên: chưa merge PR #11, chưa deploy Pages hoặc Edge Functions.
+
+
+## Chốt phiên rà soát migration Public Key — 22/11/2026
+
+- Head trước khi ghi checkpoint: `5df38d09ef44c6250cf3f64e546353527466c102`. Compare Main → Feature: ahead 160, behind 0; merge-base là Main `41328767da804b382901fa9da3e3e02ebd7dfd01`.
+- PR #11 vẫn OPEN, Draft; GitHub báo mergeable=true, mergeable_state=unstable. Không coi đây là CI/build success.
+- Migration Public Key đã được sửa để chuyển 5 implementation UUID-based sang schema private trước khi tạo code-based public wrappers; xác nhận source có đủ 5 lệnh ALTER FUNCTION và wrapper import gọi private implementation.
+- Không chạy test/build, không apply migration, không deploy hoặc merge PR theo yêu cầu hiện tại.
+- Việc tiếp theo: rà soát tiếp toàn bộ hợp đồng RPC/grants và tương thích dữ liệu của migration Public Key với frontend; nếu còn lỗi source thì sửa trên Feature. Việc apply migration và deploy vẫn cần phê duyệt riêng.
