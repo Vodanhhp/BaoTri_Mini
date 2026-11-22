@@ -326,11 +326,13 @@ export default function App() {
   }
   const syncAssetHistoryEntry = async (entry:AssetHistory) => {
     if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced')return
-    const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
-      p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
-      p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
-    })
-    if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+    try{
+      const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
+        p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
+        p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
+      })
+      if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+    }catch{/* Keep the Local audit event pending; retry after connectivity or migration is ready. */}
   }
   const loadAssetHistory = async (assetId: string, assetCode?:string) => {
     const scope=organizationId||'local-preview'
@@ -716,10 +718,10 @@ export default function App() {
             })
           })
         }
-        if(!pending)await recordAssetHistory(previous,value)
         await db.assetMutations.update(mutationId,{status:'processing',attempts:(pending?.attempts??0)+1,updatedAt:now(),lastError:undefined})
         try{
           const applied=await applyCloudAssetMutation(supabase,organizationId,value,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
+          if(!pending)await recordAssetHistory(previous,value)
           const at=now()
           await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
             await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
@@ -789,11 +791,10 @@ export default function App() {
         await db.assets.put(candidate)
         await db.assetMutations.add({mutationId,organizationId,assetId:asset.id,payload,expectedCloudUpdatedAt:lease!.expectedCloudUpdatedAt,localUpdatedAt:candidate.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
       })
-      await recordAssetHistory(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị')
       await db.assetMutations.update(mutationId,{status:'processing',attempts:1,updatedAt:now()})
       try{
-        await recordAssetHistory(asset,candidate,archived?'archived':'restored',archived?'Đưa thiết bị vào Lưu kho':'Khôi phục thiết bị khỏi Lưu kho')
-      const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
+        const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
+        await recordAssetHistory(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị')
         await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
           await db.assetMutations.update(mutationId,{status:'applied',appliedAt:now(),cloudUpdatedAt:applied.asset.updatedAt,updatedAt:now()})
           await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
@@ -844,6 +845,7 @@ export default function App() {
         await db.assets.put(candidate);await db.assetMutations.add({mutationId,organizationId,assetId:asset.id,payload,expectedCloudUpdatedAt:lease!.expectedCloudUpdatedAt,localUpdatedAt:candidate.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
       })
       const applied=await applyCloudAssetMutation(supabase,organizationId,candidate,lease.token,mutationId,lease.expectedCloudUpdatedAt,payload)
+      await recordAssetHistory(asset,candidate,archived?'archived':'restored',archived?'Đưa thiết bị vào Lưu kho':'Khôi phục thiết bị khỏi Lưu kho')
       await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
         await db.assetMutations.update(mutationId,{status:'applied',appliedAt:now(),cloudUpdatedAt:applied.asset.updatedAt,updatedAt:now()})
         await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
