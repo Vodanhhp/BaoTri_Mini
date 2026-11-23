@@ -116,3 +116,22 @@ test('both Cloud and Local conflict resolutions create an audit event, including
   assert.match(app, /onConflictResolved=\{\(before,after,summary,eventId\)=>recordAssetHistory\(before,after,'updated',summary,eventId,false,true\)\}/)
   assert.match(app, /if \(before && !changes\.length && !force\) return/)
 })
+
+test('Cloud panel does not read Cloud data without assets.view and guards mutation handlers', async () => {
+ const source = await read('../src/CloudAssetsPanel.tsx')
+ const reload = source.slice(source.indexOf('const reload=async()=>{'), source.indexOf('useEffect(()=>{void reload()}'))
+ assert.match(reload, /if\(!canView\)\{setCloud\(\[\]\);setDeletedCloudCodes\(\[\]\);return\}/)
+ assert.match(reload, /if\(!canView\)/)
+ for (const name of ['retryOne','resolveConflictCloud','resolveConflictLocal','downloadOne']) {
+  const start = source.indexOf('const '+name+'=async(')
+  assert.notEqual(start,-1, name+' handler exists')
+  assert.match(source.slice(start,start+280), /if\(!canView\|\|!canUpdate\)|if\(!canView\)/, name+' checks permission before work')
+ }
+ for (const name of ['importOne','importPreviewOne']) {
+  const start = source.indexOf('const '+name+'=async(')
+  assert.notEqual(start,-1, name+' handler exists')
+  assert.match(source.slice(start,start+220), /if\(!canImport\)/, name+' checks import permission before work')
+ }
+ assert.match(source, /disabled=\{!canView\|\|!canUpdate\|\|!!busyId\} onClick=\{\(\)=>void resolveConflictCloud\(m\)\}/)
+ assert.match(source, /disabled=\{!canView\|\|!canUpdate\|\|!!busyId\} onClick=\{\(\)=>void resolveConflictLocal\(m\)\}/)
+})
