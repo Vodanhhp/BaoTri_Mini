@@ -129,7 +129,7 @@ test('reset is requested by organization Admin and reviewed in the Superadmin re
   const tenant = await read('../src/PlanChangePanels.tsx')
   const ui = await read('../src/PlatformAdminPanel.tsx')
   assert.match(tenant, /Yêu cầu Reset toàn bộ thiết bị/)
-  assert.match(tenant, /Thiết bị đang offline sẽ được xóa khi kết nối lại/)
+  assert.match(tenant, /dữ liệu Local trên thiết bị đã đăng ký sẽ được xóa khi thiết bị kết nối lại/)
   assert.match(ui, /PlatformAssetResetRequestsPanel/)
   assert.doesNotMatch(ui, /beginManagement\(org,'reset'\)/)
   assert.doesNotMatch(ui, /platform-reset-organization-assets/)
