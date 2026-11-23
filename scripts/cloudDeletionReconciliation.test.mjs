@@ -76,7 +76,7 @@ test('failed Cloud edits retain a Local audit event and mirror it only after mut
   const source = await read('../src/App.tsx')
   assert.match(source, /recordAssetHistory\(previous,value,undefined,undefined,mutationId,true\)/)
   assert.match(source, /const pendingHistory=await db\.assetHistory\.where\('organizationId'\)/)
-  assert.match(source, /if\(mutation\?\.status!=='applied'\)continue/)
+  assert.match(source, /if\(mutation&&mutation\.status!=='applied'\)continue/)
   assert.match(source, /client\.rpc\('record_cloud_asset_history_event'/)
   assert.match(source, /db\.assetHistory\.update\(entry\.id,\{syncStatus:'synced'\}\)/)
 })
@@ -86,7 +86,7 @@ test('failed soft-delete and archive operations retain audit events for later Cl
   const source = await read('../src/App.tsx')
   assert.match(source, /recordAssetHistory\(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị',mutationId,true\)/)
   assert.match(source, /if\(pendingCandidate&&pendingMutationId\)await recordAssetHistory\(asset,pendingCandidate,archived\?'archived':'restored'/)
-  assert.match(source, /if\(mutation\?\.status!=='applied'\)continue/)
+  assert.match(source, /if\(mutation&&mutation\.status!=='applied'\)continue/)
 })
 
  
@@ -161,4 +161,12 @@ test('automatic mutation retry requires an authorized Admin or KTV role as well 
  const sync = source.slice(source.indexOf('const runSync=async()=>{'), source.indexOf('const runSync=async()=>{')+2300)
  assert.match(sync, /const contextCanMutate=Boolean\(context\.isAdmin\|\|context\.roleCodes\.some\(code=>\['ktv','technician','maintenance_technician'\]/)
  assert.match(sync, /if\(contextCanMutate&&context\.permissions\.includes\('assets\.update'\)\)/)
+})
+
+test('automatic sync mirrors standalone pending history events but gates mutation-linked events on applied receipt', async () => {
+ const source = await read('../src/App.tsx')
+ const sync = source.slice(source.indexOf('const runSync=async()=>{'), source.indexOf('const runSync=async()=>{')+3200)
+ assert.match(sync, /const mutation=await db\.assetMutations\.get\(entry\.id\)/)
+ assert.match(sync, /if\(mutation&&mutation\.status!=='applied'\)continue/)
+ assert.match(sync, /client\.rpc\('record_cloud_asset_history_event'/)
 })
