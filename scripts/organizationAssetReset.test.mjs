@@ -76,6 +76,9 @@ test('App applies reset before tenant asset reads, reservation retries and audit
   assert.match(source, /p_reset_generation:resetGeneration/)
   assert.match(source, /retryPendingLocalReservations=async\(\)=>\{[\s\S]*?await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsToLocal/)
+  assert.match(source, /window\.addEventListener\('focus',runSync\)/)
+  assert.match(source, /applyKnownOrganizationResets/)
+  assert.match(source, /db\.organizationAssetResetStates\.toArray\(\)/)
 })
 
 test('Superadmin reset requires confirmed owner identity, password reauthentication, exact org name and idempotency key', async () => {
