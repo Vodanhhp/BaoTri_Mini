@@ -215,6 +215,40 @@ export default function App() {
       .catch(cause=>{if(active)setError('Không tải được dữ liệu Local Preview cũ: '+(cause instanceof Error?cause.message:String(cause)))})
     return()=>{active=false}
   },[session?.user.id,organizationId,localPreview])
+  // Reconcile every organization previously known to this browser, including one
+  // whose membership has since been removed. A previously registered device can
+  // still receive and acknowledge a reset without regaining organization access.
+  useEffect(()=>{
+    if(!session?.user.id||!supabase)return
+    let active=true
+    const applyKnownOrganizationResets=async()=>{
+      if(!navigator.onLine)return
+      try{
+        const [localRows,resetRows]=await Promise.all([
+          db.assets.toArray(),
+          db.organizationAssetResetStates.toArray()
+        ])
+        const scopes=new Set<string>([
+          ...localRows.map(row=>row.localScope),
+          ...resetRows.map(row=>row.organizationId)
+        ])
+        scopes.delete('local-preview')
+        for(const scope of scopes){
+          if(!active)break
+          await ensureOrganizationAssetResetApplied(supabase,scope).catch(()=>{})
+        }
+      }catch{/* A later online/focus event retries without blocking the current session. */}
+    }
+    void applyKnownOrganizationResets()
+    window.addEventListener('online',applyKnownOrganizationResets)
+    window.addEventListener('focus',applyKnownOrganizationResets)
+    return()=>{
+      active=false
+      window.removeEventListener('online',applyKnownOrganizationResets)
+      window.removeEventListener('focus',applyKnownOrganizationResets)
+    }
+  },[session?.user.id])
+
   useEffect(()=>{
     if(!session?.user.id||!supabase||!organizationReady||!organizationId||localPreview){
       setCloudSyncMessage('')
