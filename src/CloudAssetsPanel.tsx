@@ -20,22 +20,28 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const reload=async()=>{
   setLoading(true);setError('')
   try{
-   const [cloudRows,linkRows,mutationRows,tombstonesResult]=await Promise.all([
-    listCloudAssets(client,organizationId),
+   const [linkRows,mutationRows]=await Promise.all([
     db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
-    db.assetMutations.where('organizationId').equals(organizationId).toArray(),
+    db.assetMutations.where('organizationId').equals(organizationId).toArray()
+   ])
+   setLinkedIds(linkRows.map(l=>l.assetId))
+   setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
+   if(!canView){setCloud([]);setDeletedCloudCodes([]);return}
+   const [cloudRows,tombstonesResult]=await Promise.all([
+    listCloudAssets(client,organizationId),
     client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
    ])
    if(tombstonesResult.error)throw new Error('Không tải được danh sách dấu xóa Cloud: '+tombstonesResult.error.message)
    const tombstones=Array.isArray(tombstonesResult.data)?tombstonesResult.data as Array<{code?:string}>:[]
-   setCloud(cloudRows);setDeletedCloudCodes(tombstones.map(row=>String(row.code??'')));setLinkedIds(linkRows.map(l=>l.assetId));setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
+   setCloud(cloudRows);setDeletedCloudCodes(tombstones.map(row=>String(row.code??'')))
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setLoading(false)}
  }
- useEffect(()=>{void reload()},[organizationId])
+ useEffect(()=>{void reload()},[organizationId,canView])
  const candidates=localAssets.filter(a=>a.localScope===organizationId&&!linkedIds.includes(a.id))
  const previewCandidates=localPreviewAssets.filter(a=>a.localScope==='local-preview')
  const retryOne=async(mutation:AssetMutation)=>{
+  if(!canUpdate){setError('Tài khoản không có quyền cập nhật thiết bị.');return}
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
    const result=await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
@@ -55,6 +61,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const resolveConflictCloud=async(mutation:AssetMutation)=>{
+  if(!canUpdate){setError('Tài khoản không có quyền xử lý conflict.');return}
   const local=localAssets.find(a=>a.id===mutation.assetId)
   let cloudAsset:CloudAsset|undefined
   if(!local){setError('Không tìm thấy Local để đối chiếu.');return}
@@ -73,6 +80,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const resolveConflictLocal=async(mutation:AssetMutation)=>{
+  if(!canUpdate){setError('Tài khoản không có quyền xử lý conflict.');return}
   const local=localAssets.find(a=>a.id===mutation.assetId)
   const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
   if(!local||!link){setError('Không tìm thấy snapshot hoặc liên kết để đối chiếu.');return}
@@ -111,6 +119,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   }finally{if(lease)await releaseCloudAssetLock(client,organizationId,lease.assetId,lease.token).catch(()=>false);setBusyId('')}
  }
  const importOne=async(asset:Asset)=>{
+  if(!canImport){setError('Tài khoản không có quyền nhập thiết bị lên Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
    if(await db.assetCloudLinks.get(organizationId+':'+asset.id))throw new Error('Thiết bị đã có liên kết Cloud.')
@@ -121,6 +130,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const importPreviewOne=async(asset:Asset)=>{
+  if(!canImport){setError('Tài khoản không có quyền chuyển dữ liệu Local Preview.');return false}
   setBusyId('preview:'+asset.id);setError('');setMessage('')
   try{
    if(asset.localScope!=='local-preview')throw new Error('Hồ sơ không còn thuộc Local Preview; hãy tải lại danh sách.')
@@ -165,6 +175,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setSelected([])
  }
  const downloadOne=async(asset:CloudAsset)=>{
+  if(!canView){setError('Tài khoản không có quyền xem thiết bị Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
    const local=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
