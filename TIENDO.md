@@ -1248,3 +1248,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - `.env.local`: file local untracked; giữ nguyên trên máy, tuyệt đối không add/commit/push.
 - Trước cập nhật tài liệu trên GitHub, các thay đổi local chưa commit/push. Cần đồng bộ branch qua GitHub Desktop và kiểm tra tránh ghi đè thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
+
+
+### Khôi phục nguồn migration sửa Cloud asset mutation — 23/11/2026
+- Rà soát migration history trên Supabase Test xác nhận migration `20261122124403_add_cloud_asset_lock_anchor` và `20261122125135_fix_asset_mutation_receipt_actor_column` đã được áp dụng, nhưng hai file source tương ứng bị thiếu trong `main`.
+- PR #19 cũ có branch phân kỳ khỏi `main`; không nhập nguyên PR. Chỉ khôi phục hai migration lịch sử và test hồi quy trên branch mới.
+- Migration actor-column lịch sử chứa function version trước bổ sung guard Admin/KTV và trạng thái Lưu kho; migration `20261122210000_asset_activity_history` sau đó thay thế bằng phiên bản canonical có các guard này. Test mới xác nhận không làm mất guard ở migration sau.
+- Chỉ đồng bộ source/test vào repo; **không áp dụng migration lên Supabase** vì Test đã có migration history này. Không thay đổi Production, dữ liệu, Edge Functions hay deploy.
+- Branch: `fix/reconcile-cloud-mutation-migration-sources`; chờ CI/build trước khi mở PR.
