@@ -145,3 +145,13 @@ test('asset cache is cleared and not loaded without assets.view or across organi
  assert.match(loader, /if\(active\)setAssets\(rows\)/)
  assert.match(loader, /return \(\)=>\{active=false\}/)
 })
+
+test('save and draft recovery recheck create/update grants at action time', async () => {
+ const source = await read('../src/App.tsx')
+ const save = source.slice(source.indexOf('const saveAsset = async'), source.indexOf('const addImages = async'))
+ assert.match(save, /if\(previous&&!localPreview&&!canUpdate\)/)
+ assert.match(save, /if\(!previous&&!localPreview&&!canCreate\)/)
+ const resume = source.slice(source.indexOf('const resumeAssetDraft='), source.indexOf('const discardAssetDraft='))
+ assert.match(resume, /if\(!localPreview&&!canCreate\)/)
+ assert.match(source, /!showForm&&!localPreview&&canCreate&&recoverableDrafts\.length>0/)
+})
