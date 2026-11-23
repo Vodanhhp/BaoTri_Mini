@@ -355,6 +355,24 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  if(!local)throw new Error('Local snapshot của mutation đã mất.')
  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
  if(!link)throw new Error('Thiết bị chưa có liên kết Cloud.')
+ if(link.organizationId!==organizationId||link.assetId!==local.id||link.cloudCode!==local.code){
+  const reason='Liên kết Cloud không còn khớp tổ chức, UUID hoặc mã thiết bị; mutation được giữ lại để đối chiếu.'
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+   await db.assetMutations.update(mutationId,{status:'conflict',lastError:reason,updatedAt:now()})
+   await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  })
+  throw new Error(reason)
+ }
+ if(link.status==='conflict'||local.updatedAt!==mutation.localUpdatedAt){
+  const reason=link.status==='conflict'
+   ?'Liên kết Cloud đã ở trạng thái conflict; không tự retry mutation.'
+   :'Snapshot Local đã thay đổi sau khi tạo mutation; không gửi snapshot cũ lên Cloud. Cần đối chiếu trước khi tiếp tục.'
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+   await db.assetMutations.update(mutationId,{status:'conflict',lastError:reason,updatedAt:now()})
+   await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  })
+  throw new Error(reason)
+ }
  const deviceId=getLocalDeviceId()
  const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
  if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
@@ -366,7 +384,7 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
   await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
    await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
    for(const old of conflicts)await db.assetMutations.update(old.mutationId,{status:'discarded',updatedAt:at,lastError:'Đã giải quyết conflict bằng retry mutation.'})
-   await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
+   await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:mutation.localUpdatedAt,status:'linked',lastVerifiedAt:at})
   })
   return {alreadyApplied:applied.alreadyApplied,cloudUpdatedAt:applied.asset.updatedAt}
  }catch(error){
