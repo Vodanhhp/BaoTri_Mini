@@ -233,7 +233,7 @@ async function reconcileCloudDeletion(
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
   const current=await db.assets.get(asset.id)
-  if(!current||current.localScope!==asset.localScope||current.code!==asset.code||
+  if(!current||current.localScope!==asset.localScope||current.code!==asset.code||current.updatedAt!==asset.updatedAt||
      (asset.localScope!=='local-preview'&&asset.localScope!==organizationId)){
     throw new Error('Hồ sơ Local đã bị xóa hoặc thay đổi sau reset; hãy tải lại dữ liệu trước khi nhập.')
   }
@@ -332,7 +332,7 @@ export async function releaseCloudAssetLock(client: SupabaseClient, organization
 export async function applyCloudAssetMutation(client: SupabaseClient, organizationId: string, asset: Asset, token: string, mutationId: string, expectedCloudUpdatedAt: string, payload: AssetMutationPayload) {
   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
   const current=await db.assets.get(asset.id)
-  if(!current||current.localScope!==organizationId||current.code!==asset.code)throw new Error('Hồ sơ Local không còn hợp lệ sau khi kiểm tra reset; không gửi dữ liệu cũ lên Cloud.')
+  if(!current||current.localScope!==organizationId||current.code!==asset.code||current.updatedAt!==asset.updatedAt)throw new Error('Hồ sơ Local không còn hợp lệ sau khi kiểm tra reset; không gửi dữ liệu cũ lên Cloud.')
   if(payload.deletedAt){
     const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt,p_reset_generation:resetGeneration})
     if(error)throw new Error(error.message)
