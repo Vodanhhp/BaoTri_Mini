@@ -17,7 +17,7 @@ test('Cloud tombstones preserve newer Local snapshots and turn outstanding mutat
 
 test('Deletion tombstones cannot soft-delete an unlinked or differently linked Local asset', async () => {
   const source = await read('../src/lib/cloudAssets.ts')
-  const tombstones = source.slice(source.indexOf('for(const tombstone'), source.indexOf('return summary'))
+  const tombstones = source.slice(source.indexOf('for(const tombstone'), source.lastIndexOf('return summary'))
   assert.match(tombstones, /if\(!link\|\|link\.cloudCode!==tombstone\.code\)/)
   assert.match(tombstones, /summary\.protectedLocal\+\+/)
   assert.match(tombstones, /reconcileCloudDeletion\(organizationId,local,link,tombstone\.deleted_at,tombstone\.updated_at\)/)
