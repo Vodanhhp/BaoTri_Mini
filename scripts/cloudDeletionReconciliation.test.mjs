@@ -121,6 +121,7 @@ test('Cloud panel does not read Cloud data without assets.view and guards mutati
  const source = await read('../src/CloudAssetsPanel.tsx')
  const reload = source.slice(source.indexOf('const reload=async()=>{'), source.indexOf('useEffect(()=>{void reload()}'))
  assert.match(reload, /if\(!canView\)\{setCloud\(\[\]\);setDeletedCloudCodes\(\[\]\);return\}/)
+ assert.match(reload, /if\(!canView\)\{setPending\(\[\]\);setCloud\(\[\]\);setDeletedCloudCodes\(\[\]\);return\}/)
  assert.match(reload, /if\(!canView\)/)
  for (const name of ['retryOne','resolveConflictCloud','resolveConflictLocal','downloadOne']) {
   const start = source.indexOf('const '+name+'=async(')
