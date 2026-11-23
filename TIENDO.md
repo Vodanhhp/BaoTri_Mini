@@ -1289,3 +1289,6 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Commit App `0a788d8`, test `577556a`; Cloud panel `4825ce2`, chỉnh thông báo `6160a76`; test `c29b58e`. CI mới đang chờ xác nhận.
 
 - CI sau sửa gate lịch sử và retry thủ công: Build and test **success** (run 507); Validate BAOTRI Mini **success** (run 219), tại head `e78b6dac313ead8c566e05fcd5b3397f015fd8be`.
+
+- Rà soát xử lý conflict phát hiện hai lựa chọn **Chọn Cloud** và **Chọn Local** chưa tạo nhật ký hoạt động. Đã nối callback ghi lịch sử chung từ App vào Cloud panel; ghi nhận cả trường hợp người dùng chọn phiên bản đúng dù không có trường dữ liệu thay đổi (quyết định xử lý conflict vẫn là một hoạt động cần audit). Với lựa chọn Local, event dùng mutationId làm ID để tránh trùng khi retry; với lựa chọn Cloud, event có ID riêng. Bổ sung regression test kiểm tra cả hai nhánh và cơ chế force ghi event không có field diff. Commit App `1f9697c`, Cloud panel `5dfa99f`, test `ec42f3e`. CI tại head mới đang chờ xác nhận; chưa chạy browser E2E.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. PR #30 vẫn OPEN, chưa merge.
