@@ -210,26 +210,28 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
 .platform-admin-modal .platform-create-form .modal-actions{padding-top:0}
 .platform-admin-modal .platform-create-form .modal-actions button{min-height:33px;padding:7px 11px;font-size:11px}
 @media(max-width:620px){.platform-admin-modal .platform-create-form{grid-template-columns:1fr}.platform-admin-modal .platform-onboarding-compact{grid-template-columns:1fr;gap:6px}.platform-admin-modal .platform-onboarding-compact .platform-onboarding-steps{justify-content:space-between}.platform-admin-modal .platform-create-form .field{grid-column:1/-1}}`}</style>
-  {activeSection==='platform-overview'&&<>
+  {(!fullPage||activeSection==='platform-overview')&&<>
   <div id="platform-overview" className="panel-head" style={{marginTop:8}}><div><h3>Tổng quan hệ thống</h3><p>Số liệu trực tiếp từ Supabase Auth và cơ sở dữ liệu.</p></div><button type="button" className="soft-btn" onClick={()=>void loadOverview()} disabled={loadingOverview}>{loadingOverview?'Đang tải…':'Làm mới số liệu'}</button></div>
   {overviewError&&<div className="auth-error">{overviewError}</div>}
   {loadingOverview&&!overview&&<div className="auth-note">Đang tải thống kê nền tảng…</div>}
   </>}
   {overview&&<>
-   {activeSection==='platform-overview'&&<div className="stat-grid platform-admin-stats" style={{gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))'}}>
+   {(!fullPage||activeSection==='platform-overview')&&<div className="stat-grid platform-admin-stats" style={{gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))'}}>
     <div className="stat-card"><div className="stat-icon blue">DN</div><div><small>Tổng doanh nghiệp</small><strong>{number(overview.organizationsTotal)}</strong><span>{number(overview.organizationsActive)} đang hoạt động · {number(overview.organizationsSuspended)} tạm khóa</span></div></div>
     <div className="stat-card"><div className="stat-icon purple">TK</div><div><small>Tài khoản Auth duy nhất</small><strong>{number(overview.authAccountsTotal)}</strong><span>{number(overview.confirmedAccounts)} đã xác nhận · {number(overview.unconfirmedAccounts)} chưa xác nhận</span></div></div>
     <div className="stat-card"><div className="stat-icon orange">TV</div><div><small>Tổng lượt tham gia</small><strong>{number(overview.membershipsTotal)}</strong><span>Không phải số tài khoản duy nhất</span></div></div>
     <div className="stat-card"><div className="stat-icon green">OK</div><div><small>Membership hoạt động</small><strong>{number(overview.activeMemberships)}</strong><span>{number(overview.invitedMemberships)} chờ xác nhận · {number(overview.suspendedMemberships)} tạm ngưng</span></div></div>
    </div>}
-   {activeSection==='platform-organizations'&&<>
+   {(!fullPage||activeSection==='platform-organizations')&&<>
    <div id="platform-organizations" className="table-wrap table-standard-wrap platform-org-table" style={{marginTop:14}}><table className="table-standard"><thead><tr><th>Doanh nghiệp</th><th>Trạng thái</th><th>Plan / Snapshot</th><th>Tài khoản trong DN</th><th>Đang hoạt động</th><th>Chờ xác nhận</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead><tbody>
     {overview.organizations.map(org=><tr key={org.id}><td><b>{org.name}</b></td><td><span className={'status '+(org.status==='active'?'green':'gray')}>{org.status==='active'?'Đang hoạt động':'Tạm ngưng'}</span></td><td>{org.planCode?<><b>Plan {org.planCode}</b><small style={{display:'block',color:'var(--muted,#64748b)'}}>{org.planName||'Đã gán'} · v{org.sourceDataVersion||'—'}</small><small style={{display:'block',color:'var(--muted,#64748b)'}}>{typeof org.planMaxDevices==='number'?number(org.planMaxDevices)+' thiết bị':org.planMaxDevices===null?'Không giới hạn':'Đang tải hạn mức'} · {typeof org.equipmentGroups==='number'?number(org.equipmentGroups):'—'} nhóm · {typeof org.equipmentDictionary==='number'?number(org.equipmentDictionary):'—'} loại · {typeof org.industries==='number'?number(org.industries):'—'} ngành</small></>:<span className="status gray">Chưa khởi tạo</span>}</td><td>{number(org.uniqueUsers)}</td><td>{number(org.activeMembers)}</td><td>{number(org.invitedMembers)}</td><td>{date(org.createdAt)}</td><td><div className="platform-org-actions">{org.status==='active'?<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'suspend')}>Tạm ngưng</button>:<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'reactivate')}>Kích hoạt</button>}<button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'delete')}>Xóa</button></div></td></tr>)}
     {!overview.organizations.length&&<tr><td colSpan={8}>Chưa có doanh nghiệp nào.</td></tr>}
    </tbody></table></div>
    <div className="auth-note" style={{marginTop:10}}>Tài khoản Auth được đếm duy nhất trên toàn nền tảng. Một tài khoản tham gia nhiều doanh nghiệp chỉ tính một lần ở tổng Auth, nhưng được tính một lượt trong từng doanh nghiệp.</div>
    </>}
-  {activeSection==='platform-organizations'&&<>
+  {(!fullPage||activeSection==='platform-organizations')&&<>
+  {loadingOverview&&!overview&&<div className="auth-note">Đang tải danh sách tổ chức…</div>}
+  {overviewError&&<div className="auth-error">{overviewError}</div>}
   {managementSuccess&&<div className="cloud-message" style={{marginTop:12}}>{managementSuccess}</div>}
   {management&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!managementBusy)cancelManagement()}}>
    <section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="platform-action-title">
@@ -248,8 +250,8 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   </div>}
   </>}
 
-  {activeSection==='platform-requests'&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/></div>}
-  {activeSection==='platform-provision'&&<>
+  {(!fullPage||activeSection==='platform-requests')&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/></div>}
+  {(!fullPage||activeSection==='platform-provision')&&<>
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
   <form className="form-grid platform-create-form" onSubmit={submit}>
