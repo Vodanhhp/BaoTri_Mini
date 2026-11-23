@@ -72,7 +72,7 @@ begin
     raise exception 'Invalid device identifier' using errcode = '22023';
   end if;
   -- A previously registered device may still need to purge after its user is removed.
-  if not private.is_org_member(p_organization_id)
+  if not coalesce(private.is_org_member(p_organization_id), false)
      and not exists (
        select 1 from private.organization_asset_reset_devices d
         where d.organization_id = p_organization_id
@@ -373,6 +373,10 @@ as $function$
 declare
   v_generation bigint;
 begin
+  if auth.uid() is null or not coalesce(private.is_org_member(p_organization_id), false) then
+    raise exception 'Active organization membership required' using errcode = '42501';
+  end if;
+
   insert into private.organization_asset_reset_state (organization_id)
   values (p_organization_id)
   on conflict (organization_id) do nothing;
@@ -404,6 +408,10 @@ declare
   v_result jsonb;
   v_asset jsonb;
 begin
+  if auth.uid() is null or not coalesce(private.is_org_member(p_organization_id), false) then
+    raise exception 'Active organization membership required' using errcode = '42501';
+  end if;
+
   insert into private.organization_asset_reset_state (organization_id)
   values (p_organization_id)
   on conflict (organization_id) do nothing;
@@ -427,7 +435,7 @@ begin
 end;
 $function$;
 
--- Generation-aware Cloud mutation. Old clients using the six-argument RPC are blocked.
+-- Generation-aware Cloud mutation. The legacy six-argument signature is limited to generation zero.
 create or replace function public.apply_cloud_asset_mutation_with_lock(
   p_organization_id uuid, p_asset_code text, p_lock_token uuid, p_mutation_id uuid,
   p_expected_cloud_updated_at timestamptz, p_payload jsonb, p_reset_generation bigint
@@ -529,6 +537,10 @@ as $function$
 declare
   v_generation bigint;
 begin
+  if auth.uid() is null or not coalesce(private.is_org_member(p_organization_id), false) then
+    raise exception 'Active organization membership required' using errcode = '42501';
+  end if;
+
   insert into private.organization_asset_reset_state (organization_id)
   values (p_organization_id)
   on conflict (organization_id) do nothing;
@@ -706,7 +718,7 @@ revoke all on function private.import_asset_preserving_identity(uuid,uuid,text,j
 revoke all on function private.apply_asset_mutation_with_lock(uuid,uuid,uuid,uuid,timestamptz,jsonb) from public, anon, authenticated;
 revoke all on function private.mirror_asset_group_change_history(uuid,uuid,jsonb) from public, anon, authenticated;
 
--- Remove legacy write entry points so an old browser bundle cannot bypass the barrier.
+-- Restrict private implementations and keep legacy public signatures generation-zero-only.
 revoke all on function private.assert_legacy_asset_sync_allowed(uuid) from public, anon, authenticated;
 revoke all on function private.soft_delete_cloud_asset_with_lock_internal(uuid,text,uuid,uuid,timestamptz,timestamptz) from public, anon, authenticated;
 revoke all on function private.record_cloud_asset_history_event_internal(uuid,uuid,text,text,text,jsonb,text,timestamptz) from public, anon, authenticated;
