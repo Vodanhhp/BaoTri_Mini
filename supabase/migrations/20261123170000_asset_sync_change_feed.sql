@@ -51,7 +51,7 @@ as $function$
 declare
   v_sequence bigint;
 begin
-  if p_organization_id is null or p_event_type not in ('upsert','soft_delete','hard_delete','reset') then
+  if p_organization_id is null or p_event_type is null or p_event_type not in ('upsert','soft_delete','hard_delete','reset') then
     raise exception 'Invalid asset sync event' using errcode='22023';
   end if;
 
@@ -87,7 +87,7 @@ declare
   v_snapshot jsonb;
 begin
   if current_setting('app.asset_sync_suppress_asset_events',true)='on' then
-    return coalesce(new,old);
+    return null;
   end if;
 
   if tg_op='DELETE' then
