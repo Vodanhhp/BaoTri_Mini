@@ -1255,5 +1255,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã áp dụng migration lên Supabase Test theo phê duyệt của người dùng. Lần gọi apply đầu gặp lỗi cú pháp vì migration source có BEGIN/COMMIT; đã xác nhận không ghi migration history và schema vẫn đúng trạng thái đã áp dụng. Sau đó áp dụng lại qua migration tool với transaction wrapper bỏ đi, thành công.
 - Migration history đã ghi nhận `20261123105735 / allow_stored_asset_status_in_cloud`. Đã read-back xác nhận CHECK 5 trạng thái, import RPC nhận Lưu kho + bảo toàn archived_at, mutation RPC cũng nhận Lưu kho.
 - Đổi tên migration source và regression test sang prefix `20261123105735` để khớp migration history thực tế của Test.
-- CI trên PR #28 tại head trước chỉnh prefix: Build and test + Validate đều success. Chờ CI chạy lại sau thay đổi file prefix.
+- CI PR #28 head `b1bd2d3c64dcae61c689f27c81f382d87ec6db9c`: cả Build and test và Validate BAOTRI Mini đều success (run `45160967920`, `45160967655`). Migration source đã bỏ BEGIN/COMMIT để tương thích migration runner; thêm test hồi quy kiểm tra không có transaction wrapper.
 - Chưa E2E UI/browser; chỉ Test, không Production, không sửa dữ liệu thiết bị hoặc deploy. PR #28 OPEN, chưa merge.
