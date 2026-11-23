@@ -1250,9 +1250,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
 
 
-### Phát hiện lỗi Cloud không chấp nhận trạng thái Lưu kho — 23/11/2026
-- Rà soát schema Supabase Test cho thấy CHECK `assets_status_check` chỉ cho 4 trạng thái cũ; Cloud mutation/import cũng chưa đồng bộ whitelist `Lưu kho`. UI Local đã tạo trạng thái Lưu kho và gửi `archived_at`, nên import Local→Cloud hoặc mutation lưu kho có thể bị DB từ chối.
-- Đã chuẩn bị migration để bổ sung trạng thái Lưu kho vào CHECK và cập nhật import RPC giữ nguyên `archived_at`; thêm test hồi quy.
-- Branch `fix/cloud-import-stored-assets`; **chưa áp dụng migration lên Supabase Test**, chưa thay dữ liệu hoặc Production. Cần CI và review trước khi xin phép áp dụng Test.
-
-- CI trên PR #28 commit `f9c4e60efb75ad95aed2e605f81c574691875778`: `Build and test` success (unit tests + npm build); `Validate BAOTRI Mini` success. Sau đó chỉ cập nhật TIENDO ghi kết quả; chưa apply migration.
+### Phát hiện và sửa lỗi Cloud không chấp nhận trạng thái Lưu kho — 23/11/2026
+- Schema Test ban đầu chỉ cho phép 4 trạng thái; UI Local có trạng thái `Lưu kho` và gửi kèm `archived_at`. Migration bổ sung trạng thái vào CHECK và cập nhật import RPC để chấp nhận status này, giữ nguyên `archived_at`.
+- Đã áp dụng migration lên Supabase Test theo phê duyệt của người dùng. Lần gọi apply đầu gặp lỗi cú pháp vì migration source có BEGIN/COMMIT; đã xác nhận không ghi migration history và schema vẫn đúng trạng thái đã áp dụng. Sau đó áp dụng lại qua migration tool với transaction wrapper bỏ đi, thành công.
+- Migration history đã ghi nhận `20261123105735 / allow_stored_asset_status_in_cloud`. Đã read-back xác nhận CHECK 5 trạng thái, import RPC nhận Lưu kho + bảo toàn archived_at, mutation RPC cũng nhận Lưu kho.
+- Đổi tên migration source và regression test sang prefix `20261123105735` để khớp migration history thực tế của Test.
+- CI trên PR #28 tại head trước chỉnh prefix: Build and test + Validate đều success. Chờ CI chạy lại sau thay đổi file prefix.
+- Chưa E2E UI/browser; chỉ Test, không Production, không sửa dữ liệu thiết bị hoặc deploy. PR #28 OPEN, chưa merge.
