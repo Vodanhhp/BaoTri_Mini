@@ -1261,3 +1261,4 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
   - Không cho chọn “Chọn Local” để ghi đè Cloud đã xóa mềm vì hiện chưa có RPC khôi phục thiết bị đã xóa trên Cloud; giao diện chỉ cho chọn Cloud trong trường hợp này.
 - Thêm regression test cho bảo toàn Local, kiểm tra liên kết tombstone và chặn conflict resolution không hợp lệ.
 - Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chờ CI.
+- Rà soát bổ sung: hai vòng lặp phân trang `listCloudAssets` và `syncCloudAssetsToLocal` trước đây chỉ kiểm tra cursor rỗng; nếu API lặp lại cursor hợp lệ, vòng lặp có thể chạy mãi. Đã thêm tập cursor đã thấy và dừng có thông báo khi cursor bị lặp; bổ sung regression test.
