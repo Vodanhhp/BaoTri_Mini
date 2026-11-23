@@ -550,6 +550,11 @@ revoke all on function public.mirror_cloud_asset_group_change_history(uuid,text,
 
 revoke all on function public.register_organization_asset_reset_device(uuid,text,text,integer) from public, anon;
 revoke all on function public.acknowledge_organization_asset_reset(uuid,text,bigint) from public, anon;
+revoke all on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid,bigint) from public, anon, authenticated;
+revoke all on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb,bigint) from public, anon, authenticated;
+revoke all on function public.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz,bigint) from public, anon, authenticated;
+revoke all on function public.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz,bigint) from public, anon, authenticated;
+revoke all on function public.mirror_cloud_asset_group_change_history(uuid,text,jsonb,bigint) from public, anon, authenticated;
 revoke all on function public.platform_reset_organization_assets(uuid,uuid,uuid) from public, anon, authenticated;
 revoke all on function public.platform_get_organization_asset_reset_status(uuid) from public, anon, authenticated;
 
