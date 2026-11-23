@@ -185,7 +185,9 @@ export default function App() {
   const loadAssets = async (scope=localScope) => {
     if(!scope){setAssets([]);return}
     if(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')){setAssets([]);return}
-    setAssets(await db.assets.where('localScope').equals(scope).toArray())
+    const rows=await db.assets.where('localScope').equals(scope).toArray()
+    const activeScope=localPreview?'local-preview':organizationId
+    if(scope===activeScope&&(localPreview||organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')))setAssets(rows)
   }
   useEffect(() => {
     let active=true
