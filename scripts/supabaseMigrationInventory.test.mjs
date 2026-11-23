@@ -34,7 +34,8 @@ const appliedVersions = [
   "20261122124403",
   "20261122125135",
   "20261122133229",
-  "20261122141731"
+  "20261122141731",
+  "20261123105735"
 ]
 
 test('all Supabase Test applied migration versions have source files and no duplicate prefixes', async () => {
