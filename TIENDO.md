@@ -1370,3 +1370,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Supabase Security Advisor vẫn có cảnh báo generic về SECURITY DEFINER callable by authenticated (22 findings) và leaked-password protection disabled. Không thu hồi quyền hàng loạt; các RPC authenticated được ứng dụng sử dụng và có kiểm tra quyền/generation. Cần tiếp tục review từng finding và đánh giá cấu hình Auth riêng.
 - **Chưa chạy browser E2E**: chưa có phiên Superadmin/browser được cung cấp để xác minh luồng giao diện thực tế. Cũng chưa chạy thao tác Reset trên tổ chức nào. Muốn kiểm thử destructive cần chọn đúng tổ chức Test chuyên dụng và xác nhận riêng.
 - PR #31 vẫn OPEN, DRAFT, chưa merge; base PR #30 vẫn OPEN, chưa merge. Production/DNS/Pages không thay đổi.
+
+
+### Hoàn thiện quy trình yêu cầu / duyệt Reset — 23/11/2026
+- Thay đổi nghiệp vụ: Admin doanh nghiệp gửi yêu cầu Reset trong Cài đặt → Gói dịch vụ; chỉ Superadmin mới duyệt hoặc từ chối trong Quản trị nền tảng → Duyệt yêu cầu.
+- Thêm migration 20261123150000_organization_asset_reset_approval_workflow.sql: bảng request/audit riêng, snapshot số Cloud/Local lúc gửi, một yêu cầu pending/approved mỗi tổ chức, trạng thái pending/approved/executed/rejected/failed, RPC create/list/review chỉ service_role EXECUTE.
+- RPC review khóa request; từ chối không thay đổi dữ liệu thiết bị; duyệt gọi reset RPC hiện có trong transaction, lưu executed sau thành công, lưu failed nếu transaction reset lỗi.
+- Thêm Edge Function organization-asset-reset-requests (JWT + Admin active membership) và platform-manage-asset-reset-requests (JWT + Superadmin owner + re-auth mật khẩu). Cả hai ACTIVE trên Supabase Test với verify_jwt=true.
+- Vô hiệu hóa endpoint Reset trực tiếp platform-reset-organization-assets bằng HTTP 410 để client cũ không thể bypass quy trình.
+- Bổ sung giao diện gửi yêu cầu/lịch sử cho Admin doanh nghiệp và bảng duyệt cho Superadmin; bỏ nút Reset trực tiếp khỏi bảng tổ chức.
+- Migration đã apply trên Supabase Test BAOTRI Mini New. Post-check read-only: approval table tồn tại, 0 request; anon/authenticated không có EXECUTE review/create; service_role có EXECUTE. Không có request/reset thực tế nào được tạo hoặc chạy.
+- Đã bổ sung regression tests source; chưa chạy CI/build trên head mới và chưa browser E2E với phiên Admin/Superadmin. PR #31 vẫn DRAFT/OPEN, không merge; Production không thay đổi.
