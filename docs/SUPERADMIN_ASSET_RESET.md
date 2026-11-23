@@ -74,7 +74,7 @@ Bảng đăng ký device lưu organization, device ID, user, nhãn nền tảng,
 - Bao nhiêu Local đã acknowledge generation mới.
 - Bao nhiêu Local đã đăng ký còn chờ.
 - Thời điểm last-seen của từng Local.
-- Lưu ý: số thiết bị là số đã đăng ký bằng phiên bản hỗ trợ reset. Các installation cũ chưa chạy bản mới chưa thể xuất hiện trong registry; khi mở bản mới và đăng nhập lại, chúng sẽ đăng ký, purge và acknowledge. Việc thu hồi RPC cũ vẫn chặn chúng ghi ngược dữ liệu lên Cloud.
+- Lưu ý: số thiết bị là số đã đăng ký bằng phiên bản hỗ trợ reset. Các installation cũ chưa chạy bản mới chưa thể xuất hiện trong registry; khi mở bản mới và đăng nhập lại, chúng sẽ đăng ký, purge và acknowledge. RPC legacy sẽ bị server từ chối sau khi generation tăng, kể cả khi installation chưa được registry nhận diện.
 
 Thiết bị không kết nối được không thể bị xóa vật lý từ xa tại thời điểm reset; trạng thái phải là **Chờ thiết bị kết nối**, không được giả mạo là đã xóa.
 
@@ -89,11 +89,11 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 ## Trạng thái triển khai — 23/11/2026
 
 - Đã khảo sát schema Supabase Test ở chế độ chỉ đọc: các FK từ Cloud audit/group history, import/mutation receipts và edit locks tới assets; xác nhận sequence reservations và counters.
-- Đã tạo migration nguồn `20261123130000_superadmin_organization_asset_reset.sql`: state generation, device registry, idempotent reset audit, reset/status RPC, generation-aware import/mutation/soft-delete/audit RPC, thu hồi chữ ký RPC cũ, giữ audit và sequence history.
+- Đã tạo migration nguồn `20261123130000_superadmin_organization_asset_reset.sql`: state generation, device registry, idempotent reset audit, reset/status RPC, generation-aware import/mutation/soft-delete/audit RPC, giới hạn legacy signatures ở generation 0, giữ audit và sequence history.
 - Đã thêm Edge Function `platform-reset-organization-assets` với xác thực Superadmin, re-auth password, xác nhận tên tổ chức và request UUID.
 - Đã thêm nút Reset thiết bị và modal xác nhận ở Superadmin.
 - Đã thêm Dexie v7 reset state; Local guard purge theo organization scope, giữ history dưới trạng thái `local_only`, acknowledge sau transaction; chặn thao tác với Local snapshot cũ.
 - Đã thêm regression tests nguồn tại `scripts/organizationAssetReset.test.mjs`.
 - Migration chỉ là source trên nhánh GitHub; **chưa áp dụng Supabase Test/Production**, chưa deploy Edge Function, chưa merge PR. Chưa chạy browser E2E; CI chưa xác minh.
-- Registry chỉ thống kê installation đã chạy phiên bản hỗ trợ reset; installation cũ phải mở bản mới và kết nối để được nhận diện/purge. Chữ ký RPC cũ bị thu hồi nhằm chặn ghi ngược từ bundle cũ.
+- Registry chỉ thống kê installation đã chạy phiên bản hỗ trợ reset; installation cũ phải mở bản mới và kết nối để được nhận diện/purge. RPC legacy chỉ được phép trước reset đầu tiên và bị từ chối sau khi generation tăng, nhằm chặn ghi ngược từ bundle cũ.
 - Bước tiếp theo: rà soát migration/RPC/TypeScript, kiểm tra CI/build, hoàn thiện test tích hợp; sau đó xin phép riêng trước khi áp dụng migration trên Supabase Test.
