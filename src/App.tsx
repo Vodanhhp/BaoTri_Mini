@@ -280,7 +280,8 @@ export default function App() {
     }
     void runSync()
     window.addEventListener('online',runSync)
-    return()=>{active=false;window.removeEventListener('online',runSync)}
+    window.addEventListener('focus',runSync)
+    return()=>{active=false;window.removeEventListener('online',runSync);window.removeEventListener('focus',runSync)}
   },[session?.user.id,organizationReady,organizationId,localPreview,organizationContexts])
 
   useEffect(()=>{
