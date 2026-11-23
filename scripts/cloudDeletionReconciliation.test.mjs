@@ -138,7 +138,7 @@ test('Cloud panel does not read Cloud data without assets.view and guards mutati
 
 test('asset cache is cleared and not loaded without assets.view or across organization switches', async () => {
  const source = await read('../src/App.tsx')
- const loader = source.slice(source.indexOf('const loadAssets = async'), source.indexOf('useEffect(()=>{\n    if(!session?.user.id||!sessionReady'))
+ const loader = source.slice(source.indexOf('const loadAssets = async'), source.indexOf('useEffect(()=>{\n    if(!session?.user.id||!organizationId||localPreview)', source.indexOf('const loadAssets = async')))
  assert.match(loader, /!organizationContexts\.find\(item=>item\.id===scope\)\?\.permissions\.includes\('assets\.view'\)/)
  assert.match(loader, /setAssets\(\[\]\)/)
  assert.match(loader, /let active=true/)
