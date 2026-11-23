@@ -1277,3 +1277,6 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Commit code: `f85cf13ded129ee81b284dc3dc4a658174264ee6`; commit test: `60c16735c54633d761c0374bb2f269463cc8506c`.
 - CI cho commit mới đang chờ; chưa tuyên bố đạt trước khi GitHub Actions xác nhận.
 - Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Rà soát tiếp phát hiện retry mutation có thể cập nhật thiết bị Cloud thành công nhưng bỏ sót lịch sử đổi nhóm đang chờ. Đã bổ sung gọi `mirror_cloud_asset_group_change_history` cho các bản ghi pending gắn đúng mutation; chỉ đánh dấu `syncStatus='synced'` sau khi RPC lịch sử thành công. Nếu RPC lỗi, mutation vẫn pending để lần retry idempotent tiếp theo hoàn tất phần lịch sử.
+- Bổ sung regression test cho thứ tự đồng bộ lịch sử đổi nhóm trong retry. Commit code `f50c8c6`, test `4da8d0d`; CI mới đang chờ.
