@@ -56,6 +56,7 @@ export function toImportPayload(asset: Asset) {
 export async function listCloudAssets(client: SupabaseClient, organizationId: string): Promise<CloudAsset[]> {
   const rows:CloudAsset[]=[]
   let cursor:string|null=null
+  const seenCursors=new Set<string>()
   do{
     const {data,error}=await client.rpc('list_cloud_assets_page',{
       p_organization_id:organizationId,p_after_code:cursor,p_page_size:100,p_platform_admin:false
@@ -63,9 +64,12 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
     if(error)throw new Error('Tải danh sách Cloud thất bại: '+error.message)
     const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
     rows.push(...(page?.items??[]).map(fromRow))
-    cursor=page?.next_cursor??null
     if(!page?.has_more)break
-    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
+    const nextCursor=page?.next_cursor??null
+    if(!nextCursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
+    if(seenCursors.has(nextCursor))throw new Error('Cloud lặp cursor phân trang; dừng tải để tránh vòng lặp vô hạn.')
+    seenCursors.add(nextCursor)
+    cursor=nextCursor
   }while(true)
   return rows
 }
@@ -79,6 +83,7 @@ export async function syncCloudAssetsToLocal(
 ): Promise<CloudSyncSummary> {
   const summary:CloudSyncSummary={downloaded:0,updated:0,unchanged:0,protectedLocal:0,conflicts:0,pages:0}
   let cursor:string|null=null
+  const seenCursors=new Set<string>()
   do {
     if(options.shouldContinue&&!options.shouldContinue())break
     const {data,error}=await client.rpc('list_cloud_assets_page',{
@@ -144,9 +149,12 @@ export async function syncCloudAssetsToLocal(
         summary.unchanged++
       }
     }
-    cursor=page?.next_cursor??null
     if(!page?.has_more)break
-    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
+    const nextCursor=page?.next_cursor??null
+    if(!nextCursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
+    if(seenCursors.has(nextCursor))throw new Error('Cloud lặp cursor phân trang; dừng đồng bộ để tránh vòng lặp vô hạn.')
+    seenCursors.add(nextCursor)
+    cursor=nextCursor
   }while(true)
   const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
   if(tombstoneError)throw new Error('Không đồng bộ được dấu xóa thiết bị: '+tombstoneError.message)
