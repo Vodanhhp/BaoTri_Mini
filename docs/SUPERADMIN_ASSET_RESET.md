@@ -34,7 +34,7 @@ Không đặt nút này cạnh nút xóa tổ chức mà không có nhãn riêng
 
 ### Local authority and all platforms
 - Mỗi installation tiếp tục dùng device ID hiện tại (baotri-mini-device-id) và đăng ký/cập nhật last-seen trên Cloud.
-- Trước khi load dữ liệu tenant, trước Cloud sync, và khi app nhận sự kiện online/focus, client đọc generation hiện tại.
+- Trước khi load dữ liệu tenant, import, lấy khóa sửa, Cloud sync/retry/audit mirror, và khi app nhận sự kiện online/focus, client đăng ký/đọc generation hiện tại.
 - Nếu generation trên Cloud lớn hơn generation đã xử lý tại Local, thực hiện transaction Dexie theo organization scope:
   - Xóa assets (bao gồm ảnh data URL nằm trong hồ sơ).
   - Xóa assetCloudLinks, assetMutations, assetDrafts.
@@ -45,9 +45,10 @@ Không đặt nút này cạnh nút xóa tổ chức mà không có nhãn riêng
 
 ### Chống dữ liệu cũ sống lại
 - Reset generation là mốc server-side.
-- Các RPC import phải từ chối hồ sơ có created_at trước hoặc bằng thời điểm reset gần nhất; chỉ hồ sơ được tạo mới sau reset mới được import. Điều này chặn phiên bản ứng dụng cũ cố import lại snapshot Local trước reset.
-- Mutation update của asset cũ sẽ thất bại vì asset đã bị xóa; reservation đang reserved phải được chuyển released, nên xác nhận reservation cũ không thể khôi phục asset.
-- Client mới bắt buộc purge trước khi đồng bộ hoặc retry mutation.
+- Các RPC ghi quan trọng mang `p_reset_generation`; server khóa hàng generation bằng `FOR SHARE` khi import/mutation/audit và reset khóa `FOR UPDATE`, vì vậy thao tác cũ không thể chạy xuyên qua reset.
+- Thu hồi EXECUTE của các chữ ký RPC cũ (import, update, soft-delete, audit history, group-history mirror); chỉ các chữ ký mới có generation được cấp cho authenticated.
+- Mutation update của asset cũ sẽ thất bại vì asset đã bị xóa; reservation đang reserved được chuyển released, còn confirmed reservation history và sequence counters được giữ.
+- Client mới bắt buộc purge trước khi đồng bộ hoặc retry mutation; Local snapshot phải còn tồn tại và đúng phiên bản trong IndexedDB trước khi được gửi lên Cloud.
 - Không có thao tác nào tự động tải lại hồ sơ từ backup cũ sau reset.
 
 ## Phạm vi dữ liệu
@@ -73,6 +74,7 @@ Bảng đăng ký device lưu organization, device ID, user, nhãn nền tảng,
 - Bao nhiêu Local đã acknowledge generation mới.
 - Bao nhiêu Local đã đăng ký còn chờ.
 - Thời điểm last-seen của từng Local.
+- Lưu ý: số thiết bị là số đã đăng ký bằng phiên bản hỗ trợ reset. Các installation cũ chưa chạy bản mới chưa thể xuất hiện trong registry; khi mở bản mới và đăng nhập lại, chúng sẽ đăng ký, purge và acknowledge. Việc thu hồi RPC cũ vẫn chặn chúng ghi ngược dữ liệu lên Cloud.
 
 Thiết bị không kết nối được không thể bị xóa vật lý từ xa tại thời điểm reset; trạng thái phải là **Chờ thiết bị kết nối**, không được giả mạo là đã xóa.
 
@@ -84,8 +86,14 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 - Transaction rollback toàn bộ nếu có lỗi; không xóa một phần.
 - Test: reset tổ chức A không ảnh hưởng B; giữ audit/catalog/membership/plan; xóa receipts/assets; retry cùng request id; máy online purge; máy offline reconnect purge trước sync; old client import snapshot cũ bị từ chối; Local Preview không đổi; mất mạng trong lúc reset không tạo thông báo thành công sai.
 
-## Trạng thái triển khai
+## Trạng thái triển khai — 23/11/2026
 
-- Đã khảo sát Dexie stores, Cloud tables, Superadmin Edge Function và các FK đang chặn hard-delete lịch sử.
-- Chưa có migration, chưa sửa dữ liệu Test/Production, chưa deploy Edge Function, chưa merge PR.
-- Bước tiếp theo: tạo migration và RPC, triển khai Edge Function + UI, bổ sung local generation guard và regression tests; sau đó xin phép áp dụng migration trên Supabase Test để kiểm thử tích hợp.
+- Đã khảo sát schema Supabase Test ở chế độ chỉ đọc: các FK từ Cloud audit/group history, import/mutation receipts và edit locks tới assets; xác nhận sequence reservations và counters.
+- Đã tạo migration nguồn `20261123130000_superadmin_organization_asset_reset.sql`: state generation, device registry, idempotent reset audit, reset/status RPC, generation-aware import/mutation/soft-delete/audit RPC, thu hồi chữ ký RPC cũ, giữ audit và sequence history.
+- Đã thêm Edge Function `platform-reset-organization-assets` với xác thực Superadmin, re-auth password, xác nhận tên tổ chức và request UUID.
+- Đã thêm nút Reset thiết bị và modal xác nhận ở Superadmin.
+- Đã thêm Dexie v7 reset state; Local guard purge theo organization scope, giữ history dưới trạng thái `local_only`, acknowledge sau transaction; chặn thao tác với Local snapshot cũ.
+- Đã thêm regression tests nguồn tại `scripts/organizationAssetReset.test.mjs`.
+- Migration chỉ là source trên nhánh GitHub; **chưa áp dụng Supabase Test/Production**, chưa deploy Edge Function, chưa merge PR. Chưa chạy browser E2E; CI chưa xác minh.
+- Registry chỉ thống kê installation đã chạy phiên bản hỗ trợ reset; installation cũ phải mở bản mới và kết nối để được nhận diện/purge. Chữ ký RPC cũ bị thu hồi nhằm chặn ghi ngược từ bundle cũ.
+- Bước tiếp theo: rà soát migration/RPC/TypeScript, kiểm tra CI/build, hoàn thiện test tích hợp; sau đó xin phép riêng trước khi áp dụng migration trên Supabase Test.
