@@ -357,7 +357,7 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
   if (error) throw new Error('Không thể nhập lên Cloud: '+error.message)
   const result=data as {asset?:Record<string,unknown>;already_present?:boolean}
   if (!result?.asset || result.asset.asset_key!==asset.code || result.asset.code!==asset.code) throw new Error('Cloud trả về mã thiết bị không khớp Local.')
-  const cloud=fromRow(result.asset)
+  const cloud=cloudAssetFromRow(result.asset)
   const groupResetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
   const currentAfterImport=await db.assets.get(asset.id)
   if(!currentAfterImport||currentAfterImport.localScope!==asset.localScope||currentAfterImport.code!==asset.code||currentAfterImport.updatedAt!==asset.updatedAt){
@@ -444,7 +444,7 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
     if(error)throw new Error(error.message)
     const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
     if(!result.asset||result.asset.asset_key!==asset.code||!result.applied_at)throw new Error('Cloud thiếu biên nhận xóa mềm hợp lệ.')
-    return {asset:fromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
+    return {asset:cloudAssetFromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
   }
   const cloudPayload={
     name:payload.name.trim(),brand:payload.brand,model:payload.model,serial:payload.serial,location:payload.location,
@@ -458,7 +458,7 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
   if(error) throw new Error(error.message)
   const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
   if(!result.asset || result.asset.asset_key!==asset.code || !result.applied_at) throw new Error('Cloud thiếu biên nhận cập nhật hợp lệ.')
-  return {asset:fromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
+  return {asset:cloudAssetFromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
 }
 
 export function getLocalDeviceId() {
