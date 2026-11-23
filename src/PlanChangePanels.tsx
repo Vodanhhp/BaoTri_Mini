@@ -121,6 +121,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
      <div className="auth-note full-field">Gửi yêu cầu không làm thay đổi Plan ngay. Super Admin sẽ xem xét điều kiện thương mại/thanh toán và quyết định duyệt hoặc từ chối. Khi đổi Plan, mã quản lý và hồ sơ thiết bị đã cấp vẫn được giữ nguyên.</div>
      <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose} disabled={busy}>Đóng</button><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
     </form>}
+    <OrganizationAssetResetRequestPanel client={client} organizationId={organizationId}/>
     <div className="divider" style={{margin:'18px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
     <h3 style={{fontSize:15}}>Lịch sử yêu cầu</h3>
     {requests.length===0?<div className="table-empty-state">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-history-table-wrap"><table className="table-standard plan-history-table"><thead><tr><th>Nội dung thay đổi</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
@@ -202,6 +203,134 @@ export function PlatformPlanRequestsPanel({client}:{client:SupabaseClient}){
      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi đã kiểm tra điều kiện thương mại/thanh toán và xác nhận {decision==='approve'?'áp dụng Plan mới':'từ chối yêu cầu này'}.</span></label>
      {error&&<div className="auth-error">{error}</div>}
      <div className="platform-action-buttons"><button type="button" className="soft-btn" onClick={cancel} disabled={busy}>Hủy</button><button type="submit" className={decision==='approve'?'primary-btn':'danger-btn'} disabled={busy||!confirmed||!password}>{busy?'Đang xử lý…':decision==='approve'?'Xác nhận duyệt':'Xác nhận từ chối'}</button></div>
+    </form>
+   </section>
+  </div>}
+ </section>
+}
+
+
+type AssetResetRequest={
+ id:string;organization_id:string;requester_user_id:string;requester_email?:string;
+ requester_note:string;status:'pending'|'approved'|'executed'|'rejected'|'failed';
+ cloud_assets_at_request:number;registered_devices_at_request:number;requested_at:string;
+ reviewed_at?:string;review_note?:string;executed_at?:string;reset_generation?:number;
+ assets_deleted?:number;execution_error?:string
+}
+const resetStatusLabel=(status:AssetResetRequest['status'])=>status==='pending'?'Chờ duyệt':status==='approved'?'Đã phê duyệt':status==='executed'?'Đã thực hiện':status==='rejected'?'Từ chối':'Thực hiện thất bại'
+const resetStatusClass=(status:AssetResetRequest['status'])=>status==='executed'?'green':status==='rejected'||status==='failed'?'red':status==='pending'?'orange':'blue'
+
+export function OrganizationAssetResetRequestPanel({client,organizationId}:{client:SupabaseClient;organizationId:string}){
+ const [requests,setRequests]=useState<AssetResetRequest[]>([])
+ const [note,setNote]=useState('')
+ const [loading,setLoading]=useState(true)
+ const [busy,setBusy]=useState(false)
+ const [confirmed,setConfirmed]=useState(false)
+ const [error,setError]=useState('')
+ const [message,setMessage]=useState('')
+ const load=useCallback(async()=>{
+  setLoading(true);setError('')
+  try{
+   const {data,error:invokeError}=await client.functions.invoke('organization-asset-reset-requests',{body:{action:'list',organizationId}})
+   if(invokeError)throw new Error(invokeError.message)
+   if(data?.error)throw new Error(data.error)
+   setRequests((data?.requests??[]) as AssetResetRequest[])
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setLoading(false)}
+ },[client,organizationId])
+ useEffect(()=>{void load()},[load])
+ const openRequest=requests.some(request=>request.status==='pending'||request.status==='approved')
+ const submit=async(event:FormEvent)=>{
+  event.preventDefault()
+  if(busy||openRequest||!confirmed)return
+  setBusy(true);setError('');setMessage('')
+  try{
+   const {data,error:invokeError}=await client.functions.invoke('organization-asset-reset-requests',{body:{action:'submit',organizationId,note:note.trim()}})
+   if(invokeError)throw new Error(invokeError.message)
+   if(data?.error)throw new Error(data.error)
+   setMessage(data?.message||'Đã gửi yêu cầu Reset để Superadmin xem xét.')
+   setNote('');setConfirmed(false);await load()
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setBusy(false)}
+ }
+ return <section style={{marginTop:20,paddingTop:16,borderTop:'1px solid var(--border,#e5e7eb)'}}>
+  <div className="panel-head"><div><h3>Yêu cầu Reset toàn bộ thiết bị</h3><p>Gửi yêu cầu để Superadmin xem xét. Không có dữ liệu nào bị xóa khi gửi yêu cầu.</p></div><button type="button" className="soft-btn" onClick={()=>void load()} disabled={loading||busy}>{loading?'Đang tải…':'Làm mới'}</button></div>
+  {error&&<div className="auth-error">{error}</div>}
+  {message&&<div className="cloud-message">{message}</div>}
+  {openRequest&&<div className="auth-note"><b>Đang có yêu cầu Reset chờ xử lý.</b> Bạn chưa thể gửi yêu cầu mới cho đến khi Superadmin duyệt hoặc từ chối.</div>}
+  {!openRequest&&<form className="form-grid" onSubmit={submit}>
+   <label className="field full-field">Lý do Reset (không bắt buộc)<textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Nêu lý do cần xóa toàn bộ hồ sơ thiết bị để bắt đầu quản lý lại…"/></label>
+   <div className="auth-note full-field">Nếu được duyệt, hồ sơ thiết bị Cloud sẽ bị xóa; dữ liệu Local trên thiết bị đã đăng ký sẽ được xóa khi thiết bị kết nối lại, trước khi đồng bộ. Nhật ký kiểm toán, danh mục, tài khoản, phân quyền và Plan được giữ nguyên.</div>
+   <label className="full-field" style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi hiểu Reset là thao tác không thể hoàn tác và xác nhận gửi yêu cầu để Superadmin xem xét.</span></label>
+   <div className="modal-actions full-field"><button type="submit" className="danger-btn" disabled={busy||!confirmed}>{busy?'Đang gửi…':'Gửi yêu cầu Reset'}</button></div>
+  </form>}
+  <h3 style={{fontSize:15,marginTop:16}}>Lịch sử yêu cầu Reset</h3>
+  {loading?<div className="auth-note">Đang tải lịch sử yêu cầu…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset.</div>:<div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Ngày gửi</th><th>Số thiết bị Cloud</th><th>Local đã đăng ký</th><th>Lý do / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+   <td>{dateTime(request.requested_at)}</td><td>{number(request.cloud_assets_at_request)}</td><td>{number(request.registered_devices_at_request)}</td>
+   <td className="table-note-cell">{request.requester_note&&<small>Lý do: {request.requester_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{request.execution_error&&<small style={{color:'var(--danger,#b91c1c)'}}>Lỗi: {request.execution_error}</small>}{!request.requester_note&&!request.review_note&&!request.execution_error?'—':null}</td>
+   <td><span className={'status '+resetStatusClass(request.status)}>{resetStatusLabel(request.status)}</span>{request.reset_generation!==undefined&&<small className="table-subtext">Generation {request.reset_generation}</small>}</td>
+  </tr>)}</tbody></table></div>}
+ </section>
+}
+
+export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}){
+ const [requests,setRequests]=useState<AssetResetRequest[]>([])
+ const [loading,setLoading]=useState(true)
+ const [error,setError]=useState('')
+ const [message,setMessage]=useState('')
+ const [selected,setSelected]=useState<AssetResetRequest|null>(null)
+ const [decision,setDecision]=useState<'approve'|'reject'>('approve')
+ const [password,setPassword]=useState('')
+ const [reviewNote,setReviewNote]=useState('')
+ const [confirmed,setConfirmed]=useState(false)
+ const [busy,setBusy]=useState(false)
+ const load=useCallback(async()=>{
+  setLoading(true);setError('')
+  try{
+   const {data,error:invokeError}=await client.functions.invoke('platform-manage-asset-reset-requests',{body:{action:'list'}})
+   if(invokeError)throw new Error(invokeError.message)
+   if(data?.error)throw new Error(data.error)
+   setRequests((data?.requests??[]) as AssetResetRequest[])
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setLoading(false)}
+ },[client])
+ useEffect(()=>{void load()},[load])
+ const begin=(request:AssetResetRequest,next:'approve'|'reject')=>{setSelected(request);setDecision(next);setPassword('');setReviewNote('');setConfirmed(false);setError('')}
+ const cancel=()=>{setSelected(null);setPassword('');setReviewNote('');setConfirmed(false)}
+ const submit=async(event:FormEvent)=>{
+  event.preventDefault()
+  if(!selected||busy)return
+  setBusy(true);setError('');setMessage('')
+  try{
+   const {data,error:invokeError}=await client.functions.invoke('platform-manage-asset-reset-requests',{body:{action:decision,requestId:selected.id,password,confirmation:confirmed?'yes':'no',reviewNote}})
+   if(invokeError)throw new Error(invokeError.message)
+   if(data?.error)throw new Error(data.error)
+   setMessage(data?.message||'Đã xử lý yêu cầu Reset.')
+   cancel();await load()
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setBusy(false)}
+ }
+ return <section style={{marginTop:20}}>
+  <div className="panel-head"><div><h3>Yêu cầu Reset toàn bộ thiết bị</h3><p>Admin doanh nghiệp gửi yêu cầu; chỉ Superadmin mới có quyền phê duyệt và thực hiện Reset.</p></div><button className="soft-btn" onClick={()=>void load()} disabled={loading}>{loading?'Đang tải…':'Làm mới'}</button></div>
+  {error&&<div className="auth-error">{error}</div>}{message&&<div className="cloud-message">{message}</div>}
+  {loading?<div className="auth-note">Đang tải yêu cầu Reset…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset từ doanh nghiệp.</div>:<div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Doanh nghiệp / ngày gửi</th><th>Người gửi</th><th>Thiết bị tại thời điểm yêu cầu</th><th>Lý do / phản hồi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+   <td><b>{(request as AssetResetRequest&{organization_name?:string}).organization_name||request.organization_id}</b><small className="table-subtext">{dateTime(request.requested_at)}</small></td>
+   <td>{request.requester_email||request.requester_user_id}</td><td>{number(request.cloud_assets_at_request)} Cloud · {number(request.registered_devices_at_request)} Local</td>
+   <td className="table-note-cell">{request.requester_note&&<small>Lý do: {request.requester_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{request.execution_error&&<small style={{color:'var(--danger,#b91c1c)'}}>Lỗi: {request.execution_error}</small>}{!request.requester_note&&!request.review_note&&!request.execution_error?'—':null}</td>
+   <td><span className={'status '+resetStatusClass(request.status)}>{resetStatusLabel(request.status)}</span>{request.assets_deleted!==undefined&&<small className="table-subtext">Đã xóa {number(request.assets_deleted)} · Gen {request.reset_generation}</small>}</td>
+   <td><div className="table-action-group">{request.status==='pending'&&<><button className="primary-btn small" onClick={()=>begin(request,'approve')}>Duyệt và Reset</button><button className="soft-btn small" onClick={()=>begin(request,'reject')}>Từ chối</button></>}</div></td>
+  </tr>)}</tbody></table></div>}
+  {selected&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)cancel()}}>
+   <section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="asset-reset-review-title">
+    <div className="platform-action-head"><div><span className="platform-action-kicker">DUYỆT RESET THIẾT BỊ</span><h3 id="asset-reset-review-title">{decision==='approve'?'Phê duyệt và thực hiện Reset':'Từ chối yêu cầu Reset'}</h3><p>{(selected as AssetResetRequest&{organization_name?:string}).organization_name||selected.organization_id}</p></div><button className="icon-btn" onClick={cancel} disabled={busy}>×</button></div>
+    <div className="platform-action-danger"><b>{number(selected.cloud_assets_at_request)} hồ sơ Cloud</b> và {number(selected.registered_devices_at_request)} Local đã đăng ký tại thời điểm gửi yêu cầu. {decision==='approve'?'Khi xác nhận, hệ thống sẽ xóa hồ sơ Cloud ngay; Local sẽ purge khi kết nối lại.':'Yêu cầu sẽ được đóng mà không thay đổi dữ liệu thiết bị.'}</div>
+    {selected.requester_note&&<div className="platform-action-note">Lý do doanh nghiệp: {selected.requester_note}</div>}
+    <form className="platform-action-form" onSubmit={submit}>
+     <label className="field">Phản hồi / ghi chú xử lý<textarea rows={3} maxLength={1000} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Nhập lý do duyệt hoặc từ chối…"/></label>
+     <label className="field">Mật khẩu Superadmin *<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nhập lại mật khẩu Superadmin"/></label>
+     <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi đã kiểm tra yêu cầu và xác nhận {decision==='approve'?'phê duyệt, thực hiện xóa toàn bộ hồ sơ thiết bị Cloud':'từ chối yêu cầu này'}.</span></label>
+     {error&&<div className="auth-error">{error}</div>}
+     <div className="platform-action-buttons"><button type="button" className="soft-btn" onClick={cancel} disabled={busy}>Hủy</button><button type="submit" className={decision==='approve'?'danger-btn':'primary-btn'} disabled={busy||!confirmed||!password}>{busy?'Đang xử lý…':decision==='approve'?'Xác nhận duyệt và Reset':'Xác nhận từ chối'}</button></div>
     </form>
    </section>
   </div>}
