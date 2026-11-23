@@ -179,3 +179,9 @@ test('late Local asset reload cannot repopulate a previous organization scope', 
  assert.match(loader, /const activeScope=localPreview\?'local-preview':organizationId/)
  assert.match(loader, /if\(scope===activeScope&&\(localPreview\|\|organizationContexts\.find\(item=>item\.id===scope\)\?\.permissions\.includes\('assets\.view'\)\)\)setAssets\(rows\)/)
 })
+
+test('sign out clears cached tenant assets and sensitive modal state before another account signs in', async () => {
+ const source = await read('../src/App.tsx')
+ const signOut = source.slice(source.indexOf('const signOut = async'), source.indexOf('if (!sessionReady)', source.indexOf('const signOut = async')))
+ for (const setter of ['setAssets([])','setLocalPreviewAssets([])','setDetailAsset(null)','setImageViewer(null)','setEditing(null)','setShowForm(false)','setCloudPanel(false)','setOrganizationContexts([])','setOrganizationId(\'\')']) assert.ok(signOut.includes(setter), 'missing '+setter)
+})
