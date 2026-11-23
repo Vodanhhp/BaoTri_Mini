@@ -41,3 +41,13 @@ test('permanent retry failures remain visible and can be explicitly retried by a
   assert.match(panel, /failureKind:undefined,nextAttemptAt:undefined/)
   assert.match(panel, /m\.failureKind==='permanent'\?'Cần kiểm tra thủ công'/)
 })
+
+test('retry policy also schedules failures before Cloud mutation, including lock acquisition', async () => {
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  const retry = cloud.slice(cloud.indexOf('export async function retryCloudAssetMutation'))
+  assert.match(retry, /let acquiredLease:CloudLease\|undefined/)
+  assert.match(retry, /try\{\s*const acquired=await acquireCloudAssetLock/)
+  assert.match(retry, /lastAttemptAt:failedAt,deviceId/)
+  assert.match(retry, /nextAttemptAt:conflict\|\|permanent\?undefined:new Date\(Date\.now\(\)\+jitteredDelay\)\.toISOString\(\)/)
+  assert.match(retry, /if\(acquiredLease\)await releaseCloudAssetLock/)
+})
