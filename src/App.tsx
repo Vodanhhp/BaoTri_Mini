@@ -310,7 +310,7 @@ export default function App() {
               if(!currentEntry||currentEntry.syncStatus!=='pending')continue
               const mutation=await db.assetMutations.get(currentEntry.id)
               if(mutation&&mutation.status!=='applied')continue
-              const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
+              const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
                 p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
                 p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
                 p_reset_generation:resetGeneration
@@ -456,7 +456,7 @@ export default function App() {
       const resetGeneration=await ensureOrganizationAssetResetApplied(supabase,organizationId)
       const currentEntry=await db.assetHistory.get(entry.id)
       if(!currentEntry||currentEntry.syncStatus!=='pending')return
-      const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
+      const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event_v2',{
         p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
         p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
         p_reset_generation:resetGeneration
