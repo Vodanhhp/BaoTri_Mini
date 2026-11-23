@@ -66,6 +66,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    const fresh=await listCloudAssets(client,organizationId);const cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    if(cloudAsset.code!==link.cloudCode)throw new Error('Mã quản lý Cloud đã đổi; cần xử lý thủ công.')
+   if(cloudAsset.deletedAt)throw new Error('Cloud đã xóa mềm thiết bị. Không thể chọn Local vì hệ thống chưa có thao tác khôi phục thiết bị đã xóa trên Cloud; hãy chọn Cloud để đồng bộ dấu xóa.')
    const acquired=await acquireCloudAssetLock(client,organizationId,local.code,getLocalDeviceId(),getDeviceLabel())
    if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
    lease={assetId:local.code,token:acquired.lease.lock_token}
@@ -182,7 +183,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     <div className="cloud-section-head"><h3>Mutation Local chưa được Cloud xác nhận</h3><button className="soft-btn small" disabled={loading} onClick={()=>void reload()}>Kiểm tra</button></div>
     {pending.length===0?<p className="empty-small">Không có thay đổi Cloud đang chờ.</p>:<div className="cloud-list">{pending.map(m=>{
       const asset=localAssets.find(a=>a.id===m.assetId)
-      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span><button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button><button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button></>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
+      const cloudDeleted=Boolean(cloud.find(row=>row.code===asset?.code)?.deletedAt)
+      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span><button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>{!cloudDeleted&&<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
     })}</div>}
    </div>
    <div className="cloud-section">
