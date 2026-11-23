@@ -63,7 +63,9 @@ test('Cloud sync, imports, edit locks, mutation retry and group-history mirror c
   const source = await read('../src/lib/cloudAssets.ts')
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /p_reset_generation:resetGeneration/)
-  assert.match(source, /p_reset_generation:await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(source, /p_reset_generation:groupResetGeneration/)
+  assert.match(source, /currentAfterImport\.localScope===asset\.localScope/)
+  assert.match(source, /p_reset_generation:groupResetGeneration/)
   assert.match(source, /export async function acquireCloudAssetLock[\s\S]*?await ensureOrganizationAssetResetApplied/)
   assert.match(source, /export async function retryCloudAssetMutation[\s\S]*?await ensureOrganizationAssetResetApplied/)
   assert.match(source, /Re-check after the read[\s\S]*?await ensureOrganizationAssetResetApplied/)
@@ -74,6 +76,7 @@ test('App applies reset before tenant asset reads, reservation retries and audit
   assert.match(source, /if\(!localPreview&&supabase&&navigator\.onLine\)await ensureOrganizationAssetResetApplied\(supabase,scope\)/)
   assert.match(source, /const resetGeneration=await ensureOrganizationAssetResetApplied\(supabase,organizationId\)/)
   assert.match(source, /p_reset_generation:resetGeneration/)
+  assert.match(source, /currentEntry\.syncStatus!=='pending'/)
   assert.match(source, /retryPendingLocalReservations=async\(\)=>\{[\s\S]*?await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsToLocal/)
   assert.match(source, /window\.addEventListener\('focus',runSync\)/)
@@ -90,6 +93,9 @@ test('Superadmin reset requires confirmed owner identity, password reauthenticat
   assert.match(fn, /requestId/)
   assert.match(fn, /platform_reset_organization_assets/)
   assert.match(fn, /platform_get_organization_asset_reset_status/)
+  const panel = await read('../src/CloudAssetsPanel.tsx')
+  assert.match(panel, /p_reset_generation:resetGeneration/)
+  assert.match(panel, /const currentMutation=await db\.assetMutations\.get\(mutation\.mutationId\)/)
 })
 
 test('Superadmin UI keeps reset separate from organization deletion and explains offline acknowledgements', async () => {
