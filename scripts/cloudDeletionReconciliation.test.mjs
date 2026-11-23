@@ -50,3 +50,13 @@ test('pending Cloud mutations retry after initial sync or browser reconnect, wit
   assert.match(source, /context\.permissions\.includes\('assets\.update'\)/)
   assert.match(source, /await syncCloudAssetsToLocal\(client,organizationId/)
 })
+
+ 
+test('Cloud retry refuses to send a stale Local snapshot and preserves its sync watermark', async () => {
+  const source = await read('../src/lib/cloudAssets.ts')
+  const retry = source.slice(source.indexOf('export async function retryCloudAssetMutation'))
+  assert.match(retry, /local\.updatedAt!==mutation\.localUpdatedAt/)
+  assert.match(retry, /link\.status==='conflict'\|\|local\.updatedAt!==mutation\.localUpdatedAt/)
+  assert.match(retry, /status:'conflict'/)
+  assert.match(retry, /lastSyncedLocalUpdatedAt:mutation\.localUpdatedAt/)
+})
