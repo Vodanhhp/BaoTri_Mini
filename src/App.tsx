@@ -861,6 +861,7 @@ export default function App() {
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
+  if(session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at))return <PlatformAdminPanel client={supabase} onClose={()=>{}} fullPage/>
   if (!session && !localPreview) return <AuthScreen client={supabase} errorMessage={error} onLocalPreview={() => setLocalPreview(true)}/>
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
