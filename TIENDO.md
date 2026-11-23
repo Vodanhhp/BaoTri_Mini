@@ -1312,3 +1312,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Regression test sau đợt rà quyền bắt được một handler còn thiếu cổng `assets.view`: `resolveConflictLocal`. Đã bổ sung kiểm tra kép `assets.view` + `assets.update` ngay đầu handler; các nút retry/Chọn Cloud/Chọn Local cũng cùng kiểm tra kép. Đây là lỗi test phát hiện, đã sửa trước khi kết thúc lượt rà.
 - Tại code head `c05a4e157bfdc2aecddf6e0fe4f9f84d0d8b7f97`: **Build and test success** (run 537, unit tests và build đều pass); **Validate BAOTRI Mini success** (run 249, npm run build pass). Các chỉnh sửa tài liệu sau đó chưa có; hiện ghi nhận mốc CI này. Chưa chạy browser E2E.
 - Không merge PR #30, không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+## 23/11/2026 – Sửa lỗi xóa vĩnh viễn tổ chức (PR #30)
+
+- Điều tra log Supabase Test tại 18:47 ngày 23/11: Edge Function platform-manage-organization trả 400 do RPC platform_delete_organization gặp PostgreSQL 23503 – FK organization_equipment_catalog_organization_id_fkey. Hàm xóa đã dọn assets/members/roles nhưng bỏ sót public.organization_equipment_catalog, khiến câu DELETE tổ chức bị chặn.
+- Xác minh transaction rollback toàn bộ: tổ chức Cong Ty B (ID a178ac38-3d36-42f6-bdee-3262458ddfab) vẫn tồn tại, trạng thái active; 1 catalog row, 1 member và 3 roles vẫn còn; 0 assets. Không có dữ liệu bị xóa dở.
+- Rà toàn bộ FK trực tiếp tới organizations trên Test: ngoài catalog còn các bảng private asset_group_change_history, asset_id_sequence_reservations, asset_id_sequences và public asset_activity_history; các bảng plan history/requests có CASCADE. Migration mới bổ sung xóa theo thứ tự an toàn: history/receipts/locks → assets → ID reservations/sequences/catalog → plan history/requests → members/roles → organization. Vẫn giữ nguyên Auth users và profiles.
+- Đã thêm migration nguồn supabase/migrations/20261123120000_fix_platform_delete_organization_dependencies.sql trên branch; chưa apply vào Supabase Test vì cần phê duyệt riêng cho thay đổi schema.
+- Sửa PlatformAdminPanel.tsx đọc JSON body trong FunctionsHttpError.context để hiển thị lỗi thật thay vì câu chung Edge Function returned a non-2xx status code. Edge Function source phân loại FK 23503 thành HTTP 409 và trả code lỗi có cấu trúc.
+- Thêm regression tests cho thứ tự xóa phụ thuộc và hiển thị lỗi. Chỉ thay đổi GitHub branch; không apply migration, không deploy Edge Function, không thay Production hoặc dữ liệu.
