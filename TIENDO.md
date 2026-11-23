@@ -1210,3 +1210,54 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Hỗ trợ đóng bằng nút X, nhấn nền ngoài ảnh hoặc phím Esc; điều hướng ảnh trước/sau bằng nút và phím mũi tên; có nhãn thứ tự ảnh và hỗ trợ giảm kích thước trên màn hình nhỏ.
 - Áp dụng cho thumbnail trong màn hình chỉnh sửa và ảnh trong Chi tiết thiết bị. Không thay đổi dữ liệu ảnh, nén ảnh, IndexedDB, luồng mutation hoặc đồng bộ Cloud; ảnh vẫn chỉ lưu Local như hiện tại.
 - Thực hiện trên nhánh `feature/unified-image-lightbox`; chưa merge main, chưa triển khai Production.
+
+
+## Xóa mềm thiết bị – Admin only (22/11/2026, đang chờ kiểm thử)
+- Tách trường `deletedAt/deleted_at` khỏi `archivedAt/archived_at`; không dùng Lưu kho làm trạng thái xóa.
+- Admin mới có nút xóa và chế độ tìm/xem thiết bị đã xóa; dấu nhận diện đỏ `ĐÃ XÓA`. Chưa triển khai khôi phục.
+- Xóa chỉ áp dụng với thiết bị đã liên kết Cloud và đang có kết nối; Local ghi snapshot + mutation queue trước, Cloud xác nhận bằng RPC riêng, khóa chỉnh sửa, optimistic timestamp và receipt. Nếu Cloud chưa xác nhận, giữ mutation pending để retry.
+- Migration thêm `assets.deleted_at`, RPC xóa mềm, tombstone sync cho KTV (chỉ trả mã/trạng thái xóa, không trả hồ sơ), và lọc RLS/list để non-Admin không đọc được hồ sơ đã xóa.
+- Không xóa vật lý bản ghi thiết bị hoặc lịch sử liên quan. Không sửa dữ liệu Supabase Production.
+- Migration đã áp dụng thành công lên Supabase Test `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`), ghi nhận version `20261122133229` / `admin_soft_delete_assets`; xác minh cột `deleted_at`, helper Admin, RPC xóa mềm, RPC tombstone và policy RLS đều tồn tại.
+- Cần CI build/test và kiểm thử thực tế Admin xóa → Cloud → PC/Mobile khác đồng bộ; KTV không thấy/tìm được; Admin tìm thấy; xác nhận hồ sơ/lịch sử vẫn còn.
+
+
+### Bổ sung trạng thái thiết bị, lịch sử hoạt động, xóa mềm và quyền Người xem — 22/11/2026
+
+- Thêm trạng thái `Lưu kho` vào danh mục trạng thái thiết bị; trong Chi tiết thiết bị có chức năng Thay đổi trạng thái, chỉ tiếp tục phiên chỉnh sửa khi đã có quyền và khóa Cloud hợp lệ.
+- Đồng bộ `Lưu kho` với `archivedAt/archived_at` để tương thích danh sách lưu kho, khôi phục và Cloud; không sử dụng trạng thái Lưu kho thay cho xóa mềm.
+- Bổ sung lịch sử hoạt động thiết bị Local (Dexie v6): tạo mới, cập nhật hồ sơ, đổi trạng thái, lưu kho, khôi phục, xóa mềm; ghi giá trị trước/sau, không lưu nội dung ảnh.
+- Bổ sung lịch sử Cloud append-only, RPC ghi lịch sử giới hạn Admin/KTV, RLS đọc theo quyền `assets.view`; lịch sử thiết bị đã xóa chỉ Admin có quyền `assets.delete` được xem.
+- Cập nhật `private.apply_asset_mutation_with_lock` để chấp nhận trạng thái Lưu kho và chặn Viewer ở tầng DB; đóng gói `private.lock_asset_anchor` để tránh phụ thuộc PR #19 chưa merge.
+- App đồng bộ lịch sử Cloud theo ID mutation để tránh ghi trùng; giữ lịch sử Local pending khi Cloud chưa sẵn sàng.
+- Viewer chỉ đọc; không được thêm, sửa, lưu kho, xóa, chỉnh sửa hồ sơ cá nhân hoặc thao tác draft. Kiểm tra quyền tại handler, không chỉ ẩn nút.
+- Xóa mềm thiết bị dành riêng cho Admin; dùng `deleted_at` độc lập với `archived_at`. Thiết bị xóa được đánh dấu `ĐÃ XÓA`; non-Admin không được đọc hồ sơ đã xóa. Không xóa vật lý thiết bị hoặc lịch sử.
+- Migration xóa mềm đã áp dụng trên Supabase Test `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`), version `20261122133229` / `admin_soft_delete_assets`.
+- Migration lịch sử `asset_activity_history` đã áp dụng trên Supabase Test, version `20261122141731`; đã xác minh bảng, RPC, RLS, policy và ACL: anon không được SELECT/EXECUTE; authenticated truy cập theo RLS và kiểm tra quyền trong RPC.
+- Đã bỏ nút Lưu kho riêng khỏi danh sách thiết bị; thao tác thay đổi trạng thái thực hiện trong form Sửa. Danh sách lưu kho vẫn hỗ trợ Khôi phục.
+- Cập nhật hiển thị trạng thái danh sách: thiết bị xóa mềm hiển thị `ĐÃ XÓA` màu đỏ; lưu kho màu xám; đang hoạt động màu xanh; đang sửa chữa màu cam; thanh lý màu đỏ.
+<<<<<<< HEAD
+- PR #21 `admin-soft-delete-assets` đang OPEN, chưa merge. Head `314b762a414d5c2f111d92c9b366da92b92fc8f8`; base `66a75b0b10b5aafc5f149737f6bacf926b96c50c`.
+=======
+- PR #21 `admin-soft-delete-assets` đang OPEN, chưa merge. Head trước cập nhật tài liệu: `314b762a414d5c2f111d92c9b366da92b92fc8f8`; base `66a75b0b10b5aafc5f149737f6bacf926b96c50c`.
+>>>>>>> 8a6c9294dc9b0bc039517c18e6c0d6eac4cd77a1
+- CI trên head PR #21 đã pass: Validate run `45031764581`; Build and test run `45031764540`. Chưa kiểm thử trình duyệt E2E thực tế.
+- Supabase Security Advisor còn cảnh báo SECURITY DEFINER trên một số RPC; đã ghi nhận, chưa mở rộng xử lý ngoài phạm vi PR.
+- Chưa merge PR #21; không thay đổi main/Production. Chỉ làm việc với Supabase Test.
+
+#### Trạng thái workspace Local ngày 23/11/2026
+<<<<<<< HEAD
+- Thư mục `E:\BaoTri_Mini`, branch `feature/admin-soft-delete-assets`, HEAD `314b762`, đã đồng bộ remote.
+- `TIENDO.md`: cập nhật checkpoint này.
+- `src/App.tsx`: còn 1 thay đổi local về màu/nhãn status badge; đã kiểm tra logic, phù hợp và nên giữ.
+- `.env.local`: file local untracked, phải giữ trên máy, không add/commit/push.
+- Chưa commit hoặc push các thay đổi local.
+- Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo từng kịch bản.
+=======
+- Thư mục local `E:\\BaoTri_Mini`, branch `feature/admin-soft-delete-assets`, HEAD mã ngắn `314b762` tại thời điểm checkpoint trước khi cập nhật tài liệu.
+- `TIENDO.md`: cập nhật checkpoint này.
+- `src/App.tsx`: còn 1 thay đổi local về màu/nhãn status badge; đã kiểm tra logic, phù hợp và nên giữ.
+- `.env.local`: file local untracked, phải giữ trên máy, không add/commit/push.
+- Trước cập nhật GitHub lần này, các thay đổi local chưa được commit hoặc push.
+- Bước tiếp theo: đồng bộ branch qua GitHub Desktop, sau đó chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo từng kịch bản.
+>>>>>>> 8a6c9294dc9b0bc039517c18e6c0d6eac4cd77a1

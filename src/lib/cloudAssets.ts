@@ -25,7 +25,7 @@ function fromRow(row: Record<string, unknown>): CloudAsset {
     power: String(row.power ?? ''), cycle: String(row.cycle ?? ''), cycleStartedAt: optional(row.cycle_started_at),
     transferredFromOtherFacility: Boolean(row.transferred_from_other_facility),
     status: row.status as Asset['status'], notes: String(row.notes ?? ''), images: [],
-    archivedAt: optional(row.archived_at), createdAt: String(row.created_at),
+    archivedAt: optional(row.archived_at), deletedAt: optional(row.deleted_at), createdAt: String(row.created_at),
     updatedAt: String(row.updated_at), createdByUserId: optional(row.created_by_user_id),
     createdByLabel: optional(row.created_by_label),
     originalName: optional(row.original_name), normalizedNameAtCreation: optional(row.normalized_name_at_creation),
@@ -39,7 +39,7 @@ function fromRow(row: Record<string, unknown>): CloudAsset {
   }
 }
 
-export function toMutationPayload(asset:Asset):AssetMutationPayload{return {category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',commissionedAt:asset.commissionedAt||'',power:asset.power??'',cycle:asset.cycle??'',cycleStartedAt:asset.cycleStartedAt||undefined,transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined}}
+export function toMutationPayload(asset:Asset):AssetMutationPayload{return {category:asset.category.trim(),name:asset.name.trim(),brand:asset.brand??'',model:asset.model??'',serial:asset.serial??'',location:asset.location??'',commissionedAt:asset.commissionedAt||'',power:asset.power??'',cycle:asset.cycle??'',cycleStartedAt:asset.cycleStartedAt||undefined,transferredFromOtherFacility:Boolean(asset.transferredFromOtherFacility),status:asset.status,notes:asset.notes??'',archivedAt:asset.archivedAt||undefined,deletedAt:asset.deletedAt||undefined}}
 
 export function toImportPayload(asset: Asset) {
   return {
@@ -104,6 +104,16 @@ export async function syncCloudAssetsToLocal(
         summary.protectedLocal++
         continue
       }
+      if(cloud.deletedAt){
+        const pendingDelete=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
+        await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
+          await db.assets.update(local.id,{deletedAt:cloud.deletedAt,updatedAt:cloud.updatedAt})
+          await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:cloud.updatedAt,lastSyncedLocalUpdatedAt:cloud.updatedAt,status:'linked',lastVerifiedAt:now()})
+          for(const mutation of pendingDelete)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
+        })
+        summary.updated++
+        continue
+      }
       if(link.status==='conflict'){
         summary.conflicts++
         continue
@@ -141,6 +151,21 @@ export async function syncCloudAssetsToLocal(
     if(!page?.has_more)break
     if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
   }while(true)
+  const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
+  if(tombstoneError)throw new Error('Không đồng bộ được dấu xóa thiết bị: '+tombstoneError.message)
+  for(const tombstone of (Array.isArray(tombstones)?tombstones:[]) as Array<{code:string;deleted_at:string;updated_at:string}>){
+    if(options.shouldContinue&&!options.shouldContinue())break
+    const local=await db.assets.where('[localScope+code]').equals([organizationId,tombstone.code]).first()
+    if(!local||local.deletedAt===tombstone.deleted_at)continue
+    const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
+    const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
+    await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
+      await db.assets.update(local.id,{deletedAt:tombstone.deleted_at,updatedAt:tombstone.updated_at})
+      if(link)await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:tombstone.updated_at,lastSyncedLocalUpdatedAt:tombstone.updated_at,status:'linked',lastVerifiedAt:now()})
+      for(const mutation of pending)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
+    })
+    summary.updated++
+  }
   return summary
 }
 
@@ -234,6 +259,13 @@ export async function releaseCloudAssetLock(client: SupabaseClient, organization
 }
 
 export async function applyCloudAssetMutation(client: SupabaseClient, organizationId: string, asset: Asset, token: string, mutationId: string, expectedCloudUpdatedAt: string, payload: AssetMutationPayload) {
+  if(payload.deletedAt){
+    const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt})
+    if(error)throw new Error(error.message)
+    const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
+    if(!result.asset||result.asset.asset_key!==asset.code||!result.applied_at)throw new Error('Cloud thiếu biên nhận xóa mềm hợp lệ.')
+    return {asset:fromRow(result.asset),alreadyApplied:result.already_applied===true,appliedAt:result.applied_at}
+  }
   const cloudPayload={
     name:payload.name.trim(),brand:payload.brand,model:payload.model,serial:payload.serial,location:payload.location,
     commissioned_at:payload.commissionedAt||null,power:payload.power,cycle:payload.cycle,cycle_started_at:payload.cycleStartedAt||null,

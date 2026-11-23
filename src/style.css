@@ -1385,3 +1385,52 @@ html,body,#root,.app-shell{
  .asset-filter-field select,.asset-reset-btn{height:42px;font-size:13px}
  .asset-filter-field>span{font-size:12px}
 }
+
+/* Soft-deleted equipment remains visible only in the Admin deleted-items view. */
+.asset-deleted-row td{background:rgba(194,88,80,.075)}.asset-deleted-row .asset-title-btn{color:var(--danger-text)}
+
+
+/* Trạng thái thiết bị và lịch sử thay đổi */
+.asset-status-editor{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:10px 0 16px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-alt)}
+.asset-status-editor .field{min-width:220px;flex:1;margin:0}
+.asset-status-editor .primary-btn{white-space:nowrap}
+.asset-status-editor>small{flex-basis:100%;color:var(--muted);font-size:11px}
+.asset-maintenance-history{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+.asset-maintenance-history .panel-head{margin-bottom:8px}
+.asset-maintenance-history h3{margin:0;font-size:14px}
+.asset-maintenance-history .panel-head p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.asset-maintenance-history .maintenance-history-list article{grid-template-columns:150px minmax(0,1fr)}
+.asset-maintenance-history .maintenance-history-list article p{font-size:11px;line-height:1.55}
+.asset-maintenance-history .maintenance-history-list article small{font-size:10px}
+@media(max-width:640px){.asset-status-editor{align-items:stretch}.asset-status-editor .field{min-width:100%}.asset-status-editor .primary-btn{width:100%}.asset-maintenance-history .maintenance-history-list article{grid-template-columns:1fr;gap:4px}}
+
+
+/* 2026-11-23: improve contrast of organization Plan label on the equipment overview */
+.app-shell .plan-context-strip b{color:#fff}
+
+/* 2026-11-23: prevent organization name from overflowing the sticky header */
+.app-shell .topbar{
+  height:auto;
+  min-height:94px;
+}
+.app-shell .page-heading{
+  flex:1 1 auto;
+  min-width:0;
+}
+.app-shell .organization-name{
+  width:fit-content;
+  max-width:100%;
+  min-width:0;
+}
+.app-shell .top-actions{
+  flex:0 0 auto;
+}
+@media(max-width:680px){
+  .app-shell .topbar{
+    height:auto;
+    min-height:72px;
+  }
+  .app-shell .organization-name{
+    max-width:100%;
+  }
+}

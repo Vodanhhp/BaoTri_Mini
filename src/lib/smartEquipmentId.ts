@@ -94,13 +94,54 @@ const normalizeCode = (value: string): string =>
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
 
+const editDistance = (left: string, right: string): number => {
+  if (Math.abs(left.length - right.length) > 1) return 2
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index)
+  for (let i = 1; i <= left.length; i++) {
+    const current = [i]
+    for (let j = 1; j <= right.length; j++) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1)
+      )
+    }
+    previous = current
+  }
+  return previous[right.length]
+}
+
 const scorePhrase = (input: string, phrase: string): number => {
   const candidate = normalize(phrase)
   if (!candidate) return 0
   if (input === candidate) return 100
   if (input.includes(candidate)) return Math.min(94, 78 + candidate.length / Math.max(input.length, 1) * 16)
   if (candidate.includes(input) && input.length >= 4) return 72
-  return 0
+
+  // Match meaningful individual words, including partial prefixes.
+  const inputTokens = input.split(' ').filter(Boolean)
+  const candidateTokens = candidate.split(' ').filter(Boolean)
+  if (!inputTokens.length || inputTokens.some(token => token.length < 3)) return 0
+
+  const exactOrPrefix = inputTokens.every(queryToken =>
+    candidateTokens.some(candidateToken =>
+      candidateToken === queryToken || candidateToken.startsWith(queryToken)
+    )
+  )
+  if (exactOrPrefix) return Math.min(96, 88 + Math.max(0, inputTokens.length - 1) * 2)
+
+  // A single-character typo is tolerated for 3+ character words (e.g.
+  // "mat" -> "may"). Keep this score below exact matches so fuzzy results
+  // never outrank a genuine dictionary match.
+  const typoTolerant = inputTokens.every(queryToken =>
+    candidateTokens.some(candidateToken =>
+      candidateToken === queryToken ||
+      candidateToken.startsWith(queryToken) ||
+      (queryToken.length >= 3 && candidateToken.length === queryToken.length &&
+        editDistance(queryToken, candidateToken) === 1)
+    )
+  )
+  return typoTolerant ? 64 : 0
 }
 
 const validDate = (value: string): boolean => {
