@@ -1412,3 +1412,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung scripts/syncEngine.test.mjs kiểm tra lifecycle scheduler, bounded polling, retry backoff và manual retry.
 - Giai đoạn này vẫn dùng pull phân trang hiện hữu theo chu kỳ 60 giây; đây là cầu nối tạm thời. Chưa có durable Cloud change feed/cursor và Realtime; sẽ làm ở Giai đoạn 2–3 để bỏ full scan định kỳ.
 - Chỉ thay đổi source/tests/docs trên nhánh tính năng. Không apply migration, không thay đổi Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chưa merge PR; cần CI/build và rà soát diff trước khi mở PR.
+
+
+### Cloud Change Feed – thiết kế Giai đoạn 2 (23/11/2026)
+
+- Đã đối chiếu schema/migration history thực tế của Supabase Test BAOTRI-Mini-New; assets có RLS theo tenant, permission helper assets.view, soft-delete, reset generation và physical reset transaction.
+- Test chưa có asset_sync_events và publication supabase_realtime chưa có bảng nào. Không có trigger thay đổi thiết bị ngoài ba trigger hiện hữu; reset vật lý xóa assets trong transaction và ghi reset request sau khi xóa.
+- Đã lập thiết kế chi tiết tại docs/LOCAL_FIRST_SYNC_PHASE2.md: per-org counter row-lock (không dùng bigserial cursor), event feed metadata-only, asset DML trigger, reset marker phát sau các hard-delete event, RLS SELECT assets.view, checkpoint + incremental Pull RPC, initial snapshot catch-up, Dexie cursor atomicity, Realtime chỉ làm wake-up.
+- Cần giữ nguyên edit-lock, reset generation barrier, audit history, tenant isolation và Viewer read-only. Không gửi ảnh/payload thiết bị trong feed.
+- Chưa tạo migration SQL, chưa apply DDL, chưa bật publication, chưa thay đổi Supabase Test/Production. Lý do: môi trường làm việc hiện không có Supabase CLI để tạo migration bằng `supabase migration new`; không tự thay thế bằng cách đoán filename hoặc ghi DDL trực tiếp. Cần khôi phục workflow CLI/migration trước khi chuyển thiết kế thành migration.
+- PR #33 vẫn Draft; CI của commit fd376ca đã xanh ở cả Build and test và Validate BAOTRI Mini.
