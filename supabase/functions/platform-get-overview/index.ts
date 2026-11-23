@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 
 const OWNER_EMAIL='tuanluongpham1980@gmail.com'
 const ORIGIN='https://baotri.vieclamhp247.com'
-const cors=(origin:string|null)=>({'Access-Control-Allow-Origin':origin===ORIGIN||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173'?origin:ORIGIN,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'})
+const PREVIEW_ORIGIN=/^https:\/\/baotri-mini-new-preview-[a-z0-9-]+-tuanluongpham-8256\.vercel\.app$/
+const cors=(origin:string|null)=>({'Access-Control-Allow-Origin':origin===ORIGIN||origin==='https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app'||Boolean(origin&&PREVIEW_ORIGIN.test(origin))||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173'?origin:ORIGIN,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'})
 const response=(body:unknown,status=200,origin:string|null=null)=>new Response(JSON.stringify(body),{status,headers:{...cors(origin),'Content-Type':'application/json'}})
 
 Deno.serve(async(req)=>{
