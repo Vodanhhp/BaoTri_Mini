@@ -11,7 +11,7 @@ import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { startSyncEngine } from './lib/syncEngine'
@@ -283,7 +283,7 @@ export default function App() {
       setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
       try{
         await ensureOrganizationAssetResetApplied(client,organizationId)
-        const summary=await syncCloudAssetsToLocal(client,organizationId,{shouldContinue:()=>active})
+        const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
         if(!active)return
         let retried=0
         let retryFailed=0
