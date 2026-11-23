@@ -1283,3 +1283,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Rà soát nhật ký hoạt động phát hiện khi cập nhật/xóa mềm/lưu kho Cloud thất bại, Local đã lưu snapshot nhưng event lịch sử chỉ được tạo sau khi Cloud thành công; retry sau đó không tạo lại event. Đã chuyển sang ghi event Local ở trạng thái pending ngay khi thao tác Local được lưu dù Cloud lỗi; event chỉ được mirror lên Cloud sau khi mutation receipt có trạng thái applied. Nếu mirror history lỗi, event giữ pending để lần sync online sau thử lại.
 - Sử dụng mutationId làm event ID để retry history idempotent; bổ sung regression tests cho update, delete và archive. Commit App `5995b7e` + `60ce980`, test `1acee3d` + `27f1716`. CI mới đang chờ.
+
+- Rà soát tiếp phát hiện một đường retry lịch sử độc lập trong `useEffect(online)` gọi thẳng `syncAssetHistoryEntry`, có thể đẩy event lịch sử lên Cloud trước khi mutation tương ứng được xác nhận. Đã thêm điều kiện: nếu event ID khớp mutation thì chỉ mirror khi mutation status là `applied`; event thông thường không gắn mutation vẫn sync bình thường.
+- Phát hiện nút retry thủ công trong Cloud panel sau khi mutation được xác nhận chưa mirror event lịch sử pending tương ứng. Đã bổ sung bước mirror event theo đúng mutation ID, báo rõ nếu phần lịch sử còn lỗi; thêm regression tests cho cả hai đường retry.
+- Commit App `0a788d8`, test `577556a`; Cloud panel `4825ce2`, chỉnh thông báo `6160a76`; test `c29b58e`. CI mới đang chờ xác nhận.
