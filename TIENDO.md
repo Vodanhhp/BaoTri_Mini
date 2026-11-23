@@ -1260,3 +1260,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - CI lần đầu trên PR #29 thất bại ở 2 test do test scripts còn tham chiếu tên migration cũ sau khi đổi version prefix; inventory test mới đã pass. Đã cập nhật hai test references sang version chính xác; chờ CI chạy lại.
 
 - Log CI xác nhận còn một test khác tham chiếu prefix cũ của migration public-key API; đã cập nhật test đó sang version `20261122032223`. Cùng 3 test path đã sửa, chờ CI lần mới.
+
+
+### Cập nhật đối chiếu migration lần 2 — 23/11/2026
+- Đọc lại migration history trực tiếp trên Supabase Test: hiện có **33 migration**, gồm version mới `20261123105735 / allow_stored_asset_status_in_cloud`.
+- Cập nhật `scripts/supabaseMigrationInventory.test.mjs` để kiểm tra đủ 33 version, không trùng prefix; bổ sung source SQL version `20261123105735` đúng nội dung đã áp dụng trên Test và đồng nhất với PR #28.
+- Phát hiện source trong PR #28 vẫn còn `BEGIN;` ngoài cùng dù ghi chú trước đó nói đã bỏ. Đã sửa trên nhánh PR #28; CI Build and test và Validate BAOTRI Mini đều success tại head `9c0072250c70bc97791fc64d7234af3c385c8873`.
+- PR #29 sau khi cập nhật inventory + source: CI Build and test và Validate BAOTRI Mini đều success tại head `d2f942c92658a23fc87d70e146454a6da2cb37f7`.
+- PR #28 và #29 đều OPEN, chưa merge. Không thay đổi Supabase Test trong bước này; không thay Production, dữ liệu, Edge Functions hoặc deploy.
