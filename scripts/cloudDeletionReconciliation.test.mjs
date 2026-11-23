@@ -40,3 +40,13 @@ test('Cloud pagination stops if the backend repeats a next cursor', async () => 
   assert.match(source, /Cloud lặp cursor phân trang; dừng tải để tránh vòng lặp vô hạn/)
   assert.match(source, /Cloud lặp cursor phân trang; dừng đồng bộ để tránh vòng lặp vô hạn/)
 })
+
+
+test('pending Cloud mutations retry after initial sync or browser reconnect, with stale processing recovery', async () => {
+  const source = await read('../src/App.tsx')
+  assert.match(source, /retryCloudAssetMutation/)
+  assert.match(source, /window\.addEventListener\('online',runSync\)/)
+  assert.match(source, /m\.status==='pending'\|\|\(m\.status==='processing'&&Date\.now\(\)-new Date\(m\.updatedAt\)\.getTime\(\)>60000\)/)
+  assert.match(source, /context\.permissions\.includes\('assets\.update'\)/)
+  assert.match(source, /await syncCloudAssetsToLocal\(supabase,organizationId/)
+})
