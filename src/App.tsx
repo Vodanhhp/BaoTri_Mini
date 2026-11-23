@@ -516,6 +516,7 @@ export default function App() {
   }
 
   const resumeAssetDraft=(draft:AssetDraft)=>{
+    if(!localPreview&&!canCreate){setError('Tài khoản không có quyền tiếp tục tạo thiết bị (assets.create).');return}
     setEditing({...draft.asset,localScope:organizationId})
     setSmartEquipmentChoice(draft.asset.equipmentTypeCode||'')
     setSmartGroupChoice(draft.asset.groupCodeAtCreation||'')
@@ -547,6 +548,8 @@ export default function App() {
     setBusy(true); setError('')
     try {
       const previous = await db.assets.get(editing.id)
+      if(previous&&!localPreview&&!canUpdate)throw new Error('Tài khoản không có quyền cập nhật thiết bị (assets.update).')
+      if(!previous&&!localPreview&&!canCreate)throw new Error('Tài khoản không có quyền tạo thiết bị (assets.create).')
 
       // A Local record saved before a failed reservation confirmation can retry
       // confirmation without reserving a second sequence.
@@ -976,7 +979,7 @@ export default function App() {
       </header>
       <div className="content">
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
-        {!showForm&&!localPreview&&recoverableDrafts.length>0&&<div className="panel">
+        {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
           <div className="asset-toolbar">{canMutate&&recoverableDrafts.map(draft=><div className="draft-recovery-row" key={draft.id}>
             <div><b>{draft.asset.name||draft.asset.originalName||'Thiết bị chưa đặt tên'}</b><small>Reservation {draft.reservationId.slice(0,8)} · {new Date(draft.updatedAt).toLocaleString('vi-VN')}</small></div>
