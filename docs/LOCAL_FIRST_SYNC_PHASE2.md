@@ -168,3 +168,77 @@ Counter row lock chỉ đúng khi mọi event của cùng organization đi qua c
 ### 10.5. Kiểm tra trước khi viết migration
 
 Migration workflow/CLI hiện không có trong môi trường thực thi. Không tạo filename migration thủ công và không apply DDL bằng MCP. Trước khi triển khai schema, cần khôi phục Supabase CLI/repository workspace, tạo migration bằng `supabase migration new`, kiểm tra migration history của Test so với source, sau đó review SQL + tests trước khi apply Test.
+
+
+## 11. Client contract – incremental Pull implementation
+
+### 11.1. Dexie schema
+
+Add a dedicated table (rather than reusing reset-state storage):
+
+- `assetSyncCursors`: primary key `organizationId`; fields `organizationId`, `lastSequence`, `resetGeneration`, `initializedAt`, `updatedAt`.
+- Cursor is tenant-scoped; no global cursor and no cursor for `local-preview`.
+- Cursor table must be upgraded with a new Dexie version. Upgrade callback must not initialize a cursor from current wall-clock time; cursor is initialized only from server checkpoint.
+- Do not store event history locally unless required for diagnostics. Feed replay is idempotent and the cursor is the durable checkpoint.
+
+### 11.2. Pull client interfaces
+
+Keep server RPC wrappers in `src/lib/cloudAssets.ts` or a dedicated `src/lib/cloudAssetChanges.ts` module, and keep orchestration in `syncEngine.ts`.
+
+Typed contract (names may be adjusted to match the final SQL):
+
+```ts
+ type AssetSyncCheckpoint = { lastSequence: number; resetGeneration: number }
+ type AssetSyncEvent = {
+   organizationId: string; sequence: number; assetId: string | null;
+   assetCode: string | null; eventType: 'upsert'|'soft_delete'|'hard_delete'|'reset';
+   assetUpdatedAt: string | null; resetGeneration: number | null;
+   snapshot: CloudAsset | null;
+ }
+ type AssetSyncPage = { items: AssetSyncEvent[]; hasMore: boolean; nextCursor: number; currentGeneration: number }
+```
+
+Never trust the client-supplied organization ID alone. The RPC verifies auth and membership/permission; the client additionally validates every returned event's organization matches the active tenant, sequence is strictly increasing within the page and greater than the cursor, page size is bounded, and next cursor advances.
+
+### 11.3. Snapshot bootstrap algorithm
+
+1. Call checkpoint RPC; store `checkpoint.lastSequence` only as a temporary bootstrap boundary, not as the durable cursor yet.
+2. Run current paginated snapshot download while preserving the existing conflict/mutation protections. A full snapshot page must not delete Local-only rows or unlinked Local equipment.
+3. After snapshot succeeds, Pull from the checkpoint boundary until caught up. This includes concurrent Cloud changes committed after the checkpoint.
+4. Commit the final Pull page's asset changes and cursor in one Dexie transaction. Bootstrap becomes initialized only after snapshot and catch-up succeed. If any stage fails, retry bootstrap safely; do not mark cursor initialized prematurely.
+5. Reset generation checks bracket snapshot and Pull; a generation change aborts the pass and delegates to the existing reset barrier before retry.
+
+### 11.4. Incremental page apply
+
+For each page:
+
+- Validate tenant, sequence ordering, event type, and bounded page size before touching IndexedDB.
+- Coalesce multiple non-reset events for the same asset to the newest event in the page, but never reorder across reset markers. Simpler initial implementation may apply events serially; correctness is preferred over optimization.
+- `upsert`: only apply snapshot if present, linked/local identity is consistent, and no Local pending mutation/conflict/active edit-lock protection requires preserving Local. Reuse current reconciliation rules; do not bypass optimistic conflict logic.
+- `soft_delete`: update deletedAt on the matching linked asset and Cloud link using current deletion reconciliation. Keep asset/history; preserve local unsynced changes as conflict.
+- `hard_delete`: remove only the matching Cloud-linked Local row/link after validating org, asset ID and code. If Local is unlinked, preserve it. Reset hard-deletes are primarily handled by generation barrier.
+- `reset`: call existing reset barrier with generation, then continue; reset marker may not be coalesced away.
+- Applying a Pull must not create outgoing `assetMutations`, group-change mutations, or history mutations. Cloud is not a Local user action.
+- Cursor advances to page `nextCursor` only in the same Dexie transaction as successfully applying all records from the page. If an operation requiring the reset barrier cannot be included in a Dexie transaction, perform it before cursor commit and make retry idempotent.
+
+### 11.5. Tenant / session change
+
+Before each page and before commit, Sync Engine checks its captured session identity and organization. If account/org changes, cancel pass and do not commit cursor from the old tenant into the new session. Local cursor key remains tenant ID, but ensure no old in-flight work can mutate the currently selected tenant's rows.
+
+### 11.6. Feed retention / cursor expiration
+
+The initial implementation should not delete feed rows. Before adding retention, design a tenant minimum cursor / feed floor. If a client cursor is older than the floor, RPC returns an explicit `cursor_expired` error; client performs controlled snapshot bootstrap, not silent cursor jump. Realtime reconnect never changes the durable cursor.
+
+### 11.7. Feature rollout and fallback
+
+Do not silently switch the existing full scan to incremental mode until Test validates the feed end-to-end. A capability/checkpoint RPC may signal feed availability. If RPC is missing, client uses existing full scan, emits a non-fatal diagnostic, and does not create an initialized cursor. Once incremental mode is enabled for a tenant, failures must not reset cursor or trigger destructive fallback; recovery is explicit bootstrap only.
+
+## 12. Review risks identified before coding
+
+1. Event trigger ordering with existing assets triggers: feed trigger should not mutate the asset; it should run AFTER row operation. Existing identity issuance guard remains authoritative.
+2. Reset request may contain platform/admin context; marker trigger must derive tenant and generation from trusted row values and not accept caller-supplied organization from a client RPC.
+3. Snapshot visibility differs for soft-deleted assets. The Pull RPC must not return a null snapshot that clients misinterpret as physical deletion; event type determines semantics.
+4. SECURITY DEFINER RPCs must have explicit auth/permission checks, fixed empty search path, restricted EXECUTE grants, and no caller-controlled arbitrary organization/cursor writes.
+5. Migration must be idempotent only where safe, and test rollback/transaction behavior. Avoid `CREATE OR REPLACE` with changed return types; use deliberate versioning if needed.
+6. Event volume and hot counter row: per-org row lock is acceptable initially; if an organization becomes high-volume, optimize only after measurement without weakening commit ordering.
+7. Pull page snapshots may reflect newer state than the event sequence. This is safe if reconciliation is idempotent and cursor remains sequence-based, but must be documented and tested; event payload must not be treated as historical row version.
