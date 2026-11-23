@@ -73,6 +73,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    const resolvedLocal=await downloadCloudAsset(organizationId,cloudAsset,local)
+   await ensureOrganizationAssetResetApplied(client,organizationId)
    await onConflictResolved(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng.')
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
    for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
@@ -180,6 +181,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   if(!canView){setError('Tài khoản không có quyền xem thiết bị Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
+   await ensureOrganizationAssetResetApplied(client,organizationId)
    const local=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
    const link=local?await db.assetCloudLinks.get(organizationId+':'+local.id):undefined
    if(local&&!link){
@@ -204,6 +206,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     if(!cloudChanged){await db.assetCloudLinks.update(link.id,{status:'linked',lastVerifiedAt:new Date().toISOString()});setMessage('Local và Cloud đã cùng phiên bản.');return}
    }
    await downloadCloudAsset(organizationId,asset,local)
+   await ensureOrganizationAssetResetApplied(client,organizationId)
    setMessage(local?'Đã cập nhật Local theo Cloud; giữ lại ảnh Local.':'Đã tải hồ sơ Cloud về Local.')
    onChanged()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
