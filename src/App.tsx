@@ -225,7 +225,8 @@ export default function App() {
   // whose membership has since been removed. A previously registered device can
   // still receive and acknowledge a reset without regaining organization access.
   useEffect(()=>{
-    if(!session?.user.id||!supabase)return
+    const client=supabase
+    if(!session?.user.id||!client)return
     let active=true
     const applyKnownOrganizationResets=async()=>{
       if(!navigator.onLine)return
@@ -251,7 +252,7 @@ export default function App() {
         scopes.delete('local-preview')
         for(const scope of scopes){
           if(!active)break
-          await ensureOrganizationAssetResetApplied(supabase,scope).catch(()=>{})
+          await ensureOrganizationAssetResetApplied(client,scope).catch(()=>{})
         }
       }catch{/* A later online/focus event retries without blocking the current session. */}
     }
