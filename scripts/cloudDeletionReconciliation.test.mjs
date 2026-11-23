@@ -50,8 +50,8 @@ test('pending Cloud mutations retry after initial sync or browser reconnect, wit
   assert.ok(scheduler.includes("window.addEventListener('online', onOnline)"))
   assert.ok(source.includes("m.status==='pending'&&m.failureKind!=='permanent'"))
   assert.ok(source.includes("m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000"))
-  assert.match(source, /context\\.permissions\\.includes\\('assets\\.update'\\)/)
-  assert.match(source, /await syncCloudAssetsToLocal\\(client,organizationId/)
+  assert.ok(source.includes("context.permissions.includes('assets.update')"))
+  assert.ok(source.includes('await syncCloudAssetsToLocal(client,organizationId'))
 })
 
  
