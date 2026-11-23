@@ -101,14 +101,19 @@ export async function listAssetSyncChanges(
     if (snapshot !== null && snapshot !== undefined && (typeof snapshot !== 'object' || Array.isArray(snapshot))) {
       throw new Error('Incremental Pull snapshot không hợp lệ.')
     }
+    const assetId = event.asset_id == null ? null : String(event.asset_id)
+    const assetCode = event.asset_code == null ? null : String(event.asset_code)
+    if (eventType !== 'reset' && (!assetId || !assetCode)) throw new Error('Incremental Pull thiếu định danh thiết bị cho event.')
+    const resetGeneration = event.reset_generation == null ? null : integer(event.reset_generation, 'Event generation')
+    if (eventType === 'reset' && resetGeneration === null) throw new Error('Reset event thiếu generation.')
     return {
       organizationId: eventOrganization,
       sequence,
-      assetId: event.asset_id == null ? null : String(event.asset_id),
-      assetCode: event.asset_code == null ? null : String(event.asset_code),
+      assetId,
+      assetCode,
       eventType: eventType as AssetSyncEventType,
       assetUpdatedAt: event.asset_updated_at == null ? null : String(event.asset_updated_at),
-      resetGeneration: event.reset_generation == null ? null : integer(event.reset_generation, 'Event generation'),
+      resetGeneration,
       snapshot: snapshot == null ? null : snapshot as Record<string, unknown>
     }
   })
@@ -116,6 +121,7 @@ export async function listAssetSyncChanges(
   if (typeof hasMore !== 'boolean') throw new Error('Incremental Pull thiếu has_more.')
   const nextCursor = integer(row.next_cursor ?? row.nextCursor, 'Next cursor')
   const currentGeneration = integer(row.current_generation ?? row.currentGeneration, 'Current generation')
+  if (items.length === 0 && nextCursor !== afterSequence) throw new Error('Incremental Pull page rỗng không được nhảy cursor.')
   if (items.length > 0 && nextCursor !== items[items.length - 1].sequence) {
     throw new Error('Incremental Pull next_cursor không khớp event cuối.')
   }
