@@ -181,6 +181,7 @@ export function PlatformPlanRequestsPanel({client}:{client:SupabaseClient}){
  const submit=async(event:FormEvent)=>{
   event.preventDefault()
   if(!selected||busy)return
+  if(decision==='reject'&&!reviewNote.trim()){setError('Bắt buộc nhập lý do từ chối yêu cầu.');return}
   setBusy(true);setError('');setMessage('')
   try{
    const {data,error:invokeError}=await client.functions.invoke('platform-manage-plan-requests',{body:{
@@ -338,7 +339,7 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
     <div className="platform-action-danger"><b>{number(selected.cloud_assets_at_request)} hồ sơ Cloud</b> và {number(selected.registered_devices_at_request)} Local đã đăng ký tại thời điểm gửi yêu cầu. {decision==='approve'?'Khi xác nhận, hệ thống sẽ xóa hồ sơ Cloud ngay; Local sẽ purge khi kết nối lại.':'Yêu cầu sẽ được đóng mà không thay đổi dữ liệu thiết bị.'}</div>
     {selected.requester_note&&<div className="platform-action-note">Lý do doanh nghiệp: {selected.requester_note}</div>}
     <form className="platform-action-form" onSubmit={submit}>
-     <label className="field">Phản hồi / ghi chú xử lý<textarea rows={3} maxLength={1000} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Nhập lý do duyệt hoặc từ chối…"/></label>
+     <label className="field">{decision==='reject'?'Lý do từ chối *':'Phản hồi / ghi chú xử lý'}<textarea rows={3} maxLength={1000} required={decision==='reject'} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder={decision==='reject'?'Nêu rõ lý do từ chối yêu cầu này…':'Ghi chú xử lý (không bắt buộc)…'}/></label>
      <label className="field">Mật khẩu Superadmin *<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nhập lại mật khẩu Superadmin"/></label>
      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi đã kiểm tra yêu cầu và xác nhận {decision==='approve'?'phê duyệt, thực hiện xóa toàn bộ hồ sơ thiết bị Cloud':'từ chối yêu cầu này'}.</span></label>
      {error&&<div className="auth-error">{error}</div>}
