@@ -78,3 +78,12 @@ test('page application validates tenant, applies reset barrier and advances curs
   assert.match(cloud, /ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(cloud, /advanceAssetSyncCursor\(organizationId,page\.nextCursor,resetGeneration\)/)
 })
+
+test('Pull skips pre-reset snapshots while waiting for the reset barrier, preventing resurrection', async () => {
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  assert.match(cloud, /let lastResetIndex=-1/)
+  assert.match(cloud, /const generationGap=page\.currentGeneration>resetGeneration/)
+  assert.match(cloud, /if\(lastResetIndex>=0&&i<lastResetIndex\)continue/)
+  assert.match(cloud, /if\(generationGap&&lastResetIndex<0&&event\.eventType!=='reset'\)continue/)
+  assert.match(cloud, /Feed thiếu Reset barrier dù generation Cloud đã tăng/)
+})
