@@ -229,6 +229,7 @@ export async function syncCloudAssetsIncrementally(
     const generationGap=page.currentGeneration>resetGeneration
     const resetAfterPageMarker=lastResetIndex>=0&&page.currentGeneration>lastResetGenerationInPage
     if(generationGap&&lastResetIndex<0&&!page.hasMore)throw new Error('Feed thiếu Reset barrier dù generation Cloud đã tăng; không advance cursor.')
+    if(resetAfterPageMarker&&!page.hasMore)throw new Error('Feed thiếu Reset barrier mới hơn marker cuối page; không advance cursor.')
     for(let i=0;i<page.items.length;i++){
       const event=page.items[i]
       if(options.shouldContinue&&!options.shouldContinue())return summary
