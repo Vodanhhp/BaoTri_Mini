@@ -404,9 +404,11 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
   throw new Error(reason)
  }
  const deviceId=getLocalDeviceId()
- const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
- if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
+ let acquiredLease:CloudLease|undefined
  try{
+  const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
+  if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
+  acquiredLease=acquired.lease
   const attemptAt=now()
   await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,lastAttemptAt:attemptAt,deviceId,updatedAt:attemptAt,lastError:undefined,nextAttemptAt:undefined,failureKind:undefined})
   const applied=await applyCloudAssetMutation(client,organizationId,local,acquired.lease.lock_token,mutation.mutationId,mutation.expectedCloudUpdatedAt,mutation.payload)
@@ -443,16 +445,18 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
   const conflict=msg.toLowerCase().includes('version changed')||msg.toLowerCase().includes('changed since')
   const permanent=/permission denied|not authorized|unauthorized|forbidden|jwt|invalid (input|parameter)|violates (check|foreign key|unique) constraint|does not have permission/i.test(msg)
   const failedAt=now()
-  const retryDelay=Math.min(5000*Math.pow(2,Math.min(mutation.attempts,8)),15*60*1000)
+  const latestMutation=await db.assetMutations.get(mutationId)
+  const attemptCount=latestMutation?.attempts??mutation.attempts
+  const retryDelay=Math.min(5000*Math.pow(2,Math.min(Math.max(0,attemptCount-1),8)),15*60*1000)
   const jitteredDelay=Math.round(retryDelay*(0.8+Math.random()*0.4))
   await db.assetMutations.update(mutationId,{
-   status:conflict?'conflict':'pending',lastError:msg,updatedAt:failedAt,
+   status:conflict?'conflict':'pending',lastError:msg,updatedAt:failedAt,lastAttemptAt:failedAt,deviceId,
    failureKind:conflict||permanent?'permanent':'transient',
    nextAttemptAt:conflict||permanent?undefined:new Date(Date.now()+jitteredDelay).toISOString()
   })
   if(conflict)await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:failedAt})
   throw error
  }finally{
-  await releaseCloudAssetLock(client,organizationId,local.code,acquired.lease.lock_token).catch(()=>false)
+  if(acquiredLease)await releaseCloudAssetLock(client,organizationId,local.code,acquiredLease.lock_token).catch(()=>false)
  }
 }
