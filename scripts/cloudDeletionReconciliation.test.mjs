@@ -60,3 +60,13 @@ test('Cloud retry refuses to send a stale Local snapshot and preserves its sync 
   assert.match(retry, /status:'conflict'/)
   assert.match(retry, /lastSyncedLocalUpdatedAt:mutation\.localUpdatedAt/)
 })
+
+ 
+test('successful retry mirrors pending group-change history before marking it synced', async () => {
+  const source = await read('../src/lib/cloudAssets.ts')
+  const retry = source.slice(source.indexOf('export async function retryCloudAssetMutation'))
+  assert.match(retry, /change\.syncStatus==='pending'&&change\.mutationId===mutationId/)
+  assert.match(retry, /client\.rpc\('mirror_cloud_asset_group_change_history'/)
+  assert.match(retry, /if\(historyError\)throw new Error/)
+  assert.match(retry, /db\.assetGroupChanges\.update\(change\.id,\{syncStatus:'synced'\}\)/)
+})
