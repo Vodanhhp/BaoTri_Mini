@@ -36,7 +36,7 @@ test('application contains no direct read of the protected assets table', async 
 
 test('database migrations protect the assets table and expose the paginated UUID-free RPC', async () => {
   const [publicApi, paginationApi] = await Promise.all([
-    read('../supabase/migrations/20261121130000_cloud_asset_public_key_api.sql'),
+    read('../supabase/migrations/20261122032223_cloud_asset_public_key_api.sql'),
     read('../supabase/migrations/20261122055755_cloud_asset_sync_pagination_and_platform_read.sql')
   ])
   assert.match(publicApi, /revoke all on table public\.assets from anon,authenticated/i)
