@@ -35,6 +35,7 @@ Deno.serve(async(req)=>{
   const reviewNote=String(body.reviewNote??'').trim().slice(0,1000)
   if(!uuid(requestId))return response({error:'Mã yêu cầu không hợp lệ.'},400,origin)
   if(!password)return response({error:'Cần nhập lại mật khẩu Superadmin.'},400,origin)
+  if(action==='reject'&&!reviewNote)return response({error:'Bắt buộc nhập lý do từ chối yêu cầu Reset.'},400,origin)
   if(confirmation!=='yes')return response({error:'Cần xác nhận đã kiểm tra yêu cầu Reset.'},400,origin)
   const verifier=createClient(url,publicKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:verified,error:passwordError}=await verifier.auth.signInWithPassword({email:OWNER_EMAIL,password})
