@@ -48,12 +48,20 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
    const result=await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
+   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+   const currentMutation=await db.assetMutations.get(mutation.mutationId)
+   if(!currentMutation){
+    setMessage('Tổ chức vừa được reset trong lúc retry; mutation và hồ sơ Local cũ đã được xóa.')
+    await reload();onChanged()
+    return
+   }
    const pendingHistory=await db.assetHistory.get(mutation.mutationId)
    let historyMessage=''
    if(pendingHistory?.syncStatus==='pending'){
     const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
      p_organization_id:organizationId,p_event_id:pendingHistory.id,p_asset_code:pendingHistory.assetCode,p_event_type:pendingHistory.eventType,
-     p_summary:pendingHistory.summary,p_changes:pendingHistory.changes,p_actor_label:pendingHistory.actorLabel,p_occurred_at:pendingHistory.occurredAt
+     p_summary:pendingHistory.summary,p_changes:pendingHistory.changes,p_actor_label:pendingHistory.actorLabel,p_occurred_at:pendingHistory.occurredAt,
+     p_reset_generation:resetGeneration
     })
     if(!historyError)await db.assetHistory.update(pendingHistory.id,{syncStatus:'synced'})
     else historyMessage=' Mutation đã được xác nhận; lịch sử vẫn chờ đồng bộ: '+historyError.message
