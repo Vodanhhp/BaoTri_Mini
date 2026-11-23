@@ -232,6 +232,11 @@ async function reconcileCloudDeletion(
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  const current=await db.assets.get(asset.id)
+  if(!current||current.localScope!==asset.localScope||current.code!==asset.code||
+     (asset.localScope!=='local-preview'&&asset.localScope!==organizationId)){
+    throw new Error('Hồ sơ Local đã bị xóa hoặc thay đổi sau reset; hãy tải lại dữ liệu trước khi nhập.')
+  }
   if(asset.idReservationId&&asset.idReservationStatus!=='confirmed'){
     if(!asset.idComponentsSnapshot||!asset.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; chưa thể nhập thiết bị Smart ID lên Cloud.')
     await confirmSmartEquipmentIdReservation(client,{
@@ -300,6 +305,8 @@ export async function downloadCloudAsset(organizationId: string, cloud: CloudAss
 
 export async function acquireCloudAssetLock(client: SupabaseClient, organizationId: string, assetCode: string, deviceId: string, label: string) {
   await ensureOrganizationAssetResetApplied(client,organizationId)
+  const local=await db.assets.where('[localScope+code]').equals([organizationId,assetCode]).first()
+  if(!local)throw new Error('Thiết bị Local không còn tồn tại sau khi kiểm tra reset; hãy tải lại danh sách.')
   const {data,error}=await client.rpc('acquire_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetCode,p_device_id:deviceId,p_holder_label:label})
   if(error) throw new Error('Xin khóa sửa thiết bị thất bại: '+error.message)
   const result=data as Record<string,unknown>
@@ -324,6 +331,8 @@ export async function releaseCloudAssetLock(client: SupabaseClient, organization
 
 export async function applyCloudAssetMutation(client: SupabaseClient, organizationId: string, asset: Asset, token: string, mutationId: string, expectedCloudUpdatedAt: string, payload: AssetMutationPayload) {
   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  const current=await db.assets.get(asset.id)
+  if(!current||current.localScope!==organizationId||current.code!==asset.code)throw new Error('Hồ sơ Local không còn hợp lệ sau khi kiểm tra reset; không gửi dữ liệu cũ lên Cloud.')
   if(payload.deletedAt){
     const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt,p_reset_generation:resetGeneration})
     if(error)throw new Error(error.message)
