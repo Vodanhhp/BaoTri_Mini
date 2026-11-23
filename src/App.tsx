@@ -226,6 +226,24 @@ export default function App() {
               retryFailed++
             }
           }
+          // A failed first attempt records its Local audit event as pending.
+          // Mirror it only after the corresponding Cloud mutation is confirmed.
+          const pendingHistory=await db.assetHistory.where('organizationId').equals(organizationId)
+            .filter(entry=>entry.syncStatus==='pending').toArray()
+          for(const entry of pendingHistory){
+            if(!active||!navigator.onLine)break
+            const mutation=await db.assetMutations.get(entry.id)
+            if(mutation?.status!=='applied')continue
+            try{
+              const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
+                p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
+                p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
+              })
+              if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+            }catch{
+              // Keep the audit event pending; the next online sync retries it.
+            }
+          }
         }
         if(!active)return
         await loadAssets(organizationId)
@@ -335,7 +353,7 @@ export default function App() {
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
-  const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string, eventId?:string) => {
+  const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string, eventId?:string, deferCloud=false) => {
     const labels: Record<string,string> = {name:'Tên thiết bị',category:'Nhóm thiết bị',brand:'Hãng sản xuất',model:'Model',serial:'Số serial',location:'Vị trí lắp đặt',commissionedAt:'Ngày đưa vào sử dụng',power:'Công suất / thông số',cycle:'Chu kỳ bảo trì',cycleStartedAt:'Bắt đầu chu kỳ bảo trì',transferredFromOtherFacility:'Chuyển từ cơ sở khác',status:'Trạng thái',notes:'Ghi chú',archivedAt:'Lưu kho',deletedAt:'Xóa mềm'}
     const fields = Object.keys(labels) as Array<keyof Asset>
     const valueText=(value:unknown)=>value===undefined||value===null||value===''?'—':typeof value==='boolean'?(value?'Có':'Không'):String(value)
@@ -351,7 +369,7 @@ export default function App() {
       occurredAt:now(),syncStatus:localPreview?'synced':'pending'
     }
     await db.assetHistory.put(entry)
-    await syncAssetHistoryEntry(entry)
+    if(!deferCloud)await syncAssetHistoryEntry(entry)
   }
   const syncAssetHistoryEntry = async (entry:AssetHistory) => {
     if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced')return
@@ -764,6 +782,7 @@ export default function App() {
           await releaseCloudAssetLock(supabase,organizationId,value.code,lease.token).catch(()=>false)
           return
         }catch(cloudError){
+          await recordAssetHistory(previous,value,undefined,undefined,mutationId,true)
           await db.assetMutations.update(mutationId,{status:'pending',lastError:cloudError instanceof Error?cloudError.message:String(cloudError),updatedAt:now()})
           throw new Error('Local đã lưu snapshot, nhưng Cloud chưa xác nhận. Giữ mutation để retry đúng nội dung. '+(cloudError instanceof Error?cloudError.message:String(cloudError)))
         }
