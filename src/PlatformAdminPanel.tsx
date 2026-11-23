@@ -138,7 +138,8 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
    if(isReset){
     const pending=Number(data?.reset?.pending_devices??data?.status?.pending_devices??0)
     const generation=Number(data?.reset?.generation??0)
-    setManagementSuccess(`Đã reset dữ liệu thiết bị Cloud của tổ chức "${management.organization.name}" (generation ${generation}). ${pending} thiết bị Local đang chờ kết nối để tự xóa dữ liệu cũ.`)
+    const deleted=Number(data?.reset?.assets_deleted??0)
+    setManagementSuccess(`Đã reset Cloud tổ chức "${management.organization.name}": xóa ${number(deleted)} hồ sơ thiết bị (generation ${generation}). ${pending} thiết bị Local đã đăng ký đang chờ kết nối để tự xóa dữ liệu cũ.`)
    }else{
     const label=management.action==='suspend'?'đã tạm ngưng':management.action==='reactivate'?'đã kích hoạt lại':'đã xóa vĩnh viễn'
     setManagementSuccess(`Tổ chức "${management.organization.name}" ${label} thành công.`)
