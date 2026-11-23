@@ -1308,3 +1308,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Kiểm tra chuyển tài khoản phát hiện `signOut` trước đây không xóa các state đang mở như hồ sơ chi tiết, ảnh đang xem, form chỉnh sửa, Cloud panel và danh sách Local đã nạp. Sau khi đăng nhập tài khoản khác trên cùng trình duyệt, một số state cũ có thể còn tồn tại trong bộ nhớ giao diện. Đã bổ sung xóa cache thiết bị và các modal/state nhạy cảm khi đăng xuất; giữ nguyên các draft/reservation đã lưu bền vững để có thể khôi phục đúng quy trình. Bổ sung regression test cho sign-out isolation. Commit App `63b2d06`, test `14b67e6`.
 - CI tại head mới chưa được GitHub trả về; chưa chạy browser E2E. Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Regression test sau đợt rà quyền bắt được một handler còn thiếu cổng `assets.view`: `resolveConflictLocal`. Đã bổ sung kiểm tra kép `assets.view` + `assets.update` ngay đầu handler; các nút retry/Chọn Cloud/Chọn Local cũng cùng kiểm tra kép. Đây là lỗi test phát hiện, đã sửa trước khi kết thúc lượt rà.
+- Tại code head `c05a4e157bfdc2aecddf6e0fe4f9f84d0d8b7f97`: **Build and test success** (run 537, unit tests và build đều pass); **Validate BAOTRI Mini success** (run 249, npm run build pass). Các chỉnh sửa tài liệu sau đó chưa có; hiện ghi nhận mốc CI này. Chưa chạy browser E2E.
+- Không merge PR #30, không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
