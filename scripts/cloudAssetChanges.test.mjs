@@ -57,8 +57,9 @@ test('bootstrap checkpoint is persisted as incomplete until full scan finishes a
   assert.match(source, /bootstrapComplete: false/)
   assert.match(source, /markAssetSyncBootstrapComplete/)
   assert.match(source, /advanceAssetSyncCursor/)
-  assert.match(source, /if \(!cursor\.bootstrapComplete\)/)
-  assert.match(source, /if \(!cursor \|\| !cursor\.bootstrapComplete\)/)
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  assert.match(cloud, /if\(!cursor\.bootstrapComplete\)/)
+  assert.match(cloud, /markAssetSyncBootstrapComplete/)
 })
 
 test('event parser requires a timestamp and Incremental Pull uses full-scan fallback when RPC is unavailable', async () => {
