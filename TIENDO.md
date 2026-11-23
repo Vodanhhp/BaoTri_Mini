@@ -1391,3 +1391,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Performance Advisor ghi nhận 28 FK chưa có covering index và 5 unused indexes (gồm index requested_at mới chưa có đủ tải để được dùng); chưa tự thêm index hoặc thay đổi policy.
 - Hai Edge Function mới ACTIVE, verify_jwt=true; endpoint Reset trực tiếp cũ ACTIVE nhưng fail-closed HTTP 410.
 - PR #31 hiện vẫn OPEN/DRAFT, chưa merge. Browser E2E với tài khoản doanh nghiệp và Superadmin chưa chạy; chưa gửi request thử và chưa Reset Công ty C.
+
+
+### Bổ sung kiểm soát lý do từ chối — 23/11/2026
+- Rà soát workflow phát hiện form Superadmin trước đó cho phép từ chối mà không ghi lý do. Đã sửa UI: trường lý do bắt buộc khi chọn Từ chối; frontend chặn nội dung chỉ có khoảng trắng.
+- Edge Function platform-manage-asset-reset-requests từ chối action=reject nếu reviewNote rỗng.
+- Migration mới require_asset_reset_rejection_reason đã apply trên Supabase Test; DB RPC cũng tự kiểm tra lý do từ chối, tránh bypass bằng cách gọi backend.
+- Edge Function Superadmin đã deploy lại trên Supabase Test, version 2, ACTIVE, verify_jwt=true.
+- Post-check read-only: requests=0; anon/authenticated không EXECUTE review RPC; service_role có EXECUTE; DB function xác nhận bắt buộc lý do từ chối.
+- Không gửi request thử, không Reset dữ liệu. Cần CI trên head mới và Browser E2E; Vercel báo repository không liên kết project nên hiện chưa có Preview deployment để kiểm tra từ trình duyệt.
