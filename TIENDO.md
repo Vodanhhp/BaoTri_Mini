@@ -1254,3 +1254,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rà soát schema Supabase Test cho thấy CHECK `assets_status_check` chỉ cho 4 trạng thái cũ; Cloud mutation/import cũng chưa đồng bộ whitelist `Lưu kho`. UI Local đã tạo trạng thái Lưu kho và gửi `archived_at`, nên import Local→Cloud hoặc mutation lưu kho có thể bị DB từ chối.
 - Đã chuẩn bị migration để bổ sung trạng thái Lưu kho vào CHECK và cập nhật import RPC giữ nguyên `archived_at`; thêm test hồi quy.
 - Branch `fix/cloud-import-stored-assets`; **chưa áp dụng migration lên Supabase Test**, chưa thay dữ liệu hoặc Production. Cần CI và review trước khi xin phép áp dụng Test.
+
+- CI trên PR #28 commit `f9c4e60efb75ad95aed2e605f81c574691875778`: `Build and test` success (unit tests + npm build); `Validate BAOTRI Mini` success. Sau đó chỉ cập nhật TIENDO ghi kết quả; chưa apply migration.
