@@ -68,11 +68,18 @@ begin
   if v_actor is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
-  if not private.is_org_member(p_organization_id) then
-    raise exception 'Active organization membership required' using errcode = '42501';
-  end if;
   if nullif(btrim(p_device_id), '') is null or char_length(p_device_id) > 160 then
     raise exception 'Invalid device identifier' using errcode = '22023';
+  end if;
+  -- A previously registered device may still need to purge after its user is removed.
+  if not private.is_org_member(p_organization_id)
+     and not exists (
+       select 1 from private.organization_asset_reset_devices d
+        where d.organization_id = p_organization_id
+          and d.device_id = p_device_id
+          and d.user_id = v_actor
+     ) then
+    raise exception 'Active organization membership or prior device registration required' using errcode = '42501';
   end if;
   if coalesce(p_local_asset_count, 0) < 0 then
     raise exception 'Invalid Local asset count' using errcode = '22023';
@@ -124,8 +131,8 @@ declare
   v_actor uuid := auth.uid();
   v_generation bigint;
 begin
-  if v_actor is null or not private.is_org_member(p_organization_id) then
-    raise exception 'Active organization membership required' using errcode = '42501';
+  if v_actor is null then
+    raise exception 'Authentication required' using errcode = '42501';
   end if;
 
   select generation into v_generation
@@ -141,6 +148,7 @@ begin
 
   update private.organization_asset_reset_devices
      set acknowledged_generation = p_generation,
+         local_asset_count = 0,
          last_seen_at = clock_timestamp(),
          updated_at = clock_timestamp()
    where organization_id = p_organization_id
