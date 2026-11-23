@@ -28,11 +28,15 @@ test('reset preserves audit rows, catalog, memberships, roles, plan and sequence
   assert.doesNotMatch(sql, /delete from private\.organization_plan_change_history/)
 })
 
-test('old import, mutation, soft-delete and audit RPC signatures are revoked', async () => {
+test('legacy RPC signatures work only before the first reset; new signatures require generation', async () => {
   const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
-  assert.match(sql, /revoke all on function public\.import_asset_preserving_identity\(uuid,uuid,text,jsonb,uuid\) from public, anon, authenticated/)
-  assert.match(sql, /revoke all on function public\.apply_cloud_asset_mutation_with_lock\(uuid,text,uuid,uuid,timestamptz,jsonb\) from public, anon, authenticated/)
-  assert.match(sql, /revoke all on function public\.soft_delete_cloud_asset_with_lock\(uuid,text,uuid,uuid,timestamptz,timestamptz\) from public, anon, authenticated/)
+  assert.match(sql, /private\.assert_legacy_asset_sync_allowed/)
+  assert.match(sql, /if v_generation <> 0 then/)
+  assert.match(sql, /perform private\.assert_legacy_asset_sync_allowed\(p_organization_id\)/)
+  assert.match(sql, /grant execute on function public\.import_asset_preserving_identity\(uuid,uuid,text,jsonb,uuid\) to authenticated/)
+  assert.match(sql, /grant execute on function public\.apply_cloud_asset_mutation_with_lock\(uuid,text,uuid,uuid,timestamptz,jsonb\) to authenticated/)
+  assert.match(sql, /revoke all on function private\.soft_delete_cloud_asset_with_lock_internal/)
+  assert.match(sql, /revoke all on function private\.record_cloud_asset_history_event_internal/)
   assert.match(sql, /p_reset_generation bigint/)
   assert.match(sql, /p_reset_generation is null or p_reset_generation <> v_generation/)
   assert.match(sql, /for share/)
