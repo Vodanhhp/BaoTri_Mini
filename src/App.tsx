@@ -308,6 +308,11 @@ export default function App() {
               const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
               const currentEntry=await db.assetHistory.get(entry.id)
               if(!currentEntry||currentEntry.syncStatus!=='pending')continue
+              const currentAsset=await db.assets.get(currentEntry.assetId)
+              if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+                await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+                continue
+              }
               const mutation=await db.assetMutations.get(currentEntry.id)
               if(mutation&&mutation.status!=='applied')continue
               const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
@@ -441,14 +446,22 @@ export default function App() {
     }))
     const kind = eventType ?? (!before ? 'created' : before.status !== after.status ? 'status_changed' : 'updated')
     if (before && !changes.length && !force) return
-    const entry:AssetHistory={
-      id:eventId??uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
-      summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
-      changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
-      occurredAt:now(),syncStatus:localPreview?'synced':'pending'
-    }
-    await db.assetHistory.put(entry)
-    if(!deferCloud)await syncAssetHistoryEntry(entry)
+    let entry:AssetHistory|undefined
+    const scope=localPreview?'local-preview':organizationId
+    // Serialize the asset-exists check with reset purge. If reset wins, do not
+    // create a fresh pending audit event for a Local snapshot that no longer exists.
+    await db.transaction('rw',[db.assets,db.assetHistory],async()=>{
+      const current=await db.assets.get(after.id)
+      if(!current||current.localScope!==scope||current.code!==after.code)return
+      entry={
+        id:eventId??uid(),organizationId:scope,assetId:after.id,assetCode:after.code,eventType:kind,
+        summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
+        changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
+        occurredAt:now(),syncStatus:localPreview?'synced':'pending'
+      }
+      await db.assetHistory.put(entry)
+    })
+    if(entry&&!deferCloud)await syncAssetHistoryEntry(entry)
   }
   const syncAssetHistoryEntry = async (entry:AssetHistory) => {
     if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced'||entry.syncStatus==='local_only')return
@@ -456,6 +469,11 @@ export default function App() {
       const resetGeneration=await ensureOrganizationAssetResetApplied(supabase,organizationId)
       const currentEntry=await db.assetHistory.get(entry.id)
       if(!currentEntry||currentEntry.syncStatus!=='pending')return
+      const currentAsset=await db.assets.get(currentEntry.assetId)
+      if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+        await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+        return
+      }
       const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event_v2',{
         p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
         p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
