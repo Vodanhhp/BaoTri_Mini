@@ -1,0 +1,74 @@
+/* SuperAdmin green theme — scoped to the platform workspace only. */
+.platform-admin-workspace {
+  --primary: #176B5C;
+  --primary-soft: rgba(23, 107, 92, .10);
+  --surface-2: #F3F6F5;
+  --card: #FFFFFF;
+  --text: #18332F;
+  --muted: #60736F;
+  --border: #D8E4E0;
+  background: #F3F6F5;
+}
+.platform-admin-workspace .platform-workspace-sidebar {
+  background: #102F2B;
+  color: #F4FAF7;
+  border-right-color: #244B44;
+}
+.platform-admin-workspace .platform-workspace-brand {
+  border-bottom-color: #31584F;
+}
+.platform-admin-workspace .platform-workspace-brand > span {
+  background: #176B5C;
+  color: #FFFFFF;
+}
+.platform-admin-workspace .platform-workspace-brand b {
+  color: #FFFFFF;
+}
+.platform-admin-workspace .platform-workspace-brand small,
+.platform-admin-workspace .platform-workspace-label {
+  color: #A9C5BC;
+}
+.platform-admin-workspace .platform-workspace-nav button {
+  color: #E5F1EC;
+}
+.platform-admin-workspace .platform-workspace-nav button:hover,
+.platform-admin-workspace .platform-workspace-nav button:focus-visible {
+  background: #1D4940;
+  color: #FFFFFF;
+  outline-color: #70B7A2;
+}
+.platform-admin-workspace .platform-workspace-bottom .auth-note {
+  color: #B7CDC5;
+  background: #173B34;
+  border-color: #31584F;
+}
+.platform-admin-workspace .platform-workspace-bottom .soft-btn {
+  color: #FFFFFF;
+  background: #176B5C;
+  border-color: #23835F;
+}
+.platform-admin-workspace .platform-workspace-bottom .soft-btn:hover {
+  background: #10594C;
+}
+.platform-admin-workspace .platform-admin-modal {
+  color: #18332F;
+}
+.platform-admin-workspace .platform-admin-modal .eyebrow,
+.platform-admin-workspace .platform-admin-modal .platform-onboarding-kicker,
+.platform-admin-workspace .platform-admin-modal .platform-onboarding-section > span {
+  color: #176B5C;
+}
+.platform-admin-workspace .platform-admin-modal .primary-btn,
+.platform-admin-workspace .platform-admin-modal .auth-submit {
+  background: #176B5C;
+  border-color: #176B5C;
+}
+.platform-admin-workspace .platform-admin-modal .primary-btn:hover,
+.platform-admin-workspace .platform-admin-modal .auth-submit:hover {
+  background: #10594C;
+  border-color: #10594C;
+}
+.platform-admin-workspace .platform-admin-modal .platform-plan-card[aria-pressed="true"] {
+  border-color: #176B5C;
+  background: rgba(23, 107, 92, .08);
+}
