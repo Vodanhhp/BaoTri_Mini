@@ -379,7 +379,8 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  await ensureOrganizationAssetResetApplied(client,organizationId)
  const mutation=await db.assetMutations.get(mutationId)
  if(!mutation||mutation.organizationId!==organizationId)throw new Error('Không tìm thấy mutation Local.')
- if(mutation.status==='conflict')throw new Error('Mutation đã conflict; cần đối chiếu thủ công, không tự retry.')
+ if(mutation.status==='conflict'||mutation.failureKind==='permanent')throw new Error(mutation.lastError||'Mutation cần được xử lý thủ công; không tự retry.')
+ if(mutation.nextAttemptAt&&Date.parse(mutation.nextAttemptAt)>Date.now())throw new Error('Mutation đang chờ đến lượt retry lúc '+new Date(mutation.nextAttemptAt).toLocaleString('vi-VN')+'.')
  const local=await db.assets.get(mutation.assetId)
  if(!local)throw new Error('Local snapshot của mutation đã mất.')
  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
@@ -406,7 +407,8 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
  if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
  try{
-  await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,updatedAt:now(),lastError:undefined})
+  const attemptAt=now()
+  await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,lastAttemptAt:attemptAt,deviceId,updatedAt:attemptAt,lastError:undefined,nextAttemptAt:undefined,failureKind:undefined})
   const applied=await applyCloudAssetMutation(client,organizationId,local,acquired.lease.lock_token,mutation.mutationId,mutation.expectedCloudUpdatedAt,mutation.payload)
   const groupResetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
   if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset trong lúc retry; Local mutation cũ đã bị xóa.')
@@ -439,8 +441,16 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  }catch(error){
   const msg=error instanceof Error?error.message:String(error)
   const conflict=msg.toLowerCase().includes('version changed')||msg.toLowerCase().includes('changed since')
-  await db.assetMutations.update(mutationId,{status:conflict?'conflict':'pending',lastError:msg,updatedAt:now()})
-  if(conflict)await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  const permanent=/permission denied|not authorized|unauthorized|forbidden|jwt|invalid (input|parameter)|violates (check|foreign key|unique) constraint|does not have permission/i.test(msg)
+  const failedAt=now()
+  const retryDelay=Math.min(5000*Math.pow(2,Math.min(mutation.attempts,8)),15*60*1000)
+  const jitteredDelay=Math.round(retryDelay*(0.8+Math.random()*0.4))
+  await db.assetMutations.update(mutationId,{
+   status:conflict?'conflict':'pending',lastError:msg,updatedAt:failedAt,
+   failureKind:conflict||permanent?'permanent':'transient',
+   nextAttemptAt:conflict||permanent?undefined:new Date(Date.now()+jitteredDelay).toISOString()
+  })
+  if(conflict)await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:failedAt})
   throw error
  }finally{
   await releaseCloudAssetLock(client,organizationId,local.code,acquired.lease.lock_token).catch(()=>false)
