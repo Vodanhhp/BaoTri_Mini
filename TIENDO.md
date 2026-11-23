@@ -1471,3 +1471,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Các kiểm thử smoke SQL trên Test đã rollback; không để test assets/events/counters. Chưa có browser E2E đa thiết bị; chưa xác minh cancel khi đổi org/session, interrupted-page replay, reset giữa nhiều trang và offline/retry thực tế.
 - **Việc tiếp theo:** (1) kiểm tra website sau deploy; (2) làm E2E trên Test bằng PC + Mobile: Cloud edit/update, pull incremental, offline/reconnect + retry, organization/session switch/cancel, replay sau gián đoạn và reset barrier giữa các trang; (3) ghi kết quả và lỗi cụ thể vào TIENDO, sửa nếu cần. Chỉ bật Realtime wake-up sau khi kiểm thử pull ổn định.
 - Giữ nguyên nguyên tắc: không đụng Production, không bulk-import Local chưa link, không auto-overwrite conflict, giữ permission/edit-lock/history/tombstones/reset barrier/tenant isolation, ảnh chưa sync. Không merge PR khác nếu chưa được user cho phép.
+
+
+### Chuẩn bị kiểm thử E2E Incremental Sync — 24/11/2026
+
+- GitHub Actions trên commit TIENDO mới nhất `45ff3efe8c5119e70472bd40443dbae977dedad7`: Build and test run `45289565571` **SUCCESS**; Pages deploy run `45289565598` **SUCCESS**. Merge commit PR #33 cũng đã có Build/Test và Pages deploy SUCCESS.
+- Rà soát source: các test hiện có chủ yếu là source/regex regression tests; repo chưa có Playwright/browser E2E harness. Vì vậy CI xanh không chứng minh thao tác thật PC–Mobile.
+- Read-only kiểm tra Supabase Test: tổ chức `BAOTRI Mini Test 02` đang active, hiện có 1 asset (`BOM-NUO-001`) và 1 active member role Admin. Chỉ xác định đây là ứng viên test; **chưa sửa/xóa/reset/import dữ liệu**, chưa dùng làm test fixture cho thao tác destructive.
+- Môi trường trợ lý hiện không có quyền điều khiển browser của người dùng; web fetch không đọc được site custom domain. Browser E2E chưa chạy. Cần user thao tác hai thiết bị/phiên browser và báo kết quả từng bước; khi cần test Reset, phải chọn/confirm tenant test chuyên dụng và backup/fixture rõ ràng.
+- Hướng tiếp theo: bắt đầu E2E không destructive (Pull/Update/Offline retry) trước; ghi nhận pass/fail và lỗi; sau đó mới kiểm thử reset barrier với tenant test đã được xác nhận riêng. Không dùng Production.
