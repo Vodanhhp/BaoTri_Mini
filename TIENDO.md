@@ -1256,3 +1256,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Migration actor-column lịch sử chứa function version trước bổ sung guard Admin/KTV và trạng thái Lưu kho; migration `20261122210000_asset_activity_history` sau đó thay thế bằng phiên bản canonical có các guard này. Test mới xác nhận không làm mất guard ở migration sau.
 - Chỉ đồng bộ source/test vào repo; **không áp dụng migration lên Supabase** vì Test đã có migration history này. Không thay đổi Production, dữ liệu, Edge Functions hay deploy.
 - Branch: `fix/reconcile-cloud-mutation-migration-sources`; chờ CI/build trước khi mở PR.
+
+- CI trên PR #27 commit `91deb4b66eae630a13083f8726315dce21ce4c2e`: `Build and test` success (unit tests + npm build), `Validate BAOTRI Mini` success. Chưa merge PR.
