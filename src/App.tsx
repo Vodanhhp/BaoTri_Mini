@@ -184,9 +184,17 @@ export default function App() {
   const localScope=localPreview?'local-preview':organizationId
   const loadAssets = async (scope=localScope) => {
     if(!scope){setAssets([]);return}
+    if(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')){setAssets([]);return}
     setAssets(await db.assets.where('localScope').equals(scope).toArray())
   }
-  useEffect(() => { if (localPreview || (session&&organizationId)) void loadAssets(localPreview?'local-preview':organizationId); else setAssets([]) }, [session?.user.id,localPreview,organizationId])
+  useEffect(() => {
+    let active=true
+    const scope=localPreview?'local-preview':session&&organizationId?organizationId:''
+    setAssets([])
+    if(!scope||(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')))return ()=>{active=false}
+    db.assets.where('localScope').equals(scope).toArray().then(rows=>{if(active)setAssets(rows)})
+    return ()=>{active=false}
+  }, [session?.user.id,localPreview,organizationId,organizationContexts])
   useEffect(()=>{
     if(!session?.user.id||!organizationId||localPreview){setLocalPreviewAssets([]);return}
     let active=true
