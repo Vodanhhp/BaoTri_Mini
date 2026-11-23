@@ -555,6 +555,11 @@ begin
 end;
 $function$;
 
+-- Internal implementation functions must not be directly callable even if a deployment exposes private schemas.
+revoke all on function private.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public, anon, authenticated;
+revoke all on function private.apply_asset_mutation_with_lock(uuid,uuid,uuid,uuid,timestamptz,jsonb) from public, anon, authenticated;
+revoke all on function private.mirror_asset_group_change_history(uuid,uuid,jsonb) from public, anon, authenticated;
+
 -- Remove legacy write entry points so an old browser bundle cannot bypass the barrier.
 revoke all on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public, anon, authenticated;
 revoke all on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb) from public, anon, authenticated;
