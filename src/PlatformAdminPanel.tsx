@@ -214,6 +214,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   <div id="platform-overview" className="panel-head" style={{marginTop:8}}><div><h3>Tổng quan hệ thống</h3><p>Số liệu trực tiếp từ Supabase Auth và cơ sở dữ liệu.</p></div><button type="button" className="soft-btn" onClick={()=>void loadOverview()} disabled={loadingOverview}>{loadingOverview?'Đang tải…':'Làm mới số liệu'}</button></div>
   {overviewError&&<div className="auth-error">{overviewError}</div>}
   {loadingOverview&&!overview&&<div className="auth-note">Đang tải thống kê nền tảng…</div>}
+  </>}
   {overview&&<>
    {activeSection==='platform-overview'&&<div className="stat-grid platform-admin-stats" style={{gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))'}}>
     <div className="stat-card"><div className="stat-icon blue">DN</div><div><small>Tổng doanh nghiệp</small><strong>{number(overview.organizationsTotal)}</strong><span>{number(overview.organizationsActive)} đang hoạt động · {number(overview.organizationsSuspended)} tạm khóa</span></div></div>
@@ -228,7 +229,6 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
    </tbody></table></div>
    <div className="auth-note" style={{marginTop:10}}>Tài khoản Auth được đếm duy nhất trên toàn nền tảng. Một tài khoản tham gia nhiều doanh nghiệp chỉ tính một lần ở tổng Auth, nhưng được tính một lượt trong từng doanh nghiệp.</div>
    </>}
-  </>}
   {activeSection==='platform-organizations'&&<>
   {managementSuccess&&<div className="cloud-message" style={{marginTop:12}}>{managementSuccess}</div>}
   {management&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!managementBusy)cancelManagement()}}>
@@ -250,7 +250,6 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
 
   {activeSection==='platform-requests'&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/></div>}
   {activeSection==='platform-provision'&&<>
-  <div id="platform-provision"
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>
   <form className="form-grid platform-create-form" onSubmit={submit}>
