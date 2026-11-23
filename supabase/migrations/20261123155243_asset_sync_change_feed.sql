@@ -229,6 +229,7 @@ begin
       'asset_code',n.asset_code,
       'event_type',n.event_type,
       'asset_updated_at',n.asset_updated_at,
+      'event_created_at',n.created_at,
       'reset_generation',n.reset_generation,
       'snapshot',case when n.event_type='soft_delete' and not v_can_view_deleted then null else n.snapshot end
     ) order by n.sequence) filter(where n.rn<=v_limit),'[]'::jsonb),
