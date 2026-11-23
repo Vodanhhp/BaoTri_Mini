@@ -22,6 +22,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setLoading(true);setError('')
   try{
    await ensureOrganizationAssetResetApplied(client,organizationId)
+   onChanged()
    const [linkRows,mutationRows]=await Promise.all([
     db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
     db.assetMutations.where('organizationId').equals(organizationId).toArray()
@@ -74,6 +75,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    const resolvedLocal=await downloadCloudAsset(organizationId,cloudAsset,local)
    await ensureOrganizationAssetResetApplied(client,organizationId)
+   if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset trong lúc đối chiếu; không thể áp dụng snapshot cũ.')
    await onConflictResolved(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng.')
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
    for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
@@ -207,6 +209,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    }
    await downloadCloudAsset(organizationId,asset,local)
    await ensureOrganizationAssetResetApplied(client,organizationId)
+   const downloaded=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
+   if(!downloaded)throw new Error('Tổ chức vừa được reset trong lúc tải Cloud; dữ liệu cũ đã bị loại bỏ.')
    setMessage(local?'Đã cập nhật Local theo Cloud; giữ lại ảnh Local.':'Đã tải hồ sơ Cloud về Local.')
    onChanged()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
