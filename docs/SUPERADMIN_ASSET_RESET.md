@@ -104,3 +104,14 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 - Local lưu cặp `deviceId + generation`; nếu IndexedDB được khôi phục/copy nhưng localStorage tạo installation ID mới sau reset, bắt buộc purge lại trước khi acknowledge.
 - Tạo Local audit event trong cùng Dexie transaction kiểm tra hồ sơ còn tồn tại; reset chạy trước thì không sinh audit pending mồ côi. Bộ đồng bộ audit cũng chuyển sự kiện không còn hồ sơ Local tương ứng sang `local_only`.
 - Đọc danh sách Cloud phân trang có kiểm tra generation lần nữa sau khi đọc xong.
+
+
+## Cập nhật trạng thái thực tế — 23/11/2026
+
+- Migration `20261123130000_superadmin_organization_asset_reset` đã được apply lên **Supabase Test BAOTRI Mini New** sau khi có phê duyệt; lịch sử ghi version `20261123132922`. Chưa apply Production.
+- Edge Function `platform-reset-organization-assets` đã deploy, trạng thái ACTIVE, `verify_jwt=true`; nội dung deployed khớp source branch tại thời điểm deploy.
+- Post-check chỉ đọc: reset state/device/request đều 0 rows; reset chưa được invoke. Chưa có dữ liệu thiết bị/tổ chức nào bị xóa.
+- Quyền DB đã kiểm tra: reset/status RPC chỉ service_role; register/acknowledge và RPC đồng bộ generation-aware cấp cho authenticated; nhóm RPC kiểm tra không cấp EXECUTE cho anon. Các SECURITY DEFINER dùng `search_path=''`, `row_security=off`; cần tiếp tục review thân hàm và Advisor findings, không thu hồi quyền hàng loạt.
+- CI run `45183190303`: Unit tests và Build thành công; 78/78 tests theo kết quả CI.
+- Browser E2E chưa chạy do chưa có phiên Superadmin/browser; kiểm thử Reset thực tế chưa chạy. Reset cần tổ chức Test riêng và phê duyệt destructive riêng.
+- PR #31 còn OPEN/DRAFT, chưa merge; PR #30 (base) còn OPEN, chưa merge. Production/DNS/Pages không thay đổi.
