@@ -1,6 +1,5 @@
 -- Permit the explicit "Lưu kho" lifecycle state in Cloud assets and Local→Cloud imports.
 -- The status is kept alongside archived_at so Local/Cloud lifecycle fields are preserved.
-begin;
 
 alter table public.assets drop constraint if exists assets_status_check;
 alter table public.assets add constraint assets_status_check
