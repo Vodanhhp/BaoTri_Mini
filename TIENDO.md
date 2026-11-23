@@ -1422,3 +1422,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cần giữ nguyên edit-lock, reset generation barrier, audit history, tenant isolation và Viewer read-only. Không gửi ảnh/payload thiết bị trong feed.
 - Chưa tạo migration SQL, chưa apply DDL, chưa bật publication, chưa thay đổi Supabase Test/Production. Lý do: môi trường làm việc hiện không có Supabase CLI để tạo migration bằng `supabase migration new`; không tự thay thế bằng cách đoán filename hoặc ghi DDL trực tiếp. Cần khôi phục workflow CLI/migration trước khi chuyển thiết kế thành migration.
 - PR #33 vẫn Draft; CI của commit fd376ca đã xanh ở cả Build and test và Validate BAOTRI Mini.
+
+
+### Incremental Pull – client scaffolding (23/11/2026)
+
+- PR #33 bổ sung `src/lib/cloudAssetChanges.ts`: typed RPC wrappers cho checkpoint và feed; xác thực tenant, event type, sequence tăng dần, page-size <=500, snapshot shape và cursor progress. Chưa nối vào sync cycle để tránh kích hoạt khi Test chưa có RPC/migration.
+- Dexie schema version 8 thêm `assetSyncCursors` theo organizationId, không tự đặt cursor khi upgrade. `readAssetSyncCursor()` chỉ đọc, từ chối `local-preview` và cursor hỏng; không có helper ghi cursor độc lập vì ghi phải atomic cùng apply page.
+- Thêm `scripts/cloudAssetChanges.test.mjs` regression checks và ghi rõ trạng thái tại docs/LOCAL_FIRST_SYNC_PHASE2.md.
+- CI Build and test đã PASS trên commit 5d50b2327b66c31aea076e2bcf5fc1e40698b8ac. Validate BAOTRI Mini PASS cùng commit. Các workflow mới hơn đang chạy; cần xác minh head cuối.
+- Vẫn chưa có migration/DDL, không thay đổi Supabase Test hoặc Production; Incremental Pull chưa bật, full scan hiện hành giữ nguyên.
