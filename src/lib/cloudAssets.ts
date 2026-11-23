@@ -251,7 +251,7 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
     })
     await db.assets.update(asset.id,{idReservationStatus:'confirmed'})
   }
-  const { data, error } = await client.rpc('import_asset_preserving_identity', {
+  const { data, error } = await client.rpc('import_asset_preserving_identity_v2', {
     p_organization_id: organizationId, p_id: asset.id, p_code: asset.code,
     p_asset: toImportPayload(asset), p_mutation_id: asset.id, p_reset_generation: resetGeneration
   })
@@ -268,7 +268,7 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
     .filter(change=>change.syncStatus==='pending').toArray()
   if(pendingGroupChanges.length){
     const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
-    const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
+    const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history_v2',{
       p_organization_id:organizationId,
       p_asset_code:asset.code,
       p_changes:ordered.map(change=>({
@@ -341,7 +341,7 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
   const current=await db.assets.get(asset.id)
   if(!current||current.localScope!==organizationId||current.code!==asset.code||current.updatedAt!==asset.updatedAt)throw new Error('Hồ sơ Local không còn hợp lệ sau khi kiểm tra reset; không gửi dữ liệu cũ lên Cloud.')
   if(payload.deletedAt){
-    const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt,p_reset_generation:resetGeneration})
+    const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock_v2',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt,p_reset_generation:resetGeneration})
     if(error)throw new Error(error.message)
     const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
     if(!result.asset||result.asset.asset_key!==asset.code||!result.applied_at)throw new Error('Cloud thiếu biên nhận xóa mềm hợp lệ.')
@@ -352,7 +352,7 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
     commissioned_at:payload.commissionedAt||null,power:payload.power,cycle:payload.cycle,cycle_started_at:payload.cycleStartedAt||null,
     transferred_from_other_facility:payload.transferredFromOtherFacility,status:payload.status,notes:payload.notes,archived_at:payload.archivedAt||null
   }
-  const {data,error}=await client.rpc('apply_cloud_asset_mutation_with_lock',{
+  const {data,error}=await client.rpc('apply_cloud_asset_mutation_with_lock_v2',{
     p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,
     p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_payload:cloudPayload,p_reset_generation:resetGeneration
   })
@@ -412,7 +412,7 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
    .filter(change=>change.syncStatus==='pending'&&change.mutationId===mutationId).toArray()
   if(pendingGroupChanges.length){
    const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
-   const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
+   const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history_v2',{
     p_organization_id:organizationId,
     p_asset_code:local.code,
     p_changes:ordered.map(change=>({
