@@ -251,3 +251,20 @@ Do not silently switch the existing full scan to incremental mode until Test val
 - `readAssetSyncCursor()` is read-only and refuses `local-preview` or malformed cursor records. No cursor write helper is exposed yet: cursor persistence must be performed atomically with page application in the eventual Pull orchestrator.
 - Regression tests cover the client contract and cursor schema/read safeguards.
 - Server RPCs are not present in Test yet; no migration/DDL was applied. The current full scan remains the active sync path. This scaffolding does not activate incremental mode.
+
+
+## 14. Server Change Feed implementation on Test (23/11/2026)
+
+Applied to **Test only**: migration history versions `20261123155243_asset_sync_change_feed` and `20261123155408_asset_sync_feed_index_cleanup`. No Production changes.
+
+- Private tables: `asset_sync_counters` and `asset_sync_events`; RLS enabled, direct client grants revoked.
+- Per-organization counter row is updated in the same transaction as event insertion. The row lock serializes sequence allocation and preserves commit order within a tenant.
+- Asset trigger captures create/update/soft-delete/restore/hard-delete. Snapshots use the existing Cloud RPC shape: omit database UUID `id`, add `asset_key` (management code), retain `code` and organization metadata. Hard delete events have no snapshot.
+- Reset state generation trigger emits one reset barrier. The reset RPC sets a transaction-local suppression flag while deleting assets so a reset does not produce a storm of hard-delete events.
+- Public RPC wrappers are SECURITY INVOKER and call private SECURITY DEFINER functions with fixed search_path. Both enforce authenticated user, active organization and `assets.view`. Soft-delete snapshots are null for users lacking `assets.delete`.
+- Checkpoint reads sequence and reset generation in one statement snapshot. Pull is bounded (1–500), ordered by sequence, reports `has_more`, `next_cursor` and current generation; an empty page does not advance the cursor.
+- The initial migration does not backfill events. Existing Cloud assets remain handled by the bootstrap Full Scan. No records or counters were inserted by this migration; feed and counter tables are empty on Test at verification.
+- Verified RPC existence, trigger count, table RLS, grants (authenticated may execute RPCs; anon cannot; authenticated cannot SELECT private feed/counter tables), and an authenticated-membership smoke test calling Checkpoint + empty Pull.
+- Supabase advisors report the private feed tables as RLS-enabled with no policies (intentional fail-closed: direct table access is revoked; access only via checked RPC). Existing unrelated advisor warnings remain.
+
+Incremental mode remains **not activated**. Next work: implement page application with cursor persisted atomically in Dexie, bootstrap checkpoint → current Full Scan → catch-up Pull, reset barriers, event reconciliation/conflict handling, cancellation/session-org checks, and end-to-end tests. Realtime is only a wake-up after durable Pull is in place.
