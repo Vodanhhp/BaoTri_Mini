@@ -11,7 +11,7 @@ import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
@@ -203,16 +203,42 @@ export default function App() {
     const context=organizationContexts.find(item=>item.id===organizationId)
     if(!context?.permissions.includes('assets.view')){setCloudSyncMessage('Tài khoản không có quyền xem thiết bị của tổ chức; bỏ qua đồng bộ Cloud.');return}
     let active=true
-    setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
-    void syncCloudAssetsToLocal(supabase,organizationId,{shouldContinue:()=>active})
-      .then(async summary=>{
+    let running=false
+    const runSync=async()=>{
+      if(!active||running||!navigator.onLine)return
+      running=true
+      setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
+      try{
+        const summary=await syncCloudAssetsToLocal(supabase,organizationId,{shouldContinue:()=>active})
+        if(!active)return
+        let retried=0
+        let retryFailed=0
+        if(context.permissions.includes('assets.update')){
+          const pending=await db.assetMutations.where('organizationId').equals(organizationId)
+            .filter(m=>m.status==='pending'||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
+          for(const mutation of pending){
+            if(!active||!navigator.onLine)break
+            try{
+              await retryCloudAssetMutation(supabase,organizationId,mutation.mutationId)
+              retried++
+            }catch{
+              retryFailed++
+            }
+          }
+        }
         if(!active)return
         await loadAssets(organizationId)
         if(!active)return
-        setCloudSyncMessage('Cloud → Local hoàn tất: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột.')
-      })
-      .catch(cause=>{if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))})
-    return()=>{active=false}
+        setCloudSyncMessage('Cloud → Local hoàn tất: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Tự retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
+      }catch(cause){
+        if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))
+      }finally{
+        running=false
+      }
+    }
+    void runSync()
+    window.addEventListener('online',runSync)
+    return()=>{active=false;window.removeEventListener('online',runSync)}
   },[session?.user.id,organizationReady,organizationId,localPreview,organizationContexts])
 
   useEffect(()=>{
