@@ -95,6 +95,8 @@ export type OrganizationAssetResetState = {
   organizationId: string
   generation: number
   appliedAt: string
+  /** Local installation identity paired with the acknowledged generation. */
+  deviceId?: string
 }
 
 export type AssetCloudLink = {
