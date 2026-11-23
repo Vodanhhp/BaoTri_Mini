@@ -13,6 +13,18 @@ type PlanRequest={
 }
 const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
 const dateTime=(value:string)=>value?new Date(value).toLocaleString('vi-VN'):'—'
+const invokeErrorMessage=async(error:unknown)=>{
+ const fallback=error instanceof Error?error.message:String(error)
+ const context=(error as {context?:unknown}|null)?.context
+ if(context instanceof Response){
+  try{
+   const payload=await context.clone().json() as {error?:unknown;message?:unknown}
+   if(typeof payload.message==='string'&&payload.message.trim())return payload.message
+   if(typeof payload.error==='string'&&payload.error.trim())return payload.error
+  }catch{/* Use the SDK fallback when the body is not JSON. */}
+ }
+ return fallback
+}
 const planLabel=(code:PlanCode,plans:PlanOption[])=>{
  const plan=plans.find(item=>item.id===code)
  return plan?'Plan '+code+' — '+plan.name:'Plan '+code
@@ -76,12 +88,12 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
    const {data,error:invokeError}=await client.functions.invoke('organization-plan-requests',{body:{
     action:'submit',organizationId,requestedPlanCode:targetPlan,note:note.trim()
    }})
-   if(invokeError)throw new Error(invokeError.message)
+   if(invokeError)throw new Error(await invokeErrorMessage(invokeError))
    if(data?.error)throw new Error(data.error)
    setMessage(data?.message||'Đã gửi yêu cầu đổi Plan.')
    setNote('');setTargetPlan('')
    await load()
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){const message=await invokeErrorMessage(e);await load();setError(message)}
   finally{setBusy(false)}
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
