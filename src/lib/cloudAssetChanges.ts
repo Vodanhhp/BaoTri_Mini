@@ -26,7 +26,7 @@ export async function readAssetSyncCursor(organizationId: string): Promise<Asset
   if (!cursor || cursor.organizationId !== organizationId) return undefined
   if (!Number.isSafeInteger(cursor.lastSequence) || cursor.lastSequence < 0 ||
       !Number.isSafeInteger(cursor.resetGeneration) || cursor.resetGeneration < 0 ||
-      typeof cursor.bootstrapComplete !== 'boolean' || typeof cursor.initializedAt !== 'string' || typeof cursor.updatedAt !== 'string) {
+      typeof cursor.bootstrapComplete !== 'boolean' || typeof cursor.initializedAt !== 'string' || typeof cursor.updatedAt !== 'string') {
     throw new Error('Cursor Incremental Pull Local bị hỏng; không tự bỏ qua hoặc đặt lại cursor.')
   }
   return cursor
