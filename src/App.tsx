@@ -200,6 +200,7 @@ export default function App() {
       setCloudSyncMessage('')
       return
     }
+    const client=supabase
     const context=organizationContexts.find(item=>item.id===organizationId)
     if(!context?.permissions.includes('assets.view')){setCloudSyncMessage('Tài khoản không có quyền xem thiết bị của tổ chức; bỏ qua đồng bộ Cloud.');return}
     let active=true
