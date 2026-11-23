@@ -1,5 +1,6 @@
 -- Organization-wide asset reset with a monotonic server-side generation barrier.
--- Source only: do not apply until the user explicitly approves a Test migration.
+-- Applied to Supabase Test BAOTRI Mini New (migration history version 20261123132922) on 2026-11-23.
+-- Do not apply to Production without separate explicit approval.
 
 begin;
 
