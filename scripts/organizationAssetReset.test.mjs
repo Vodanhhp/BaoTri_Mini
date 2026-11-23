@@ -166,3 +166,14 @@ test('tenant and platform reset UIs use request and approval endpoints, not dire
  assert.match(retired,/status:410/)
  assert.doesNotMatch(platform,/beginManagement\(org,'reset'\)/)
 })
+
+
+test('Superadmin must provide a non-empty rejection reason in UI, Edge Function and database RPC', async () => {
+ const ui = await read('../src/PlanChangePanels.tsx')
+ const edge = await read('../supabase/functions/platform-manage-asset-reset-requests/index.ts')
+ const migration = await read('../supabase/migrations/20261123160000_require_asset_reset_rejection_reason.sql')
+ assert.match(ui,/decision==='reject'&&!reviewNote\.trim\(\)/)
+ assert.match(ui,/required=\{decision==='reject'\}/)
+ assert.match(edge,/action==='reject'&&!reviewNote/)
+ assert.match(migration,/if p_decision='reject' and length\(btrim\(coalesce\(p_review_note,''\)\)\)=0 then/)
+})
