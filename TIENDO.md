@@ -1431,3 +1431,9 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm `scripts/cloudAssetChanges.test.mjs` regression checks và ghi rõ trạng thái tại docs/LOCAL_FIRST_SYNC_PHASE2.md.
 - CI Build and test đã PASS trên commit 5d50b2327b66c31aea076e2bcf5fc1e40698b8ac. Validate BAOTRI Mini PASS cùng commit. Các workflow mới hơn đang chạy; cần xác minh head cuối.
 - Vẫn chưa có migration/DDL, không thay đổi Supabase Test hoặc Production; Incremental Pull chưa bật, full scan hiện hành giữ nguyên.
+
+
+### CI phát hiện và sửa regression test – 23/11/2026
+
+- Build and test trên commit 0391e3116c3d10e7334d9f969705137a62ebb11 fail 1/92 test do assertion regex phân biệt hoa/thường (`Reset event` trong source nhưng test tìm `reset event`). Đây là lỗi test assertion, không phải lỗi code runtime.
+- Đã sửa assertion tại commit 5013ee7ee5598da2ae90714ada4eda3f6e9760f7. Build and test + Validate đang chạy lại; chưa đánh dấu xanh cho head mới cho đến khi kết quả hoàn tất.
