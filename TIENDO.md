@@ -1258,3 +1258,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - PR #27 (khôi phục 2 source) bị trùng phạm vi với nhánh tổng hợp này; chưa đóng/merge PR nào.
 
 - CI lần đầu trên PR #29 thất bại ở 2 test do test scripts còn tham chiếu tên migration cũ sau khi đổi version prefix; inventory test mới đã pass. Đã cập nhật hai test references sang version chính xác; chờ CI chạy lại.
+
+- Log CI xác nhận còn một test khác tham chiếu prefix cũ của migration public-key API; đã cập nhật test đó sang version `20261122032223`. Cùng 3 test path đã sửa, chờ CI lần mới.
