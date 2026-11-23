@@ -849,6 +849,7 @@ export default function App() {
         })
         notify('Đã đánh dấu xóa thiết bị và đồng bộ Cloud.')
       }catch(cloudError){
+        await recordAssetHistory(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị',mutationId,true)
         await db.assetMutations.update(mutationId,{status:'pending',lastError:cloudError instanceof Error?cloudError.message:String(cloudError),updatedAt:now()})
         throw new Error('Local đã đánh dấu xóa nhưng Cloud chưa xác nhận. Mutation được giữ lại để retry: '+(cloudError instanceof Error?cloudError.message:String(cloudError)))
       }
@@ -880,6 +881,8 @@ export default function App() {
     const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,asset.id]).filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').first()
     if(pending){alert('Có mutation chưa được Cloud xác nhận.');return}
     let lease: {token:string;expectedCloudUpdatedAt:string}|null=null
+    let pendingCandidate:Asset|undefined
+    let pendingMutationId:string|undefined
     try{
       const got=await acquireCloudAssetLock(supabase,organizationId,asset.code,getLocalDeviceId(),getDeviceLabel())
       if(!got.acquired){alert('Thiết bị đang được khóa bởi '+got.lock.holder_label);return}
@@ -888,7 +891,9 @@ export default function App() {
       const data=cloudRows.find(row=>row.code===link.cloudCode)
       if(!data||data.code!==asset.code||data.updatedAt!==link.cloudUpdatedAt){await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()});throw new Error('Phiên bản Cloud thay đổi; cần đồng bộ/đối chiếu trước.')}
       const candidate={...asset,archivedAt:archived?now():undefined,status:archived?'Lưu kho' as AssetStatus:(asset.status==='Lưu kho'?'Đang hoạt động' as AssetStatus:asset.status),updatedAt:now()}
+      pendingCandidate=candidate
       const payload=assetMutationPayload(candidate);const mutationId=uid()
+      pendingMutationId=mutationId
       await db.transaction('rw',[db.assets,db.assetMutations],async()=>{
         await db.assets.put(candidate);await db.assetMutations.add({mutationId,organizationId,assetId:asset.id,payload,expectedCloudUpdatedAt:lease!.expectedCloudUpdatedAt,localUpdatedAt:candidate.updatedAt,status:'pending',attempts:0,createdAt:now(),updatedAt:now()})
       })
@@ -899,7 +904,10 @@ export default function App() {
         await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:candidate.updatedAt,status:'linked',lastVerifiedAt:now()})
       })
       notify(archived?'Cloud đã lưu kho thiết bị.':'Cloud đã khôi phục thiết bị.')
-    }catch(e){alert(e instanceof Error?e.message:String(e))}
+    }catch(e){
+      if(pendingCandidate&&pendingMutationId)await recordAssetHistory(asset,pendingCandidate,archived?'archived':'restored',archived?'Đưa thiết bị vào Lưu kho':'Khôi phục thiết bị khỏi Lưu kho',pendingMutationId,true)
+      alert(e instanceof Error?e.message:String(e))
+    }
     finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.code,lease.token).catch(()=>false);await loadAssets()}
   }
   const signOut = async () => { if(cloudLease&&supabase&&!cloudLease.lost)await releaseCloudAssetLock(supabase,organizationId,cloudLease.assetId,cloudLease.token).catch(()=>false); await supabase?.auth.signOut(); setSession(null); setLocalPreview(false);setCloudLease(null);setOrganizationContexts([]);setOrganizationId('') }
