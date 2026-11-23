@@ -407,7 +407,13 @@ export default function App() {
     const retry=async()=>{
       if(!navigator.onLine||!active)return
       const pending=await db.assetHistory.where('organizationId').equals(organizationId).filter(row=>row.syncStatus==='pending').toArray()
-      for(const entry of pending){if(!active)break;try{await syncAssetHistoryEntry(entry)}catch{/* Keep the audit event pending for the next retry. */}}
+      for(const entry of pending){
+        if(!active)break
+        // Events keyed by mutationId must not reach Cloud until that mutation has a confirmed receipt.
+        const mutation=await db.assetMutations.get(entry.id)
+        if(mutation&&mutation.status!=='applied')continue
+        try{await syncAssetHistoryEntry(entry)}catch{/* Keep the audit event pending for the next retry. */}
+      }
     }
     void retry()
     window.addEventListener('online',retry)
