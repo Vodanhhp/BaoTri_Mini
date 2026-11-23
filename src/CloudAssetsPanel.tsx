@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from './db'
 import { db, now, uid, type AssetMutation } from './db'
+import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
 type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void;onConflictResolved:(before:Asset,after:Asset,summary:string,eventId?:string)=>Promise<void>}
@@ -20,6 +21,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const reload=async()=>{
   setLoading(true);setError('')
   try{
+   await ensureOrganizationAssetResetApplied(client,organizationId)
    const [linkRows,mutationRows]=await Promise.all([
     db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
     db.assetMutations.where('organizationId').equals(organizationId).toArray()
