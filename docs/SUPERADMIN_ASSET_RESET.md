@@ -12,15 +12,26 @@ Superadmin có thể yêu cầu reset một tổ chức. Sau reset:
 
 Không reset Local Preview hoặc dữ liệu của tổ chức khác.
 
+
+## Quy trình yêu cầu và duyệt Reset — cập nhật 23/11/2026
+
+Reset không còn là thao tác trực tiếp của Superadmin tại bảng tổ chức.
+
+1. Admin doanh nghiệp mở **Cài đặt → Gói dịch vụ → Yêu cầu Reset toàn bộ thiết bị**, nhập lý do (không bắt buộc) và xác nhận đã hiểu hậu quả.
+2. Backend kiểm tra membership Admin đang hoạt động, tổ chức đang hoạt động; ghi yêu cầu pending, người gửi, thời điểm, lý do, số hồ sơ Cloud và số Local đã đăng ký tại thời điểm gửi. Mỗi tổ chức chỉ có một yêu cầu pending/approved cùng lúc.
+3. Superadmin mở **Quản trị nền tảng → Duyệt yêu cầu → Yêu cầu Reset toàn bộ thiết bị**, xem thông tin và số liệu trước khi quyết định.
+4. Superadmin có thể từ chối (ghi phản hồi) hoặc duyệt. Duyệt yêu cầu mật khẩu Superadmin và xác nhận lần cuối. Backend khóa yêu cầu, ghi người duyệt, gọi reset RPC trong transaction và chỉ ghi executed sau khi reset thành công. Nếu reset lỗi, transaction con rollback và yêu cầu ghi failed kèm lỗi; không thông báo thành công.
+5. Doanh nghiệp xem được trạng thái và phản hồi trong lịch sử yêu cầu.
+
+Trạng thái: pending (Chờ duyệt), approved (đang xử lý trong transaction duyệt), executed (Đã thực hiện), rejected (Từ chối), failed (Thực hiện thất bại). Trong thao tác duyệt đồng bộ, approved là trạng thái chuyển tiếp nội bộ; trạng thái cuối cùng được lưu là executed hoặc failed.
+
+Bảo mật: hai Edge Function mới đều yêu cầu JWT; endpoint doanh nghiệp chỉ nhận yêu cầu từ Admin active của đúng tổ chức; endpoint duyệt chỉ cho Superadmin đã xác thực email và yêu cầu re-auth mật khẩu. RPC create/list/review chỉ EXECUTE bởi service_role; không cấp quyền cho anon hoặc authenticated. Endpoint Reset trực tiếp cũ trả HTTP 410 để các client cũ không thể bỏ qua quy trình.
+
+Migration 20261123150000_organization_asset_reset_approval_workflow đã apply trên Supabase Test BAOTRI Mini New. Bảng yêu cầu hiện có 0 dòng sau triển khai; không có yêu cầu hoặc dữ liệu thiết bị nào bị tạo/xóa bởi migration. Hai Edge Function mới ACTIVE với verify_jwt=true; Edge Function Reset trực tiếp cũ đã được vô hiệu hóa bằng HTTP 410. Chưa chạy browser E2E với tài khoản Admin/Superadmin thực tế.
+
 ## Giao diện
 
-Trong trang Quản trị Superadmin, ở từng dòng tổ chức thêm thao tác **Reset thiết bị**. Modal yêu cầu:
-1. Tên tổ chức nhập lại chính xác.
-2. Mật khẩu Superadmin xác thực lại.
-3. Chọn xác nhận Có.
-4. Hiển thị số hồ sơ Cloud và số thiết bị Local đã đăng ký/đang chờ nhận lệnh (nếu có).
-
-Không đặt nút này cạnh nút xóa tổ chức mà không có nhãn riêng; reset không xóa tổ chức, thành viên, tài khoản hay cấu hình.
+Admin doanh nghiệp gửi yêu cầu trong khu vực Gói dịch vụ. Superadmin xử lý yêu cầu trong bảng Duyệt yêu cầu; không còn nút Reset trực tiếp ở từng dòng tổ chức. Khi duyệt, Superadmin xác thực lại mật khẩu và xác nhận thao tác.
 
 ## Giao thức reset
 
