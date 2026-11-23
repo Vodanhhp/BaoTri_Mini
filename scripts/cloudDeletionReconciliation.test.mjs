@@ -70,3 +70,13 @@ test('successful retry mirrors pending group-change history before marking it sy
   assert.match(retry, /if\(historyError\)throw new Error/)
   assert.match(retry, /db\.assetGroupChanges\.update\(change\.id,\{syncStatus:'synced'\}\)/)
 })
+
+ 
+test('failed Cloud edits retain a Local audit event and mirror it only after mutation receipt is applied', async () => {
+  const source = await read('../src/App.tsx')
+  assert.match(source, /recordAssetHistory\(previous,value,undefined,undefined,mutationId,true\)/)
+  assert.match(source, /const pendingHistory=await db\.assetHistory\.where\('organizationId'\)/)
+  assert.match(source, /if\(mutation\?\.status!=='applied'\)continue/)
+  assert.match(source, /client\.rpc\('record_cloud_asset_history_event'/)
+  assert.match(source, /db\.assetHistory\.update\(entry\.id,\{syncStatus:'synced'\}\)/)
+})
