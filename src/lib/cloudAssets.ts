@@ -202,15 +202,15 @@ async function reconcileCloudDeletion(
         await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:at,lastError:reason})
       }
     }
-    if(needsReview&&!mutations.some(m=>m.status==='conflict')){
+    if(needsReview&&mutations.length===0){
       await db.assetMutations.add({
         mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
         expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
         status:'conflict',attempts:0,createdAt:at,updatedAt:at,lastError:reason
       })
     }else if(needsReview){
-      const existing=mutations.find(m=>m.status==='conflict')
-      if(existing)await db.assetMutations.update(existing.mutationId,{lastError:reason,updatedAt:at})
+      const existing=mutations.find(m=>m.status==='conflict')??mutations[0]
+      if(existing)await db.assetMutations.update(existing.mutationId,{status:'conflict',lastError:reason,updatedAt:at})
     }
   })
   return needsReview?'conflict':'updated'
