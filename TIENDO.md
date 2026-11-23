@@ -1280,3 +1280,6 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Rà soát tiếp phát hiện retry mutation có thể cập nhật thiết bị Cloud thành công nhưng bỏ sót lịch sử đổi nhóm đang chờ. Đã bổ sung gọi `mirror_cloud_asset_group_change_history` cho các bản ghi pending gắn đúng mutation; chỉ đánh dấu `syncStatus='synced'` sau khi RPC lịch sử thành công. Nếu RPC lỗi, mutation vẫn pending để lần retry idempotent tiếp theo hoàn tất phần lịch sử.
 - Bổ sung regression test cho thứ tự đồng bộ lịch sử đổi nhóm trong retry. Commit code `f50c8c6`, test `4da8d0d`; CI mới đang chờ.
+
+- Rà soát nhật ký hoạt động phát hiện khi cập nhật/xóa mềm/lưu kho Cloud thất bại, Local đã lưu snapshot nhưng event lịch sử chỉ được tạo sau khi Cloud thành công; retry sau đó không tạo lại event. Đã chuyển sang ghi event Local ở trạng thái pending ngay khi thao tác Local được lưu dù Cloud lỗi; event chỉ được mirror lên Cloud sau khi mutation receipt có trạng thái applied. Nếu mirror history lỗi, event giữ pending để lần sync online sau thử lại.
+- Sử dụng mutationId làm event ID để retry history idempotent; bổ sung regression tests cho update, delete và archive. Commit App `5995b7e` + `60ce980`, test `1acee3d` + `27f1716`. CI mới đang chờ.
