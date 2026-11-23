@@ -12,6 +12,7 @@ test('reset migration uses an organization-scoped monotonic generation and idemp
   assert.match(sql, /select \* into v_existing[\s\S]*?if found then[\s\S]*?already_applied/)
   assert.match(sql, /for update/)
   assert.match(sql, /p_request_id uuid/)
+  assert.match(sql, /select generation, reset_at[\s\S]*?for share/)
 })
 
 test('reset preserves audit rows, catalog, memberships, roles, plan and sequence history', async () => {
@@ -57,6 +58,9 @@ test('Local reset purge is tenant-scoped, atomic, keeps history, and acknowledge
   assert.match(source, /assetDrafts\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
   assert.match(source, /assetGroupChanges\.where\('organizationId'\)[\s\S]*?syncStatus === 'pending'[\s\S]*?local_only/)
   assert.match(source, /assetHistory\.where\('organizationId'\)[\s\S]*?syncStatus === 'pending'[\s\S]*?local_only/)
+  assert.match(source, /installationChanged = generation > 0 && \(!saved\?\.deviceId \|\| saved\.deviceId !== deviceId\)/)
+  assert.match(source, /mustPurge = generation > knownGeneration \|\| installationChanged/)
+  assert.match(source, /organizationAssetResetStates\.put\(\{ organizationId, generation, appliedAt, deviceId \}\)/)
   assert.doesNotMatch(source, /assetHistory\.where\('organizationId'\)\.equals\(organizationId\)\.delete/)
   assert.match(source, /await db\.transaction\('rw'/)
   assert.ok(source.indexOf('await db.transaction') < source.indexOf("client.rpc('acknowledge_organization_asset_reset'"))
@@ -66,6 +70,7 @@ test('Local reset purge is tenant-scoped, atomic, keeps history, and acknowledge
 test('Dexie stores a per-organization reset generation without touching Local Preview schema scope', async () => {
   const db = await read('../src/db.ts')
   assert.match(db, /organizationAssetResetStates: 'organizationId, generation'/)
+  assert.match(db, /deviceId\?: string/)
   assert.match(db, /localScope: string/)
   assert.match(db, /syncStatus: 'pending' \| 'synced' \| 'local_only'/)
 })
