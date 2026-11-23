@@ -5,6 +5,7 @@ export type OrganizationAssetResetState = {
   organizationId: string
   generation: number
   appliedAt: string
+  deviceId?: string
 }
 
 const localDeviceId = () => {
@@ -58,7 +59,10 @@ export async function ensureOrganizationAssetResetApplied(
     throw new Error('Reset generation Local cao hơn Cloud. Đã khóa đồng bộ để tránh phục hồi dữ liệu cũ.')
   }
 
-  if (generation > knownGeneration) {
+  const installationChanged = generation > 0 && (!saved?.deviceId || saved.deviceId !== deviceId)
+  const mustPurge = generation > knownGeneration || installationChanged
+
+  if (mustPurge) {
     const appliedAt = now()
     await db.transaction('rw', [
       db.assets, db.assetCloudLinks, db.assetMutations, db.assetDrafts,
@@ -77,10 +81,10 @@ export async function ensureOrganizationAssetResetApplied(
         .filter(row => row.syncStatus === 'pending')
         .modify({ syncStatus: 'local_only' })
 
-      await db.organizationAssetResetStates.put({ organizationId, generation, appliedAt })
+      await db.organizationAssetResetStates.put({ organizationId, generation, appliedAt, deviceId })
     })
-  } else if (!saved) {
-    await db.organizationAssetResetStates.put({ organizationId, generation, appliedAt: now() })
+  } else if (!saved || saved.deviceId !== deviceId) {
+    await db.organizationAssetResetStates.put({ organizationId, generation, appliedAt: now(), deviceId })
   }
 
   const { error: acknowledgeError } = await client.rpc('acknowledge_organization_asset_reset', {
