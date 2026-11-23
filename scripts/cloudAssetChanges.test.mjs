@@ -87,3 +87,10 @@ test('Pull skips pre-reset snapshots while waiting for the reset barrier, preven
   assert.match(cloud, /if\(generationGap&&lastResetIndex<0&&event\.eventType!=='reset'\)continue/)
   assert.match(cloud, /Feed thiếu Reset barrier dù generation Cloud đã tăng/)
 })
+
+test('generation gap skips stale post-marker events until newest reset marker is present', async () => {
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  assert.match(cloud, /const resetAfterPageMarker=lastResetIndex>=0&&page\.currentGeneration>lastResetGenerationInPage/)
+  assert.match(cloud, /if\(resetAfterPageMarker&&i>lastResetIndex&&event\.eventType!=='reset'\)continue/)
+  assert.match(cloud, /Feed thiếu Reset barrier mới hơn marker cuối page/)
+})
