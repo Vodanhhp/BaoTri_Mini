@@ -135,3 +135,13 @@ test('Cloud panel does not read Cloud data without assets.view and guards mutati
  assert.match(source, /disabled=\{!canView\|\|!canUpdate\|\|!!busyId\} onClick=\{\(\)=>void resolveConflictCloud\(m\)\}/)
  assert.match(source, /disabled=\{!canView\|\|!canUpdate\|\|!!busyId\} onClick=\{\(\)=>void resolveConflictLocal\(m\)\}/)
 })
+
+test('asset cache is cleared and not loaded without assets.view or across organization switches', async () => {
+ const source = await read('../src/App.tsx')
+ const loader = source.slice(source.indexOf('const loadAssets = async'), source.indexOf('useEffect(()=>{\n    if(!session?.user.id||!sessionReady'))
+ assert.match(loader, /!organizationContexts\.find\(item=>item\.id===scope\)\?\.permissions\.includes\('assets\.view'\)/)
+ assert.match(loader, /setAssets\(\[\]\)/)
+ assert.match(loader, /let active=true/)
+ assert.match(loader, /if\(active\)setAssets\(rows\)/)
+ assert.match(loader, /return \(\)=>\{active=false\}/)
+})
