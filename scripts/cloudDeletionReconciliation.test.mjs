@@ -25,7 +25,7 @@ test('Deletion tombstones cannot soft-delete an unlinked or differently linked L
 
 test('Conflict resolution cannot select Local when the Cloud asset is already soft-deleted', async () => {
   const source = await read('../src/CloudAssetsPanel.tsx')
-  assert.match(source, /if\(cloudAsset\.deletedAt\)throw new Error/)
+  assert.match(source, /if\(cloudAsset\.deletedAt\|\|\(Array\.isArray\(tombstones\)&&tombstones\.some\(\(row:Record<string,unknown>\)=>row\.code===local\.code\)\)\)throw new Error/)
   assert.match(source, /const cloudDeleted=Boolean\(cloudRecord\?\.deletedAt\|\|deletedCloudCodes\.includes\(asset\?\.code\?\?''\)\)/)
   assert.match(source, /client\.rpc\('list_cloud_asset_deletion_tombstones'/)
   assert.match(source, /cloudDeletionProfileAvailable/)
