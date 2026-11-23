@@ -50,6 +50,3 @@ begin
  insert into public.asset_import_receipts(organization_id,mutation_id,asset_id,actor_user_id,payload,result_snapshot) values(p_organization_id,p_mutation_id,p_id,v_actor,v_payload,v_result->'asset');
  return v_result;
 end;$function$
-
-
-commit;
