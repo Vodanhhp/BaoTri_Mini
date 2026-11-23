@@ -366,6 +366,8 @@ set row_security = off
 as $function$
 declare
   v_generation bigint;
+  v_result jsonb;
+  v_asset jsonb;
 begin
   insert into private.organization_asset_reset_state (organization_id)
   values (p_organization_id)
@@ -380,8 +382,12 @@ begin
     raise exception 'Local reset generation is stale; purge Local data before importing' using errcode = '40001';
   end if;
 
-  return private.import_asset_preserving_identity(
+  v_result := private.import_asset_preserving_identity(
     p_organization_id, p_id, p_code, p_asset, p_mutation_id
+  );
+  v_asset := v_result->'asset';
+  return (v_result-'asset') || jsonb_build_object(
+    'asset', (v_asset-'id') || jsonb_build_object('asset_key', p_code)
   );
 end;
 $function$;
