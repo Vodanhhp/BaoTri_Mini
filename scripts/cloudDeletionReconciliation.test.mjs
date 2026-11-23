@@ -97,3 +97,13 @@ test('online audit-history retry cannot bypass the mutation receipt gate', async
   assert.match(retry, /if\(mutation&&mutation\.status!=='applied'\)continue/)
   assert.match(retry, /await syncAssetHistoryEntry\(entry\)/)
 })
+
+ 
+test('manual mutation retry mirrors its matching pending audit event after receipt confirmation', async () => {
+  const source = await read('../src/CloudAssetsPanel.tsx')
+  const retry = source.slice(source.indexOf('const retryOne='), source.indexOf('const resolveConflictCloud='))
+  assert.match(retry, /await retryCloudAssetMutation\(client,organizationId,mutation\.mutationId\)/)
+  assert.match(retry, /db\.assetHistory\.get\(mutation\.mutationId\)/)
+  assert.match(retry, /client\.rpc\('record_cloud_asset_history_event'/)
+  assert.match(retry, /db\.assetHistory\.update\(pendingHistory\.id,\{syncStatus:'synced'\}\)/)
+})
