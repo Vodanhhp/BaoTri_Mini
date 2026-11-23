@@ -242,3 +242,12 @@ Do not silently switch the existing full scan to incremental mode until Test val
 5. Migration must be idempotent only where safe, and test rollback/transaction behavior. Avoid `CREATE OR REPLACE` with changed return types; use deliberate versioning if needed.
 6. Event volume and hot counter row: per-org row lock is acceptable initially; if an organization becomes high-volume, optimize only after measurement without weakening commit ordering.
 7. Pull page snapshots may reflect newer state than the event sequence. This is safe if reconciliation is idempotent and cursor remains sequence-based, but must be documented and tested; event payload must not be treated as historical row version.
+
+
+## 13. Client scaffolding added on PR #33 (23/11/2026)
+
+- `src/lib/cloudAssetChanges.ts` now contains typed checkpoint/change-feed RPC wrappers and validation for tenant ID, event type, strictly increasing sequence, bounded page size, snapshot shape, and cursor progress. It is deliberately not wired into the existing sync cycle yet.
+- Dexie schema version 8 adds `assetSyncCursors`, keyed by `organizationId`, without initializing cursor values during upgrade.
+- `readAssetSyncCursor()` is read-only and refuses `local-preview` or malformed cursor records. No cursor write helper is exposed yet: cursor persistence must be performed atomically with page application in the eventual Pull orchestrator.
+- Regression tests cover the client contract and cursor schema/read safeguards.
+- Server RPCs are not present in Test yet; no migration/DDL was applied. The current full scan remains the active sync path. This scaffolding does not activate incremental mode.
