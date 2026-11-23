@@ -29,3 +29,12 @@ test('Conflict resolution cannot select Local when the Cloud asset is already so
   assert.match(source, /const cloudDeleted=Boolean\(cloud\.find\(row=>row\.code===asset\?\.code\)\?\.deletedAt\)/)
   assert.match(source, /\{!cloudDeleted&&<button className="primary-btn small".*Chọn Local/)
 })
+
+
+test('Cloud pagination stops if the backend repeats a next cursor', async () => {
+  const source = await read('../src/lib/cloudAssets.ts')
+  assert.equal((source.match(/const seenCursors=new Set<string>\(\)/g) || []).length, 2)
+  assert.equal((source.match(/seenCursors\.has\(nextCursor\)/g) || []).length, 2)
+  assert.match(source, /Cloud lặp cursor phân trang; dừng tải để tránh vòng lặp vô hạn/)
+  assert.match(source, /Cloud lặp cursor phân trang; dừng đồng bộ để tránh vòng lặp vô hạn/)
+})
