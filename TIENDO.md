@@ -1323,3 +1323,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kiểm tra lại tổ chức Cong Ty B sau apply: vẫn tồn tại active, 1 catalog row, 1 member, 3 roles, 0 assets. Không có tổ chức nào bị xóa trong lúc áp dụng migration.
 - Sửa PlatformAdminPanel.tsx đọc JSON body trong FunctionsHttpError.context để hiển thị lỗi thật thay vì câu chung Edge Function returned a non-2xx status code. Edge Function source phân loại FK 23503 thành HTTP 409 và trả code lỗi có cấu trúc; source chưa deploy, UI chưa phát hành.
 - Thêm regression tests cho thứ tự xóa phụ thuộc và hiển thị lỗi. Chỉ apply schema trên Supabase Test; không deploy Edge Function, không thay Production.
+ 
+### Thiết kế chức năng Superadmin RESET toàn bộ thiết bị — 23/11/2026
+- Đã khảo sát Dexie Local stores, Cloud assets/receipts/locks/history, luồng đồng bộ trong App và Edge Function platform-manage-organization.
+- Đã chốt giao thức reset theo generation tăng đơn điệu ở cấp tổ chức; Local phải purge đúng tenant trước mọi sync/retry sau khi nhận generation mới.
+- Reset xóa Cloud assets, receipts/locks, Local assets/images, links, mutations và drafts; giữ Local/Cloud audit history, group history, catalog, tài khoản, memberships, roles/permissions, Plan và cấu hình tổ chức.
+- Giữ sequence counters và confirmed reservation history để tránh tái sử dụng mã thiết bị; reservation chưa hoàn tất chuyển released.
+- Bổ sung device registry để theo dõi last-seen và generation đã acknowledge; máy offline được báo “Chờ thiết bị kết nối”, không tuyên bố reset hoàn tất khi còn máy chờ.
+- Chặn dữ liệu Local cũ sống lại bằng server-side reset barrier: import hồ sơ có created_at trước hoặc bằng mốc reset bị từ chối; client mới purge trước sync.
+- Tài liệu thiết kế: docs/SUPERADMIN_ASSET_RESET.md.
+- Branch triển khai: feature/superadmin-org-asset-reset, được tạo trên head PR #30 (PR #30 vẫn OPEN, chưa merge).
+- Chỉ khảo sát và thêm tài liệu thiết kế; chưa có migration, chưa thay đổi Supabase Test/Production, chưa deploy Edge Function, chưa merge PR.
+- Lưu ý giới hạn vật lý: máy offline không thể bị xóa dữ liệu tức thời từ xa; dữ liệu được xóa tại Local khi máy chạy lại và kết nối, trước khi cho phép đồng bộ.
