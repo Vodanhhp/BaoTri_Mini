@@ -261,7 +261,7 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
   const cloud=fromRow(result.asset)
   const groupResetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
   const currentAfterImport=await db.assets.get(asset.id)
-  if(!currentAfterImport||currentAfterImport.localScope!==asset.localScope||currentAfterImport.code!==asset.code){
+  if(!currentAfterImport||currentAfterImport.localScope!==asset.localScope||currentAfterImport.code!==asset.code||currentAfterImport.updatedAt!==asset.updatedAt){
     throw new Error('Tổ chức vừa được reset trong lúc nhập Cloud; Local snapshot cũ đã bị loại bỏ.')
   }
   const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,asset.id])
@@ -423,6 +423,8 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
    })
    if(historyError)throw new Error('Thiết bị đã được cập nhật trên Cloud nhưng chưa đồng bộ được lịch sử đổi nhóm: '+historyError.message)
   }
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset sau khi Cloud xác nhận; dữ liệu Local cũ đã được xóa.')
   const at=now()
   const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict'&&m.mutationId!==mutationId).toArray()
   await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
