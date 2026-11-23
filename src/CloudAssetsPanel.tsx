@@ -4,9 +4,9 @@ import type { Asset } from './db'
 import { db, now, uid, type AssetMutation } from './db'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
-type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void}
+type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void;onConflictResolved:(before:Asset,after:Asset,summary:string,eventId?:string)=>Promise<void>}
 
-export default function CloudAssetsPanel({client,organizationId,localAssets,localPreviewAssets,canImport,canView,canUpdate,onClose,onChanged}:Props){
+export default function CloudAssetsPanel({client,organizationId,localAssets,localPreviewAssets,canImport,canView,canUpdate,onClose,onChanged,onConflictResolved}:Props){
  const [cloud,setCloud]=useState<CloudAsset[]>([])
  const [deletedCloudCodes,setDeletedCloudCodes]=useState<string[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
@@ -63,7 +63,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   try{
    const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
-   await downloadCloudAsset(organizationId,cloudAsset,local)
+   const resolvedLocal=await downloadCloudAsset(organizationId,cloudAsset,local)
+   await onConflictResolved(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng.')
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
    for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
    setMessage('Đã chọn Cloud; Local cập nhật theo Cloud và giữ ảnh Local.')
@@ -99,6 +100,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     for(const old of conflicts)await db.assetMutations.update(old.mutationId,{status:'discarded',updatedAt:at,lastError:'Đã giải quyết conflict bằng cách chọn Local.'})
     await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
    })
+   await onConflictResolved(local,local,'Giải quyết xung đột: chọn Local làm phiên bản đúng.',mutationId)
    setMessage('Đã chọn Local; Cloud được cập nhật và xác nhận.')
    await reload();onChanged()
   }catch(e){
