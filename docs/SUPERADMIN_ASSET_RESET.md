@@ -97,3 +97,10 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 - Migration chỉ là source trên nhánh GitHub; **chưa áp dụng Supabase Test/Production**, chưa deploy Edge Function, chưa merge PR. Chưa chạy browser E2E; CI chưa xác minh.
 - Registry chỉ thống kê installation đã chạy phiên bản hỗ trợ reset; installation cũ phải mở bản mới và kết nối để được nhận diện/purge. RPC legacy chỉ được phép trước reset đầu tiên và bị từ chối sau khi generation tăng, nhằm chặn ghi ngược từ bundle cũ.
 - Bước tiếp theo: rà soát migration/RPC/TypeScript, kiểm tra CI/build, hoàn thiện test tích hợp; sau đó xin phép riêng trước khi áp dụng migration trên Supabase Test.
+
+## Rà soát bổ sung sau triển khai
+
+- Đăng ký installation khóa hàng generation bằng `FOR SHARE`, tránh reset bỏ sót thiết bị đăng ký đồng thời.
+- Local lưu cặp `deviceId + generation`; nếu IndexedDB được khôi phục/copy nhưng localStorage tạo installation ID mới sau reset, bắt buộc purge lại trước khi acknowledge.
+- Tạo Local audit event trong cùng Dexie transaction kiểm tra hồ sơ còn tồn tại; reset chạy trước thì không sinh audit pending mồ côi. Bộ đồng bộ audit cũng chuyển sự kiện không còn hồ sơ Local tương ứng sang `local_only`.
+- Đọc danh sách Cloud phân trang có kiểm tra generation lần nữa sau khi đọc xong.
