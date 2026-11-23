@@ -35,3 +35,9 @@ test('mutation retry metadata supports exponential backoff and permanent failure
   assert.match(app, /m\.failureKind!=='permanent'/)
   assert.match(app, /Date\.parse\(m\.nextAttemptAt\)<=Date\.now\(\)/)
 })
+
+test('permanent retry failures remain visible and can be explicitly retried by an authorized operator', async () => {
+  const panel = await read('../src/CloudAssetsPanel.tsx')
+  assert.match(panel, /failureKind:undefined,nextAttemptAt:undefined/)
+  assert.match(panel, /m\\.failureKind==='permanent'\\?'Cần kiểm tra thủ công'/)
+})
