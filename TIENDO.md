@@ -1437,3 +1437,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Build and test trên commit 0391e3116c3d10e7334d9f969705137a62ebb11 fail 1/92 test do assertion regex phân biệt hoa/thường (`Reset event` trong source nhưng test tìm `reset event`). Đây là lỗi test assertion, không phải lỗi code runtime.
 - Đã sửa assertion tại commit 5013ee7ee5598da2ae90714ada4eda3f6e9760f7. Build and test + Validate đang chạy lại; chưa đánh dấu xanh cho head mới cho đến khi kết quả hoàn tất.
+
+
+### Incremental Pull – Cloud Change Feed (23/11/2026)
+
+- Đã tạo migration `20261123155243_asset_sync_change_feed.sql` và apply **chỉ Supabase Test** `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`). Migration history Test xác nhận version `20261123155243`.
+- Tables private: `asset_sync_counters`, `asset_sync_events`; RLS enabled, revoke trực tiếp quyền đọc client. Sequence tăng theo organization, counter-row lock giữ commit order.
+- Asset trigger ghi event Create/Update/Soft-delete/Restore/Hard-delete. Snapshot tương thích shape Cloud (asset_key = mã quản lý; bỏ DB `id`). Soft-delete snapshot chỉ trả cho user có `assets.delete`.
+- Reset generation trigger tạo 1 reset barrier; reset RPC bật transaction-local suppression khi delete assets, tránh feed nổ event hard-delete cho toàn bộ thiết bị.
+- RPC `get_asset_sync_checkpoint` và `list_asset_sync_changes`: public invoker wrappers, private checked functions; require authenticated + org active + `assets.view`; pull page 1–500, monotonic cursor, current generation. Empty page không advance cursor.
+- Đã kiểm tra: migration history, RPC + trigger tồn tại, tables RLS, grants đúng (authenticated execute RPC, anon không, client không SELECT tables). Authenticated-membership smoke test gọi Checkpoint + Pull trang rỗng thành công. Feed/counters hiện chưa có rows; không backfill và không đụng dữ liệu tài sản.
+- Bỏ index trùng primary key bằng migration cleanup `20261123155408_asset_sync_feed_index_cleanup.sql`.
+- Incremental Pull chưa bật; Full Scan hiện hành tiếp tục. Tiếp theo triển khai page apply/cursor atomic ở Dexie, bootstrap Checkpoint→Full Scan→Catch-up, reset barrier, conflict protection, session/org cancellation và test end-to-end.
+- CI xanh trên commit `89260897841035ef54b0361857343978031b62a8`; docs/test commits mới hơn đang chạy kiểm tra lại.
