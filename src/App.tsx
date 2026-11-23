@@ -186,7 +186,13 @@ export default function App() {
   const loadAssets = async (scope=localScope) => {
     if(!scope){setAssets([]);return}
     if(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')){setAssets([]);return}
-    const rows=await db.assets.where('localScope').equals(scope).toArray()
+    const canCheckReset=!localPreview&&Boolean(supabase)&&navigator.onLine
+    const beforeGeneration=canCheckReset?await ensureOrganizationAssetResetApplied(supabase!,scope):null
+    let rows=await db.assets.where('localScope').equals(scope).toArray()
+    if(canCheckReset){
+      const afterGeneration=await ensureOrganizationAssetResetApplied(supabase!,scope)
+      if(afterGeneration!==beforeGeneration)rows=await db.assets.where('localScope').equals(scope).toArray()
+    }
     const activeScope=localPreview?'local-preview':organizationId
     if(scope===activeScope&&(localPreview||organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')))setAssets(rows)
   }
