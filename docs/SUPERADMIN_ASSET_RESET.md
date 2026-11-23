@@ -46,7 +46,7 @@ Không đặt nút này cạnh nút xóa tổ chức mà không có nhãn riêng
 ### Chống dữ liệu cũ sống lại
 - Reset generation là mốc server-side.
 - Các RPC ghi quan trọng mang `p_reset_generation`; server khóa hàng generation bằng `FOR SHARE` khi import/mutation/audit và reset khóa `FOR UPDATE`, vì vậy thao tác cũ không thể chạy xuyên qua reset.
-- Giữ chữ ký RPC cũ ở chế độ tương thích chỉ khi generation = 0 để tránh gián đoạn trước lần reset đầu tiên; sau khi generation tăng, server từ chối các bundle cũ. Các chữ ký mới bắt buộc mang generation hiện hành; private implementation không được authenticated gọi trực tiếp.
+- Giữ chữ ký RPC cũ ở chế độ tương thích chỉ khi generation = 0 để tránh gián đoạn trước lần reset đầu tiên; sau khi generation tăng, server từ chối các bundle cũ. RPC mới dùng tên riêng hậu tố `_v2` (không overload cùng tên) và bắt buộc mang generation hiện hành; private implementation không được authenticated gọi trực tiếp.
 - Mutation update của asset cũ sẽ thất bại vì asset đã bị xóa; reservation đang reserved được chuyển released, còn confirmed reservation history và sequence counters được giữ.
 - Client mới bắt buộc purge trước khi đồng bộ hoặc retry mutation; Local snapshot phải còn tồn tại và đúng phiên bản trong IndexedDB trước khi được gửi lên Cloud.
 - Không có thao tác nào tự động tải lại hồ sơ từ backup cũ sau reset.
@@ -89,7 +89,7 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 ## Trạng thái triển khai — 23/11/2026
 
 - Đã khảo sát schema Supabase Test ở chế độ chỉ đọc: các FK từ Cloud audit/group history, import/mutation receipts và edit locks tới assets; xác nhận sequence reservations và counters.
-- Đã tạo migration nguồn `20261123130000_superadmin_organization_asset_reset.sql`: state generation, device registry, idempotent reset audit, reset/status RPC, generation-aware import/mutation/soft-delete/audit RPC, giới hạn legacy signatures ở generation 0, giữ audit và sequence history.
+- Đã tạo migration nguồn `20261123130000_superadmin_organization_asset_reset.sql`: state generation, device registry, idempotent reset audit, reset/status RPC, các RPC import/mutation/soft-delete/audit tên riêng hậu tố `_v2`, giới hạn legacy signatures ở generation 0, giữ audit và sequence history.
 - Đã thêm Edge Function `platform-reset-organization-assets` với xác thực Superadmin, re-auth password, xác nhận tên tổ chức và request UUID.
 - Đã thêm nút Reset thiết bị và modal xác nhận ở Superadmin.
 - Đã thêm Dexie v7 reset state; Local guard purge theo organization scope, giữ history dưới trạng thái `local_only`, acknowledge sau transaction; chặn thao tác với Local snapshot cũ.
