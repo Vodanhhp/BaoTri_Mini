@@ -37,6 +37,13 @@ test('legacy RPC signatures work only before the first reset; new signatures req
   assert.match(sql, /grant execute on function public\.apply_cloud_asset_mutation_with_lock\(uuid,text,uuid,uuid,timestamptz,jsonb\) to authenticated/)
   assert.match(sql, /revoke all on function private\.soft_delete_cloud_asset_with_lock_internal/)
   assert.match(sql, /revoke all on function private\.record_cloud_asset_history_event_internal/)
+  assert.match(sql, /create or replace function public\.import_asset_preserving_identity_v2/)
+  assert.match(sql, /create or replace function public\.apply_cloud_asset_mutation_with_lock_v2/)
+  assert.match(sql, /create or replace function public\.soft_delete_cloud_asset_with_lock_v2/)
+  assert.match(sql, /create or replace function public\.record_cloud_asset_history_event_v2/)
+  assert.match(sql, /create or replace function public\.mirror_cloud_asset_group_change_history_v2/)
+  assert.match(sql, /grant execute on function public\.import_asset_preserving_identity_v2/)
+  assert.match(sql, /grant execute on function public\.apply_cloud_asset_mutation_with_lock_v2/)
   assert.match(sql, /p_reset_generation bigint/)
   assert.match(sql, /p_reset_generation is null or p_reset_generation <> v_generation/)
   assert.match(sql, /for share/)
@@ -63,7 +70,7 @@ test('Dexie stores a per-organization reset generation without touching Local Pr
   assert.match(db, /syncStatus: 'pending' \| 'synced' \| 'local_only'/)
 })
 
-test('Cloud sync, imports, edit locks, mutation retry and group-history mirror carry the reset barrier', async () => {
+test('Cloud sync, imports, edit locks, mutation retry and group-history mirror use unique v2 RPCs with the reset barrier', async () => {
   const source = await read('../src/lib/cloudAssets.ts')
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /p_reset_generation:resetGeneration/)
