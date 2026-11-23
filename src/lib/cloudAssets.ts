@@ -3,6 +3,11 @@ import type { Asset, AssetCloudLink, AssetMutationPayload, EquipmentIdComponents
 import { db, now, uid } from '../db'
 import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
 import { ensureOrganizationAssetResetApplied } from './assetReset'
+import {
+  advanceAssetSyncCursor, getAssetSyncCheckpoint, initializeAssetSyncCursor,
+  listAssetSyncChanges, markAssetSyncBootstrapComplete, readAssetSyncCursor,
+  type AssetSyncEvent
+} from './cloudAssetChanges'
 
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
 
@@ -18,7 +23,7 @@ export type CloudLease = CloudLock & { lock_token: string }
 
 const optional=(value:unknown)=>value==null||value===''?undefined:String(value)
 
-function fromRow(row: Record<string, unknown>): CloudAsset {
+export function cloudAssetFromRow(row: Record<string, unknown>): CloudAsset {
   return {
     id: String(row.asset_key ?? row.code), code: String(row.code), name: String(row.name), category: String(row.category),
     brand: String(row.brand ?? ''), model: String(row.model ?? ''), serial: String(row.serial ?? ''),
@@ -65,7 +70,7 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
     })
     if(error)throw new Error('Tải danh sách Cloud thất bại: '+error.message)
     const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
-    rows.push(...(page?.items??[]).map(fromRow))
+    rows.push(...(page?.items??[]).map(cloudAssetFromRow))
     if(!page?.has_more)break
     const nextCursor=page?.next_cursor??null
     if(!nextCursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
@@ -79,6 +84,50 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
 }
 
 export type CloudSyncSummary = { downloaded:number; updated:number; unchanged:number; protectedLocal:number; conflicts:number; pages:number }
+
+
+function incrementCloudSyncSummary(summary:CloudSyncSummary,result:CloudAssetReconcileResult):void{
+  if(result==='downloaded')summary.downloaded++
+  else if(result==='updated')summary.updated++
+  else if(result==='unchanged')summary.unchanged++
+  else if(result==='protected')summary.protectedLocal++
+  else if(result==='conflict')summary.conflicts++
+}
+
+type CloudAssetReconcileResult='downloaded'|'updated'|'unchanged'|'protected'|'conflict'
+
+async function reconcileCloudAssetSnapshot(organizationId:string,cloud:CloudAsset):Promise<CloudAssetReconcileResult>{
+  const local=await db.assets.where('[localScope+code]').equals([organizationId,cloud.code]).first()
+  if(!local){await downloadCloudAsset(organizationId,cloud);return 'downloaded'}
+  const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
+  if(!link||link.cloudCode!==cloud.code)return 'protected'
+  if(cloud.deletedAt){
+    const result=await reconcileCloudDeletion(organizationId,local,link,cloud.deletedAt,cloud.updatedAt)
+    return result==='conflict'?'conflict':result==='protected'?'protected':'updated'
+  }
+  if(link.status==='conflict')return 'conflict'
+  const mutations=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+    .filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').toArray()
+  if(mutations.length)return 'protected'
+  const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
+  const cloudChanged=cloud.updatedAt!==link.cloudUpdatedAt
+  if(localChanged&&cloudChanged){
+    await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+    const existing=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+      .filter(m=>m.status==='conflict').first()
+    if(!existing)await db.assetMutations.add({
+      mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
+      expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
+      status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),
+      lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'
+    })
+    return 'conflict'
+  }
+  if(localChanged)return 'protected'
+  if(cloudChanged){await downloadCloudAsset(organizationId,cloud,local);return 'updated'}
+  await db.assetCloudLinks.update(link.id,{lastVerifiedAt:now()})
+  return 'unchanged'
+}
 
 export async function syncCloudAssetsToLocal(
   client: SupabaseClient,
@@ -99,60 +148,11 @@ export async function syncCloudAssetsToLocal(
     })
     if(error)throw new Error('Đồng bộ Cloud thất bại: '+error.message)
     const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
-    const rows=(page?.items??[]).map(fromRow)
+    const rows=(page?.items??[]).map(cloudAssetFromRow)
     summary.pages++
     for(const cloud of rows){
       if(options.shouldContinue&&!options.shouldContinue())return summary
-      const local=await db.assets.where('[localScope+code]').equals([organizationId,cloud.code]).first()
-      if(!local){
-        await downloadCloudAsset(organizationId,cloud)
-        summary.downloaded++
-        continue
-      }
-      const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
-      if(!link||link.cloudCode!==cloud.code){
-        summary.protectedLocal++
-        continue
-      }
-      if(cloud.deletedAt){
-        const result=await reconcileCloudDeletion(organizationId,local,link,cloud.deletedAt,cloud.updatedAt)
-        if(result==='conflict')summary.conflicts++
-        else if(result==='protected')summary.protectedLocal++
-        else summary.updated++
-        continue
-      }
-      if(link.status==='conflict'){
-        summary.conflicts++
-        continue
-      }
-      const mutations=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
-        .filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').toArray()
-      if(mutations.length){
-        summary.protectedLocal++
-        continue
-      }
-      const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
-      const cloudChanged=cloud.updatedAt!==link.cloudUpdatedAt
-      if(localChanged&&cloudChanged){
-        await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
-        const existing=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
-          .filter(m=>m.status==='conflict').first()
-        if(!existing)await db.assetMutations.add({
-          mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
-          expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
-          status:'conflict',attempts:0,createdAt:now(),updatedAt:now(),
-          lastError:'Local và Cloud đều thay đổi kể từ lần đồng bộ trước.'
-        })
-        summary.conflicts++
-      }else if(localChanged){
-        summary.protectedLocal++
-      }else if(cloudChanged){
-        await downloadCloudAsset(organizationId,cloud,local)
-        summary.updated++
-      }else{
-        await db.assetCloudLinks.update(link.id,{lastVerifiedAt:now()})
-        summary.unchanged++
-      }
+      incrementCloudSyncSummary(summary,await reconcileCloudAssetSnapshot(organizationId,cloud))
     }
     if(!page?.has_more)break
     const nextCursor=page?.next_cursor??null
@@ -181,6 +181,103 @@ export async function syncCloudAssetsToLocal(
   // so any records downloaded from the pre-reset snapshot are purged immediately.
   await ensureOrganizationAssetResetApplied(client,organizationId)
   return summary
+}
+
+
+/** Incremental Cloud Pull after a one-time checkpoint + Full Scan bootstrap. */
+export async function syncCloudAssetsIncrementally(
+  client:SupabaseClient,
+  organizationId:string,
+  options:{shouldContinue?:()=>boolean;platformAdmin?:boolean}={}
+):Promise<CloudSyncSummary>{
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  let cursor=await readAssetSyncCursor(organizationId)
+  if(!cursor){
+    let checkpoint:Awaited<ReturnType<typeof getAssetSyncCheckpoint>>
+    try{checkpoint=await getAssetSyncCheckpoint(client,organizationId)}catch(error){
+      if(isMissingAssetSyncRpc(error))return syncCloudAssetsToLocal(client,organizationId,options)
+      throw error
+    }
+    cursor=await initializeAssetSyncCursor(organizationId,checkpoint)
+  }
+  const summary:CloudSyncSummary={downloaded:0,updated:0,unchanged:0,protectedLocal:0,conflicts:0,pages:0}
+  if(!cursor.bootstrapComplete){
+    const full=await syncCloudAssetsToLocal(client,organizationId,options)
+    mergeCloudSyncSummary(summary,full)
+    if(options.shouldContinue&&!options.shouldContinue())return summary
+    await markAssetSyncBootstrapComplete(organizationId)
+    cursor=await readAssetSyncCursor(organizationId)
+    if(!cursor)throw new Error('Bootstrap hoàn tất nhưng cursor Local không còn.')
+  }
+  let afterSequence=cursor.lastSequence
+  let resetGeneration=cursor.resetGeneration
+  const seen=new Set<number>()
+  do{
+    if(options.shouldContinue&&!options.shouldContinue())break
+    let page
+    try{page=await listAssetSyncChanges(client,organizationId,afterSequence,200)}catch(error){
+      if(isMissingAssetSyncRpc(error)){
+        const fallback=await syncCloudAssetsToLocal(client,organizationId,options)
+        mergeCloudSyncSummary(summary,fallback)
+        return summary
+      }
+      throw error
+    }
+    summary.pages++
+    for(const event of page.items){
+      if(options.shouldContinue&&!options.shouldContinue())return summary
+      if(event.organizationId!==organizationId)throw new Error('Pull event sai tenant; dừng đồng bộ.')
+      if(event.eventType==='reset'){
+        const appliedGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+        resetGeneration=Math.max(resetGeneration,event.resetGeneration??appliedGeneration)
+        continue
+      }
+      if(!event.assetCode)throw new Error('Pull event thiếu mã thiết bị.')
+      if(event.eventType==='upsert'){
+        if(!event.snapshot)throw new Error('Upsert event thiếu snapshot; cursor chưa advance.')
+        const cloud=cloudAssetFromRow(event.snapshot)
+        if(cloud.organizationId!==organizationId||cloud.code!==event.assetCode)throw new Error('Snapshot event sai tenant/mã thiết bị.')
+        incrementCloudSyncSummary(summary,await reconcileCloudAssetSnapshot(organizationId,cloud))
+      }else{
+        const local=await db.assets.where('[localScope+code]').equals([organizationId,event.assetCode]).first()
+        if(!local){summary.unchanged++;continue}
+        const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
+        if(!link||link.organizationId!==organizationId||link.cloudCode!==event.assetCode){summary.protectedLocal++;continue}
+        const deletedAt=event.snapshot&&typeof event.snapshot.deleted_at==='string'
+          ?event.snapshot.deleted_at:event.eventCreatedAt
+        const result=await reconcileCloudDeletion(organizationId,local,link,deletedAt,event.assetUpdatedAt??event.eventCreatedAt)
+        if(result==='conflict')summary.conflicts++
+        else if(result==='protected')summary.protectedLocal++
+        else summary.updated++
+      }
+    }
+    if(options.shouldContinue&&!options.shouldContinue())break
+    if(page.nextCursor<afterSequence||seen.has(page.nextCursor))throw new Error('Pull cursor lùi hoặc lặp; dừng để không mất dữ liệu.')
+    if(page.items.length===0&&page.nextCursor!==afterSequence)throw new Error('Pull page rỗng nhưng cursor tiến; đã dừng.')
+    if(page.items.length>0){
+      await advanceAssetSyncCursor(organizationId,page.nextCursor,resetGeneration)
+      afterSequence=page.nextCursor
+      seen.add(afterSequence)
+    }
+    if(!page.hasMore)break
+    if(page.nextCursor===afterSequence&&page.items.length===0)break
+  }while(true)
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  return summary
+}
+
+function mergeCloudSyncSummary(target:CloudSyncSummary,source:CloudSyncSummary):void{
+  target.downloaded+=source.downloaded;target.updated+=source.updated;target.unchanged+=source.unchanged
+  target.protectedLocal+=source.protectedLocal;target.conflicts+=source.conflicts;target.pages+=source.pages
+}
+
+function isMissingAssetSyncRpc(error:unknown):boolean{
+  const candidate=error as {code?:unknown;message?:unknown}
+  const code=String(candidate?.code??'')
+  const message=String(candidate?.message??error??'').toLowerCase()
+  return code==='PGRST202'||code==='PGRST204'||code==='42883'||
+    (message.includes('get_asset_sync_checkpoint')||message.includes('list_asset_sync_changes'))&&
+    (message.includes('not found')||message.includes('does not exist')||message.includes('schema cache')||message.includes('could not find'))
 }
 
 type CloudDeletionResult='updated'|'conflict'|'protected'
