@@ -155,3 +155,10 @@ test('save and draft recovery recheck create/update grants at action time', asyn
  assert.match(resume, /if\(!localPreview&&!canCreate\)/)
  assert.match(source, /!showForm&&!localPreview&&canCreate&&recoverableDrafts\.length>0/)
 })
+
+test('automatic mutation retry requires an authorized Admin or KTV role as well as assets.update', async () => {
+ const source = await read('../src/App.tsx')
+ const sync = source.slice(source.indexOf('const runSync=async()=>{'), source.indexOf('const runSync=async()=>{')+2300)
+ assert.match(sync, /const contextCanMutate=Boolean\(context\.isAdmin\|\|context\.roleCodes\.some\(code=>\['ktv','technician','maintenance_technician'\]/)
+ assert.match(sync, /if\(contextCanMutate&&context\.permissions\.includes\('assets\.update'\)\)/)
+})
