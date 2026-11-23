@@ -1,12 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { db, now, uid } from '../db'
-
-export type OrganizationAssetResetState = {
-  organizationId: string
-  generation: number
-  appliedAt: string
-  deviceId?: string
-}
+import { db, now, uid, type OrganizationAssetResetState } from '../db'
 
 const localDeviceId = () => {
   const key = 'baotri-mini-device-id'
