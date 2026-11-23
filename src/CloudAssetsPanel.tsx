@@ -80,7 +80,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const resolveConflictLocal=async(mutation:AssetMutation)=>{
-  if(!canUpdate){setError('Tài khoản không có quyền xử lý conflict.');return}
+  if(!canView||!canUpdate){setError('Cần quyền xem và cập nhật thiết bị để xử lý conflict.');return}
   const local=localAssets.find(a=>a.id===mutation.assetId)
   const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
   if(!local||!link){setError('Không tìm thấy snapshot hoặc liên kết để đối chiếu.');return}
