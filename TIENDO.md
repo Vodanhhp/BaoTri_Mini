@@ -1266,3 +1266,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Phát hiện thêm khác biệt phân quyền: KTV chỉ nhận tombstone code/date, không được xem hồ sơ thiết bị đã xóa trên Cloud. Conflict panel trước đây chỉ nhìn danh sách Cloud nên có thể hiện sai lựa chọn “Chọn Local” hoặc cho thao tác không khả thi. Đã bổ sung tải tombstone metadata trong panel; nếu KTV không có quyền xem hồ sơ deleted thì ẩn cả hai lựa chọn và yêu cầu Admin xác nhận. Khi xử lý Local, luôn xác minh lại tombstone từ RPC trước khi ghi Cloud.
 - Rà soát retry: mutation `pending` trước đây chỉ được retry thủ công trong Cloud panel; mutation bị kẹt ở `processing` sau khi tab/trình duyệt đóng cũng không tự phục hồi. Đã bổ sung tự retry sau lần đồng bộ đầu và khi trình duyệt phát sự kiện `online`, chỉ cho tài khoản có `assets.update`; xử lý `pending` và `processing` đã cũ hơn 60 giây. Mỗi lần retry vẫn đi qua Cloud edit lock + mutation receipt idempotent; conflict không được tự retry. Thêm regression test.
 - CI cuối cùng sau phần tự retry và xử lý tombstone theo quyền: Build and test **success** (run 489), Validate BAOTRI Mini **success** (run 201) tại commit `e881a6ee82295a45c93512c52bfff108b94d6316`. Commit sau đó chỉ chỉnh tài liệu TIENDO.
+
+
+### Bổ sung bảo vệ retry mutation cũ — 23/11/2026
+- Rà soát lại hàm `retryCloudAssetMutation` phát hiện mutation có thể mang snapshot cũ trong khi Local đã đổi `updatedAt`; nếu retry thành công, watermark đồng bộ không được phép nhảy lên phiên bản Local mới hơn.
+- Đã bổ sung preflight: xác minh organization/assetId/cloudCode của liên kết; nếu liên kết sai hoặc đang conflict thì chuyển mutation sang conflict, không gọi RPC ghi Cloud.
+- Nếu `local.updatedAt` khác `mutation.localUpdatedAt`, đánh dấu mutation và link conflict, giữ nguyên dữ liệu Local, không gửi snapshot cũ lên Cloud.
+- Khi retry hợp lệ, watermark `lastSyncedLocalUpdatedAt` lấy từ `mutation.localUpdatedAt`, không lấy timestamp Local đọc lại một cách mù quáng.
+- Bổ sung regression test cho stale snapshot retry.
+- Commit code: `f85cf13ded129ee81b284dc3dc4a658174264ee6`; commit test: `60c16735c54633d761c0374bb2f269463cc8506c`.
+- CI cho commit mới đang chờ; chưa tuyên bố đạt trước khi GitHub Actions xác nhận.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
