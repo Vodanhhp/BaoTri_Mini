@@ -566,7 +566,10 @@ export default function App() {
     if (!editing || busy) return
     setBusy(true); setError('')
     try {
+      const wasExisting=assets.some(asset=>asset.id===editing.id)
+      if(!localPreview&&supabase&&organizationId&&navigator.onLine)await ensureOrganizationAssetResetApplied(supabase,organizationId)
       const previous = await db.assets.get(editing.id)
+      if(wasExisting&&!previous)throw new Error('Thiết bị đã bị reset khỏi tổ chức; không thể lưu lại bản Local cũ. Hãy tải lại danh sách.')
       if(previous&&!localPreview&&!canUpdate)throw new Error('Tài khoản không có quyền cập nhật thiết bị (assets.update).')
       if(!previous&&!localPreview&&!canCreate)throw new Error('Tài khoản không có quyền tạo thiết bị (assets.create).')
 
