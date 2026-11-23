@@ -1248,3 +1248,9 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - `.env.local`: file local untracked; giữ nguyên trên máy, tuyệt đối không add/commit/push.
 - Trước cập nhật tài liệu trên GitHub, các thay đổi local chưa commit/push. Cần đồng bộ branch qua GitHub Desktop và kiểm tra tránh ghi đè thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
+
+
+### Phát hiện lỗi Cloud không chấp nhận trạng thái Lưu kho — 23/11/2026
+- Rà soát schema Supabase Test cho thấy CHECK `assets_status_check` chỉ cho 4 trạng thái cũ; Cloud mutation/import cũng chưa đồng bộ whitelist `Lưu kho`. UI Local đã tạo trạng thái Lưu kho và gửi `archived_at`, nên import Local→Cloud hoặc mutation lưu kho có thể bị DB từ chối.
+- Đã chuẩn bị migration để bổ sung trạng thái Lưu kho vào CHECK và cập nhật import RPC giữ nguyên `archived_at`; thêm test hồi quy.
+- Branch `fix/cloud-import-stored-assets`; **chưa áp dụng migration lên Supabase Test**, chưa thay dữ liệu hoặc Production. Cần CI và review trước khi xin phép áp dụng Test.
