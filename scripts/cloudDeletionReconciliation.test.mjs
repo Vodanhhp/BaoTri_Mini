@@ -107,3 +107,12 @@ test('manual mutation retry mirrors its matching pending audit event after recei
   assert.match(retry, /client\.rpc\('record_cloud_asset_history_event'/)
   assert.match(retry, /db\.assetHistory\.update\(pendingHistory\.id,\{syncStatus:'synced'\}\)/)
 })
+ 
+test('both Cloud and Local conflict resolutions create an audit event, including no-field-change decisions', async () => {
+  const panel = await read('../src/CloudAssetsPanel.tsx')
+  const app = await read('../src/App.tsx')
+  assert.match(panel, /onConflictResolved\(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng\.'\)/)
+  assert.match(panel, /onConflictResolved\(local,local,'Giải quyết xung đột: chọn Local làm phiên bản đúng\.',mutationId\)/)
+  assert.match(app, /onConflictResolved=\{\(before,after,summary,eventId\)=>recordAssetHistory\(before,after,'updated',summary,eventId,false,true\)\}/)
+  assert.match(app, /if \(before && !changes\.length && !force\) return/)
+})
