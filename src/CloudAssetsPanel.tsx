@@ -4,10 +4,11 @@ import type { Asset } from './db'
 import { db, now, uid, type AssetMutation } from './db'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
-type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void}
+type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void;onConflictResolved:(before:Asset,after:Asset,summary:string,eventId?:string)=>Promise<void>}
 
-export default function CloudAssetsPanel({client,organizationId,localAssets,localPreviewAssets,canImport,canView,canUpdate,onClose,onChanged}:Props){
+export default function CloudAssetsPanel({client,organizationId,localAssets,localPreviewAssets,canImport,canView,canUpdate,onClose,onChanged,onConflictResolved}:Props){
  const [cloud,setCloud]=useState<CloudAsset[]>([])
+ const [deletedCloudCodes,setDeletedCloudCodes]=useState<string[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
  const [pending,setPending]=useState<AssetMutation[]>([])
  const [selected,setSelected]=useState<string[]>([])
@@ -19,24 +20,48 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const reload=async()=>{
   setLoading(true);setError('')
   try{
-   const [cloudRows,linkRows,mutationRows]=await Promise.all([listCloudAssets(client,organizationId),db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),db.assetMutations.where('organizationId').equals(organizationId).toArray()])
-   setCloud(cloudRows);setLinkedIds(linkRows.map(l=>l.assetId));setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
+   const [linkRows,mutationRows]=await Promise.all([
+    db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
+    db.assetMutations.where('organizationId').equals(organizationId).toArray()
+   ])
+   setLinkedIds(linkRows.map(l=>l.assetId))
+   if(!canView){setPending([]);setCloud([]);setDeletedCloudCodes([]);return}
+   setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
+   const [cloudRows,tombstonesResult]=await Promise.all([
+    listCloudAssets(client,organizationId),
+    client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
+   ])
+   if(tombstonesResult.error)throw new Error('Không tải được danh sách dấu xóa Cloud: '+tombstonesResult.error.message)
+   const tombstones=Array.isArray(tombstonesResult.data)?tombstonesResult.data as Array<{code?:string}>:[]
+   setCloud(cloudRows);setDeletedCloudCodes(tombstones.map(row=>String(row.code??'')))
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setLoading(false)}
  }
- useEffect(()=>{void reload()},[organizationId])
+ useEffect(()=>{void reload()},[organizationId,canView])
  const candidates=localAssets.filter(a=>a.localScope===organizationId&&!linkedIds.includes(a.id))
  const previewCandidates=localPreviewAssets.filter(a=>a.localScope==='local-preview')
  const retryOne=async(mutation:AssetMutation)=>{
+  if(!canView||!canUpdate){setError('Cần quyền xem và cập nhật thiết bị để retry mutation.');return}
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
    const result=await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
-   setMessage(result.alreadyApplied?'Cloud xác nhận lại biên nhận đã áp dụng.':'Đã retry và Cloud xác nhận mutation.')
+   const pendingHistory=await db.assetHistory.get(mutation.mutationId)
+   let historyMessage=''
+   if(pendingHistory?.syncStatus==='pending'){
+    const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
+     p_organization_id:organizationId,p_event_id:pendingHistory.id,p_asset_code:pendingHistory.assetCode,p_event_type:pendingHistory.eventType,
+     p_summary:pendingHistory.summary,p_changes:pendingHistory.changes,p_actor_label:pendingHistory.actorLabel,p_occurred_at:pendingHistory.occurredAt
+    })
+    if(!historyError)await db.assetHistory.update(pendingHistory.id,{syncStatus:'synced'})
+    else historyMessage=' Mutation đã được xác nhận; lịch sử vẫn chờ đồng bộ: '+historyError.message
+   }
+   setMessage((result.alreadyApplied?'Cloud xác nhận lại biên nhận đã áp dụng.':'Đã retry và Cloud xác nhận mutation.')+historyMessage)
    await reload();onChanged()
   }catch(e){setError(e instanceof Error?e.message:String(e));await reload()}
   finally{setBusyId('')}
  }
  const resolveConflictCloud=async(mutation:AssetMutation)=>{
+  if(!canView||!canUpdate){setError('Cần quyền xem và cập nhật thiết bị để xử lý conflict.');return}
   const local=localAssets.find(a=>a.id===mutation.assetId)
   let cloudAsset:CloudAsset|undefined
   if(!local){setError('Không tìm thấy Local để đối chiếu.');return}
@@ -45,7 +70,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   try{
    const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
-   await downloadCloudAsset(organizationId,cloudAsset,local)
+   const resolvedLocal=await downloadCloudAsset(organizationId,cloudAsset,local)
+   await onConflictResolved(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng.')
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
    for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
    setMessage('Đã chọn Cloud; Local cập nhật theo Cloud và giữ ảnh Local.')
@@ -54,6 +80,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const resolveConflictLocal=async(mutation:AssetMutation)=>{
+  if(!canView||!canUpdate){setError('Cần quyền xem và cập nhật thiết bị để xử lý conflict.');return}
   const local=localAssets.find(a=>a.id===mutation.assetId)
   const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
   if(!local||!link){setError('Không tìm thấy snapshot hoặc liên kết để đối chiếu.');return}
@@ -66,6 +93,9 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    const fresh=await listCloudAssets(client,organizationId);const cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    if(cloudAsset.code!==link.cloudCode)throw new Error('Mã quản lý Cloud đã đổi; cần xử lý thủ công.')
+   const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
+   if(tombstoneError)throw new Error('Không xác minh được dấu xóa Cloud: '+tombstoneError.message)
+   if(cloudAsset.deletedAt||(Array.isArray(tombstones)&&tombstones.some((row:Record<string,unknown>)=>row.code===local.code)))throw new Error('Cloud đã xóa mềm thiết bị. Không thể chọn Local vì hệ thống chưa có thao tác khôi phục thiết bị đã xóa trên Cloud; hãy chọn Cloud để đồng bộ dấu xóa.')
    const acquired=await acquireCloudAssetLock(client,organizationId,local.code,getLocalDeviceId(),getDeviceLabel())
    if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
    lease={assetId:local.code,token:acquired.lease.lock_token}
@@ -78,6 +108,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     for(const old of conflicts)await db.assetMutations.update(old.mutationId,{status:'discarded',updatedAt:at,lastError:'Đã giải quyết conflict bằng cách chọn Local.'})
     await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
    })
+   await onConflictResolved(local,local,'Giải quyết xung đột: chọn Local làm phiên bản đúng.',mutationId)
    setMessage('Đã chọn Local; Cloud được cập nhật và xác nhận.')
    await reload();onChanged()
   }catch(e){
@@ -88,6 +119,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   }finally{if(lease)await releaseCloudAssetLock(client,organizationId,lease.assetId,lease.token).catch(()=>false);setBusyId('')}
  }
  const importOne=async(asset:Asset)=>{
+  if(!canImport){setError('Tài khoản không có quyền nhập thiết bị lên Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
    if(await db.assetCloudLinks.get(organizationId+':'+asset.id))throw new Error('Thiết bị đã có liên kết Cloud.')
@@ -98,6 +130,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   finally{setBusyId('')}
  }
  const importPreviewOne=async(asset:Asset)=>{
+  if(!canImport){setError('Tài khoản không có quyền chuyển dữ liệu Local Preview.');return false}
   setBusyId('preview:'+asset.id);setError('');setMessage('')
   try{
    if(asset.localScope!=='local-preview')throw new Error('Hồ sơ không còn thuộc Local Preview; hãy tải lại danh sách.')
@@ -142,6 +175,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setSelected([])
  }
  const downloadOne=async(asset:CloudAsset)=>{
+  if(!canView){setError('Tài khoản không có quyền xem thiết bị Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
    const local=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
@@ -182,7 +216,10 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     <div className="cloud-section-head"><h3>Mutation Local chưa được Cloud xác nhận</h3><button className="soft-btn small" disabled={loading} onClick={()=>void reload()}>Kiểm tra</button></div>
     {pending.length===0?<p className="empty-small">Không có thay đổi Cloud đang chờ.</p>:<div className="cloud-list">{pending.map(m=>{
       const asset=localAssets.find(a=>a.id===m.assetId)
-      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span><button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button><button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button></>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
+      const cloudRecord=cloud.find(row=>row.code===asset?.code)
+      const cloudDeleted=Boolean(cloudRecord?.deletedAt||deletedCloudCodes.includes(asset?.code??''))
+      const cloudDeletionProfileAvailable=Boolean(cloudRecord?.deletedAt)
+      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?(cloudDeletionProfileAvailable?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':'Cloud đã xóa mềm; cần Admin xác nhận Cloud vì vai trò hiện tại không được xem hồ sơ đã xóa.'):m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span>{(!cloudDeleted||cloudDeletionProfileAvailable)&&<button className="soft-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>}{!cloudDeleted&&<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
     })}</div>}
    </div>
    <div className="cloud-section">

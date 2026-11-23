@@ -66,5 +66,10 @@ Deno.serve(async(req)=>{
   const {data,error}=await admin.rpc('platform_delete_organization',{p_organization_id:organizationId,p_confirm_name:confirmName})
   if(error)throw error
   return response({ok:true,action,organizationName:organization.name,status:'deleted',deleted:data?.deleted??{},message:'Đã xóa vĩnh viễn tổ chức và dữ liệu Cloud liên quan. Tài khoản Auth và hồ sơ cá nhân của các thành viên được giữ nguyên.'},200,origin)
- }catch(error){return response({error:error instanceof Error?error.message:String(error)},400,origin)}
+ }catch(error){
+  const detail=error as {message?:unknown;code?:unknown}
+  const message=typeof detail?.message==='string'?detail.message:String(error)
+  const status=detail?.code==='23503'?409:400
+  return response({error:message,code:typeof detail?.code==='string'?detail.code:undefined},status,origin)
+ }
 })

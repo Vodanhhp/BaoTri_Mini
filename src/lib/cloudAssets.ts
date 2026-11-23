@@ -56,6 +56,7 @@ export function toImportPayload(asset: Asset) {
 export async function listCloudAssets(client: SupabaseClient, organizationId: string): Promise<CloudAsset[]> {
   const rows:CloudAsset[]=[]
   let cursor:string|null=null
+  const seenCursors=new Set<string>()
   do{
     const {data,error}=await client.rpc('list_cloud_assets_page',{
       p_organization_id:organizationId,p_after_code:cursor,p_page_size:100,p_platform_admin:false
@@ -63,9 +64,12 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
     if(error)throw new Error('Tải danh sách Cloud thất bại: '+error.message)
     const page=data as {items?:Record<string,unknown>[];has_more?:boolean;next_cursor?:string|null}|null
     rows.push(...(page?.items??[]).map(fromRow))
-    cursor=page?.next_cursor??null
     if(!page?.has_more)break
-    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
+    const nextCursor=page?.next_cursor??null
+    if(!nextCursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor.')
+    if(seenCursors.has(nextCursor))throw new Error('Cloud lặp cursor phân trang; dừng tải để tránh vòng lặp vô hạn.')
+    seenCursors.add(nextCursor)
+    cursor=nextCursor
   }while(true)
   return rows
 }
@@ -79,6 +83,7 @@ export async function syncCloudAssetsToLocal(
 ): Promise<CloudSyncSummary> {
   const summary:CloudSyncSummary={downloaded:0,updated:0,unchanged:0,protectedLocal:0,conflicts:0,pages:0}
   let cursor:string|null=null
+  const seenCursors=new Set<string>()
   do {
     if(options.shouldContinue&&!options.shouldContinue())break
     const {data,error}=await client.rpc('list_cloud_assets_page',{
@@ -105,13 +110,10 @@ export async function syncCloudAssetsToLocal(
         continue
       }
       if(cloud.deletedAt){
-        const pendingDelete=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
-        await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
-          await db.assets.update(local.id,{deletedAt:cloud.deletedAt,updatedAt:cloud.updatedAt})
-          await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:cloud.updatedAt,lastSyncedLocalUpdatedAt:cloud.updatedAt,status:'linked',lastVerifiedAt:now()})
-          for(const mutation of pendingDelete)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
-        })
-        summary.updated++
+        const result=await reconcileCloudDeletion(organizationId,local,link,cloud.deletedAt,cloud.updatedAt)
+        if(result==='conflict')summary.conflicts++
+        else if(result==='protected')summary.protectedLocal++
+        else summary.updated++
         continue
       }
       if(link.status==='conflict'){
@@ -147,9 +149,12 @@ export async function syncCloudAssetsToLocal(
         summary.unchanged++
       }
     }
-    cursor=page?.next_cursor??null
     if(!page?.has_more)break
-    if(!cursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
+    const nextCursor=page?.next_cursor??null
+    if(!nextCursor)throw new Error('Cloud trả về trang tiếp theo nhưng thiếu cursor; dừng để tránh lặp dữ liệu.')
+    if(seenCursors.has(nextCursor))throw new Error('Cloud lặp cursor phân trang; dừng đồng bộ để tránh vòng lặp vô hạn.')
+    seenCursors.add(nextCursor)
+    cursor=nextCursor
   }while(true)
   const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
   if(tombstoneError)throw new Error('Không đồng bộ được dấu xóa thiết bị: '+tombstoneError.message)
@@ -158,15 +163,65 @@ export async function syncCloudAssetsToLocal(
     const local=await db.assets.where('[localScope+code]').equals([organizationId,tombstone.code]).first()
     if(!local||local.deletedAt===tombstone.deleted_at)continue
     const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
-    const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
-    await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
-      await db.assets.update(local.id,{deletedAt:tombstone.deleted_at,updatedAt:tombstone.updated_at})
-      if(link)await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:tombstone.updated_at,lastSyncedLocalUpdatedAt:tombstone.updated_at,status:'linked',lastVerifiedAt:now()})
-      for(const mutation of pending)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
-    })
-    summary.updated++
+    if(!link||link.cloudCode!==tombstone.code){
+      summary.protectedLocal++
+      continue
+    }
+    const result=await reconcileCloudDeletion(organizationId,local,link,tombstone.deleted_at,tombstone.updated_at)
+    if(result==='conflict')summary.conflicts++
+    else if(result==='protected')summary.protectedLocal++
+    else summary.updated++
   }
   return summary
+}
+
+type CloudDeletionResult='updated'|'conflict'|'protected'
+
+/**
+ * Apply a Cloud tombstone without erasing a newer Local snapshot.
+ * A deletion arriving while Local has unsynced work becomes a conflict;
+ * the Local payload and its version timestamp remain available for review.
+ */
+async function reconcileCloudDeletion(
+  organizationId:string,
+  local:Asset,
+  link:AssetCloudLink,
+  deletedAt:string,
+  cloudUpdatedAt:string
+):Promise<CloudDeletionResult>{
+  if(link.organizationId!==organizationId||link.assetId!==local.id||link.cloudCode!==local.code)return 'protected'
+  const mutations=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+    .filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').toArray()
+  const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
+  const needsReview=localChanged||mutations.length>0||link.status==='conflict'
+  const at=now()
+  const reason='Thiết bị đã bị Admin xóa trên Cloud trong khi Local có thay đổi chưa đồng bộ hoặc mutation chưa xác nhận. Dữ liệu Local được giữ lại để đối chiếu.'
+  await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
+    // Reflect the remote deletion, but do not replace Local updatedAt when it
+    // represents a newer unsynced snapshot; that timestamp is part of conflict detection.
+    await db.assets.update(local.id,needsReview
+      ? {deletedAt,updatedAt:local.updatedAt}
+      : {deletedAt,updatedAt:cloudUpdatedAt})
+    await db.assetCloudLinks.update(link.id,needsReview
+      ? {status:'conflict',lastVerifiedAt:at}
+      : {cloudUpdatedAt,lastSyncedLocalUpdatedAt:cloudUpdatedAt,status:'linked',lastVerifiedAt:at})
+    for(const mutation of mutations){
+      if(mutation.status==='pending'||mutation.status==='processing'){
+        await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:at,lastError:reason})
+      }
+    }
+    if(needsReview&&mutations.length===0){
+      await db.assetMutations.add({
+        mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
+        expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
+        status:'conflict',attempts:0,createdAt:at,updatedAt:at,lastError:reason
+      })
+    }else if(needsReview){
+      const existing=mutations.find(m=>m.status==='conflict')??mutations[0]
+      if(existing)await db.assetMutations.update(existing.mutationId,{status:'conflict',lastError:reason,updatedAt:at})
+    }
+  })
+  return needsReview?'conflict':'updated'
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
@@ -300,18 +355,51 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  if(!local)throw new Error('Local snapshot của mutation đã mất.')
  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
  if(!link)throw new Error('Thiết bị chưa có liên kết Cloud.')
+ if(link.organizationId!==organizationId||link.assetId!==local.id||link.cloudCode!==local.code){
+  const reason='Liên kết Cloud không còn khớp tổ chức, UUID hoặc mã thiết bị; mutation được giữ lại để đối chiếu.'
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+   await db.assetMutations.update(mutationId,{status:'conflict',lastError:reason,updatedAt:now()})
+   await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  })
+  throw new Error(reason)
+ }
+ if(link.status==='conflict'||local.updatedAt!==mutation.localUpdatedAt){
+  const reason=link.status==='conflict'
+   ?'Liên kết Cloud đã ở trạng thái conflict; không tự retry mutation.'
+   :'Snapshot Local đã thay đổi sau khi tạo mutation; không gửi snapshot cũ lên Cloud. Cần đối chiếu trước khi tiếp tục.'
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+   await db.assetMutations.update(mutationId,{status:'conflict',lastError:reason,updatedAt:now()})
+   await db.assetCloudLinks.update(link.id,{status:'conflict',lastVerifiedAt:now()})
+  })
+  throw new Error(reason)
+ }
  const deviceId=getLocalDeviceId()
  const acquired=await acquireCloudAssetLock(client,organizationId,local.code,deviceId,getDeviceLabel())
  if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
  try{
   await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,updatedAt:now(),lastError:undefined})
   const applied=await applyCloudAssetMutation(client,organizationId,local,acquired.lease.lock_token,mutation.mutationId,mutation.expectedCloudUpdatedAt,mutation.payload)
+  const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,mutation.assetId])
+   .filter(change=>change.syncStatus==='pending'&&change.mutationId===mutationId).toArray()
+  if(pendingGroupChanges.length){
+   const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
+   const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
+    p_organization_id:organizationId,
+    p_asset_code:local.code,
+    p_changes:ordered.map(change=>({
+     id:change.id,oldCategory:change.oldCategory,newCategory:change.newCategory,
+     changedByUserId:change.changedByUserId??null,changedAt:change.changedAt,reason:change.reason??null
+    }))
+   })
+   if(historyError)throw new Error('Thiết bị đã được cập nhật trên Cloud nhưng chưa đồng bộ được lịch sử đổi nhóm: '+historyError.message)
+  }
   const at=now()
   const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict'&&m.mutationId!==mutationId).toArray()
-  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks],async()=>{
+  await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
    await db.assetMutations.update(mutationId,{status:'applied',appliedAt:at,cloudUpdatedAt:applied.asset.updatedAt,updatedAt:at,lastError:undefined})
    for(const old of conflicts)await db.assetMutations.update(old.mutationId,{status:'discarded',updatedAt:at,lastError:'Đã giải quyết conflict bằng retry mutation.'})
-   await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:local.updatedAt,status:'linked',lastVerifiedAt:at})
+   await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:applied.asset.updatedAt,lastSyncedLocalUpdatedAt:mutation.localUpdatedAt,status:'linked',lastVerifiedAt:at})
+   for(const change of pendingGroupChanges)await db.assetGroupChanges.update(change.id,{syncStatus:'synced'})
   })
   return {alreadyApplied:applied.alreadyApplied,cloudUpdatedAt:applied.asset.updatedAt}
  }catch(error){

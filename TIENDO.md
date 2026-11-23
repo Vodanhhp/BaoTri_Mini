@@ -1248,3 +1248,78 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - `.env.local`: file local untracked; giữ nguyên trên máy, tuyệt đối không add/commit/push.
 - Trước cập nhật tài liệu trên GitHub, các thay đổi local chưa commit/push. Cần đồng bộ branch qua GitHub Desktop và kiểm tra tránh ghi đè thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
+
+
+### Rà soát đồng bộ Cloud deletion — 23/11/2026
+- Phát hiện lỗi: luồng Cloud → Local nhận `deleted_at` từ trang assets hoặc tombstone và ghi đè `updatedAt` Local, đồng thời đặt link thành `linked` kể cả khi Local có thay đổi chưa đồng bộ hoặc mutation đang chờ. Luồng tombstone còn có thể đánh dấu xóa Local theo mã thiết bị dù không có liên kết Cloud hợp lệ.
+- Đã sửa trên nhánh `fix/cloud-delete-sync-preserve-local`:
+  - Dùng một hàm reconcile chung cho deletion từ trang Cloud và tombstone.
+  - Chỉ áp dụng tombstone khi có liên kết đúng organization/asset/code.
+  - Nếu Local có phiên bản mới hơn, mutation pending/processing/conflict, hoặc link đã conflict: phản ánh dấu xóa Cloud nhưng giữ nguyên Local `updatedAt`, giữ nguyên nội dung, chuyển link/mutation sang conflict để người dùng đối chiếu.
+  - Nếu không có thay đổi Local: áp dụng dấu xóa và cập nhật mốc đồng bộ bình thường.
+  - Tránh tạo conflict record trùng khi mutation pending/processing đã tồn tại.
+  - Không cho chọn “Chọn Local” để ghi đè Cloud đã xóa mềm vì hiện chưa có RPC khôi phục thiết bị đã xóa trên Cloud; giao diện chỉ cho chọn Cloud trong trường hợp này.
+- Thêm regression test cho bảo toàn Local, kiểm tra liên kết tombstone và chặn conflict resolution không hợp lệ.
+- Build and test + Validate BAOTRI Mini đều **success** tại head `698570f7bd550267160709f165ad9e37fa43fa5e` (Build run 479, Validate run 191). Regression tests và TypeScript/Vite build đều pass.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chưa chạy browser E2E.
+- Rà soát bổ sung: hai vòng lặp phân trang `listCloudAssets` và `syncCloudAssetsToLocal` trước đây chỉ kiểm tra cursor rỗng; nếu API lặp lại cursor hợp lệ, vòng lặp có thể chạy mãi. Đã thêm tập cursor đã thấy và dừng có thông báo khi cursor bị lặp; bổ sung regression test.
+- Phát hiện thêm khác biệt phân quyền: KTV chỉ nhận tombstone code/date, không được xem hồ sơ thiết bị đã xóa trên Cloud. Conflict panel trước đây chỉ nhìn danh sách Cloud nên có thể hiện sai lựa chọn “Chọn Local” hoặc cho thao tác không khả thi. Đã bổ sung tải tombstone metadata trong panel; nếu KTV không có quyền xem hồ sơ deleted thì ẩn cả hai lựa chọn và yêu cầu Admin xác nhận. Khi xử lý Local, luôn xác minh lại tombstone từ RPC trước khi ghi Cloud.
+- Rà soát retry: mutation `pending` trước đây chỉ được retry thủ công trong Cloud panel; mutation bị kẹt ở `processing` sau khi tab/trình duyệt đóng cũng không tự phục hồi. Đã bổ sung tự retry sau lần đồng bộ đầu và khi trình duyệt phát sự kiện `online`, chỉ cho tài khoản có `assets.update`; xử lý `pending` và `processing` đã cũ hơn 60 giây. Mỗi lần retry vẫn đi qua Cloud edit lock + mutation receipt idempotent; conflict không được tự retry. Thêm regression test.
+- CI cuối cùng sau phần tự retry và xử lý tombstone theo quyền: Build and test **success** (run 489), Validate BAOTRI Mini **success** (run 201) tại commit `e881a6ee82295a45c93512c52bfff108b94d6316`. Commit sau đó chỉ chỉnh tài liệu TIENDO.
+
+
+### Bổ sung bảo vệ retry mutation cũ — 23/11/2026
+- Rà soát lại hàm `retryCloudAssetMutation` phát hiện mutation có thể mang snapshot cũ trong khi Local đã đổi `updatedAt`; nếu retry thành công, watermark đồng bộ không được phép nhảy lên phiên bản Local mới hơn.
+- Đã bổ sung preflight: xác minh organization/assetId/cloudCode của liên kết; nếu liên kết sai hoặc đang conflict thì chuyển mutation sang conflict, không gọi RPC ghi Cloud.
+- Nếu `local.updatedAt` khác `mutation.localUpdatedAt`, đánh dấu mutation và link conflict, giữ nguyên dữ liệu Local, không gửi snapshot cũ lên Cloud.
+- Khi retry hợp lệ, watermark `lastSyncedLocalUpdatedAt` lấy từ `mutation.localUpdatedAt`, không lấy timestamp Local đọc lại một cách mù quáng.
+- Bổ sung regression test cho stale snapshot retry.
+- Commit code: `f85cf13ded129ee81b284dc3dc4a658174264ee6`; commit test: `60c16735c54633d761c0374bb2f269463cc8506c`.
+- CI cho commit mới đang chờ; chưa tuyên bố đạt trước khi GitHub Actions xác nhận.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Rà soát tiếp phát hiện retry mutation có thể cập nhật thiết bị Cloud thành công nhưng bỏ sót lịch sử đổi nhóm đang chờ. Đã bổ sung gọi `mirror_cloud_asset_group_change_history` cho các bản ghi pending gắn đúng mutation; chỉ đánh dấu `syncStatus='synced'` sau khi RPC lịch sử thành công. Nếu RPC lỗi, mutation vẫn pending để lần retry idempotent tiếp theo hoàn tất phần lịch sử.
+- Bổ sung regression test cho thứ tự đồng bộ lịch sử đổi nhóm trong retry. Commit code `f50c8c6`, test `4da8d0d`; CI mới đang chờ.
+
+- Rà soát nhật ký hoạt động phát hiện khi cập nhật/xóa mềm/lưu kho Cloud thất bại, Local đã lưu snapshot nhưng event lịch sử chỉ được tạo sau khi Cloud thành công; retry sau đó không tạo lại event. Đã chuyển sang ghi event Local ở trạng thái pending ngay khi thao tác Local được lưu dù Cloud lỗi; event chỉ được mirror lên Cloud sau khi mutation receipt có trạng thái applied. Nếu mirror history lỗi, event giữ pending để lần sync online sau thử lại.
+- Sử dụng mutationId làm event ID để retry history idempotent; bổ sung regression tests cho update, delete và archive. Commit App `5995b7e` + `60ce980`, test `1acee3d` + `27f1716`. CI mới đang chờ.
+
+- Rà soát tiếp phát hiện một đường retry lịch sử độc lập trong `useEffect(online)` gọi thẳng `syncAssetHistoryEntry`, có thể đẩy event lịch sử lên Cloud trước khi mutation tương ứng được xác nhận. Đã thêm điều kiện: nếu event ID khớp mutation thì chỉ mirror khi mutation status là `applied`; event thông thường không gắn mutation vẫn sync bình thường.
+- Phát hiện nút retry thủ công trong Cloud panel sau khi mutation được xác nhận chưa mirror event lịch sử pending tương ứng. Đã bổ sung bước mirror event theo đúng mutation ID, báo rõ nếu phần lịch sử còn lỗi; thêm regression tests cho cả hai đường retry.
+- Commit App `0a788d8`, test `577556a`; Cloud panel `4825ce2`, chỉnh thông báo `6160a76`; test `c29b58e`. CI mới đang chờ xác nhận.
+
+- CI sau sửa gate lịch sử và retry thủ công: Build and test **success** (run 507); Validate BAOTRI Mini **success** (run 219), tại head `e78b6dac313ead8c566e05fcd5b3397f015fd8be`.
+
+- Rà soát xử lý conflict phát hiện hai lựa chọn **Chọn Cloud** và **Chọn Local** chưa tạo nhật ký hoạt động. Đã nối callback ghi lịch sử chung từ App vào Cloud panel; ghi nhận cả trường hợp người dùng chọn phiên bản đúng dù không có trường dữ liệu thay đổi (quyết định xử lý conflict vẫn là một hoạt động cần audit). Với lựa chọn Local, event dùng mutationId làm ID để tránh trùng khi retry; với lựa chọn Cloud, event có ID riêng. Bổ sung regression test kiểm tra cả hai nhánh và cơ chế force ghi event không có field diff. Commit App `1f9697c`, Cloud panel `5dfa99f`, test `ec42f3e`. CI tại head mới đang chờ xác nhận; chưa chạy browser E2E.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. PR #30 vẫn OPEN, chưa merge.
+
+- Rà soát quyền Viewer phát hiện Cloud panel trước đây vẫn gọi `listCloudAssets` và RPC lấy tombstone ngay cả khi tài khoản không có `assets.view`; đồng thời các handler chỉ dựa vào trạng thái nút disabled, chưa tự kiểm tra quyền ở đầu hàm. Đã sửa: chỉ đọc danh sách Cloud/tombstone khi có `assets.view`; retry và xử lý conflict yêu cầu đồng thời `assets.view` + `assets.update`; tải Cloud kiểm tra quyền ngay trong handler; nhập Local/Preview kiểm tra `assets.import` ngay trong handler.
+- Rà soát cách đổi tổ chức/đổi quyền phát hiện Local cache cũ có thể còn hiển thị trong lúc truy vấn phạm vi mới đang chạy, và người không có `assets.view` vẫn có thể đọc dữ liệu đã cache trong trình duyệt. Đã xóa danh sách đang hiển thị ngay khi scope thay đổi, không nạp cache nếu thiếu `assets.view`, đồng thời bỏ qua kết quả truy vấn cũ khi đã chuyển tổ chức. Bổ sung regression tests cho ranh giới quyền và cách ly cache.
+- Commit Cloud panel `a93d8d4`, siết quyền conflict `d3ed7f0`, App `3060a2f`, test `48c554e` và `c4f8229`. CI tại head mới đang chờ; chưa chạy browser E2E. Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Rà soát sâu hơn phát hiện hai điểm phân quyền: (1) `saveAsset` trước đây chỉ kiểm tra vai trò có thể mutate, không kiểm tra lại grant `assets.create`/`assets.update` tại thời điểm bấm Lưu; draft cấp mã cũ cũng có thể được tiếp tục khi quyền tạo đã mất. Đã bổ sung kiểm tra quyền theo thao tác create/update ngay trong `saveAsset`, chặn tiếp tục draft khi không còn `assets.create` và ẩn khu vực draft với người không có quyền tạo.
+- (2) Luồng tự retry mutation sau reconnect trước đây chỉ kiểm tra `assets.update`, chưa xác minh vai trò Admin/KTV; người dùng Viewer bị gán nhầm grant vẫn có thể kích hoạt retry nền. Đã yêu cầu đồng thời vai trò Admin/KTV và `assets.update`, phù hợp cổng quyền giao diện. Ngoài ra, sửa một lỗi audit: nhánh retry nền dùng `mutation?.status !== 'applied'` khiến event lịch sử độc lập (không gắn mutation) cũng bị bỏ qua vĩnh viễn; đổi thành chỉ chặn khi mutation thực sự tồn tại và chưa applied, để lịch sử thông thường có thể đồng bộ lại.
+- Ẩn nút Local ↔ Cloud khi tài khoản không có quyền xem, nhập hoặc cập nhật. Regression tests bổ sung cho create/update, draft, Viewer không được auto retry và đồng bộ lại event lịch sử độc lập. Commit App `f62f022`, `4cebe7b`, `741bc52`; tests `904dc48`, `f272760`, `b4a7dc7`.
+- CI tại head mới đang chờ; chưa chạy browser E2E. Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Tiếp tục kiểm tra cách ly tenant phát hiện hàm `loadAssets(scope)` có thể hoàn tất truy vấn cũ sau khi người dùng đã chuyển tổ chức và ghi ngược danh sách thiết bị cũ lên giao diện. Đã ràng buộc việc áp dụng kết quả theo scope hiện hành, giữ kiểm tra `assets.view`, đồng thời effect nạp ban đầu xóa danh sách cũ và bỏ qua kết quả truy vấn đã stale. Cloud panel cũng không hiển thị metadata mutation pending cho tài khoản thiếu `assets.view`.
+- Regression tests bổ sung cho race truy vấn tenant và việc ẩn metadata pending. Commit App `077e6cc`, Cloud panel `fd70144`, test `8272b7f`, `7376eb9`.
+- Chưa có workflow/status checks cho head mới; chưa chạy browser E2E. Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Kiểm tra chuyển tài khoản phát hiện `signOut` trước đây không xóa các state đang mở như hồ sơ chi tiết, ảnh đang xem, form chỉnh sửa, Cloud panel và danh sách Local đã nạp. Sau khi đăng nhập tài khoản khác trên cùng trình duyệt, một số state cũ có thể còn tồn tại trong bộ nhớ giao diện. Đã bổ sung xóa cache thiết bị và các modal/state nhạy cảm khi đăng xuất; giữ nguyên các draft/reservation đã lưu bền vững để có thể khôi phục đúng quy trình. Bổ sung regression test cho sign-out isolation. Commit App `63b2d06`, test `14b67e6`.
+- CI tại head mới chưa được GitHub trả về; chưa chạy browser E2E. Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+- Regression test sau đợt rà quyền bắt được một handler còn thiếu cổng `assets.view`: `resolveConflictLocal`. Đã bổ sung kiểm tra kép `assets.view` + `assets.update` ngay đầu handler; các nút retry/Chọn Cloud/Chọn Local cũng cùng kiểm tra kép. Đây là lỗi test phát hiện, đã sửa trước khi kết thúc lượt rà.
+- Tại code head `c05a4e157bfdc2aecddf6e0fe4f9f84d0d8b7f97`: **Build and test success** (run 537, unit tests và build đều pass); **Validate BAOTRI Mini success** (run 249, npm run build pass). Các chỉnh sửa tài liệu sau đó chưa có; hiện ghi nhận mốc CI này. Chưa chạy browser E2E.
+- Không merge PR #30, không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy.
+
+## 23/11/2026 – Sửa lỗi xóa vĩnh viễn tổ chức (PR #30)
+
+- Điều tra log Supabase Test tại 18:47 ngày 23/11: Edge Function platform-manage-organization trả 400 do RPC platform_delete_organization gặp PostgreSQL 23503 – FK organization_equipment_catalog_organization_id_fkey. Hàm xóa đã dọn assets/members/roles nhưng bỏ sót public.organization_equipment_catalog, khiến câu DELETE tổ chức bị chặn.
+- Xác minh transaction rollback toàn bộ: tổ chức Cong Ty B (ID a178ac38-3d36-42f6-bdee-3262458ddfab) vẫn tồn tại, trạng thái active; 1 catalog row, 1 member và 3 roles vẫn còn; 0 assets. Không có dữ liệu bị xóa dở.
+- Rà toàn bộ FK trực tiếp tới organizations trên Test: ngoài catalog còn các bảng private asset_group_change_history, asset_id_sequence_reservations, asset_id_sequences và public asset_activity_history; các bảng plan history/requests có CASCADE. Migration mới bổ sung xóa theo thứ tự an toàn: history/receipts/locks → assets → ID reservations/sequences/catalog → plan history/requests → members/roles → organization. Vẫn giữ nguyên Auth users và profiles.
+- Đã apply migration `20261123120236_fix_platform_delete_organization_dependencies` lên Supabase Test BAOTRI Mini New; migration được ghi nhận trong lịch sử. File nguồn trên branch đã được đổi tên đúng timestamp thành `supabase/migrations/20261123120236_fix_platform_delete_organization_dependencies.sql`.
+- Đọc lại function sau apply: `SECURITY DEFINER=true`, service_role có EXECUTE, authenticated không có EXECUTE; định nghĩa đã có bước dọn `organization_equipment_catalog`.
+- Kiểm tra lại tổ chức Cong Ty B sau apply: vẫn tồn tại active, 1 catalog row, 1 member, 3 roles, 0 assets. Không có tổ chức nào bị xóa trong lúc áp dụng migration.
+- Sửa PlatformAdminPanel.tsx đọc JSON body trong FunctionsHttpError.context để hiển thị lỗi thật thay vì câu chung Edge Function returned a non-2xx status code. Edge Function source phân loại FK 23503 thành HTTP 409 và trả code lỗi có cấu trúc; source chưa deploy, UI chưa phát hành.
+- Thêm regression tests cho thứ tự xóa phụ thuộc và hiển thị lỗi. Chỉ apply schema trên Supabase Test; không deploy Edge Function, không thay Production.

@@ -16,6 +16,19 @@ const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
 const date=(value:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
 const planRank:Record<PlanCode,number>={A:1,B:2,C:3,D:4}
 
+const functionErrorMessage=async(error:unknown)=>{
+ const fallback=error instanceof Error?error.message:String(error)
+ const context=(error as {context?:unknown}|null)?.context
+ if(context instanceof Response){
+  try{
+   const payload=await context.clone().json() as {error?:unknown;message?:unknown}
+   if(typeof payload.error==='string'&&payload.error.trim())return payload.error
+   if(typeof payload.message==='string'&&payload.message.trim())return payload.message
+  }catch{/* Keep the SDK fallback when the response is not JSON. */}
+ }
+ return fallback
+}
+
 const PROVISION_DRAFT_KEY='baotri-platform-provision-draft-v1'
 const readProvisionDraft=()=>{
  try{
@@ -112,7 +125,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
     password:managementPassword,
     confirmation:managementAnswer
    }})
-   if(error)throw new Error(error.message)
+   if(error)throw new Error(await functionErrorMessage(error))
    if(data?.error)throw new Error(data.error)
    const label=management.action==='suspend'?'đã tạm ngưng':management.action==='reactivate'?'đã kích hoạt lại':'đã xóa vĩnh viễn'
    setManagementSuccess(`Tổ chức "${management.organization.name}" ${label} thành công.`)
