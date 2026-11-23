@@ -1400,3 +1400,63 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Edge Function Superadmin đã deploy lại trên Supabase Test, version 2, ACTIVE, verify_jwt=true.
 - Post-check read-only: requests=0; anon/authenticated không EXECUTE review RPC; service_role có EXECUTE; DB function xác nhận bắt buộc lý do từ chối.
 - Không gửi request thử, không Reset dữ liệu. Cần CI trên head mới và Browser E2E; Vercel báo repository không liên kết project nên hiện chưa có Preview deployment để kiểm tra từ trình duyệt.
+
+
+### Sync Engine Local-first – khởi động Giai đoạn 1 (23/11/2026)
+
+- Tạo nhánh feature/local-first-sync-engine-mainline từ đúng main hiện tại (b19cce244c6534a1ef624214a7da935203ad12a0); không dựa trên nhánh/mốc cũ.
+- Bổ sung scheduler độc lập src/lib/syncEngine.ts: chạy ngay khi phiên hợp lệ khởi động, khi online/focus/tab visible và polling 60 giây; ngăn chạy chồng, dừng theo lifecycle của tenant/session. Scheduler chỉ gọi chu kỳ đồng bộ hiện có, không tự ghi dữ liệu và không bỏ qua quyền/RPC/edit-lock/reset guard.
+- Bổ sung metadata retry bền vững vào AssetMutation: lastAttemptAt, nextAttemptAt, failureKind, deviceId; không cần thay đổi schema index Dexie nên không tăng version DB.
+- Retry mutation có exponential backoff + jitter, giới hạn 15 phút; lỗi conflict hoặc lỗi phân quyền/validation được giữ ở trạng thái cần xử lý thủ công, không tự retry vòng lặp. Người có quyền có thể chủ động retry lại từ Cloud panel sau khi xử lý nguyên nhân.
+- Tự động retry chỉ chọn mutation đến hạn, không retry mutation bị giữ thủ công; vẫn giữ nguyên kiểm tra tenant, quyền Admin/KTV + assets.update, reset generation, Cloud edit lock, idempotency và optimistic version.
+- Bổ sung scripts/syncEngine.test.mjs kiểm tra lifecycle scheduler, bounded polling, retry backoff và manual retry.
+- Giai đoạn này vẫn dùng pull phân trang hiện hữu theo chu kỳ 60 giây; đây là cầu nối tạm thời. Chưa có durable Cloud change feed/cursor và Realtime; sẽ làm ở Giai đoạn 2–3 để bỏ full scan định kỳ.
+- Chỉ thay đổi source/tests/docs trên nhánh tính năng. Không apply migration, không thay đổi Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chưa merge PR; cần CI/build và rà soát diff trước khi mở PR.
+
+
+### Cloud Change Feed – thiết kế Giai đoạn 2 (23/11/2026)
+
+- Đã đối chiếu schema/migration history thực tế của Supabase Test BAOTRI-Mini-New; assets có RLS theo tenant, permission helper assets.view, soft-delete, reset generation và physical reset transaction.
+- Test chưa có asset_sync_events và publication supabase_realtime chưa có bảng nào. Không có trigger thay đổi thiết bị ngoài ba trigger hiện hữu; reset vật lý xóa assets trong transaction và ghi reset request sau khi xóa.
+- Đã lập thiết kế chi tiết tại docs/LOCAL_FIRST_SYNC_PHASE2.md: per-org counter row-lock (không dùng bigserial cursor), event feed metadata-only, asset DML trigger, reset marker phát sau các hard-delete event, RLS SELECT assets.view, checkpoint + incremental Pull RPC, initial snapshot catch-up, Dexie cursor atomicity, Realtime chỉ làm wake-up.
+- Cần giữ nguyên edit-lock, reset generation barrier, audit history, tenant isolation và Viewer read-only. Không gửi ảnh/payload thiết bị trong feed.
+- Chưa tạo migration SQL, chưa apply DDL, chưa bật publication, chưa thay đổi Supabase Test/Production. Lý do: môi trường làm việc hiện không có Supabase CLI để tạo migration bằng `supabase migration new`; không tự thay thế bằng cách đoán filename hoặc ghi DDL trực tiếp. Cần khôi phục workflow CLI/migration trước khi chuyển thiết kế thành migration.
+- PR #33 vẫn Draft; CI của commit fd376ca đã xanh ở cả Build and test và Validate BAOTRI Mini.
+
+
+### Incremental Pull – client scaffolding (23/11/2026)
+
+- PR #33 bổ sung `src/lib/cloudAssetChanges.ts`: typed RPC wrappers cho checkpoint và feed; xác thực tenant, event type, sequence tăng dần, page-size <=500, snapshot shape và cursor progress. Chưa nối vào sync cycle để tránh kích hoạt khi Test chưa có RPC/migration.
+- Dexie schema version 8 thêm `assetSyncCursors` theo organizationId, không tự đặt cursor khi upgrade. `readAssetSyncCursor()` chỉ đọc, từ chối `local-preview` và cursor hỏng; không có helper ghi cursor độc lập vì ghi phải atomic cùng apply page.
+- Thêm `scripts/cloudAssetChanges.test.mjs` regression checks và ghi rõ trạng thái tại docs/LOCAL_FIRST_SYNC_PHASE2.md.
+- CI Build and test đã PASS trên commit 5d50b2327b66c31aea076e2bcf5fc1e40698b8ac. Validate BAOTRI Mini PASS cùng commit. Các workflow mới hơn đang chạy; cần xác minh head cuối.
+- Vẫn chưa có migration/DDL, không thay đổi Supabase Test hoặc Production; Incremental Pull chưa bật, full scan hiện hành giữ nguyên.
+
+
+### CI phát hiện và sửa regression test – 23/11/2026
+
+- Build and test trên commit 0391e3116c3d10e7334d9f969705137a62ebb11 fail 1/92 test do assertion regex phân biệt hoa/thường (`Reset event` trong source nhưng test tìm `reset event`). Đây là lỗi test assertion, không phải lỗi code runtime.
+- Đã sửa assertion tại commit 5013ee7ee5598da2ae90714ada4eda3f6e9760f7. Build and test + Validate đang chạy lại; chưa đánh dấu xanh cho head mới cho đến khi kết quả hoàn tất.
+
+
+### Incremental Pull – Cloud Change Feed (23/11/2026)
+
+- Đã tạo migration `20261123155243_asset_sync_change_feed.sql` và apply **chỉ Supabase Test** `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq`). Migration history Test xác nhận version `20261123155243`.
+- Tables private: `asset_sync_counters`, `asset_sync_events`; RLS enabled, revoke trực tiếp quyền đọc client. Sequence tăng theo organization, counter-row lock giữ commit order.
+- Asset trigger ghi event Create/Update/Soft-delete/Restore/Hard-delete. Snapshot tương thích shape Cloud (asset_key = mã quản lý; bỏ DB `id`). Soft-delete snapshot chỉ trả cho user có `assets.delete`.
+- Reset generation trigger tạo 1 reset barrier; reset RPC bật transaction-local suppression khi delete assets, tránh feed nổ event hard-delete cho toàn bộ thiết bị.
+- RPC `get_asset_sync_checkpoint` và `list_asset_sync_changes`: public invoker wrappers, private checked functions; require authenticated + org active + `assets.view`; pull page 1–500, monotonic cursor, current generation. Empty page không advance cursor.
+- Đã kiểm tra: migration history, RPC + trigger tồn tại, tables RLS, grants đúng (authenticated execute RPC, anon không, client không SELECT tables). Authenticated-membership smoke test gọi Checkpoint + Pull trang rỗng thành công. Feed/counters hiện chưa có rows; không backfill và không đụng dữ liệu tài sản.
+- Bỏ index trùng primary key bằng migration cleanup `20261123155408_asset_sync_feed_index_cleanup.sql`.
+- Incremental Pull chưa bật; Full Scan hiện hành tiếp tục. Tiếp theo triển khai page apply/cursor atomic ở Dexie, bootstrap Checkpoint→Full Scan→Catch-up, reset barrier, conflict protection, session/org cancellation và test end-to-end.
+- CI xanh trên commit `89260897841035ef54b0361857343978031b62a8`; docs/test commits mới hơn đang chạy kiểm tra lại.
+
+
+### Incremental Pull – client integration (23/11/2026)
+
+- App sync scheduler đã chuyển sang `syncCloudAssetsIncrementally`; bootstrap checkpoint → Full Scan cũ (một lần) → Catch-up Pull; bootstrap chưa hoàn tất thì Full Scan được lặp lại an toàn.
+- Cursor Dexie theo tổ chức có `bootstrapComplete`; Pull page size 200, cursor advance chỉ sau khi xử lý hết event page. Asset/link/mutation xử lý từng transaction và idempotent; cursor là transaction riêng, không phải atomic với cả page. Crash trước cursor commit sẽ replay page, không bỏ event.
+- Upsert reuse Cloud reconcile logic; soft/hard-delete reuse tombstone/conflict protection; Reset barrier skip snapshot trước marker (cả page trước marker khi generation gap); nếu marker cuối page chưa phải generation mới nhất thì tiếp tục skip event sau marker cho tới khi barrier mới nhất được tải. Thiếu barrier sẽ dừng, không advance cursor.
+- Nếu RPC chưa có ở môi trường, fallback Full Scan; Production chưa migrate/deploy. Scheduler online/focus/visibility/60s, chưa Realtime.
+- Test DB transaction smoke-test: create/upsert, soft-delete, restore/upsert, hard-delete, reset marker và event timestamp; rollback hoàn toàn. Sau kiểm tra không còn test asset, event hay counter rows. Test dataset thật không bị thay đổi.
+- CI test/build đang xác minh commit mới nhất; còn cần browser test hai thiết bị, cancel/org switch, interrupted-page replay và reset giữa các page trước khi đánh giá feature hoàn chỉnh.

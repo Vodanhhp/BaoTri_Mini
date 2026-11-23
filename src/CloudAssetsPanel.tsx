@@ -47,6 +47,9 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   if(!canView||!canUpdate){setError('Cần quyền xem và cập nhật thiết bị để retry mutation.');return}
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
+   // A manual retry is an explicit operator decision to re-attempt a previously
+   // classified permanent failure after permissions or source data have changed.
+   await db.assetMutations.update(mutation.mutationId,{failureKind:undefined,nextAttemptAt:undefined})
    const result=await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
    const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
    const currentMutation=await db.assetMutations.get(mutation.mutationId)
@@ -236,7 +239,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
       const cloudRecord=cloud.find(row=>row.code===asset?.code)
       const cloudDeleted=Boolean(cloudRecord?.deletedAt||deletedCloudCodes.includes(asset?.code??''))
       const cloudDeletionProfileAvailable=Boolean(cloudRecord?.deletedAt)
-      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?(cloudDeletionProfileAvailable?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':'Cloud đã xóa mềm; cần Admin xác nhận Cloud vì vai trò hiện tại không được xem hồ sơ đã xóa.'):m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span>{(!cloudDeleted||cloudDeletionProfileAvailable)&&<button className="soft-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>}{!cloudDeleted&&<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
+      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':m.failureKind==='permanent'?'Cần kiểm tra thủ công':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?(cloudDeletionProfileAvailable?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':'Cloud đã xóa mềm; cần Admin xác nhận Cloud vì vai trò hiện tại không được xem hồ sơ đã xóa.'):m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span>{(!cloudDeleted||cloudDeletionProfileAvailable)&&<button className="soft-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>}{!cloudDeleted&&<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canView||!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
     })}</div>}
    </div>
    <div className="cloud-section">

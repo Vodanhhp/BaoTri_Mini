@@ -44,11 +44,14 @@ test('Cloud pagination stops if the backend repeats a next cursor', async () => 
 
 test('pending Cloud mutations retry after initial sync or browser reconnect, with stale processing recovery', async () => {
   const source = await read('../src/App.tsx')
-  assert.match(source, /retryCloudAssetMutation/)
-  assert.match(source, /window\.addEventListener\('online',runSync\)/)
-  assert.match(source, /m\.status==='pending'\|\|\(m\.status==='processing'&&Date\.now\(\)-new Date\(m\.updatedAt\)\.getTime\(\)>60000\)/)
-  assert.match(source, /context\.permissions\.includes\('assets\.update'\)/)
-  assert.match(source, /await syncCloudAssetsToLocal\(client,organizationId/)
+  const scheduler = await read('../src/lib/syncEngine.ts')
+  assert.ok(source.includes('retryCloudAssetMutation'))
+  assert.ok(source.includes('startSyncEngine({run:runSync'))
+  assert.ok(scheduler.includes("window.addEventListener('online', onOnline)"))
+  assert.ok(source.includes("m.status==='pending'&&m.failureKind!=='permanent'"))
+  assert.ok(source.includes("m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000"))
+  assert.ok(source.includes("context.permissions.includes('assets.update')"))
+  assert.ok(source.includes('await syncCloudAssetsIncrementally(client,organizationId'))
 })
 
  

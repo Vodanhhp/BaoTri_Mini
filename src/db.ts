@@ -91,6 +91,15 @@ export type AssetHistory = {
   syncStatus: 'pending' | 'synced' | 'local_only'
 }
 
+export type AssetSyncCursor = {
+  organizationId: string
+  lastSequence: number
+  resetGeneration: number
+  bootstrapComplete: boolean
+  initializedAt: string
+  updatedAt: string
+}
+
 export type OrganizationAssetResetState = {
   organizationId: string
   generation: number
@@ -143,6 +152,11 @@ export type AssetMutation = {
   appliedAt?: string
   cloudUpdatedAt?: string
   lastError?: string
+  /** Durable retry scheduling; omitted on legacy mutations until first retry. */
+  lastAttemptAt?: string
+  nextAttemptAt?: string
+  failureKind?: 'transient' | 'permanent'
+  deviceId?: string
 }
 
 class BaoTriDatabase extends Dexie {
@@ -153,6 +167,7 @@ class BaoTriDatabase extends Dexie {
   assetHistory!: Table<AssetHistory, string>
   assetDrafts!: Table<AssetDraft, string>
   organizationAssetResetStates!: Table<OrganizationAssetResetState, string>
+  assetSyncCursors!: Table<AssetSyncCursor, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -212,6 +227,16 @@ class BaoTriDatabase extends Dexie {
       assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
       assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]',
       organizationAssetResetStates: 'organizationId, generation'
+    })
+    this.version(8).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
+      assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]',
+      organizationAssetResetStates: 'organizationId, generation',
+      assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt'
     })
   }
 }
