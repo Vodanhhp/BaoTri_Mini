@@ -229,6 +229,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
    </tbody></table></div>
    <div className="auth-note" style={{marginTop:10}}>Tài khoản Auth được đếm duy nhất trên toàn nền tảng. Một tài khoản tham gia nhiều doanh nghiệp chỉ tính một lần ở tổng Auth, nhưng được tính một lượt trong từng doanh nghiệp.</div>
    </>}
+  </>}
   {(!fullPage||activeSection==='platform-organizations')&&<>
   {loadingOverview&&!overview&&<div className="auth-note">Đang tải danh sách tổ chức…</div>}
   {overviewError&&<div className="auth-error">{overviewError}</div>}
