@@ -1358,3 +1358,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Chặn audit event mồ côi phát sinh sau khi reset: kiểm tra asset tồn tại trong cùng Dexie transaction với ghi history; audit sync cũng kiểm tra asset scope/code trước khi gửi.
 - Cloud asset list re-check generation sau khi phân trang.
 - Chỉ sửa source trên branch; chưa apply migration, chưa deploy Edge Function, chưa chạm Production.
+
+
+### Cập nhật triển khai và rà soát Reset — 23/11/2026
+
+- Đính chính checkpoint phía trên: migration `20261123130000_superadmin_organization_asset_reset` **đã được apply lên Supabase Test BAOTRI Mini New** sau khi người dùng phê duyệt; version được ghi trong migration history là `20261123132922`. Không apply lên Production.
+- Edge Function `platform-reset-organization-assets` đã deploy lên Supabase Test, trạng thái **ACTIVE**, `verify_jwt=true`; source deployed trùng nội dung branch tại thời điểm deploy.
+- Kiểm tra SQL chỉ đọc sau deploy: các bảng reset state/device/request đang có 0 rows; Reset chưa từng được invoke. Không xóa hoặc sửa hồ sơ thiết bị/tổ chức.
+- Kiểm tra quyền thực tế trên DB: reset RPC và status RPC chỉ EXECUTE bởi `service_role`; register/acknowledge và các RPC đồng bộ generation-aware chỉ EXECUTE bởi `authenticated`; không hàm nào trong nhóm kiểm tra cho `anon` EXECUTE. Các hàm có `search_path=''` và `row_security=off`; từng wrapper vẫn phải giữ kiểm tra user/permission/generation trong thân hàm.
+- GitHub Actions run `45183190303`: job build **success**, gồm Unit tests và Build. PR head tại thời điểm rà soát: `3c667c92a6a3c81fc0f1acb7da2028189f1b81dc`.
+- Supabase Security Advisor vẫn có cảnh báo generic về SECURITY DEFINER callable by authenticated (22 findings) và leaked-password protection disabled. Không thu hồi quyền hàng loạt; các RPC authenticated được ứng dụng sử dụng và có kiểm tra quyền/generation. Cần tiếp tục review từng finding và đánh giá cấu hình Auth riêng.
+- **Chưa chạy browser E2E**: chưa có phiên Superadmin/browser được cung cấp để xác minh luồng giao diện thực tế. Cũng chưa chạy thao tác Reset trên tổ chức nào. Muốn kiểm thử destructive cần chọn đúng tổ chức Test chuyên dụng và xác nhận riêng.
+- PR #31 vẫn OPEN, DRAFT, chưa merge; base PR #30 vẫn OPEN, chưa merge. Production/DNS/Pages không thay đổi.
