@@ -175,6 +175,9 @@ export async function syncCloudAssetsToLocal(
     else if(result==='protected')summary.protectedLocal++
     else summary.updated++
   }
+  // A reset may commit while pagination is in progress. Re-check after the read
+  // so any records downloaded from the pre-reset snapshot are purged immediately.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   return summary
 }
 
