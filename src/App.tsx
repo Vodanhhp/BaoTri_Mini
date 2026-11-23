@@ -242,7 +242,7 @@ export default function App() {
           for(const entry of pendingHistory){
             if(!active||!navigator.onLine)break
             const mutation=await db.assetMutations.get(entry.id)
-            if(mutation?.status!=='applied')continue
+            if(mutation&&mutation.status!=='applied')continue
             try{
               const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
                 p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
