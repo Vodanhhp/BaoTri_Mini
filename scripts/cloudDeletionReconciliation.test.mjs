@@ -215,5 +215,5 @@ test('organization lifecycle UI extracts the server error body from Supabase Fun
  assert.match(source,/throw new Error\\(await functionErrorMessage\\(error\\)\\)/)
  const edge = await read('../supabase/functions/platform-manage-organization/index.ts')
  assert.match(edge,/detail\\?\\.code==='23503'\\?409:400/)
- assert.match(edge,/response\\(\\{error:message,code:/)
+ assert.match(edge,/response\(\{error:message,code:/)
 })
