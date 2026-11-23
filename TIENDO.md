@@ -1400,3 +1400,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Edge Function Superadmin đã deploy lại trên Supabase Test, version 2, ACTIVE, verify_jwt=true.
 - Post-check read-only: requests=0; anon/authenticated không EXECUTE review RPC; service_role có EXECUTE; DB function xác nhận bắt buộc lý do từ chối.
 - Không gửi request thử, không Reset dữ liệu. Cần CI trên head mới và Browser E2E; Vercel báo repository không liên kết project nên hiện chưa có Preview deployment để kiểm tra từ trình duyệt.
+
+
+### Sync Engine Local-first – khởi động Giai đoạn 1 (23/11/2026)
+
+- Tạo nhánh feature/local-first-sync-engine-mainline từ đúng main hiện tại (b19cce244c6534a1ef624214a7da935203ad12a0); không dựa trên nhánh/mốc cũ.
+- Bổ sung scheduler độc lập src/lib/syncEngine.ts: chạy ngay khi phiên hợp lệ khởi động, khi online/focus/tab visible và polling 60 giây; ngăn chạy chồng, dừng theo lifecycle của tenant/session. Scheduler chỉ gọi chu kỳ đồng bộ hiện có, không tự ghi dữ liệu và không bỏ qua quyền/RPC/edit-lock/reset guard.
+- Bổ sung metadata retry bền vững vào AssetMutation: lastAttemptAt, nextAttemptAt, failureKind, deviceId; không cần thay đổi schema index Dexie nên không tăng version DB.
+- Retry mutation có exponential backoff + jitter, giới hạn 15 phút; lỗi conflict hoặc lỗi phân quyền/validation được giữ ở trạng thái cần xử lý thủ công, không tự retry vòng lặp. Người có quyền có thể chủ động retry lại từ Cloud panel sau khi xử lý nguyên nhân.
+- Tự động retry chỉ chọn mutation đến hạn, không retry mutation bị giữ thủ công; vẫn giữ nguyên kiểm tra tenant, quyền Admin/KTV + assets.update, reset generation, Cloud edit lock, idempotency và optimistic version.
+- Bổ sung scripts/syncEngine.test.mjs kiểm tra lifecycle scheduler, bounded polling, retry backoff và manual retry.
+- Giai đoạn này vẫn dùng pull phân trang hiện hữu theo chu kỳ 60 giây; đây là cầu nối tạm thời. Chưa có durable Cloud change feed/cursor và Realtime; sẽ làm ở Giai đoạn 2–3 để bỏ full scan định kỳ.
+- Chỉ thay đổi source/tests/docs trên nhánh tính năng. Không apply migration, không thay đổi Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chưa merge PR; cần CI/build và rà soát diff trước khi mở PR.
