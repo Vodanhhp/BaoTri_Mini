@@ -137,7 +137,8 @@ begin
 
   select generation into v_generation
     from private.organization_asset_reset_state
-   where organization_id = p_organization_id;
+   where organization_id = p_organization_id
+   for share;
 
   if not found then
     raise exception 'Reset generation is not initialized' using errcode = 'P0002';
