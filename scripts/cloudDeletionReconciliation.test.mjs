@@ -170,3 +170,11 @@ test('automatic sync mirrors standalone pending history events but gates mutatio
  assert.match(sync, /if\(mutation&&mutation\.status!=='applied'\)continue/)
  assert.match(sync, /client\.rpc\('record_cloud_asset_history_event'/)
 })
+
+test('late Local asset reload cannot repopulate a previous organization scope', async () => {
+ const source = await read('../src/App.tsx')
+ const loader = source.slice(source.indexOf('const loadAssets = async'), source.indexOf('useEffect(() => {', source.indexOf('const loadAssets = async')))
+ assert.match(loader, /const rows=await db\.assets\.where\('localScope'\)\.equals\(scope\)\.toArray\(\)/)
+ assert.match(loader, /const activeScope=localPreview\?'local-preview':organizationId/)
+ assert.match(loader, /if\(scope===activeScope&&\(localPreview\|\|organizationContexts\.find\(item=>item\.id===scope\)\?\.permissions\.includes\('assets\.view'\)\)\)setAssets\(rows\)/)
+})
