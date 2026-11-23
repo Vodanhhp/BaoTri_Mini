@@ -14,6 +14,7 @@ import { loadOrganizationContext, type OrganizationContext } from './lib/organiz
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
+import { startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
 import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
@@ -289,7 +290,7 @@ export default function App() {
         const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
         if(contextCanMutate&&context.permissions.includes('assets.update')){
           const pending=await db.assetMutations.where('organizationId').equals(organizationId)
-            .filter(m=>m.status==='pending'||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
+            .filter(m=>(m.status==='pending'&&m.failureKind!=='permanent'&&(!m.nextAttemptAt||Date.parse(m.nextAttemptAt)<=Date.now()))||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
           for(const mutation of pending){
             if(!active||!navigator.onLine)break
             try{
@@ -337,10 +338,8 @@ export default function App() {
         running=false
       }
     }
-    void runSync()
-    window.addEventListener('online',runSync)
-    window.addEventListener('focus',runSync)
-    return()=>{active=false;window.removeEventListener('online',runSync);window.removeEventListener('focus',runSync)}
+    const stopSyncEngine=startSyncEngine({run:runSync,isActive:()=>active,intervalMs:60_000})
+    return()=>{active=false;stopSyncEngine()}
   },[session?.user.id,organizationReady,organizationId,localPreview,organizationContexts])
 
   useEffect(()=>{
