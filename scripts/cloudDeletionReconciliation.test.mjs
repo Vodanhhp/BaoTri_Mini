@@ -80,3 +80,11 @@ test('failed Cloud edits retain a Local audit event and mirror it only after mut
   assert.match(source, /client\.rpc\('record_cloud_asset_history_event'/)
   assert.match(source, /db\.assetHistory\.update\(entry\.id,\{syncStatus:'synced'\}\)/)
 })
+
+ 
+test('failed soft-delete and archive operations retain audit events for later Cloud confirmation', async () => {
+  const source = await read('../src/App.tsx')
+  assert.match(source, /recordAssetHistory\(asset,candidate,'deleted','Admin đánh dấu xóa mềm thiết bị',mutationId,true\)/)
+  assert.match(source, /if\(pendingCandidate&&pendingMutationId\)await recordAssetHistory\(asset,pendingCandidate,archived\?'archived':'restored'/)
+  assert.match(source, /if\(mutation\?\.status!=='applied'\)continue/)
+})
