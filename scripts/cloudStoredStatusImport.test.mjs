@@ -16,3 +16,9 @@ test('Local to Cloud import accepts and preserves the Luu kho status', async () 
   assert.ok(migration.includes("'archived_at',nullif(p_asset->>'archived_at','')"))
   assert.ok(migration.includes('private.import_asset_preserving_identity'))
 })
+
+test('migration is compatible with Supabase migration runner transaction wrapper', async () => {
+  const migration = await read('../supabase/migrations/20261123105735_allow_stored_asset_status_in_cloud.sql')
+  assert.doesNotMatch(migration, /^\s*begin\s*;/i)
+  assert.doesNotMatch(migration, /\bcommit\s*;\s*$/i)
+})
