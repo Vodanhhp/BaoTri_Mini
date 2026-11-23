@@ -186,7 +186,7 @@ test('sign out clears cached tenant assets and sensitive modal state before anot
 })
 
 test('organization deletion migration removes every RESTRICT dependency before deleting the tenant', async () => {
- const sql = await read('../supabase/migrations/20261123120000_fix_platform_delete_organization_dependencies.sql')
+ const sql = await read('../supabase/migrations/20261123120236_fix_platform_delete_organization_dependencies.sql')
  const required = [
   'private.asset_group_change_history',
   'public.asset_activity_history',
@@ -203,17 +203,17 @@ test('organization deletion migration removes every RESTRICT dependency before d
  for (let i=0;i<required.length;i++) assert.notEqual(deletePositions[i],-1,'missing cleanup for '+required[i])
  const tenantDelete=sql.indexOf('delete from public.organizations')
  assert.ok(tenantDelete>Math.max(...deletePositions),'tenant must be deleted after every dependent table')
- assert.match(sql,/security definer\\nset search_path = ''/)
- assert.match(sql,/revoke all on function private\\.platform_delete_organization/)
+ assert.match(sql,/security definer\s+set search_path = ''/)
+ assert.match(sql,/revoke all on function private\.platform_delete_organization/)
 })
 
 test('organization lifecycle UI extracts the server error body from Supabase FunctionsHttpError', async () => {
  const source = await read('../src/PlatformAdminPanel.tsx')
- assert.match(source,/const functionErrorMessage=async\\(error:unknown\\)=>/)
+ assert.match(source,/const functionErrorMessage=async\(error:unknown\)=>/)
  assert.match(source,/context instanceof Response/)
- assert.match(source,/payload\\.error==='string'/)
- assert.match(source,/throw new Error\\(await functionErrorMessage\\(error\\)\\)/)
+ assert.match(source,/payload\.error==='string'/)
+ assert.match(source,/throw new Error\(await functionErrorMessage\(error\)\)/)
  const edge = await read('../supabase/functions/platform-manage-organization/index.ts')
- assert.match(edge,/detail\\?\\.code==='23503'\\?409:400/)
+ assert.match(edge,/detail\?\.code==='23503'\?409:400/)
  assert.match(edge,/response\(\{error:message,code:/)
 })
