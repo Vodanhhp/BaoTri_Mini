@@ -1256,3 +1256,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nội dung SQL của 9 file đổi tên không chỉnh sửa. Hai source phục hồi là migration lịch sử; migration sau đã cập nhật function mutation với guard Admin/KTV và trạng thái Lưu kho.
 - Chỉ sửa repository và tests. Không chạy migration, không thay database/dữ liệu, không thay Edge Function hoặc deploy. Cần CI + review; sau đó xác nhận migration list vẫn khớp trên Test trước khi release.
 - PR #27 (khôi phục 2 source) bị trùng phạm vi với nhánh tổng hợp này; chưa đóng/merge PR nào.
+
+- CI lần đầu trên PR #29 thất bại ở 2 test do test scripts còn tham chiếu tên migration cũ sau khi đổi version prefix; inventory test mới đã pass. Đã cập nhật hai test references sang version chính xác; chờ CI chạy lại.
