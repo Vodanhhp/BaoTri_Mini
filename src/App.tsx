@@ -222,7 +222,8 @@ export default function App() {
         if(!active)return
         let retried=0
         let retryFailed=0
-        if(context.permissions.includes('assets.update')){
+        const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
+        if(contextCanMutate&&context.permissions.includes('assets.update')){
           const pending=await db.assetMutations.where('organizationId').equals(organizationId)
             .filter(m=>m.status==='pending'||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
           for(const mutation of pending){
