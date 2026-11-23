@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { db, type AssetSyncCursor } from '../db'
 
 export type AssetSyncCheckpoint = {
   lastSequence: number
@@ -16,6 +17,17 @@ export type AssetSyncEvent = {
   assetUpdatedAt: string | null
   resetGeneration: number | null
   snapshot: Record<string, unknown> | null
+}
+
+export async function readAssetSyncCursor(organizationId: string): Promise<AssetSyncCursor | undefined> {
+  if (!organizationId || organizationId === 'local-preview') return undefined
+  const cursor = await db.assetSyncCursors.get(organizationId)
+  if (!cursor || cursor.organizationId !== organizationId) return undefined
+  if (!Number.isSafeInteger(cursor.lastSequence) || cursor.lastSequence < 0 ||
+      !Number.isSafeInteger(cursor.resetGeneration) || cursor.resetGeneration < 0) {
+    throw new Error('Cursor Incremental Pull Local bị hỏng; không tự bỏ qua hoặc đặt lại cursor.')
+  }
+  return cursor
 }
 
 export type AssetSyncPage = {
