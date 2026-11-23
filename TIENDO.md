@@ -1248,3 +1248,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - `.env.local`: file local untracked; giữ nguyên trên máy, tuyệt đối không add/commit/push.
 - Trước cập nhật tài liệu trên GitHub, các thay đổi local chưa commit/push. Cần đồng bộ branch qua GitHub Desktop và kiểm tra tránh ghi đè thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
+
+
+### Đồng bộ tên file với migration history Supabase Test — 23/11/2026
+- Đối chiếu trực tiếp 32 migration đã áp dụng trên BAOTRI-Mini-New với danh sách file SQL trong main: phát hiện 9 file có tiền tố version không khớp phiên bản database, cùng 2 migration đã chạy nhưng thiếu source (anchor lock và actor_user_id).
+- Nhánh mới đổi tên 9 file SQL để prefix khớp migration version thực tế; phục hồi 2 source đã áp dụng; thêm test inventory kiểm tra đủ 32 migration đã chạy và không trùng version.
+- Nội dung SQL của 9 file đổi tên không chỉnh sửa. Hai source phục hồi là migration lịch sử; migration sau đã cập nhật function mutation với guard Admin/KTV và trạng thái Lưu kho.
+- Chỉ sửa repository và tests. Không chạy migration, không thay database/dữ liệu, không thay Edge Function hoặc deploy. Cần CI + review; sau đó xác nhận migration list vẫn khớp trên Test trước khi release.
+- PR #27 (khôi phục 2 source) bị trùng phạm vi với nhánh tổng hợp này; chưa đóng/merge PR nào.
