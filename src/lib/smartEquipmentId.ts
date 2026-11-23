@@ -100,6 +100,19 @@ const scorePhrase = (input: string, phrase: string): number => {
   if (input === candidate) return 100
   if (input.includes(candidate)) return Math.min(94, 78 + candidate.length / Math.max(input.length, 1) * 16)
   if (candidate.includes(input) && input.length >= 4) return 72
+
+  // Match meaningful individual words as well as complete phrases. This lets
+  // users type "bom", "quat", or "van" without having to prepend "may".
+  // Short fragments are deliberately excluded to avoid noisy suggestions.
+  const inputTokens = input.split(' ').filter(Boolean)
+  const candidateTokens = candidate.split(' ').filter(Boolean)
+  if (!inputTokens.length || inputTokens.some(token => token.length < 3)) return 0
+  const allTokensMatch = inputTokens.every(queryToken =>
+    candidateTokens.some(candidateToken =>
+      candidateToken === queryToken || (queryToken.length >= 3 && candidateToken.startsWith(queryToken))
+    )
+  )
+  if (allTokensMatch) return Math.min(96, 88 + Math.max(0, inputTokens.length - 1) * 2)
   return 0
 }
 
