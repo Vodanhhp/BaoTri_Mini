@@ -1236,15 +1236,28 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Migration lịch sử `asset_activity_history` đã áp dụng trên Supabase Test, version `20261122141731`; đã xác minh bảng, RPC, RLS, policy và ACL: anon không được SELECT/EXECUTE; authenticated truy cập theo RLS và kiểm tra quyền trong RPC.
 - Đã bỏ nút Lưu kho riêng khỏi danh sách thiết bị; thao tác thay đổi trạng thái thực hiện trong form Sửa. Danh sách lưu kho vẫn hỗ trợ Khôi phục.
 - Cập nhật hiển thị trạng thái danh sách: thiết bị xóa mềm hiển thị `ĐÃ XÓA` màu đỏ; lưu kho màu xám; đang hoạt động màu xanh; đang sửa chữa màu cam; thanh lý màu đỏ.
+<<<<<<< HEAD
 - PR #21 `admin-soft-delete-assets` đang OPEN, chưa merge. Head `314b762a414d5c2f111d92c9b366da92b92fc8f8`; base `66a75b0b10b5aafc5f149737f6bacf926b96c50c`.
+=======
+- PR #21 `admin-soft-delete-assets` đang OPEN, chưa merge. Head trước cập nhật tài liệu: `314b762a414d5c2f111d92c9b366da92b92fc8f8`; base `66a75b0b10b5aafc5f149737f6bacf926b96c50c`.
+>>>>>>> 8a6c9294dc9b0bc039517c18e6c0d6eac4cd77a1
 - CI trên head PR #21 đã pass: Validate run `45031764581`; Build and test run `45031764540`. Chưa kiểm thử trình duyệt E2E thực tế.
 - Supabase Security Advisor còn cảnh báo SECURITY DEFINER trên một số RPC; đã ghi nhận, chưa mở rộng xử lý ngoài phạm vi PR.
 - Chưa merge PR #21; không thay đổi main/Production. Chỉ làm việc với Supabase Test.
 
 #### Trạng thái workspace Local ngày 23/11/2026
+<<<<<<< HEAD
 - Thư mục `E:\BaoTri_Mini`, branch `feature/admin-soft-delete-assets`, HEAD `314b762`, đã đồng bộ remote.
 - `TIENDO.md`: cập nhật checkpoint này.
 - `src/App.tsx`: còn 1 thay đổi local về màu/nhãn status badge; đã kiểm tra logic, phù hợp và nên giữ.
 - `.env.local`: file local untracked, phải giữ trên máy, không add/commit/push.
 - Chưa commit hoặc push các thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo từng kịch bản.
+=======
+- Thư mục local `E:\\BaoTri_Mini`, branch `feature/admin-soft-delete-assets`, HEAD mã ngắn `314b762` tại thời điểm checkpoint trước khi cập nhật tài liệu.
+- `TIENDO.md`: cập nhật checkpoint này.
+- `src/App.tsx`: còn 1 thay đổi local về màu/nhãn status badge; đã kiểm tra logic, phù hợp và nên giữ.
+- `.env.local`: file local untracked, phải giữ trên máy, không add/commit/push.
+- Trước cập nhật GitHub lần này, các thay đổi local chưa được commit hoặc push.
+- Bước tiếp theo: đồng bộ branch qua GitHub Desktop, sau đó chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo từng kịch bản.
+>>>>>>> 8a6c9294dc9b0bc039517c18e6c0d6eac4cd77a1
