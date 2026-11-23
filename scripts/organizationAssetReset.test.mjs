@@ -62,7 +62,7 @@ test('Dexie stores a per-organization reset generation without touching Local Pr
 test('Cloud sync, imports, edit locks, mutation retry and group-history mirror carry the reset barrier', async () => {
   const source = await read('../src/lib/cloudAssets.ts')
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
-  assert.match(source, /p_reset_generation: resetGeneration/)
+  assert.match(source, /p_reset_generation:resetGeneration/)
   assert.match(source, /p_reset_generation:await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /export async function acquireCloudAssetLock[\s\S]*?await ensureOrganizationAssetResetApplied/)
   assert.match(source, /export async function retryCloudAssetMutation[\s\S]*?await ensureOrganizationAssetResetApplied/)
