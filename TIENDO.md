@@ -1466,7 +1466,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - PR #33 `feat: implement Local-first Sync Engine` đã **MERGED** vào `main` bằng Squash merge; merge commit `79903f0cdc5cd3e08dcf1fba7a461237f658ae24`. PR đóng, không còn Draft.
 - GitHub Actions run `45212893779` tại merge commit: Build và Deploy to GitHub Pages đều **SUCCESS**; deployment đã hoàn tất. Site: https://baotri.vieclamhp247.com/.
-- CI trước merge: Build/test, Validate và 105 tests PASS. Change Feed migrations đã apply/kiểm tra trên Supabase **Test BAOTRI-Mini-New** בלבד. Không thay đổi Supabase Production.
+- CI trước merge: Build/test, Validate và 105 tests PASS. Change Feed migrations đã apply/kiểm tra trên Supabase **Test BAOTRI-Mini-New**. Không thay đổi Supabase Production.
 - Sync Engine hiện có scheduler (startup/online/focus/visible + 60s), persistent retry/backoff, Incremental Pull qua Cloud Change Feed, checkpoint/cursor theo org, bootstrap Checkpoint→Full Scan→Catch-up, reset-barrier safeguards và fallback Full Scan khi RPC chưa có.
 - Các kiểm thử smoke SQL trên Test đã rollback; không để test assets/events/counters. Chưa có browser E2E đa thiết bị; chưa xác minh cancel khi đổi org/session, interrupted-page replay, reset giữa nhiều trang và offline/retry thực tế.
 - **Việc tiếp theo:** (1) kiểm tra website sau deploy; (2) làm E2E trên Test bằng PC + Mobile: Cloud edit/update, pull incremental, offline/reconnect + retry, organization/session switch/cancel, replay sau gián đoạn và reset barrier giữa các trang; (3) ghi kết quả và lỗi cụ thể vào TIENDO, sửa nếu cần. Chỉ bật Realtime wake-up sau khi kiểm thử pull ổn định.
