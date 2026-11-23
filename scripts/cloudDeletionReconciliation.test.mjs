@@ -93,7 +93,7 @@ test('failed soft-delete and archive operations retain audit events for later Cl
 test('online audit-history retry cannot bypass the mutation receipt gate', async () => {
   const source = await read('../src/App.tsx')
   const retry = source.slice(source.indexOf('const retry=async()=>{'), source.indexOf('const retry=async()=>{')+1500)
-  assert.match(retry, /const mutation=await db\.assetMutations\.get\(currentEntry\.id\)/)
+  assert.match(retry, /const mutation=await db\.assetMutations\.get\(entry\.id\)/)
   assert.match(retry, /if\(mutation&&mutation\.status!=='applied'\)continue/)
   assert.match(retry, /await syncAssetHistoryEntry\(entry\)/)
 })
@@ -104,7 +104,7 @@ test('manual mutation retry mirrors its matching pending audit event after recei
   const retry = source.slice(source.indexOf('const retryOne='), source.indexOf('const resolveConflictCloud='))
   assert.match(retry, /await retryCloudAssetMutation\(client,organizationId,mutation\.mutationId\)/)
   assert.match(retry, /db\.assetHistory\.get\(mutation\.mutationId\)/)
-  assert.match(retry, /client\.rpc\('record_cloud_asset_history_event'/)
+  assert.match(retry, /client\.rpc\('record_cloud_asset_history_event_v2'/)
   assert.match(retry, /db\.assetHistory\.update\(pendingHistory\.id,\{syncStatus:'synced'\}\)/)
 })
  
@@ -166,9 +166,9 @@ test('automatic mutation retry requires an authorized Admin or KTV role as well 
 test('automatic sync mirrors standalone pending history events but gates mutation-linked events on applied receipt', async () => {
  const source = await read('../src/App.tsx')
  const sync = source.slice(source.indexOf('const runSync=async()=>{'), source.indexOf('const runSync=async()=>{')+3200)
- assert.match(sync, /const mutation=await db\.assetMutations\.get\(entry\.id\)/)
+ assert.match(sync, /const mutation=await db\.assetMutations\.get\(currentEntry\.id\)/)
  assert.match(sync, /if\(mutation&&mutation\.status!=='applied'\)continue/)
- assert.match(sync, /client\.rpc\('record_cloud_asset_history_event'/)
+ assert.match(sync, /client\.rpc\('record_cloud_asset_history_event_v2'/)
 })
 
 test('late Local asset reload cannot repopulate a previous organization scope', async () => {
