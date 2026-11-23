@@ -135,6 +135,11 @@ export type AssetMutation = {
   appliedAt?: string
   cloudUpdatedAt?: string
   lastError?: string
+  /** Durable retry scheduling; omitted on legacy mutations until first retry. */
+  lastAttemptAt?: string
+  nextAttemptAt?: string
+  failureKind?: 'transient' | 'permanent'
+  deviceId?: string
 }
 
 class BaoTriDatabase extends Dexie {
