@@ -24,7 +24,7 @@ test('viewer is read-only; only Admin and KTV receive equipment mutation capabil
 
 test('equipment activity history persists locally and uses append-only Cloud history RPCs', async () => {
   const [db, app, migration] = await Promise.all([
-    read('../src/db.ts'), read('../src/App.tsx'), read('../supabase/migrations/20261122210000_asset_activity_history.sql')
+    read('../src/db.ts'), read('../src/App.tsx'), read('../supabase/migrations/20261122141731_asset_activity_history.sql')
   ])
   assert.match(db, /assetHistory!: Table<AssetHistory, string>/)
   assert.match(db, /assetHistory: 'id, organizationId, assetId/)
