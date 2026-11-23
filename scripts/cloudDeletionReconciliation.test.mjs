@@ -88,3 +88,12 @@ test('failed soft-delete and archive operations retain audit events for later Cl
   assert.match(source, /if\(pendingCandidate&&pendingMutationId\)await recordAssetHistory\(asset,pendingCandidate,archived\?'archived':'restored'/)
   assert.match(source, /if\(mutation\?\.status!=='applied'\)continue/)
 })
+
+ 
+test('online audit-history retry cannot bypass the mutation receipt gate', async () => {
+  const source = await read('../src/App.tsx')
+  const retry = source.slice(source.indexOf('const retry=async()=>{'), source.indexOf('const retry=async()=>{')+1500)
+  assert.match(retry, /const mutation=await db\.assetMutations\.get\(entry\.id\)/)
+  assert.match(retry, /if\(mutation&&mutation\.status!=='applied'\)continue/)
+  assert.match(retry, /await syncAssetHistoryEntry\(entry\)/)
+})
