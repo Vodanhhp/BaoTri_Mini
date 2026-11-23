@@ -1248,3 +1248,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - `.env.local`: file local untracked; giữ nguyên trên máy, tuyệt đối không add/commit/push.
 - Trước cập nhật tài liệu trên GitHub, các thay đổi local chưa commit/push. Cần đồng bộ branch qua GitHub Desktop và kiểm tra tránh ghi đè thay đổi local.
 - Bước tiếp theo: chạy app Local và kiểm thử thực tế Admin/KTV/Viewer theo checklist.
+
+
+### Rà soát đồng bộ Cloud deletion — 23/11/2026
+- Phát hiện lỗi: luồng Cloud → Local nhận `deleted_at` từ trang assets hoặc tombstone và ghi đè `updatedAt` Local, đồng thời đặt link thành `linked` kể cả khi Local có thay đổi chưa đồng bộ hoặc mutation đang chờ. Luồng tombstone còn có thể đánh dấu xóa Local theo mã thiết bị dù không có liên kết Cloud hợp lệ.
+- Đã sửa trên nhánh `fix/cloud-delete-sync-preserve-local`:
+  - Dùng một hàm reconcile chung cho deletion từ trang Cloud và tombstone.
+  - Chỉ áp dụng tombstone khi có liên kết đúng organization/asset/code.
+  - Nếu Local có phiên bản mới hơn, mutation pending/processing/conflict, hoặc link đã conflict: phản ánh dấu xóa Cloud nhưng giữ nguyên Local `updatedAt`, giữ nguyên nội dung, chuyển link/mutation sang conflict để người dùng đối chiếu.
+  - Nếu không có thay đổi Local: áp dụng dấu xóa và cập nhật mốc đồng bộ bình thường.
+  - Tránh tạo conflict record trùng khi mutation pending/processing đã tồn tại.
+  - Không cho chọn “Chọn Local” để ghi đè Cloud đã xóa mềm vì hiện chưa có RPC khôi phục thiết bị đã xóa trên Cloud; giao diện chỉ cho chọn Cloud trong trường hợp này.
+- Thêm regression test cho bảo toàn Local, kiểm tra liên kết tombstone và chặn conflict resolution không hợp lệ.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chờ CI.
