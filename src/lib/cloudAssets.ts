@@ -5,8 +5,7 @@ import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
 import { ensureOrganizationAssetResetApplied } from './assetReset'
 import {
   advanceAssetSyncCursor, getAssetSyncCheckpoint, initializeAssetSyncCursor,
-  listAssetSyncChanges, markAssetSyncBootstrapComplete, readAssetSyncCursor,
-  type AssetSyncEvent
+  listAssetSyncChanges, markAssetSyncBootstrapComplete, readAssetSyncCursor
 } from './cloudAssetChanges'
 
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
@@ -211,7 +210,6 @@ export async function syncCloudAssetsIncrementally(
   }
   let afterSequence=cursor.lastSequence
   let resetGeneration=cursor.resetGeneration
-  const seen=new Set<number>()
   do{
     if(options.shouldContinue&&!options.shouldContinue())break
     let page
@@ -252,12 +250,11 @@ export async function syncCloudAssetsIncrementally(
       }
     }
     if(options.shouldContinue&&!options.shouldContinue())break
-    if(page.nextCursor<afterSequence||seen.has(page.nextCursor))throw new Error('Pull cursor lùi hoặc lặp; dừng để không mất dữ liệu.')
+    if(page.items.length>0&&page.nextCursor<=afterSequence)throw new Error('Pull cursor lùi hoặc không tiến; dừng để không mất dữ liệu.')
     if(page.items.length===0&&page.nextCursor!==afterSequence)throw new Error('Pull page rỗng nhưng cursor tiến; đã dừng.')
     if(page.items.length>0){
       await advanceAssetSyncCursor(organizationId,page.nextCursor,resetGeneration)
       afterSequence=page.nextCursor
-      seen.add(afterSequence)
     }
     if(!page.hasMore)break
     if(page.nextCursor===afterSequence&&page.items.length===0)break
