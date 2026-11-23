@@ -92,7 +92,8 @@ begin
   select generation, reset_at
     into v_generation, v_reset_at
     from private.organization_asset_reset_state
-   where organization_id = p_organization_id;
+   where organization_id = p_organization_id
+   for share;
 
   insert into private.organization_asset_reset_devices (
     organization_id, device_id, user_id, platform_label, last_seen_at,
