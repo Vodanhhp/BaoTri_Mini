@@ -10,7 +10,7 @@ type PlanCatalogConfig={dataVersion:string;plans:PlanOption[];industries:{plan?:
 type Created={organizationId:string;organizationName:string;adminEmail:string;status:string;createdAuthUser:boolean;planCode:string;planName:string;maxDevices:number|null;sourceDataVersion:string;equipmentGroups:number;equipmentDictionary:number;industries:number;message:string}
 type OrganizationRow={id:string;name:string;status:string;createdAt:string;totalMembers:number;activeMembers:number;invitedMembers:number;suspendedMembers:number;uniqueUsers:number;planCode:string|null;planName:string|null;planMaxDevices?:number|null;equipmentGroups?:number;equipmentDictionary?:number;industries?:number;sourceDataVersion:string|null}
 type Overview={organizationsTotal:number;organizationsActive:number;organizationsSuspended:number;authAccountsTotal:number;confirmedAccounts:number;unconfirmedAccounts:number;membershipsTotal:number;activeMemberships:number;invitedMemberships:number;suspendedMemberships:number;organizations:OrganizationRow[]}
-type LifecycleAction='suspend'|'reactivate'|'delete'
+type LifecycleAction='suspend'|'reactivate'|'delete'|'reset'
 
 const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
 const date=(value:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
@@ -64,6 +64,10 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
  const [managementBusy,setManagementBusy]=useState(false)
  const [managementError,setManagementError]=useState('')
  const [managementSuccess,setManagementSuccess]=useState('')
+ const [managementRequestId,setManagementRequestId]=useState('')
+ const [resetStatus,setResetStatus]=useState<{generation:number;reset_at:string|null;cloud_assets:number;registered_devices:number;acknowledged_devices:number;pending_devices:number}|null>(null)
+ const [resetStatusLoading,setResetStatusLoading]=useState(false)
+ const [resetStatusError,setResetStatusError]=useState('')
  useEffect(()=>{
   try{
    if(!provisionRequestId){sessionStorage.removeItem(PROVISION_DRAFT_KEY);return}
@@ -103,9 +107,17 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
 
  const beginManagement=(organization:OrganizationRow,action:LifecycleAction)=>{
   setManagement({organization,action});setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementSuccess('')
+  setManagementRequestId(action==='reset'?crypto.randomUUID():'');setResetStatus(null);setResetStatusError('')
+  if(action==='reset'){
+   setResetStatusLoading(true)
+   void client.functions.invoke('platform-reset-organization-assets',{body:{action:'status',organizationId:organization.id,organizationName:organization.name}})
+    .then(({data,error})=>{if(error)throw new Error(error.message);if(data?.error)throw new Error(data.error);setResetStatus(data.status)})
+    .catch(error=>setResetStatusError(error instanceof Error?error.message:String(error)))
+    .finally(()=>setResetStatusLoading(false))
+  }
  }
  const cancelManagement=()=>{
-  setManagement(null);setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('')
+  setManagement(null);setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementRequestId('');setResetStatus(null);setResetStatusError('')
  }
  const submitManagement=async(e:FormEvent)=>{
   e.preventDefault()
@@ -114,21 +126,23 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   if(managementAnswer==='no'){cancelManagement();return}
   if(managementAnswer!=='yes'){setManagementError('Bạn cần chọn Có để xác nhận thao tác.');return}
   if(!managementPassword){setManagementError('Hãy nhập mật khẩu Super Admin.');return}
-  if(management.action==='delete'&&typedOrganizationName!==management.organization.name){setManagementError('Tên tổ chức nhập lại chưa khớp chính xác.');return}
+  if((management.action==='delete'||management.action==='reset')&&typedOrganizationName!==management.organization.name){setManagementError('Tên tổ chức nhập lại chưa khớp chính xác.');return}
   setManagementBusy(true)
   try{
-   const {data,error}=await client.functions.invoke('platform-manage-organization',{body:{
-    action:management.action,
-    organizationId:management.organization.id,
-    organizationName:management.organization.name,
-    confirmName:typedOrganizationName,
-    password:managementPassword,
-    confirmation:managementAnswer
-   }})
+   const isReset=management.action==='reset'
+   const {data,error}=isReset
+    ?await client.functions.invoke('platform-reset-organization-assets',{body:{action:'reset',organizationId:management.organization.id,organizationName:management.organization.name,confirmName:typedOrganizationName,password:managementPassword,confirmation:managementAnswer,requestId:managementRequestId||crypto.randomUUID()}})
+    :await client.functions.invoke('platform-manage-organization',{body:{action:management.action,organizationId:management.organization.id,organizationName:management.organization.name,confirmName:typedOrganizationName,password:managementPassword,confirmation:managementAnswer}})
    if(error)throw new Error(await functionErrorMessage(error))
    if(data?.error)throw new Error(data.error)
-   const label=management.action==='suspend'?'đã tạm ngưng':management.action==='reactivate'?'đã kích hoạt lại':'đã xóa vĩnh viễn'
-   setManagementSuccess(`Tổ chức "${management.organization.name}" ${label} thành công.`)
+   if(isReset){
+    const pending=Number(data?.reset?.pending_devices??data?.status?.pending_devices??0)
+    const generation=Number(data?.reset?.generation??0)
+    setManagementSuccess(`Đã reset dữ liệu thiết bị Cloud của tổ chức "${management.organization.name}" (generation ${generation}). ${pending} thiết bị Local đang chờ kết nối để tự xóa dữ liệu cũ.`)
+   }else{
+    const label=management.action==='suspend'?'đã tạm ngưng':management.action==='reactivate'?'đã kích hoạt lại':'đã xóa vĩnh viễn'
+    setManagementSuccess(`Tổ chức "${management.organization.name}" ${label} thành công.`)
+   }
    cancelManagement()
    await loadOverview()
   }catch(e){setManagementError(e instanceof Error?e.message:String(e))}
@@ -237,7 +251,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
    </div>}
    {(!fullPage||activeSection==='platform-organizations')&&<>
    <div id="platform-organizations" className="table-wrap table-standard-wrap platform-org-table" style={{marginTop:14}}><table className="table-standard"><thead><tr><th>Doanh nghiệp</th><th>Trạng thái</th><th>Plan / Snapshot</th><th>Tài khoản trong DN</th><th>Đang hoạt động</th><th>Chờ xác nhận</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead><tbody>
-    {overview.organizations.map(org=><tr key={org.id}><td><b>{org.name}</b></td><td><span className={'status '+(org.status==='active'?'green':'gray')}>{org.status==='active'?'Đang hoạt động':'Tạm ngưng'}</span></td><td>{org.planCode?<><b>Plan {org.planCode}</b><small style={{display:'block',color:'var(--muted,#64748b)'}}>{org.planName||'Đã gán'} · v{org.sourceDataVersion||'—'}</small><small style={{display:'block',color:'var(--muted,#64748b)'}}>{typeof org.planMaxDevices==='number'?number(org.planMaxDevices)+' thiết bị':org.planMaxDevices===null?'Không giới hạn':'Đang tải hạn mức'} · {typeof org.equipmentGroups==='number'?number(org.equipmentGroups):'—'} nhóm · {typeof org.equipmentDictionary==='number'?number(org.equipmentDictionary):'—'} loại · {typeof org.industries==='number'?number(org.industries):'—'} ngành</small></>:<span className="status gray">Chưa khởi tạo</span>}</td><td>{number(org.uniqueUsers)}</td><td>{number(org.activeMembers)}</td><td>{number(org.invitedMembers)}</td><td>{date(org.createdAt)}</td><td><div className="platform-org-actions">{org.status==='active'?<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'suspend')}>Tạm ngưng</button>:<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'reactivate')}>Kích hoạt</button>}<button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'delete')}>Xóa</button></div></td></tr>)}
+    {overview.organizations.map(org=><tr key={org.id}><td><b>{org.name}</b></td><td><span className={'status '+(org.status==='active'?'green':'gray')}>{org.status==='active'?'Đang hoạt động':'Tạm ngưng'}</span></td><td>{org.planCode?<><b>Plan {org.planCode}</b><small style={{display:'block',color:'var(--muted,#64748b)'}}>{org.planName||'Đã gán'} · v{org.sourceDataVersion||'—'}</small><small style={{display:'block',color:'var(--muted,#64748b)'}}>{typeof org.planMaxDevices==='number'?number(org.planMaxDevices)+' thiết bị':org.planMaxDevices===null?'Không giới hạn':'Đang tải hạn mức'} · {typeof org.equipmentGroups==='number'?number(org.equipmentGroups):'—'} nhóm · {typeof org.equipmentDictionary==='number'?number(org.equipmentDictionary):'—'} loại · {typeof org.industries==='number'?number(org.industries):'—'} ngành</small></>:<span className="status gray">Chưa khởi tạo</span>}</td><td>{number(org.uniqueUsers)}</td><td>{number(org.activeMembers)}</td><td>{number(org.invitedMembers)}</td><td>{date(org.createdAt)}</td><td><div className="platform-org-actions">{org.status==='active'?<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'suspend')}>Tạm ngưng</button>:<button type="button" className="soft-btn" onClick={()=>beginManagement(org,'reactivate')}>Kích hoạt</button>}<button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'reset')}>Reset thiết bị</button><button type="button" className="soft-btn" style={{color:'var(--danger,#b91c1c)'}} onClick={()=>beginManagement(org,'delete')}>Xóa</button></div></td></tr>)}
     {!overview.organizations.length&&<tr><td colSpan={8}>Chưa có doanh nghiệp nào.</td></tr>}
    </tbody></table></div>
    <div className="auth-note" style={{marginTop:10}}>Tài khoản Auth được đếm duy nhất trên toàn nền tảng. Một tài khoản tham gia nhiều doanh nghiệp chỉ tính một lần ở tổng Auth, nhưng được tính một lượt trong từng doanh nghiệp.</div>
@@ -249,16 +263,18 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   {managementSuccess&&<div className="cloud-message" style={{marginTop:12}}>{managementSuccess}</div>}
   {management&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!managementBusy)cancelManagement()}}>
    <section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="platform-action-title">
-    <div className="platform-action-head"><div><span className="platform-action-kicker">QUẢN TRỊ TỔ CHỨC</span><h3 id="platform-action-title">{management.action==='suspend'?'Tạm ngưng tổ chức':management.action==='reactivate'?'Kích hoạt tổ chức':'Xóa vĩnh viễn tổ chức'}</h3><p>{management.organization.name}</p></div><button type="button" className="icon-btn" onClick={cancelManagement} disabled={managementBusy} aria-label="Đóng">×</button></div>
+    <div className="platform-action-head"><div><span className="platform-action-kicker">QUẢN TRỊ TỔ CHỨC</span><h3 id="platform-action-title">{management.action==='suspend'?'Tạm ngưng tổ chức':management.action==='reactivate'?'Kích hoạt tổ chức':management.action==='reset'?'Reset toàn bộ thiết bị':'Xóa vĩnh viễn tổ chức'}</h3><p>{management.organization.name}</p></div><button type="button" className="icon-btn" onClick={cancelManagement} disabled={managementBusy} aria-label="Đóng">×</button></div>
     {management.action==='suspend'&&<div className="platform-action-note">Tổ chức sẽ bị chặn truy cập. Dữ liệu Cloud vẫn được giữ nguyên và có thể kích hoạt lại sau.</div>}
     {management.action==='reactivate'&&<div className="platform-action-note">Tổ chức sẽ hoạt động trở lại. Thành viên có quyền truy cập hợp lệ có thể sử dụng Cloud.</div>}
     {management.action==='delete'&&<div className="platform-action-danger"><b>Không thể hoàn tác.</b> Dữ liệu Cloud của tổ chức, thiết bị, thành viên và phân quyền sẽ bị xóa. Tài khoản Auth, hồ sơ cá nhân và bản Local trên thiết bị thành viên không bị xóa.</div>}
+    {management.action==='reset'&&<div className="platform-action-danger"><b>Thao tác không thể hoàn tác.</b> Chỉ xóa hồ sơ thiết bị của tổ chức trên Cloud và Local; giữ lịch sử kiểm toán, danh mục thiết bị, tài khoản, vai trò, quyền, Plan và cấu hình tổ chức. Thiết bị đang offline sẽ được xóa khi kết nối lại, trước mọi lần đồng bộ.</div>}
+    {management.action==='reset'&&<div className="platform-action-note">{resetStatusLoading?'Đang tải trạng thái reset…':resetStatusError?resetStatusError:resetStatus?<>Cloud hiện có <b>{number(resetStatus.cloud_assets)}</b> hồ sơ; <b>{number(resetStatus.registered_devices)}</b> Local đã đăng ký, <b>{number(resetStatus.acknowledged_devices)}</b> đã xác nhận generation {resetStatus.generation} và <b>{number(resetStatus.pending_devices)}</b> đang chờ.</>:'Chưa có thống kê thiết bị.'}</div>}
     <form className="platform-action-form" onSubmit={submitManagement}>
-     {management.action==='delete'&&<label className="field">Nhập chính xác tên tổ chức *<input required value={typedOrganizationName} onChange={e=>setTypedOrganizationName(e.target.value)} placeholder={management.organization.name}/></label>}
+     {(management.action==='delete'||management.action==='reset')&&<label className="field">Nhập chính xác tên tổ chức *<input required value={typedOrganizationName} onChange={e=>setTypedOrganizationName(e.target.value)} placeholder={management.organization.name}/></label>}
      <label className="field">Mật khẩu Super Admin *<input required type="password" autoComplete="current-password" value={managementPassword} onChange={e=>setManagementPassword(e.target.value)} placeholder="Nhập mật khẩu tài khoản Super Admin"/></label>
-     <fieldset className="platform-confirm-choice"><legend>Bạn có chắc chắn muốn {management.action==='suspend'?'tạm ngưng':management.action==='reactivate'?'kích hoạt lại':'xóa vĩnh viễn'} tổ chức này?</legend><label><input type="radio" name="platform-confirm" value="yes" checked={managementAnswer==='yes'} onChange={()=>setManagementAnswer('yes')}/> Có, xác nhận</label><label><input type="radio" name="platform-confirm" value="no" checked={managementAnswer==='no'} onChange={()=>setManagementAnswer('no')}/> Không, hủy thao tác</label></fieldset>
+     <fieldset className="platform-confirm-choice"><legend>Bạn có chắc chắn muốn {management.action==='suspend'?'tạm ngưng':management.action==='reactivate'?'kích hoạt lại':management.action==='reset'?'reset toàn bộ thiết bị của':'xóa vĩnh viễn'} tổ chức này?</legend><label><input type="radio" name="platform-confirm" value="yes" checked={managementAnswer==='yes'} onChange={()=>setManagementAnswer('yes')}/> Có, xác nhận</label><label><input type="radio" name="platform-confirm" value="no" checked={managementAnswer==='no'} onChange={()=>setManagementAnswer('no')}/> Không, hủy thao tác</label></fieldset>
      {managementError&&<div className="auth-error">{managementError}</div>}
-     <div className="platform-action-buttons"><button type="button" className="soft-btn" onClick={cancelManagement} disabled={managementBusy}>Hủy</button><button type="submit" className={management.action==='delete'?'danger-btn':'primary-btn'} disabled={managementBusy||!managementAnswer}>{managementBusy?'Đang xác thực…':management.action==='delete'?'Xóa tổ chức':management.action==='suspend'?'Tạm ngưng tổ chức':'Kích hoạt tổ chức'}</button></div>
+     <div className="platform-action-buttons"><button type="button" className="soft-btn" onClick={cancelManagement} disabled={managementBusy}>Hủy</button><button type="submit" className={management.action==='delete'?'danger-btn':'primary-btn'} disabled={managementBusy||!managementAnswer}>{managementBusy?'Đang xác thực…':management.action==='delete'?'Xóa tổ chức':management.action==='reset'?'Reset thiết bị':management.action==='suspend'?'Tạm ngưng tổ chức':'Kích hoạt tổ chức'}</button></div>
     </form>
    </section>
   </div>}
