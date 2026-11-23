@@ -1260,6 +1260,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
   - Tránh tạo conflict record trùng khi mutation pending/processing đã tồn tại.
   - Không cho chọn “Chọn Local” để ghi đè Cloud đã xóa mềm vì hiện chưa có RPC khôi phục thiết bị đã xóa trên Cloud; giao diện chỉ cho chọn Cloud trong trường hợp này.
 - Thêm regression test cho bảo toàn Local, kiểm tra liên kết tombstone và chặn conflict resolution không hợp lệ.
-- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chờ CI.
+- Build and test + Validate BAOTRI Mini đều **success** tại head `698570f7bd550267160709f165ad9e37fa43fa5e` (Build run 479, Validate run 191). Regression tests và TypeScript/Vite build đều pass.
+- Chỉ thay đổi repository/tests; không thay Supabase Test/Production, dữ liệu, Edge Functions hoặc deploy. Chưa chạy browser E2E.
 - Rà soát bổ sung: hai vòng lặp phân trang `listCloudAssets` và `syncCloudAssetsToLocal` trước đây chỉ kiểm tra cursor rỗng; nếu API lặp lại cursor hợp lệ, vòng lặp có thể chạy mãi. Đã thêm tập cursor đã thấy và dừng có thông báo khi cursor bị lặp; bổ sung regression test.
 - Phát hiện thêm khác biệt phân quyền: KTV chỉ nhận tombstone code/date, không được xem hồ sơ thiết bị đã xóa trên Cloud. Conflict panel trước đây chỉ nhìn danh sách Cloud nên có thể hiện sai lựa chọn “Chọn Local” hoặc cho thao tác không khả thi. Đã bổ sung tải tombstone metadata trong panel; nếu KTV không có quyền xem hồ sơ deleted thì ẩn cả hai lựa chọn và yêu cầu Admin xác nhận. Khi xử lý Local, luôn xác minh lại tombstone từ RPC trước khi ghi Cloud.
