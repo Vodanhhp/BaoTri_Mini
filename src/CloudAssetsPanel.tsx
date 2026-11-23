@@ -25,8 +25,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     db.assetMutations.where('organizationId').equals(organizationId).toArray()
    ])
    setLinkedIds(linkRows.map(l=>l.assetId))
+   if(!canView){setPending([]);setCloud([]);setDeletedCloudCodes([]);return}
    setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
-   if(!canView){setCloud([]);setDeletedCloudCodes([]);return}
    const [cloudRows,tombstonesResult]=await Promise.all([
     listCloudAssets(client,organizationId),
     client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
