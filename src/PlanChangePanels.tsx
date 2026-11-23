@@ -300,7 +300,7 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
   setLoading(true);setError('')
   try{
    const {data,error:invokeError}=await client.functions.invoke('platform-manage-asset-reset-requests',{body:{action:'list'}})
-   if(invokeError)throw new Error(invokeError.message)
+   if(invokeError)throw new Error(await invokeErrorMessage(invokeError))
    if(data?.error)throw new Error(data.error)
    setRequests((data?.requests??[]) as AssetResetRequest[])
   }catch(e){setError(e instanceof Error?e.message:String(e))}
@@ -319,7 +319,7 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
    if(data?.error)throw new Error(data.error)
    setMessage(data?.message||'Đã xử lý yêu cầu Reset.')
    cancel();await load()
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){const message=await invokeErrorMessage(e);await load();setError(message)}
   finally{setBusy(false)}
  }
  return <section style={{marginTop:20}}>
