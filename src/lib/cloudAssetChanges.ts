@@ -15,6 +15,7 @@ export type AssetSyncEvent = {
   assetCode: string | null
   eventType: AssetSyncEventType
   assetUpdatedAt: string | null
+  eventCreatedAt: string
   resetGeneration: number | null
   snapshot: Record<string, unknown> | null
 }
@@ -24,10 +25,62 @@ export async function readAssetSyncCursor(organizationId: string): Promise<Asset
   const cursor = await db.assetSyncCursors.get(organizationId)
   if (!cursor || cursor.organizationId !== organizationId) return undefined
   if (!Number.isSafeInteger(cursor.lastSequence) || cursor.lastSequence < 0 ||
-      !Number.isSafeInteger(cursor.resetGeneration) || cursor.resetGeneration < 0) {
+      !Number.isSafeInteger(cursor.resetGeneration) || cursor.resetGeneration < 0 ||
+      typeof cursor.bootstrapComplete !== 'boolean' || typeof cursor.initializedAt !== 'string' || typeof cursor.updatedAt !== 'string) {
     throw new Error('Cursor Incremental Pull Local bị hỏng; không tự bỏ qua hoặc đặt lại cursor.')
   }
   return cursor
+}
+
+
+export async function initializeAssetSyncCursor(
+  organizationId: string,
+  checkpoint: AssetSyncCheckpoint
+): Promise<AssetSyncCursor> {
+  if (!organizationId || organizationId === 'local-preview') throw new Error('Không khởi tạo cursor cho Local preview.')
+  const at = new Date().toISOString()
+  return db.transaction('rw', db.assetSyncCursors, async () => {
+    const existing = await db.assetSyncCursors.get(organizationId)
+    if (existing?.bootstrapComplete) return existing
+    if (existing) return existing
+    const cursor: AssetSyncCursor = {
+      organizationId, lastSequence: checkpoint.lastSequence,
+      resetGeneration: checkpoint.resetGeneration, bootstrapComplete: false,
+      initializedAt: at, updatedAt: at
+    }
+    await db.assetSyncCursors.put(cursor)
+    return cursor
+  })
+}
+
+export async function markAssetSyncBootstrapComplete(organizationId: string): Promise<void> {
+  await db.transaction('rw', db.assetSyncCursors, async () => {
+    const cursor = await db.assetSyncCursors.get(organizationId)
+    if (!cursor) throw new Error('Không có cursor checkpoint để hoàn tất bootstrap.')
+    if (cursor.bootstrapComplete) return
+    await db.assetSyncCursors.put({ ...cursor, bootstrapComplete: true, updatedAt: new Date().toISOString() })
+  })
+}
+
+export async function advanceAssetSyncCursor(
+  organizationId: string,
+  nextSequence: number,
+  resetGeneration?: number
+): Promise<void> {
+  if (!Number.isSafeInteger(nextSequence) || nextSequence < 0) throw new Error('Cursor sequence mới không hợp lệ.')
+  if (resetGeneration !== undefined && (!Number.isSafeInteger(resetGeneration) || resetGeneration < 0)) {
+    throw new Error('Cursor reset generation mới không hợp lệ.')
+  }
+  await db.transaction('rw', db.assetSyncCursors, async () => {
+    const cursor = await db.assetSyncCursors.get(organizationId)
+    if (!cursor || !cursor.bootstrapComplete) throw new Error('Bootstrap chưa hoàn tất; không advance cursor.')
+    if (nextSequence < cursor.lastSequence) throw new Error('Cursor không được lùi sequence.')
+    await db.assetSyncCursors.put({
+      ...cursor, lastSequence: nextSequence,
+      resetGeneration: resetGeneration ?? cursor.resetGeneration,
+      updatedAt: new Date().toISOString()
+    })
+  })
 }
 
 export type AssetSyncPage = {
@@ -105,6 +158,8 @@ export async function listAssetSyncChanges(
     const assetCode = event.asset_code == null ? null : String(event.asset_code)
     if (eventType !== 'reset' && (!assetId || !assetCode)) throw new Error('Incremental Pull thiếu định danh thiết bị cho event.')
     const resetGeneration = event.reset_generation == null ? null : integer(event.reset_generation, 'Event generation')
+    const eventCreatedAt = String(event.event_created_at ?? event.created_at ?? '')
+    if (!eventCreatedAt || Number.isNaN(Date.parse(eventCreatedAt))) throw new Error('Event thiếu timestamp hợp lệ.')
     if (eventType === 'reset' && resetGeneration === null) throw new Error('Reset event thiếu generation.')
     return {
       organizationId: eventOrganization,
@@ -113,6 +168,7 @@ export async function listAssetSyncChanges(
       assetCode,
       eventType: eventType as AssetSyncEventType,
       assetUpdatedAt: event.asset_updated_at == null ? null : String(event.asset_updated_at),
+      eventCreatedAt,
       resetGeneration,
       snapshot: snapshot == null ? null : snapshot as Record<string, unknown>
     }
