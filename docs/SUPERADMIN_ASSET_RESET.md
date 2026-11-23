@@ -126,3 +126,12 @@ Thiết bị không kết nối được không thể bị xóa vật lý từ x
 - CI run `45183190303`: Unit tests và Build thành công; 78/78 tests theo kết quả CI.
 - Browser E2E chưa chạy do chưa có phiên Superadmin/browser; kiểm thử Reset thực tế chưa chạy. Reset cần tổ chức Test riêng và phê duyệt destructive riêng.
 - PR #31 còn OPEN/DRAFT, chưa merge; PR #30 (base) còn OPEN, chưa merge. Production/DNS/Pages không thay đổi.
+
+
+### Bổ sung kiểm soát lý do từ chối — 23/11/2026
+- Rà soát workflow phát hiện form Superadmin trước đó cho phép từ chối mà không ghi lý do. Đã sửa UI: trường lý do bắt buộc khi chọn Từ chối; frontend chặn nội dung chỉ có khoảng trắng.
+- Edge Function platform-manage-asset-reset-requests từ chối action=reject nếu reviewNote rỗng.
+- Migration mới require_asset_reset_rejection_reason đã apply trên Supabase Test; DB RPC cũng tự kiểm tra lý do từ chối, tránh bypass bằng cách gọi backend.
+- Edge Function Superadmin đã deploy lại trên Supabase Test, version 2, ACTIVE, verify_jwt=true.
+- Post-check read-only: requests=0; anon/authenticated không EXECUTE review RPC; service_role có EXECUTE; DB function xác nhận bắt buộc lý do từ chối.
+- Không gửi request thử, không Reset dữ liệu. Cần CI trên head mới và Browser E2E; Vercel báo repository không liên kết project nên hiện chưa có Preview deployment để kiểm tra từ trình duyệt.
