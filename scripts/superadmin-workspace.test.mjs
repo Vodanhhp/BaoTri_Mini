@@ -25,3 +25,25 @@ test('standalone SuperAdmin layout has no modal close control and keeps existing
   assert.match(panel, /PlatformPlanRequestsPanel client=\{client\}/)
   assert.match(panel, /platform-provision/)
 })
+
+const platformEndpoints = await Promise.all([
+  '../supabase/functions/platform-get-overview/index.ts',
+  '../supabase/functions/platform-create-customer/index.ts',
+  '../supabase/functions/platform-manage-organization/index.ts',
+  '../supabase/functions/platform-manage-plan-requests/index.ts',
+].map(path => readFile(new URL(path, import.meta.url), 'utf8')))
+
+test('platform Edge Functions verify the access token and confirmed platform-owner identity server-side', () => {
+  for (const source of platformEndpoints) {
+    assert.match(source, /admin\.auth\.getUser\(token\)/)
+    assert.match(source, /email_confirmed_at/)
+    assert.match(source, /OWNER_EMAIL/)
+  }
+})
+
+test('destructive organization and plan decisions require password re-authentication', () => {
+  for (const source of [platformEndpoints[2], platformEndpoints[3]]) {
+    assert.match(source, /signInWithPassword/)
+    assert.match(source, /verified\.user\?\.id\s*!==\s*auth\.user\.id/)
+  }
+})
