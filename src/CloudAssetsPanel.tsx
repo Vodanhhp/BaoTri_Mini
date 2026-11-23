@@ -8,6 +8,7 @@ type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];loca
 
 export default function CloudAssetsPanel({client,organizationId,localAssets,localPreviewAssets,canImport,canView,canUpdate,onClose,onChanged}:Props){
  const [cloud,setCloud]=useState<CloudAsset[]>([])
+ const [deletedCloudCodes,setDeletedCloudCodes]=useState<string[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
  const [pending,setPending]=useState<AssetMutation[]>([])
  const [selected,setSelected]=useState<string[]>([])
@@ -19,8 +20,15 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const reload=async()=>{
   setLoading(true);setError('')
   try{
-   const [cloudRows,linkRows,mutationRows]=await Promise.all([listCloudAssets(client,organizationId),db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),db.assetMutations.where('organizationId').equals(organizationId).toArray()])
-   setCloud(cloudRows);setLinkedIds(linkRows.map(l=>l.assetId));setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
+   const [cloudRows,linkRows,mutationRows,tombstonesResult]=await Promise.all([
+    listCloudAssets(client,organizationId),
+    db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
+    db.assetMutations.where('organizationId').equals(organizationId).toArray(),
+    client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
+   ])
+   if(tombstonesResult.error)throw new Error('Không tải được danh sách dấu xóa Cloud: '+tombstonesResult.error.message)
+   const tombstones=Array.isArray(tombstonesResult.data)?tombstonesResult.data as Array<{code?:string}>:[]
+   setCloud(cloudRows);setDeletedCloudCodes(tombstones.map(row=>String(row.code??'')));setLinkedIds(linkRows.map(l=>l.assetId));setPending(mutationRows.filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict'))
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setLoading(false)}
  }
@@ -66,7 +74,9 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    const fresh=await listCloudAssets(client,organizationId);const cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    if(cloudAsset.code!==link.cloudCode)throw new Error('Mã quản lý Cloud đã đổi; cần xử lý thủ công.')
-   if(cloudAsset.deletedAt)throw new Error('Cloud đã xóa mềm thiết bị. Không thể chọn Local vì hệ thống chưa có thao tác khôi phục thiết bị đã xóa trên Cloud; hãy chọn Cloud để đồng bộ dấu xóa.')
+   const {data:tombstones,error:tombstoneError}=await client.rpc('list_cloud_asset_deletion_tombstones',{p_organization_id:organizationId})
+   if(tombstoneError)throw new Error('Không xác minh được dấu xóa Cloud: '+tombstoneError.message)
+   if(cloudAsset.deletedAt||(Array.isArray(tombstones)&&tombstones.some((row:Record<string,unknown>)=>row.code===local.code)))throw new Error('Cloud đã xóa mềm thiết bị. Không thể chọn Local vì hệ thống chưa có thao tác khôi phục thiết bị đã xóa trên Cloud; hãy chọn Cloud để đồng bộ dấu xóa.')
    const acquired=await acquireCloudAssetLock(client,organizationId,local.code,getLocalDeviceId(),getDeviceLabel())
    if(!acquired.acquired)throw new Error('Cloud đang khóa bởi '+acquired.lock.holder_label+'.')
    lease={assetId:local.code,token:acquired.lease.lock_token}
@@ -183,8 +193,10 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     <div className="cloud-section-head"><h3>Mutation Local chưa được Cloud xác nhận</h3><button className="soft-btn small" disabled={loading} onClick={()=>void reload()}>Kiểm tra</button></div>
     {pending.length===0?<p className="empty-small">Không có thay đổi Cloud đang chờ.</p>:<div className="cloud-list">{pending.map(m=>{
       const asset=localAssets.find(a=>a.id===m.assetId)
-      const cloudDeleted=Boolean(cloud.find(row=>row.code===asset?.code)?.deletedAt)
-      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span><button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>{!cloudDeleted&&<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
+      const cloudRecord=cloud.find(row=>row.code===asset?.code)
+      const cloudDeleted=Boolean(cloudRecord?.deletedAt||deletedCloudCodes.includes(asset?.code??''))
+      const cloudDeletionProfileAvailable=Boolean(cloudRecord?.deletedAt)
+      return <div className="cloud-row" key={m.mutationId}><div className="cloud-row-main"><b>{asset?.code||m.assetId} · {m.status==='conflict'?'Cần đối chiếu':'Đang chờ đồng bộ'}</b><small>{cloudDeleted?(cloudDeletionProfileAvailable?'Cloud đã xóa mềm; chỉ có thể chọn Cloud để đồng bộ dấu xóa.':'Cloud đã xóa mềm; cần Admin xác nhận Cloud vì vai trò hiện tại không được xem hồ sơ đã xóa.'):m.lastError||'Mutation '+m.mutationId+' · '+m.updatedAt}</small></div><div className="cloud-row-actions">{m.status==='conflict'?<><span className="status red">Conflict</span>{(!cloudDeleted||cloudDeletionProfileAvailable)&&<button className="soft-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictCloud(m)}>Chọn Cloud</button>}{!cloudDeleted&&<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void resolveConflictLocal(m)}>Chọn Local</button>}</>:<button className="primary-btn small" disabled={!canUpdate||!!busyId} onClick={()=>void retryOne(m)}>{busyId===m.mutationId?'Đang retry…':'Retry đúng snapshot'}</button>}</div></div>
     })}</div>}
    </div>
    <div className="cloud-section">
