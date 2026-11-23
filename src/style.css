@@ -1407,3 +1407,30 @@ html,body,#root,.app-shell{
 
 /* 2026-11-23: improve contrast of organization Plan label on the equipment overview */
 .app-shell .plan-context-strip b{color:#fff}
+
+/* 2026-11-23: prevent organization name from overflowing the sticky header */
+.app-shell .topbar{
+  height:auto;
+  min-height:94px;
+}
+.app-shell .page-heading{
+  flex:1 1 auto;
+  min-width:0;
+}
+.app-shell .organization-name{
+  width:fit-content;
+  max-width:100%;
+  min-width:0;
+}
+.app-shell .top-actions{
+  flex:0 0 auto;
+}
+@media(max-width:680px){
+  .app-shell .topbar{
+    height:auto;
+    min-height:72px;
+  }
+  .app-shell .organization-name{
+    max-width:100%;
+  }
+}
