@@ -22,8 +22,6 @@ create table private.asset_sync_events (
   check ((event_type='reset' and asset_id is null and asset_code is null and snapshot is null and reset_generation is not null)
       or (event_type<>'reset' and asset_id is not null and asset_code is not null))
 );
-create index asset_sync_events_org_sequence_idx
-  on private.asset_sync_events (organization_id, sequence);
 
 alter table private.asset_sync_counters enable row level security;
 alter table private.asset_sync_events enable row level security;
