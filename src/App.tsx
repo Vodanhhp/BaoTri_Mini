@@ -298,15 +298,18 @@ export default function App() {
             .filter(entry=>entry.syncStatus==='pending').toArray()
           for(const entry of pendingHistory){
             if(!active||!navigator.onLine)break
-            const mutation=await db.assetMutations.get(entry.id)
-            if(mutation&&mutation.status!=='applied')continue
             try{
+              const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+              const currentEntry=await db.assetHistory.get(entry.id)
+              if(!currentEntry||currentEntry.syncStatus!=='pending')continue
+              const mutation=await db.assetMutations.get(currentEntry.id)
+              if(mutation&&mutation.status!=='applied')continue
               const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
-                p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
-                p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt,
-                p_reset_generation:await ensureOrganizationAssetResetApplied(client,organizationId)
+                p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+                p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
+                p_reset_generation:resetGeneration
               })
-              if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+              if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
             }catch{
               // Keep the audit event pending; the next online sync retries it.
             }
@@ -445,12 +448,14 @@ export default function App() {
     if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced'||entry.syncStatus==='local_only')return
     try{
       const resetGeneration=await ensureOrganizationAssetResetApplied(supabase,organizationId)
+      const currentEntry=await db.assetHistory.get(entry.id)
+      if(!currentEntry||currentEntry.syncStatus!=='pending')return
       const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
-        p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
-        p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt,
+        p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+        p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
         p_reset_generation:resetGeneration
       })
-      if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+      if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
     }catch{/* Keep the Local audit event pending; retry after connectivity or migration is ready. */}
   }
   const loadAssetHistory = async (assetId: string, assetCode?:string) => {
