@@ -1381,3 +1381,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung giao diện gửi yêu cầu/lịch sử cho Admin doanh nghiệp và bảng duyệt cho Superadmin; bỏ nút Reset trực tiếp khỏi bảng tổ chức.
 - Migration đã apply trên Supabase Test BAOTRI Mini New. Post-check read-only: approval table tồn tại, 0 request; anon/authenticated không có EXECUTE review/create; service_role có EXECUTE. Không có request/reset thực tế nào được tạo hoặc chạy.
 - Đã bổ sung regression tests source; chưa chạy CI/build trên head mới và chưa browser E2E với phiên Admin/Superadmin. PR #31 vẫn DRAFT/OPEN, không merge; Production không thay đổi.
+
+
+### Xác minh CI và Supabase Test sau workflow Reset approval — 23/11/2026
+- GitHub Actions run 45188928216: **SUCCESS** trên commit 0d1f1c98d4bb28e468a5db35588aaf8668560dae; Unit tests 80/80 PASS, Build PASS, npm audit 0 vulnerabilities.
+- Migration file 20261123150000_organization_asset_reset_approval_workflow.sql được Supabase MCP apply thành công; migration history thực tế ghi version 20261123135424, name organization_asset_reset_approval_workflow.
+- Post-check read-only: approval requests = 0, reset state = 0, executed reset audit = 0. Không có yêu cầu Reset nào được tạo và không có tổ chức nào bị Reset.
+- Quyền EXECUTE đã xác minh: anon=false, authenticated=false, service_role=true cho cả RPC create và review. Security Advisor không liệt kê các RPC create/list/review mới trong nhóm SECURITY DEFINER callable by authenticated; cảnh báo hiện hữu 22 SECURITY DEFINER khác và leaked-password protection vẫn còn, không tự đổi Auth setting.
+- Performance Advisor ghi nhận 28 FK chưa có covering index và 5 unused indexes (gồm index requested_at mới chưa có đủ tải để được dùng); chưa tự thêm index hoặc thay đổi policy.
+- Hai Edge Function mới ACTIVE, verify_jwt=true; endpoint Reset trực tiếp cũ ACTIVE nhưng fail-closed HTTP 410.
+- PR #31 hiện vẫn OPEN/DRAFT, chưa merge. Browser E2E với tài khoản doanh nghiệp và Superadmin chưa chạy; chưa gửi request thử và chưa Reset Công ty C.
