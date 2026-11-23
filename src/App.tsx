@@ -210,7 +210,7 @@ export default function App() {
       running=true
       setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
       try{
-        const summary=await syncCloudAssetsToLocal(supabase,organizationId,{shouldContinue:()=>active})
+        const summary=await syncCloudAssetsToLocal(client,organizationId,{shouldContinue:()=>active})
         if(!active)return
         let retried=0
         let retryFailed=0
@@ -220,7 +220,7 @@ export default function App() {
           for(const mutation of pending){
             if(!active||!navigator.onLine)break
             try{
-              await retryCloudAssetMutation(supabase,organizationId,mutation.mutationId)
+              await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
               retried++
             }catch{
               retryFailed++
