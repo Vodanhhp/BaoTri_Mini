@@ -46,7 +46,7 @@ Không đặt nút này cạnh nút xóa tổ chức mà không có nhãn riêng
 ### Chống dữ liệu cũ sống lại
 - Reset generation là mốc server-side.
 - Các RPC ghi quan trọng mang `p_reset_generation`; server khóa hàng generation bằng `FOR SHARE` khi import/mutation/audit và reset khóa `FOR UPDATE`, vì vậy thao tác cũ không thể chạy xuyên qua reset.
-- Thu hồi EXECUTE của các chữ ký RPC cũ (import, update, soft-delete, audit history, group-history mirror); chỉ các chữ ký mới có generation được cấp cho authenticated.
+- Giữ chữ ký RPC cũ ở chế độ tương thích chỉ khi generation = 0 để tránh gián đoạn trước lần reset đầu tiên; sau khi generation tăng, server từ chối các bundle cũ. Các chữ ký mới bắt buộc mang generation hiện hành; private implementation không được authenticated gọi trực tiếp.
 - Mutation update của asset cũ sẽ thất bại vì asset đã bị xóa; reservation đang reserved được chuyển released, còn confirmed reservation history và sequence counters được giữ.
 - Client mới bắt buộc purge trước khi đồng bộ hoặc retry mutation; Local snapshot phải còn tồn tại và đúng phiên bản trong IndexedDB trước khi được gửi lên Cloud.
 - Không có thao tác nào tự động tải lại hồ sơ từ backup cũ sau reset.
