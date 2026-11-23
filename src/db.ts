@@ -95,6 +95,7 @@ export type AssetSyncCursor = {
   organizationId: string
   lastSequence: number
   resetGeneration: number
+  bootstrapComplete: boolean
   initializedAt: string
   updatedAt: string
 }
