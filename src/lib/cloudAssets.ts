@@ -73,6 +73,8 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
     seenCursors.add(nextCursor)
     cursor=nextCursor
   }while(true)
+  // A reset may commit while the paginated read is in progress.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   return rows
 }
 
