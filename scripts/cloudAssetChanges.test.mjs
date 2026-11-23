@@ -47,6 +47,6 @@ test('cursor reader is tenant-scoped, read-only and refuses local-preview cursor
 test('empty pages cannot advance cursor and reset markers require generation', async () => {
   const source = await read('../src/lib/cloudAssetChanges.ts')
   assert.match(source, /page rỗng không được nhảy cursor/)
-  assert.match(source, /reset event thiếu generation/)
+  assert.match(source, /Reset event thiếu generation/)
   assert.match(source, /thiếu định danh thiết bị cho event/)
 })
