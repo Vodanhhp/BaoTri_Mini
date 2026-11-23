@@ -1350,3 +1350,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Giới hạn đã ghi rõ: registry chỉ thống kê installation đã chạy phiên bản có hỗ trợ reset. Installation cũ chưa đăng ký cần mở bản mới/kết nối để đăng ký và purge; các RPC ghi cũ bị thu hồi để ngăn ghi ngược lên Cloud. Máy offline chỉ purge sau khi reconnect và chạy bản mới.
 - Hiện trạng: chỉ sửa source/docs/tests trên branch GitHub. Không apply migration, không deploy Edge Function, không thay đổi Production, không merge PR. Chưa có CI/build verification cho nhánh này và chưa chạy browser E2E.
 - Bước tiếp theo: rà soát kỹ SQL/function signatures, grants, TypeScript và regression tests; sau đó chỉ xin phép áp dụng migration trên Supabase Test khi source đã được kiểm tra. Không tự động apply.
+
+
+### Rà soát Reset bổ sung
+- Đã khóa generation khi đăng ký device để serialize với reset transaction.
+- Đã gắn reset acknowledgement với deviceId; installation ID thay đổi nhưng IndexedDB còn dữ liệu sẽ buộc purge lại nếu generation > 0.
+- Chặn audit event mồ côi phát sinh sau khi reset: kiểm tra asset tồn tại trong cùng Dexie transaction với ghi history; audit sync cũng kiểm tra asset scope/code trước khi gửi.
+- Cloud asset list re-check generation sau khi phân trang.
+- Chỉ sửa source trên branch; chưa apply migration, chưa deploy Edge Function, chưa chạm Production.
