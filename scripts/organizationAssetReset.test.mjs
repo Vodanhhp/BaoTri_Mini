@@ -104,7 +104,7 @@ test('App applies reset before tenant asset reads, reservation retries and audit
   assert.match(source, /currentAsset\.localScope!==organizationId\|\|currentAsset\.code!==currentEntry\.assetCode/)
   assert.match(source, /syncStatus:'local_only'/)
   assert.match(source, /retryPendingLocalReservations=async\(\)=>\{[\s\S]*?await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
-  assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsToLocal/)
+  assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsIncrementally/)
   assert.ok(source.includes('startSyncEngine({run:runSync'))
   const scheduler = await read('../src/lib/syncEngine.ts')
   assert.ok(scheduler.includes("window.addEventListener('focus', onFocus)"))
