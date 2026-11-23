@@ -48,5 +48,5 @@ test('pending Cloud mutations retry after initial sync or browser reconnect, wit
   assert.match(source, /window\.addEventListener\('online',runSync\)/)
   assert.match(source, /m\.status==='pending'\|\|\(m\.status==='processing'&&Date\.now\(\)-new Date\(m\.updatedAt\)\.getTime\(\)>60000\)/)
   assert.match(source, /context\.permissions\.includes\('assets\.update'\)/)
-  assert.match(source, /await syncCloudAssetsToLocal\(supabase,organizationId/)
+  assert.match(source, /await syncCloudAssetsToLocal\(client,organizationId/)
 })
