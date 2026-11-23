@@ -268,3 +268,16 @@ Applied to **Test only**: migration history versions `20261123155243_asset_sync_
 - Supabase advisors report the private feed tables as RLS-enabled with no policies (intentional fail-closed: direct table access is revoked; access only via checked RPC). Existing unrelated advisor warnings remain.
 
 Incremental mode remains **not activated**. Next work: implement page application with cursor persisted atomically in Dexie, bootstrap checkpoint → current Full Scan → catch-up Pull, reset barriers, event reconciliation/conflict handling, cancellation/session-org checks, and end-to-end tests. Realtime is only a wake-up after durable Pull is in place.
+
+
+## 15. Client Incremental Pull integration (23/11/2026)
+
+- App sync scheduler now calls `syncCloudAssetsIncrementally`. A new tenant cursor is initialized from Cloud checkpoint as `bootstrapComplete=false`; the existing Full Scan + deletion-tombstone reconciliation runs once, then bootstrap is marked complete and Catch-up Pull begins. If bootstrap is interrupted, the Full Scan repeats safely.
+- Subsequent runs use Change Feed pages (200 events) and the existing reconciliation rules for linked assets: pending/processing/conflict mutations protect Local, both-side edits become conflict, Cloud-only edits update Local, soft/hard deletion is reconciled as a tombstone.
+- Cursor is per organization in Dexie. It advances only after all events in the page are processed. Asset/link/mutation writes are individually transactional and idempotent; cursor advancement is a separate transaction, **not a single atomic transaction with the entire page**. A crash before cursor advance replays the page; handlers are designed to be safe to replay. This favors no-loss correctness over exactly-once processing.
+- Reset barrier handling: preflight checks generation; if Pull sees a generation gap, pages before the Reset marker are skipped rather than replaying pre-reset snapshots. Within a page, snapshots before the last Reset marker are skipped. The reset event applies the existing Local purge barrier before post-reset events, preventing stale assets from resurrecting.
+- Missing RPC during rollout falls back to current Full Scan; no cursor advancement occurs on fallback. Incremental Pull remains disabled in Production because Production DB has no migration and this branch is not deployed/merged.
+- Scheduler remains online/focus/visibility + 60-second interval; Realtime is not yet wired and will only be a wake-up, not the cursor authority.
+- Test Supabase rollback smoke-test covered Create/upsert, soft-delete, restore/upsert, hard-delete, reset barrier, event timestamps and page cursor in one transaction; transaction was rolled back and verification confirmed zero test assets, events and counters remain. Existing Test data untouched.
+
+Remaining validation: browser/mobile two-device test with a real tenant and real events, cancellation/org-switch during page processing, retry/replay after interrupted page, and reset occurring between pages. Do not enable Realtime until these pass.
