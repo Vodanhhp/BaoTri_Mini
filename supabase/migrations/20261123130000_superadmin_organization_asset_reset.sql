@@ -355,6 +355,40 @@ begin
 end;
 $function$;
 
+-- Preserve legacy RPC compatibility before the first reset, then block old bundles forever
+-- after generation advances. Move two existing implementations to private so both legacy
+-- and generation-aware wrappers can call the same audited implementation.
+alter function public.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz) set schema private;
+alter function private.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz) rename to soft_delete_cloud_asset_with_lock_internal;
+alter function public.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz) set schema private;
+alter function private.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz) rename to record_cloud_asset_history_event_internal;
+
+create or replace function private.assert_legacy_asset_sync_allowed(p_organization_id uuid)
+returns bigint
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare
+  v_generation bigint;
+begin
+  insert into private.organization_asset_reset_state (organization_id)
+  values (p_organization_id)
+  on conflict (organization_id) do nothing;
+
+  select generation into v_generation
+    from private.organization_asset_reset_state
+   where organization_id = p_organization_id
+   for share;
+
+  if v_generation <> 0 then
+    raise exception 'This installation predates the organization reset protocol. Refresh BAOTRI Mini before syncing.' using errcode = '40001';
+  end if;
+  return v_generation;
+end;
+$function$;
+
 -- Generation-aware import. The shared row lock serializes import with reset.
 create or replace function public.import_asset_preserving_identity(
   p_organization_id uuid, p_id uuid, p_code text, p_asset jsonb,
@@ -474,7 +508,7 @@ begin
     raise exception 'Local reset generation is stale; purge Local data before deleting' using errcode = '40001';
   end if;
 
-  return public.soft_delete_cloud_asset_with_lock(
+  return private.soft_delete_cloud_asset_with_lock_internal(
     p_organization_id, p_asset_code, p_lock_token, p_mutation_id,
     p_expected_cloud_updated_at, p_deleted_at
   );
@@ -508,7 +542,7 @@ begin
     raise exception 'Local reset generation is stale; old audit event remains Local-only' using errcode = '40001';
   end if;
 
-  return public.record_cloud_asset_history_event(
+  return private.record_cloud_asset_history_event_internal(
     p_organization_id, p_event_id, p_asset_code, p_event_type,
     p_summary, p_changes, p_actor_label, p_occurred_at
   );
@@ -556,17 +590,132 @@ begin
 end;
 $function$;
 
+-- Legacy signatures remain usable only until the first reset for an organization.
+-- This avoids breaking existing installations during rollout while making them unable
+-- to write any pre-reset snapshot once generation becomes non-zero.
+create or replace function public.import_asset_preserving_identity(
+  p_organization_id uuid, p_id uuid, p_code text, p_asset jsonb, p_mutation_id uuid
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare
+  v_result jsonb;
+  v_asset jsonb;
+begin
+  perform private.assert_legacy_asset_sync_allowed(p_organization_id);
+  v_result := private.import_asset_preserving_identity(p_organization_id,p_id,p_code,p_asset,p_mutation_id);
+  v_asset := v_result->'asset';
+  return (v_result-'asset') || jsonb_build_object(
+    'asset', (v_asset-'id') || jsonb_build_object('asset_key', p_code)
+  );
+end;
+$function$;
+
+create or replace function public.apply_cloud_asset_mutation_with_lock(
+  p_organization_id uuid, p_asset_code text, p_lock_token uuid, p_mutation_id uuid,
+  p_expected_cloud_updated_at timestamptz, p_payload jsonb
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare
+  v_asset_id uuid;
+  v_result jsonb;
+  v_asset jsonb;
+begin
+  if auth.uid() is null or not private.has_org_permission(p_organization_id, 'assets.update') then
+    raise exception 'Missing assets.update permission' using errcode = '42501';
+  end if;
+  perform private.assert_legacy_asset_sync_allowed(p_organization_id);
+  select id into v_asset_id from public.assets
+   where organization_id = p_organization_id and code = p_asset_code;
+  if not found then raise exception 'Asset not found' using errcode = 'P0002'; end if;
+  v_result := private.apply_asset_mutation_with_lock(
+    p_organization_id,v_asset_id,p_lock_token,p_mutation_id,p_expected_cloud_updated_at,p_payload
+  );
+  v_asset := v_result->'asset';
+  return (v_result-'asset') || jsonb_build_object(
+    'asset', (v_asset-'id') || jsonb_build_object('asset_key',p_asset_code)
+  );
+end;
+$function$;
+
+create or replace function public.soft_delete_cloud_asset_with_lock(
+  p_organization_id uuid, p_asset_code text, p_lock_token uuid, p_mutation_id uuid,
+  p_expected_cloud_updated_at timestamptz, p_deleted_at timestamptz
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+begin
+  perform private.assert_legacy_asset_sync_allowed(p_organization_id);
+  return private.soft_delete_cloud_asset_with_lock_internal(
+    p_organization_id,p_asset_code,p_lock_token,p_mutation_id,p_expected_cloud_updated_at,p_deleted_at
+  );
+end;
+$function$;
+
+create or replace function public.record_cloud_asset_history_event(
+  p_organization_id uuid, p_event_id uuid, p_asset_code text, p_event_type text,
+  p_summary text, p_changes jsonb, p_actor_label text, p_occurred_at timestamptz
+) returns boolean
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+begin
+  perform private.assert_legacy_asset_sync_allowed(p_organization_id);
+  return private.record_cloud_asset_history_event_internal(
+    p_organization_id,p_event_id,p_asset_code,p_event_type,p_summary,p_changes,p_actor_label,p_occurred_at
+  );
+end;
+$function$;
+
+create or replace function public.mirror_cloud_asset_group_change_history(
+  p_organization_id uuid, p_asset_code text, p_changes jsonb
+) returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+set row_security = off
+as $function$
+declare
+  v_asset_id uuid;
+begin
+  if auth.uid() is null or not private.has_org_permission(p_organization_id, 'assets.import') then
+    raise exception 'Missing assets.import permission' using errcode = '42501';
+  end if;
+  perform private.assert_legacy_asset_sync_allowed(p_organization_id);
+  select id into v_asset_id from public.assets
+   where organization_id = p_organization_id and code = p_asset_code;
+  if not found then raise exception 'Cloud asset does not exist in this organization' using errcode = 'P0002'; end if;
+  return private.mirror_asset_group_change_history(p_organization_id,v_asset_id,p_changes);
+end;
+$function$;
+
 -- Internal implementation functions must not be directly callable even if a deployment exposes private schemas.
 revoke all on function private.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public, anon, authenticated;
 revoke all on function private.apply_asset_mutation_with_lock(uuid,uuid,uuid,uuid,timestamptz,jsonb) from public, anon, authenticated;
 revoke all on function private.mirror_asset_group_change_history(uuid,uuid,jsonb) from public, anon, authenticated;
 
 -- Remove legacy write entry points so an old browser bundle cannot bypass the barrier.
-revoke all on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public, anon, authenticated;
-revoke all on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb) from public, anon, authenticated;
-revoke all on function public.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz) from public, anon, authenticated;
-revoke all on function public.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz) from public, anon, authenticated;
-revoke all on function public.mirror_cloud_asset_group_change_history(uuid,text,jsonb) from public, anon, authenticated;
+revoke all on function private.assert_legacy_asset_sync_allowed(uuid) from public, anon, authenticated;
+revoke all on function private.soft_delete_cloud_asset_with_lock_internal(uuid,text,uuid,uuid,timestamptz,timestamptz) from public, anon, authenticated;
+revoke all on function private.record_cloud_asset_history_event_internal(uuid,uuid,text,text,text,jsonb,text,timestamptz) from public, anon, authenticated;
+
+revoke all on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) from public, anon;
+revoke all on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb) from public, anon;
+revoke all on function public.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz) from public, anon;
+revoke all on function public.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz) from public, anon;
+revoke all on function public.mirror_cloud_asset_group_change_history(uuid,text,jsonb) from public, anon;
 
 revoke all on function public.register_organization_asset_reset_device(uuid,text,text,integer) from public, anon;
 revoke all on function public.acknowledge_organization_asset_reset(uuid,text,bigint) from public, anon;
@@ -582,6 +731,12 @@ grant execute on function public.register_organization_asset_reset_device(uuid,t
 grant execute on function public.acknowledge_organization_asset_reset(uuid,text,bigint) to authenticated;
 grant execute on function public.platform_reset_organization_assets(uuid,uuid,uuid) to service_role;
 grant execute on function public.platform_get_organization_asset_reset_status(uuid) to service_role;
+
+grant execute on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid) to authenticated;
+grant execute on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb) to authenticated;
+grant execute on function public.soft_delete_cloud_asset_with_lock(uuid,text,uuid,uuid,timestamptz,timestamptz) to authenticated;
+grant execute on function public.record_cloud_asset_history_event(uuid,uuid,text,text,text,jsonb,text,timestamptz) to authenticated;
+grant execute on function public.mirror_cloud_asset_group_change_history(uuid,text,jsonb) to authenticated;
 
 grant execute on function public.import_asset_preserving_identity(uuid,uuid,text,jsonb,uuid,bigint) to authenticated;
 grant execute on function public.apply_cloud_asset_mutation_with_lock(uuid,text,uuid,uuid,timestamptz,jsonb,bigint) to authenticated;
