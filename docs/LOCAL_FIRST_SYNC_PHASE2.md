@@ -137,3 +137,34 @@ Cursor chỉ được lưu sau khi toàn bộ event page đã được áp dụn
 5. Giai đoạn 3 mới bật Realtime + polling fallback.
 
 **Ranh giới an toàn:** không Production, không deploy, không reset dữ liệu, không merge PR khi chưa có phê duyệt riêng.
+
+
+## 10. Rà soát bổ sung sau khi đối chiếu Test DB (23/11/2026)
+
+### 10.1. Quyền đọc feed và snapshot không được đánh đồng
+
+- Trên Test, policy hiện tại của `public.assets` là `assets_select_member`: thành viên tổ chức đọc thiết bị chưa xóa; Admin với `assets.delete` mới đọc được bản ghi soft-delete. Không giả định policy assets hiện đang dùng `assets.view`.
+- Feed phải có policy SELECT riêng, kiểm tra `private.has_org_permission(organization_id,'assets.view')`. Đây là quyền đọc event metadata, không được cấp quyền ghi feed.
+- RPC Pull phải kiểm tra membership/permission rõ ràng. Snapshot asset phải tôn trọng quyền đọc dữ liệu hiện có; nếu event soft-delete mà snapshot bị RLS che, client vẫn phải xử lý metadata event để ẩn/đánh dấu thiết bị, không suy diễn đó là hard-delete.
+- Không trả payload asset hoặc dữ liệu nhạy cảm qua Realtime. Event chỉ là tín hiệu và metadata.
+
+### 10.2. Reset integration đã đối chiếu
+
+- Test DB hiện có các bảng private `organization_asset_reset_state`, `organization_asset_reset_requests`, `organization_asset_reset_devices` và `organization_asset_reset_approval_requests`; chưa có trigger trên reset request.
+- Function `platform_reset_organization_assets` tăng generation, xóa assets trong transaction và sau đó insert reset request. Vì vậy trigger marker gắn AFTER INSERT trên reset request có thể phát reset event sau các hard-delete events cùng transaction; rollback phải rollback cả feed/counter.
+- Reset generation vẫn là cơ chế authoritative để áp dụng reset Local. Event reset chỉ bổ sung checkpoint/wake-up, không tự thay thế `ensureOrganizationAssetResetApplied`.
+- Không chỉnh function reset, không gọi reset và không thay đổi dữ liệu trong triển khai Sync Engine.
+
+### 10.3. Hard-delete và soft-delete semantics
+
+- `soft_delete`: event phải giúp client loại thiết bị khỏi danh sách thường; không hard-delete Local record hoặc lịch sử. Snapshot null do quyền đọc không được coi là hard-delete.
+- `hard_delete`: metadata chỉ dùng reconciliation; reset generation barrier là cơ chế dọn Local chính trong reset. Không xóa Local theo code đơn thuần, phải dùng asset ID + organization và kiểm tra cloud-link để tránh ảnh hưởng bản ghi Local khác.
+- `restore` (deleted_at chuyển về null) phát `upsert` để Local nhận lại snapshot khi có quyền.
+
+### 10.4. Điều kiện bảo đảm cursor
+
+Counter row lock chỉ đúng khi mọi event của cùng organization đi qua cùng một row counter trong transaction, và việc cấp sequence + insert event là atomic. Trigger/helper phải không cho client gọi trực tiếp, không cho tự chọn organization/cursor, và không dùng một sequence PostgreSQL global làm cursor commit-order.
+
+### 10.5. Kiểm tra trước khi viết migration
+
+Migration workflow/CLI hiện không có trong môi trường thực thi. Không tạo filename migration thủ công và không apply DDL bằng MCP. Trước khi triển khai schema, cần khôi phục Supabase CLI/repository workspace, tạo migration bằng `supabase migration new`, kiểm tra migration history của Test so với source, sau đó review SQL + tests trước khi apply Test.
