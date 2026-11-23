@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
-import { PlatformPlanRequestsPanel } from './PlanChangePanels'
+import { PlatformPlanRequestsPanel, PlatformAssetResetRequestsPanel } from './PlanChangePanels'
 
 type Props={client:SupabaseClient;onClose:()=>void;fullPage?:boolean}
 type PlanCode='A'|'B'|'C'|'D'
@@ -101,12 +101,8 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   dictionary:planCatalog.equipmentDictionary.length
  }:null
 
- const beginManagement=(organization:OrganizationRow,action:LifecycleAction)=>{
-  setManagement({organization,action});setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementSuccess('')
- }
- const cancelManagement=()=>{
-  setManagement(null);setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('')
- }
+ const beginManagement=(organization:OrganizationRow,action:LifecycleAction)=>{setManagement({organization,action});setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('');setManagementSuccess('')}
+ const cancelManagement=()=>{setManagement(null);setManagementPassword('');setManagementAnswer('');setTypedOrganizationName('');setManagementError('')}
  const submitManagement=async(e:FormEvent)=>{
   e.preventDefault()
   if(!management||managementBusy)return
@@ -117,20 +113,12 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   if(management.action==='delete'&&typedOrganizationName!==management.organization.name){setManagementError('Tên tổ chức nhập lại chưa khớp chính xác.');return}
   setManagementBusy(true)
   try{
-   const {data,error}=await client.functions.invoke('platform-manage-organization',{body:{
-    action:management.action,
-    organizationId:management.organization.id,
-    organizationName:management.organization.name,
-    confirmName:typedOrganizationName,
-    password:managementPassword,
-    confirmation:managementAnswer
-   }})
+   const {data,error}=await client.functions.invoke('platform-manage-organization',{body:{action:management.action,organizationId:management.organization.id,organizationName:management.organization.name,confirmName:typedOrganizationName,password:managementPassword,confirmation:managementAnswer}})
    if(error)throw new Error(await functionErrorMessage(error))
    if(data?.error)throw new Error(data.error)
    const label=management.action==='suspend'?'đã tạm ngưng':management.action==='reactivate'?'đã kích hoạt lại':'đã xóa vĩnh viễn'
    setManagementSuccess(`Tổ chức "${management.organization.name}" ${label} thành công.`)
-   cancelManagement()
-   await loadOverview()
+   cancelManagement();await loadOverview()
   }catch(e){setManagementError(e instanceof Error?e.message:String(e))}
   finally{setManagementBusy(false)}
  }
@@ -253,6 +241,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
     {management.action==='suspend'&&<div className="platform-action-note">Tổ chức sẽ bị chặn truy cập. Dữ liệu Cloud vẫn được giữ nguyên và có thể kích hoạt lại sau.</div>}
     {management.action==='reactivate'&&<div className="platform-action-note">Tổ chức sẽ hoạt động trở lại. Thành viên có quyền truy cập hợp lệ có thể sử dụng Cloud.</div>}
     {management.action==='delete'&&<div className="platform-action-danger"><b>Không thể hoàn tác.</b> Dữ liệu Cloud của tổ chức, thiết bị, thành viên và phân quyền sẽ bị xóa. Tài khoản Auth, hồ sơ cá nhân và bản Local trên thiết bị thành viên không bị xóa.</div>}
+
     <form className="platform-action-form" onSubmit={submitManagement}>
      {management.action==='delete'&&<label className="field">Nhập chính xác tên tổ chức *<input required value={typedOrganizationName} onChange={e=>setTypedOrganizationName(e.target.value)} placeholder={management.organization.name}/></label>}
      <label className="field">Mật khẩu Super Admin *<input required type="password" autoComplete="current-password" value={managementPassword} onChange={e=>setManagementPassword(e.target.value)} placeholder="Nhập mật khẩu tài khoản Super Admin"/></label>
@@ -264,7 +253,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   </div>}
   </>}
 
-  {(!fullPage||activeSection==='platform-requests')&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/></div>}
+  {(!fullPage||activeSection==='platform-requests')&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/><PlatformAssetResetRequestsPanel client={client}/></div>}
   {(!fullPage||activeSection==='platform-provision')&&<>
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>

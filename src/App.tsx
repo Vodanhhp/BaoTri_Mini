@@ -13,6 +13,7 @@ import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type Asset
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsToLocal, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
+import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
 import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
@@ -185,7 +186,13 @@ export default function App() {
   const loadAssets = async (scope=localScope) => {
     if(!scope){setAssets([]);return}
     if(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')){setAssets([]);return}
-    const rows=await db.assets.where('localScope').equals(scope).toArray()
+    const canCheckReset=!localPreview&&Boolean(supabase)&&navigator.onLine
+    const beforeGeneration=canCheckReset?await ensureOrganizationAssetResetApplied(supabase!,scope):null
+    let rows=await db.assets.where('localScope').equals(scope).toArray()
+    if(canCheckReset){
+      const afterGeneration=await ensureOrganizationAssetResetApplied(supabase!,scope)
+      if(afterGeneration!==beforeGeneration)rows=await db.assets.where('localScope').equals(scope).toArray()
+    }
     const activeScope=localPreview?'local-preview':organizationId
     if(scope===activeScope&&(localPreview||organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')))setAssets(rows)
   }
@@ -194,7 +201,16 @@ export default function App() {
     const scope=localPreview?'local-preview':session&&organizationId?organizationId:''
     setAssets([])
     if(!scope||(!localPreview&&!organizationContexts.find(item=>item.id===scope)?.permissions.includes('assets.view')))return ()=>{active=false}
-    db.assets.where('localScope').equals(scope).toArray().then(rows=>{if(active)setAssets(rows)})
+    const loadScopedAssets=async()=>{
+      try{
+        if(!localPreview&&supabase&&navigator.onLine)await ensureOrganizationAssetResetApplied(supabase,scope)
+        const rows=await db.assets.where('localScope').equals(scope).toArray()
+        if(active)setAssets(rows)
+      }catch(cause){
+        if(active)setError('Không thể xác minh reset hoặc tải dữ liệu thiết bị: '+(cause instanceof Error?cause.message:String(cause)))
+      }
+    }
+    void loadScopedAssets()
     return ()=>{active=false}
   }, [session?.user.id,localPreview,organizationId,organizationContexts])
   useEffect(()=>{
@@ -205,6 +221,51 @@ export default function App() {
       .catch(cause=>{if(active)setError('Không tải được dữ liệu Local Preview cũ: '+(cause instanceof Error?cause.message:String(cause)))})
     return()=>{active=false}
   },[session?.user.id,organizationId,localPreview])
+  // Reconcile every organization previously known to this browser, including one
+  // whose membership has since been removed. A previously registered device can
+  // still receive and acknowledge a reset without regaining organization access.
+  useEffect(()=>{
+    const client=supabase
+    if(!session?.user.id||!client)return
+    let active=true
+    const applyKnownOrganizationResets=async()=>{
+      if(!navigator.onLine)return
+      try{
+        const [localRows,resetRows,historyRows,draftRows,mutationRows,linkRows,groupRows]=await Promise.all([
+          db.assets.toArray(),
+          db.organizationAssetResetStates.toArray(),
+          db.assetHistory.toArray(),
+          db.assetDrafts.toArray(),
+          db.assetMutations.toArray(),
+          db.assetCloudLinks.toArray(),
+          db.assetGroupChanges.toArray()
+        ])
+        const scopes=new Set<string>([
+          ...localRows.map(row=>row.localScope),
+          ...resetRows.map(row=>row.organizationId),
+          ...historyRows.map(row=>row.organizationId),
+          ...draftRows.map(row=>row.organizationId),
+          ...mutationRows.map(row=>row.organizationId),
+          ...linkRows.map(row=>row.organizationId),
+          ...groupRows.map(row=>row.organizationId)
+        ])
+        scopes.delete('local-preview')
+        for(const scope of scopes){
+          if(!active)break
+          await ensureOrganizationAssetResetApplied(client,scope).catch(()=>{})
+        }
+      }catch{/* A later online/focus event retries without blocking the current session. */}
+    }
+    void applyKnownOrganizationResets()
+    window.addEventListener('online',applyKnownOrganizationResets)
+    window.addEventListener('focus',applyKnownOrganizationResets)
+    return()=>{
+      active=false
+      window.removeEventListener('online',applyKnownOrganizationResets)
+      window.removeEventListener('focus',applyKnownOrganizationResets)
+    }
+  },[session?.user.id])
+
   useEffect(()=>{
     if(!session?.user.id||!supabase||!organizationReady||!organizationId||localPreview){
       setCloudSyncMessage('')
@@ -220,6 +281,7 @@ export default function App() {
       running=true
       setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
       try{
+        await ensureOrganizationAssetResetApplied(client,organizationId)
         const summary=await syncCloudAssetsToLocal(client,organizationId,{shouldContinue:()=>active})
         if(!active)return
         let retried=0
@@ -243,14 +305,23 @@ export default function App() {
             .filter(entry=>entry.syncStatus==='pending').toArray()
           for(const entry of pendingHistory){
             if(!active||!navigator.onLine)break
-            const mutation=await db.assetMutations.get(entry.id)
-            if(mutation&&mutation.status!=='applied')continue
             try{
-              const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
-                p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
-                p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
+              const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+              const currentEntry=await db.assetHistory.get(entry.id)
+              if(!currentEntry||currentEntry.syncStatus!=='pending')continue
+              const currentAsset=await db.assets.get(currentEntry.assetId)
+              if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+                await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+                continue
+              }
+              const mutation=await db.assetMutations.get(currentEntry.id)
+              if(mutation&&mutation.status!=='applied')continue
+              const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
+                p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+                p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
+                p_reset_generation:resetGeneration
               })
-              if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+              if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
             }catch{
               // Keep the audit event pending; the next online sync retries it.
             }
@@ -268,13 +339,15 @@ export default function App() {
     }
     void runSync()
     window.addEventListener('online',runSync)
-    return()=>{active=false;window.removeEventListener('online',runSync)}
+    window.addEventListener('focus',runSync)
+    return()=>{active=false;window.removeEventListener('online',runSync);window.removeEventListener('focus',runSync)}
   },[session?.user.id,organizationReady,organizationId,localPreview,organizationContexts])
 
   useEffect(()=>{
     if(!session?.user.id||!organizationId||localPreview){setRecoverableDrafts([]);return}
     let active=true
     const loadDrafts=async()=>{
+      if(navigator.onLine&&supabase)await ensureOrganizationAssetResetApplied(supabase,organizationId)
       const rows=await db.assetDrafts.where('[organizationId+userId]').equals([organizationId,session.user.id]).toArray()
       const pending:AssetDraft[]=[]
       for(const row of rows){
@@ -293,6 +366,7 @@ export default function App() {
     let active=true
     const retryPendingLocalReservations=async()=>{
       if(!navigator.onLine)return
+      await ensureOrganizationAssetResetApplied(client,organizationId)
       const pending=await db.assets.where('localScope').equals(organizationId)
         .filter(asset=>asset.idReservationStatus==='reserved'&&Boolean(asset.idReservationId))
         .toArray()
@@ -373,23 +447,40 @@ export default function App() {
     }))
     const kind = eventType ?? (!before ? 'created' : before.status !== after.status ? 'status_changed' : 'updated')
     if (before && !changes.length && !force) return
-    const entry:AssetHistory={
-      id:eventId??uid(),organizationId:organizationId||'local-preview',assetId:after.id,assetCode:after.code,eventType:kind,
-      summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
-      changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
-      occurredAt:now(),syncStatus:localPreview?'synced':'pending'
-    }
-    await db.assetHistory.put(entry)
-    if(!deferCloud)await syncAssetHistoryEntry(entry)
+    let entry:AssetHistory|undefined
+    const scope=localPreview?'local-preview':organizationId
+    // Serialize the asset-exists check with reset purge. If reset wins, do not
+    // create a fresh pending audit event for a Local snapshot that no longer exists.
+    await db.transaction('rw',[db.assets,db.assetHistory],async()=>{
+      const current=await db.assets.get(after.id)
+      if(!current||current.localScope!==scope||current.code!==after.code)return
+      entry={
+        id:eventId??uid(),organizationId:scope,assetId:after.id,assetCode:after.code,eventType:kind,
+        summary:summary ?? (!before?'Thêm thiết bị':kind==='status_changed'?'Thay đổi trạng thái thiết bị':'Cập nhật hồ sơ thiết bị'),
+        changes,actorUserId:session?.user.id,actorLabel:profileDisplayName||session?.user.email||'Local Preview',
+        occurredAt:now(),syncStatus:localPreview?'synced':'pending'
+      }
+      await db.assetHistory.put(entry)
+    })
+    if(entry&&!deferCloud)await syncAssetHistoryEntry(entry)
   }
   const syncAssetHistoryEntry = async (entry:AssetHistory) => {
-    if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced')return
+    if(localPreview||!supabase||!navigator.onLine||entry.syncStatus==='synced'||entry.syncStatus==='local_only')return
     try{
-      const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event',{
-        p_organization_id:organizationId,p_event_id:entry.id,p_asset_code:entry.assetCode,p_event_type:entry.eventType,
-        p_summary:entry.summary,p_changes:entry.changes,p_actor_label:entry.actorLabel,p_occurred_at:entry.occurredAt
+      const resetGeneration=await ensureOrganizationAssetResetApplied(supabase,organizationId)
+      const currentEntry=await db.assetHistory.get(entry.id)
+      if(!currentEntry||currentEntry.syncStatus!=='pending')return
+      const currentAsset=await db.assets.get(currentEntry.assetId)
+      if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+        await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+        return
+      }
+      const {error:historyError}=await supabase.rpc('record_cloud_asset_history_event_v2',{
+        p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+        p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
+        p_reset_generation:resetGeneration
       })
-      if(!historyError)await db.assetHistory.update(entry.id,{syncStatus:'synced'})
+      if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
     }catch{/* Keep the Local audit event pending; retry after connectivity or migration is ready. */}
   }
   const loadAssetHistory = async (assetId: string, assetCode?:string) => {
@@ -550,7 +641,10 @@ export default function App() {
     if (!editing || busy) return
     setBusy(true); setError('')
     try {
+      const wasExisting=assets.some(asset=>asset.id===editing.id)
+      if(!localPreview&&supabase&&organizationId&&navigator.onLine)await ensureOrganizationAssetResetApplied(supabase,organizationId)
       const previous = await db.assets.get(editing.id)
+      if(wasExisting&&!previous)throw new Error('Thiết bị đã bị reset khỏi tổ chức; không thể lưu lại bản Local cũ. Hãy tải lại danh sách.')
       if(previous&&!localPreview&&!canUpdate)throw new Error('Tài khoản không có quyền cập nhật thiết bị (assets.update).')
       if(!previous&&!localPreview&&!canCreate)throw new Error('Tài khoản không có quyền tạo thiết bị (assets.create).')
 

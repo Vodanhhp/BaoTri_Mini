@@ -66,7 +66,7 @@ test('successful retry mirrors pending group-change history before marking it sy
   const source = await read('../src/lib/cloudAssets.ts')
   const retry = source.slice(source.indexOf('export async function retryCloudAssetMutation'))
   assert.match(retry, /change\.syncStatus==='pending'&&change\.mutationId===mutationId/)
-  assert.match(retry, /client\.rpc\('mirror_cloud_asset_group_change_history'/)
+  assert.match(retry, /client\.rpc\('mirror_cloud_asset_group_change_history_v2'/)
   assert.match(retry, /if\(historyError\)throw new Error/)
   assert.match(retry, /db\.assetGroupChanges\.update\(change\.id,\{syncStatus:'synced'\}\)/)
 })
@@ -77,8 +77,8 @@ test('failed Cloud edits retain a Local audit event and mirror it only after mut
   assert.match(source, /recordAssetHistory\(previous,value,undefined,undefined,mutationId,true\)/)
   assert.match(source, /const pendingHistory=await db\.assetHistory\.where\('organizationId'\)/)
   assert.match(source, /if\(mutation&&mutation\.status!=='applied'\)continue/)
-  assert.match(source, /client\.rpc\('record_cloud_asset_history_event'/)
-  assert.match(source, /db\.assetHistory\.update\(entry\.id,\{syncStatus:'synced'\}\)/)
+  assert.match(source, /client\.rpc\('record_cloud_asset_history_event_v2'/)
+  assert.match(source, /db\.assetHistory\.update\(currentEntry\.id,\{syncStatus:'synced'\}\)/)
 })
 
  
@@ -104,7 +104,7 @@ test('manual mutation retry mirrors its matching pending audit event after recei
   const retry = source.slice(source.indexOf('const retryOne='), source.indexOf('const resolveConflictCloud='))
   assert.match(retry, /await retryCloudAssetMutation\(client,organizationId,mutation\.mutationId\)/)
   assert.match(retry, /db\.assetHistory\.get\(mutation\.mutationId\)/)
-  assert.match(retry, /client\.rpc\('record_cloud_asset_history_event'/)
+  assert.match(retry, /client\.rpc\('record_cloud_asset_history_event_v2'/)
   assert.match(retry, /db\.assetHistory\.update\(pendingHistory\.id,\{syncStatus:'synced'\}\)/)
 })
  
@@ -166,15 +166,15 @@ test('automatic mutation retry requires an authorized Admin or KTV role as well 
 test('automatic sync mirrors standalone pending history events but gates mutation-linked events on applied receipt', async () => {
  const source = await read('../src/App.tsx')
  const sync = source.slice(source.indexOf('const runSync=async()=>{'), source.indexOf('const runSync=async()=>{')+3200)
- assert.match(sync, /const mutation=await db\.assetMutations\.get\(entry\.id\)/)
+ assert.match(sync, /const mutation=await db\.assetMutations\.get\(currentEntry\.id\)/)
  assert.match(sync, /if\(mutation&&mutation\.status!=='applied'\)continue/)
- assert.match(sync, /client\.rpc\('record_cloud_asset_history_event'/)
+ assert.match(sync, /client\.rpc\('record_cloud_asset_history_event_v2'/)
 })
 
 test('late Local asset reload cannot repopulate a previous organization scope', async () => {
  const source = await read('../src/App.tsx')
  const loader = source.slice(source.indexOf('const loadAssets = async'), source.indexOf('useEffect(() => {', source.indexOf('const loadAssets = async')))
- assert.match(loader, /const rows=await db\.assets\.where\('localScope'\)\.equals\(scope\)\.toArray\(\)/)
+ assert.match(loader, /let rows=await db\.assets\.where\('localScope'\)\.equals\(scope\)\.toArray\(\)/)
  assert.match(loader, /const activeScope=localPreview\?'local-preview':organizationId/)
  assert.match(loader, /if\(scope===activeScope&&\(localPreview\|\|organizationContexts\.find\(item=>item\.id===scope\)\?\.permissions\.includes\('assets\.view'\)\)\)setAssets\(rows\)/)
 })
@@ -203,7 +203,7 @@ test('organization deletion migration removes every RESTRICT dependency before d
  for (let i=0;i<required.length;i++) assert.notEqual(deletePositions[i],-1,'missing cleanup for '+required[i])
  const tenantDelete=sql.indexOf('delete from public.organizations')
  assert.ok(tenantDelete>Math.max(...deletePositions),'tenant must be deleted after every dependent table')
- assert.match(sql,/security definer\s+set search_path = ''/)
+ assert.match(sql,/security definer\nset search_path = ''/)
  assert.match(sql,/revoke all on function private\.platform_delete_organization/)
 })
 
@@ -211,7 +211,7 @@ test('organization lifecycle UI extracts the server error body from Supabase Fun
  const source = await read('../src/PlatformAdminPanel.tsx')
  assert.match(source,/const functionErrorMessage=async\(error:unknown\)=>/)
  assert.match(source,/context instanceof Response/)
- assert.match(source,/payload\.error==='string'/)
+ assert.match(source,/typeof payload\.error==='string'/)
  assert.match(source,/throw new Error\(await functionErrorMessage\(error\)\)/)
  const edge = await read('../supabase/functions/platform-manage-organization/index.ts')
  assert.match(edge,/detail\?\.code==='23503'\?409:400/)

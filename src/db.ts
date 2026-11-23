@@ -74,7 +74,7 @@ export type AssetGroupChange = {
   mutationId?: string
   changedAt: string
   reason?: string
-  syncStatus: 'pending' | 'synced'
+  syncStatus: 'pending' | 'synced' | 'local_only'
 }
 
 export type AssetHistory = {
@@ -88,7 +88,15 @@ export type AssetHistory = {
   actorUserId?: string
   actorLabel: string
   occurredAt: string
-  syncStatus: 'pending' | 'synced'
+  syncStatus: 'pending' | 'synced' | 'local_only'
+}
+
+export type OrganizationAssetResetState = {
+  organizationId: string
+  generation: number
+  appliedAt: string
+  /** Local installation identity paired with the acknowledged generation. */
+  deviceId?: string
 }
 
 export type AssetCloudLink = {
@@ -144,6 +152,7 @@ class BaoTriDatabase extends Dexie {
   assetGroupChanges!: Table<AssetGroupChange, string>
   assetHistory!: Table<AssetHistory, string>
   assetDrafts!: Table<AssetDraft, string>
+  organizationAssetResetStates!: Table<OrganizationAssetResetState, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -194,6 +203,15 @@ class BaoTriDatabase extends Dexie {
       assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
       assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
       assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]'
+    })
+    this.version(7).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
+      assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]',
+      organizationAssetResetStates: 'organizationId, generation'
     })
   }
 }

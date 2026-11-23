@@ -1323,3 +1323,80 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kiểm tra lại tổ chức Cong Ty B sau apply: vẫn tồn tại active, 1 catalog row, 1 member, 3 roles, 0 assets. Không có tổ chức nào bị xóa trong lúc áp dụng migration.
 - Sửa PlatformAdminPanel.tsx đọc JSON body trong FunctionsHttpError.context để hiển thị lỗi thật thay vì câu chung Edge Function returned a non-2xx status code. Edge Function source phân loại FK 23503 thành HTTP 409 và trả code lỗi có cấu trúc; source chưa deploy, UI chưa phát hành.
 - Thêm regression tests cho thứ tự xóa phụ thuộc và hiển thị lỗi. Chỉ apply schema trên Supabase Test; không deploy Edge Function, không thay Production.
+ 
+### Thiết kế chức năng Superadmin RESET toàn bộ thiết bị — 23/11/2026
+- Đã khảo sát Dexie Local stores, Cloud assets/receipts/locks/history, luồng đồng bộ trong App và Edge Function platform-manage-organization.
+- Đã chốt giao thức reset theo generation tăng đơn điệu ở cấp tổ chức; Local phải purge đúng tenant trước mọi sync/retry sau khi nhận generation mới.
+- Reset xóa Cloud assets, receipts/locks, Local assets/images, links, mutations và drafts; giữ Local/Cloud audit history, group history, catalog, tài khoản, memberships, roles/permissions, Plan và cấu hình tổ chức.
+- Giữ sequence counters và confirmed reservation history để tránh tái sử dụng mã thiết bị; reservation chưa hoàn tất chuyển released.
+- Bổ sung device registry để theo dõi last-seen và generation đã acknowledge; máy offline được báo “Chờ thiết bị kết nối”, không tuyên bố reset hoàn tất khi còn máy chờ.
+- Chặn dữ liệu Local cũ sống lại bằng server-side generation barrier: chữ ký legacy chỉ được phép khi generation = 0 và bị chặn sau lần reset đầu; các RPC mới dùng tên riêng hậu tố `_v2` (không overload PostgREST), bắt buộc mang reset generation hiện hành; client mới purge trước sync.
+- Tài liệu thiết kế: docs/SUPERADMIN_ASSET_RESET.md.
+- Branch triển khai: feature/superadmin-org-asset-reset, được tạo trên head PR #30 (PR #30 vẫn OPEN, chưa merge).
+- Chỉ khảo sát và thêm tài liệu thiết kế; chưa có migration, chưa thay đổi Supabase Test/Production, chưa deploy Edge Function, chưa merge PR.
+- Lưu ý giới hạn vật lý: máy offline không thể bị xóa dữ liệu tức thời từ xa; dữ liệu được xóa tại Local khi máy chạy lại và kết nối, trước khi cho phép đồng bộ.
+
+
+### Triển khai Reset toàn bộ thiết bị — checkpoint 23/11/2026
+
+- Tiếp tục trên branch `feature/superadmin-org-asset-reset`, PR #31 (DRAFT, OPEN), base `fix/cloud-delete-sync-preserve-local`. PR #30 vẫn OPEN, không merge.
+- Đã kiểm tra schema Supabase Test ở chế độ chỉ đọc. Xác nhận FK audit/group history, receipts, edit locks; xác nhận reservations và sequence counters. Không đọc/ghi dữ liệu nghiệp vụ.
+- Đã thêm migration nguồn `supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql`: reset generation theo organization, device registry, reset request idempotency/audit, status/reset RPC, generation-aware import/mutation/soft-delete/history RPC; giới hạn legacy signatures ở generation 0 và từ chối sau lần reset đầu; giữ audit và sequence counters/history. **Chưa apply migration lên Test hoặc Production.**
+- Đã thêm Edge Function nguồn `supabase/functions/platform-reset-organization-assets/index.ts`: xác thực owner, re-auth mật khẩu, xác nhận chính xác tên tổ chức và request UUID; có endpoint trạng thái.
+- Đã thêm nút **Reset thiết bị** và modal xác nhận trong Superadmin, hiển thị Cloud count và trạng thái các Local đã đăng ký.
+- Đã thêm `src/lib/assetReset.ts`, Dexie v7 reset generation; purge tenant scope assets (bao gồm ảnh nhúng), links, mutations, drafts; giữ asset/group history với trạng thái Local-only để không replay event cũ; acknowledge chỉ sau transaction thành công. Local Preview và tenant khác không bị xóa.
+- Đã gắn guard trước tenant asset load, Cloud sync, import, lấy khóa sửa, mutation retry, history mirror, reservation retry; kiểm tra thêm khi online và khi tab nhận focus. Kiểm tra Local snapshot hiện hành trước khi import/mutation.
+- Đã thêm regression test source `scripts/organizationAssetReset.test.mjs`.
+- Giới hạn đã ghi rõ: registry chỉ thống kê installation đã chạy phiên bản có hỗ trợ reset. Installation cũ chưa đăng ký cần mở bản mới/kết nối để đăng ký và purge; các RPC ghi cũ bị thu hồi để ngăn ghi ngược lên Cloud. Máy offline chỉ purge sau khi reconnect và chạy bản mới.
+- Hiện trạng: chỉ sửa source/docs/tests trên branch GitHub. Không apply migration, không deploy Edge Function, không thay đổi Production, không merge PR. Chưa có CI/build verification cho nhánh này và chưa chạy browser E2E.
+- Bước tiếp theo: rà soát kỹ SQL/function signatures, grants, TypeScript và regression tests; sau đó chỉ xin phép áp dụng migration trên Supabase Test khi source đã được kiểm tra. Không tự động apply.
+
+
+### Rà soát Reset bổ sung
+- Đã khóa generation khi đăng ký device để serialize với reset transaction.
+- Đã gắn reset acknowledgement với deviceId; installation ID thay đổi nhưng IndexedDB còn dữ liệu sẽ buộc purge lại nếu generation > 0.
+- Chặn audit event mồ côi phát sinh sau khi reset: kiểm tra asset tồn tại trong cùng Dexie transaction với ghi history; audit sync cũng kiểm tra asset scope/code trước khi gửi.
+- Cloud asset list re-check generation sau khi phân trang.
+- Chỉ sửa source trên branch; chưa apply migration, chưa deploy Edge Function, chưa chạm Production.
+
+
+### Cập nhật triển khai và rà soát Reset — 23/11/2026
+
+- Đính chính checkpoint phía trên: migration `20261123130000_superadmin_organization_asset_reset` **đã được apply lên Supabase Test BAOTRI Mini New** sau khi người dùng phê duyệt; version được ghi trong migration history là `20261123132922`. Không apply lên Production.
+- Edge Function `platform-reset-organization-assets` đã deploy lên Supabase Test, trạng thái **ACTIVE**, `verify_jwt=true`; source deployed trùng nội dung branch tại thời điểm deploy.
+- Kiểm tra SQL chỉ đọc sau deploy: các bảng reset state/device/request đang có 0 rows; Reset chưa từng được invoke. Không xóa hoặc sửa hồ sơ thiết bị/tổ chức.
+- Kiểm tra quyền thực tế trên DB: reset RPC và status RPC chỉ EXECUTE bởi `service_role`; register/acknowledge và các RPC đồng bộ generation-aware chỉ EXECUTE bởi `authenticated`; không hàm nào trong nhóm kiểm tra cho `anon` EXECUTE. Các hàm có `search_path=''` và `row_security=off`; từng wrapper vẫn phải giữ kiểm tra user/permission/generation trong thân hàm.
+- GitHub Actions run `45183190303`: job build **success**, gồm Unit tests và Build. PR head tại thời điểm rà soát: `3c667c92a6a3c81fc0f1acb7da2028189f1b81dc`.
+- Supabase Security Advisor vẫn có cảnh báo generic về SECURITY DEFINER callable by authenticated (22 findings) và leaked-password protection disabled. Không thu hồi quyền hàng loạt; các RPC authenticated được ứng dụng sử dụng và có kiểm tra quyền/generation. Cần tiếp tục review từng finding và đánh giá cấu hình Auth riêng.
+- **Chưa chạy browser E2E**: chưa có phiên Superadmin/browser được cung cấp để xác minh luồng giao diện thực tế. Cũng chưa chạy thao tác Reset trên tổ chức nào. Muốn kiểm thử destructive cần chọn đúng tổ chức Test chuyên dụng và xác nhận riêng.
+- PR #31 vẫn OPEN, DRAFT, chưa merge; base PR #30 vẫn OPEN, chưa merge. Production/DNS/Pages không thay đổi.
+
+
+### Hoàn thiện quy trình yêu cầu / duyệt Reset — 23/11/2026
+- Thay đổi nghiệp vụ: Admin doanh nghiệp gửi yêu cầu Reset trong Cài đặt → Gói dịch vụ; chỉ Superadmin mới duyệt hoặc từ chối trong Quản trị nền tảng → Duyệt yêu cầu.
+- Thêm migration 20261123150000_organization_asset_reset_approval_workflow.sql: bảng request/audit riêng, snapshot số Cloud/Local lúc gửi, một yêu cầu pending/approved mỗi tổ chức, trạng thái pending/approved/executed/rejected/failed, RPC create/list/review chỉ service_role EXECUTE.
+- RPC review khóa request; từ chối không thay đổi dữ liệu thiết bị; duyệt gọi reset RPC hiện có trong transaction, lưu executed sau thành công, lưu failed nếu transaction reset lỗi.
+- Thêm Edge Function organization-asset-reset-requests (JWT + Admin active membership) và platform-manage-asset-reset-requests (JWT + Superadmin owner + re-auth mật khẩu). Cả hai ACTIVE trên Supabase Test với verify_jwt=true.
+- Vô hiệu hóa endpoint Reset trực tiếp platform-reset-organization-assets bằng HTTP 410 để client cũ không thể bypass quy trình.
+- Bổ sung giao diện gửi yêu cầu/lịch sử cho Admin doanh nghiệp và bảng duyệt cho Superadmin; bỏ nút Reset trực tiếp khỏi bảng tổ chức.
+- Migration đã apply trên Supabase Test BAOTRI Mini New. Post-check read-only: approval table tồn tại, 0 request; anon/authenticated không có EXECUTE review/create; service_role có EXECUTE. Không có request/reset thực tế nào được tạo hoặc chạy.
+- Đã bổ sung regression tests source; chưa chạy CI/build trên head mới và chưa browser E2E với phiên Admin/Superadmin. PR #31 vẫn DRAFT/OPEN, không merge; Production không thay đổi.
+
+
+### Xác minh CI và Supabase Test sau workflow Reset approval — 23/11/2026
+- GitHub Actions run 45188928216: **SUCCESS** trên commit 0d1f1c98d4bb28e468a5db35588aaf8668560dae; Unit tests 80/80 PASS, Build PASS, npm audit 0 vulnerabilities.
+- Migration file 20261123150000_organization_asset_reset_approval_workflow.sql được Supabase MCP apply thành công; migration history thực tế ghi version 20261123135424, name organization_asset_reset_approval_workflow.
+- Post-check read-only: approval requests = 0, reset state = 0, executed reset audit = 0. Không có yêu cầu Reset nào được tạo và không có tổ chức nào bị Reset.
+- Quyền EXECUTE đã xác minh: anon=false, authenticated=false, service_role=true cho cả RPC create và review. Security Advisor không liệt kê các RPC create/list/review mới trong nhóm SECURITY DEFINER callable by authenticated; cảnh báo hiện hữu 22 SECURITY DEFINER khác và leaked-password protection vẫn còn, không tự đổi Auth setting.
+- Performance Advisor ghi nhận 28 FK chưa có covering index và 5 unused indexes (gồm index requested_at mới chưa có đủ tải để được dùng); chưa tự thêm index hoặc thay đổi policy.
+- Hai Edge Function mới ACTIVE, verify_jwt=true; endpoint Reset trực tiếp cũ ACTIVE nhưng fail-closed HTTP 410.
+- PR #31 hiện vẫn OPEN/DRAFT, chưa merge. Browser E2E với tài khoản doanh nghiệp và Superadmin chưa chạy; chưa gửi request thử và chưa Reset Công ty C.
+
+
+### Bổ sung kiểm soát lý do từ chối — 23/11/2026
+- Rà soát workflow phát hiện form Superadmin trước đó cho phép từ chối mà không ghi lý do. Đã sửa UI: trường lý do bắt buộc khi chọn Từ chối; frontend chặn nội dung chỉ có khoảng trắng.
+- Edge Function platform-manage-asset-reset-requests từ chối action=reject nếu reviewNote rỗng.
+- Migration mới require_asset_reset_rejection_reason đã apply trên Supabase Test; DB RPC cũng tự kiểm tra lý do từ chối, tránh bypass bằng cách gọi backend.
+- Edge Function Superadmin đã deploy lại trên Supabase Test, version 2, ACTIVE, verify_jwt=true.
+- Post-check read-only: requests=0; anon/authenticated không EXECUTE review RPC; service_role có EXECUTE; DB function xác nhận bắt buộc lý do từ chối.
+- Không gửi request thử, không Reset dữ liệu. Cần CI trên head mới và Browser E2E; Vercel báo repository không liên kết project nên hiện chưa có Preview deployment để kiểm tra từ trình duyệt.

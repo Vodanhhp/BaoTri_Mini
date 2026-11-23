@@ -2,7 +2,7 @@ name: Build and test
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/superadmin-org-asset-reset]
   pull_request:
     branches: [main]
 

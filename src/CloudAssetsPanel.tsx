@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from './db'
 import { db, now, uid, type AssetMutation } from './db'
+import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
 type Props={client:SupabaseClient;organizationId:string;localAssets:Asset[];localPreviewAssets:Asset[];canImport:boolean;canView:boolean;canUpdate:boolean;onClose:()=>void;onChanged:()=>void;onConflictResolved:(before:Asset,after:Asset,summary:string,eventId?:string)=>Promise<void>}
@@ -20,6 +21,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const reload=async()=>{
   setLoading(true);setError('')
   try{
+   await ensureOrganizationAssetResetApplied(client,organizationId)
+   onChanged()
    const [linkRows,mutationRows]=await Promise.all([
     db.assetCloudLinks.where('organizationId').equals(organizationId).toArray(),
     db.assetMutations.where('organizationId').equals(organizationId).toArray()
@@ -45,12 +48,20 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   setBusyId(mutation.mutationId);setError('');setMessage('')
   try{
    const result=await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
+   const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+   const currentMutation=await db.assetMutations.get(mutation.mutationId)
+   if(!currentMutation){
+    setMessage('Tổ chức vừa được reset trong lúc retry; mutation và hồ sơ Local cũ đã được xóa.')
+    await reload();onChanged()
+    return
+   }
    const pendingHistory=await db.assetHistory.get(mutation.mutationId)
    let historyMessage=''
    if(pendingHistory?.syncStatus==='pending'){
-    const {error:historyError}=await client.rpc('record_cloud_asset_history_event',{
+    const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
      p_organization_id:organizationId,p_event_id:pendingHistory.id,p_asset_code:pendingHistory.assetCode,p_event_type:pendingHistory.eventType,
-     p_summary:pendingHistory.summary,p_changes:pendingHistory.changes,p_actor_label:pendingHistory.actorLabel,p_occurred_at:pendingHistory.occurredAt
+     p_summary:pendingHistory.summary,p_changes:pendingHistory.changes,p_actor_label:pendingHistory.actorLabel,p_occurred_at:pendingHistory.occurredAt,
+     p_reset_generation:resetGeneration
     })
     if(!historyError)await db.assetHistory.update(pendingHistory.id,{syncStatus:'synced'})
     else historyMessage=' Mutation đã được xác nhận; lịch sử vẫn chờ đồng bộ: '+historyError.message
@@ -71,6 +82,8 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
    const fresh=await listCloudAssets(client,organizationId);cloudAsset=fresh.find(a=>a.code===local.code);setCloud(fresh)
    if(!cloudAsset)throw new Error('Cloud không còn hồ sơ này.')
    const resolvedLocal=await downloadCloudAsset(organizationId,cloudAsset,local)
+   await ensureOrganizationAssetResetApplied(client,organizationId)
+   if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset trong lúc đối chiếu; không thể áp dụng snapshot cũ.')
    await onConflictResolved(local,resolvedLocal,'Giải quyết xung đột: chọn Cloud làm phiên bản đúng.')
    const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict').toArray()
    for(const m of conflicts)await db.assetMutations.update(m.mutationId,{status:'discarded',updatedAt:now(),lastError:'Đã chọn Cloud làm phiên bản đúng.'})
@@ -178,6 +191,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
   if(!canView){setError('Tài khoản không có quyền xem thiết bị Cloud.');return}
   setBusyId(asset.id);setError('');setMessage('')
   try{
+   await ensureOrganizationAssetResetApplied(client,organizationId)
    const local=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
    const link=local?await db.assetCloudLinks.get(organizationId+':'+local.id):undefined
    if(local&&!link){
@@ -202,6 +216,9 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     if(!cloudChanged){await db.assetCloudLinks.update(link.id,{status:'linked',lastVerifiedAt:new Date().toISOString()});setMessage('Local và Cloud đã cùng phiên bản.');return}
    }
    await downloadCloudAsset(organizationId,asset,local)
+   await ensureOrganizationAssetResetApplied(client,organizationId)
+   const downloaded=await db.assets.where('[localScope+code]').equals([organizationId,asset.code]).first()
+   if(!downloaded)throw new Error('Tổ chức vừa được reset trong lúc tải Cloud; dữ liệu cũ đã bị loại bỏ.')
    setMessage(local?'Đã cập nhật Local theo Cloud; giữ lại ảnh Local.':'Đã tải hồ sơ Cloud về Local.')
    onChanged()
   }catch(e){setError(e instanceof Error?e.message:String(e))}

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset, AssetCloudLink, AssetMutationPayload, EquipmentIdComponentsSnapshot } from '../db'
 import { db, now, uid } from '../db'
 import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
+import { ensureOrganizationAssetResetApplied } from './assetReset'
 
 export type CloudAsset = Asset & { organizationId: string; cloudUpdatedAt: string }
 
@@ -54,6 +55,7 @@ export function toImportPayload(asset: Asset) {
 }
 
 export async function listCloudAssets(client: SupabaseClient, organizationId: string): Promise<CloudAsset[]> {
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   const rows:CloudAsset[]=[]
   let cursor:string|null=null
   const seenCursors=new Set<string>()
@@ -71,6 +73,8 @@ export async function listCloudAssets(client: SupabaseClient, organizationId: st
     seenCursors.add(nextCursor)
     cursor=nextCursor
   }while(true)
+  // A reset may commit while the paginated read is in progress.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   return rows
 }
 
@@ -81,6 +85,7 @@ export async function syncCloudAssetsToLocal(
   organizationId: string,
   options: { platformAdmin?:boolean; shouldContinue?:()=>boolean } = {}
 ): Promise<CloudSyncSummary> {
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   const summary:CloudSyncSummary={downloaded:0,updated:0,unchanged:0,protectedLocal:0,conflicts:0,pages:0}
   let cursor:string|null=null
   const seenCursors=new Set<string>()
@@ -172,6 +177,9 @@ export async function syncCloudAssetsToLocal(
     else if(result==='protected')summary.protectedLocal++
     else summary.updated++
   }
+  // A reset may commit while pagination is in progress. Re-check after the read
+  // so any records downloaded from the pre-reset snapshot are purged immediately.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
   return summary
 }
 
@@ -225,6 +233,12 @@ async function reconcileCloudDeletion(
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
+  const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  const current=await db.assets.get(asset.id)
+  if(!current||current.localScope!==asset.localScope||current.code!==asset.code||current.updatedAt!==asset.updatedAt||
+     (asset.localScope!=='local-preview'&&asset.localScope!==organizationId)){
+    throw new Error('Hồ sơ Local đã bị xóa hoặc thay đổi sau reset; hãy tải lại dữ liệu trước khi nhập.')
+  }
   if(asset.idReservationId&&asset.idReservationStatus!=='confirmed'){
     if(!asset.idComponentsSnapshot||!asset.equipmentTypeCode)throw new Error('Thiếu snapshot định danh Local; chưa thể nhập thiết bị Smart ID lên Cloud.')
     await confirmSmartEquipmentIdReservation(client,{
@@ -239,25 +253,31 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
     })
     await db.assets.update(asset.id,{idReservationStatus:'confirmed'})
   }
-  const { data, error } = await client.rpc('import_asset_preserving_identity', {
+  const { data, error } = await client.rpc('import_asset_preserving_identity_v2', {
     p_organization_id: organizationId, p_id: asset.id, p_code: asset.code,
-    p_asset: toImportPayload(asset), p_mutation_id: asset.id
+    p_asset: toImportPayload(asset), p_mutation_id: asset.id, p_reset_generation: resetGeneration
   })
   if (error) throw new Error('Không thể nhập lên Cloud: '+error.message)
   const result=data as {asset?:Record<string,unknown>;already_present?:boolean}
   if (!result?.asset || result.asset.asset_key!==asset.code || result.asset.code!==asset.code) throw new Error('Cloud trả về mã thiết bị không khớp Local.')
   const cloud=fromRow(result.asset)
+  const groupResetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  const currentAfterImport=await db.assets.get(asset.id)
+  if(!currentAfterImport||currentAfterImport.localScope!==asset.localScope||currentAfterImport.code!==asset.code||currentAfterImport.updatedAt!==asset.updatedAt){
+    throw new Error('Tổ chức vừa được reset trong lúc nhập Cloud; Local snapshot cũ đã bị loại bỏ.')
+  }
   const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,asset.id])
     .filter(change=>change.syncStatus==='pending').toArray()
   if(pendingGroupChanges.length){
     const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
-    const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
+    const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history_v2',{
       p_organization_id:organizationId,
       p_asset_code:asset.code,
       p_changes:ordered.map(change=>({
         id:change.id,oldCategory:change.oldCategory,newCategory:change.newCategory,
         changedByUserId:change.changedByUserId??null,changedAt:change.changedAt,reason:change.reason??null
-      }))
+      })),
+      p_reset_generation:groupResetGeneration
     })
     if(historyError)throw new Error('Thiết bị đã có trên Cloud nhưng chưa đồng bộ được lịch sử đổi nhóm: '+historyError.message)
     for(const change of ordered)await db.assetGroupChanges.update(change.id,{syncStatus:'synced'})
@@ -267,6 +287,8 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
     cloudUpdatedAt: cloud.updatedAt, lastSyncedLocalUpdatedAt: asset.updatedAt, status:'linked', lastVerifiedAt:now()
   }
   await db.assetCloudLinks.put(link)
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  if(!await db.assets.get(asset.id))throw new Error('Tổ chức vừa được reset sau khi nhập Cloud; Local snapshot cũ đã được xóa.')
   return {cloud,alreadyPresent:result.already_present===true}
 }
 
@@ -291,6 +313,9 @@ export async function downloadCloudAsset(organizationId: string, cloud: CloudAss
 }
 
 export async function acquireCloudAssetLock(client: SupabaseClient, organizationId: string, assetCode: string, deviceId: string, label: string) {
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  const local=await db.assets.where('[localScope+code]').equals([organizationId,assetCode]).first()
+  if(!local)throw new Error('Thiết bị Local không còn tồn tại sau khi kiểm tra reset; hãy tải lại danh sách.')
   const {data,error}=await client.rpc('acquire_cloud_asset_edit_lock',{p_organization_id:organizationId,p_asset_code:assetCode,p_device_id:deviceId,p_holder_label:label})
   if(error) throw new Error('Xin khóa sửa thiết bị thất bại: '+error.message)
   const result=data as Record<string,unknown>
@@ -314,8 +339,11 @@ export async function releaseCloudAssetLock(client: SupabaseClient, organization
 }
 
 export async function applyCloudAssetMutation(client: SupabaseClient, organizationId: string, asset: Asset, token: string, mutationId: string, expectedCloudUpdatedAt: string, payload: AssetMutationPayload) {
+  const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  const current=await db.assets.get(asset.id)
+  if(!current||current.localScope!==organizationId||current.code!==asset.code||current.updatedAt!==asset.updatedAt)throw new Error('Hồ sơ Local không còn hợp lệ sau khi kiểm tra reset; không gửi dữ liệu cũ lên Cloud.')
   if(payload.deletedAt){
-    const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt})
+    const {data,error}=await client.rpc('soft_delete_cloud_asset_with_lock_v2',{p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_deleted_at:payload.deletedAt,p_reset_generation:resetGeneration})
     if(error)throw new Error(error.message)
     const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
     if(!result.asset||result.asset.asset_key!==asset.code||!result.applied_at)throw new Error('Cloud thiếu biên nhận xóa mềm hợp lệ.')
@@ -326,9 +354,9 @@ export async function applyCloudAssetMutation(client: SupabaseClient, organizati
     commissioned_at:payload.commissionedAt||null,power:payload.power,cycle:payload.cycle,cycle_started_at:payload.cycleStartedAt||null,
     transferred_from_other_facility:payload.transferredFromOtherFacility,status:payload.status,notes:payload.notes,archived_at:payload.archivedAt||null
   }
-  const {data,error}=await client.rpc('apply_cloud_asset_mutation_with_lock',{
+  const {data,error}=await client.rpc('apply_cloud_asset_mutation_with_lock_v2',{
     p_organization_id:organizationId,p_asset_code:asset.code,p_lock_token:token,p_mutation_id:mutationId,
-    p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_payload:cloudPayload
+    p_expected_cloud_updated_at:expectedCloudUpdatedAt,p_payload:cloudPayload,p_reset_generation:resetGeneration
   })
   if(error) throw new Error(error.message)
   const result=data as {asset?:Record<string,unknown>;already_applied?:boolean;applied_at?:string}
@@ -348,6 +376,7 @@ export function getDeviceLabel() {
 }
 
 export async function retryCloudAssetMutation(client:SupabaseClient,organizationId:string,mutationId:string){
+ await ensureOrganizationAssetResetApplied(client,organizationId)
  const mutation=await db.assetMutations.get(mutationId)
  if(!mutation||mutation.organizationId!==organizationId)throw new Error('Không tìm thấy mutation Local.')
  if(mutation.status==='conflict')throw new Error('Mutation đã conflict; cần đối chiếu thủ công, không tự retry.')
@@ -379,20 +408,25 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  try{
   await db.assetMutations.update(mutationId,{status:'processing',attempts:mutation.attempts+1,updatedAt:now(),lastError:undefined})
   const applied=await applyCloudAssetMutation(client,organizationId,local,acquired.lease.lock_token,mutation.mutationId,mutation.expectedCloudUpdatedAt,mutation.payload)
+  const groupResetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+  if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset trong lúc retry; Local mutation cũ đã bị xóa.')
   const pendingGroupChanges=await db.assetGroupChanges.where('[organizationId+assetId]').equals([organizationId,mutation.assetId])
    .filter(change=>change.syncStatus==='pending'&&change.mutationId===mutationId).toArray()
   if(pendingGroupChanges.length){
    const ordered=[...pendingGroupChanges].sort((a,b)=>a.changedAt.localeCompare(b.changedAt))
-   const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history',{
+   const {error:historyError}=await client.rpc('mirror_cloud_asset_group_change_history_v2',{
     p_organization_id:organizationId,
     p_asset_code:local.code,
     p_changes:ordered.map(change=>({
      id:change.id,oldCategory:change.oldCategory,newCategory:change.newCategory,
      changedByUserId:change.changedByUserId??null,changedAt:change.changedAt,reason:change.reason??null
-    }))
+    })),
+    p_reset_generation:groupResetGeneration
    })
    if(historyError)throw new Error('Thiết bị đã được cập nhật trên Cloud nhưng chưa đồng bộ được lịch sử đổi nhóm: '+historyError.message)
   }
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  if(!await db.assets.get(local.id))throw new Error('Tổ chức vừa được reset sau khi Cloud xác nhận; dữ liệu Local cũ đã được xóa.')
   const at=now()
   const conflicts=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,mutation.assetId]).filter(m=>m.status==='conflict'&&m.mutationId!==mutationId).toArray()
   await db.transaction('rw',[db.assetMutations,db.assetCloudLinks,db.assetGroupChanges],async()=>{
