@@ -1,0 +1,99 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+const read = path => readFile(new URL(path, import.meta.url), 'utf8')
+
+test('reset migration uses an organization-scoped monotonic generation and idempotent request key', async () => {
+  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  assert.match(sql, /organization_asset_reset_state/)
+  assert.match(sql, /generation bigint not null default 0/)
+  assert.match(sql, /primary key \(organization_id, request_id\)/)
+  assert.match(sql, /select \* into v_existing[\s\S]*?if found then[\s\S]*?already_applied/)
+  assert.match(sql, /for update/)
+  assert.match(sql, /p_request_id uuid/)
+})
+
+test('reset preserves audit rows, catalog, memberships, roles, plan and sequence history', async () => {
+  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  assert.match(sql, /alter table public\.asset_activity_history alter column asset_id drop not null/)
+  assert.match(sql, /alter table private\.asset_group_change_history alter column asset_id drop not null/)
+  assert.match(sql, /update public\.asset_activity_history[\s\S]*?set asset_id = null/)
+  assert.match(sql, /update private\.asset_group_change_history[\s\S]*?set asset_id = null/)
+  assert.match(sql, /update private\.asset_id_sequence_reservations[\s\S]*?where organization_id = p_organization_id[\s\S]*?and status = 'reserved'/)
+  assert.doesNotMatch(sql, /delete from public\.organization_equipment_catalog/)
+  assert.doesNotMatch(sql, /delete from private\.asset_id_sequences/)
+  assert.doesNotMatch(sql, /delete from public\.organization_members/)
+  assert.doesNotMatch(sql, /delete from public\.roles/)
+  assert.doesNotMatch(sql, /delete from private\.organization_plan_change_history/)
+})
+
+test('old import, mutation, soft-delete and audit RPC signatures are revoked', async () => {
+  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  assert.match(sql, /revoke all on function public\.import_asset_preserving_identity\(uuid,uuid,text,jsonb,uuid\) from public, anon, authenticated/)
+  assert.match(sql, /revoke all on function public\.apply_cloud_asset_mutation_with_lock\(uuid,text,uuid,uuid,timestamptz,jsonb\) from public, anon, authenticated/)
+  assert.match(sql, /revoke all on function public\.soft_delete_cloud_asset_with_lock\(uuid,text,uuid,uuid,timestamptz,timestamptz\) from public, anon, authenticated/)
+  assert.match(sql, /p_reset_generation bigint/)
+  assert.match(sql, /p_reset_generation is null or p_reset_generation <> v_generation/)
+  assert.match(sql, /for share/)
+})
+
+test('Local reset purge is tenant-scoped, atomic, keeps history, and acknowledges only after purge', async () => {
+  const source = await read('../src/lib/assetReset.ts')
+  assert.match(source, /where\('localScope'\)\.equals\(organizationId\)\.delete\(\)/)
+  assert.match(source, /assetCloudLinks\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
+  assert.match(source, /assetMutations\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
+  assert.match(source, /assetDrafts\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
+  assert.match(source, /assetGroupChanges\.where\('organizationId'\)[\s\S]*?syncStatus === 'pending'[\s\S]*?local_only/)
+  assert.match(source, /assetHistory\.where\('organizationId'\)[\s\S]*?syncStatus === 'pending'[\s\S]*?local_only/)
+  assert.doesNotMatch(source, /assetHistory\.where\('organizationId'\)\.equals\(organizationId\)\.delete/)
+  assert.match(source, /await db\.transaction\('rw'/)
+  assert.ok(source.indexOf('await db.transaction') < source.indexOf("client.rpc('acknowledge_organization_asset_reset'"))
+  assert.match(source, /if \(!navigator\.onLine\) throw new Error/)
+})
+
+test('Dexie stores a per-organization reset generation without touching Local Preview schema scope', async () => {
+  const db = await read('../src/db.ts')
+  assert.match(db, /organizationAssetResetStates: 'organizationId, generation'/)
+  assert.match(db, /localScope: string/)
+  assert.match(db, /syncStatus: 'pending' \| 'synced' \| 'local_only'/)
+})
+
+test('Cloud sync, imports, edit locks, mutation retry and group-history mirror carry the reset barrier', async () => {
+  const source = await read('../src/lib/cloudAssets.ts')
+  assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(source, /p_reset_generation: resetGeneration/)
+  assert.match(source, /p_reset_generation:await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(source, /export async function acquireCloudAssetLock[\s\S]*?await ensureOrganizationAssetResetApplied/)
+  assert.match(source, /export async function retryCloudAssetMutation[\s\S]*?await ensureOrganizationAssetResetApplied/)
+  assert.match(source, /Re-check after the read[\s\S]*?await ensureOrganizationAssetResetApplied/)
+})
+
+test('App applies reset before tenant asset reads, reservation retries and audit mirrors', async () => {
+  const source = await read('../src/App.tsx')
+  assert.match(source, /if\(!localPreview&&supabase&&navigator\.onLine\)await ensureOrganizationAssetResetApplied\(supabase,scope\)/)
+  assert.match(source, /const resetGeneration=await ensureOrganizationAssetResetApplied\(supabase,organizationId\)/)
+  assert.match(source, /p_reset_generation:resetGeneration/)
+  assert.match(source, /retryPendingLocalReservations=async\(\)=>\{[\s\S]*?await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsToLocal/)
+})
+
+test('Superadmin reset requires confirmed owner identity, password reauthentication, exact org name and idempotency key', async () => {
+  const fn = await read('../supabase/functions/platform-reset-organization-assets/index.ts')
+  assert.match(fn, /OWNER_EMAIL/)
+  assert.match(fn, /auth\.getUser\(token\)/)
+  assert.match(fn, /auth\.signInWithPassword/)
+  assert.match(fn, /confirmName!==organization\.name/)
+  assert.match(fn, /requestId/)
+  assert.match(fn, /platform_reset_organization_assets/)
+  assert.match(fn, /platform_get_organization_asset_reset_status/)
+})
+
+test('Superadmin UI keeps reset separate from organization deletion and explains offline acknowledgements', async () => {
+  const ui = await read('../src/PlatformAdminPanel.tsx')
+  assert.match(ui, /Reset thiết bị/)
+  assert.match(ui, /platform-reset-organization-assets/)
+  assert.match(ui, /reset toàn bộ thiết bị/)
+  assert.match(ui, /Thiết bị đang offline sẽ được xóa khi kết nối lại/)
+  assert.match(ui, /management\.action==='delete'\|\|management\.action==='reset'/)
+})
