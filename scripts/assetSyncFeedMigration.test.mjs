@@ -28,6 +28,7 @@ test('asset triggers capture create, update, soft delete, restore and hard delet
   assert.match(sql, /v_event_type:='upsert'/)
   assert.match(sql, /to_jsonb\(new\)-'id'/)
   assert.match(sql, /jsonb_build_object\('asset_key',new\.code\)/)
+  assert.match(sql, /'event_created_at',n\.created_at/)
 })
 
 test('reset transaction emits one generation barrier and suppresses per-asset delete events', async () => {
@@ -61,4 +62,10 @@ test('feed migration relies on composite primary key instead of redundant duplic
   assert.doesNotMatch(sql, /asset_sync_events_org_sequence_idx/)
   const cleanup = await read('../supabase/migrations/20261123155408_asset_sync_feed_index_cleanup.sql')
   assert.match(cleanup, /drop index if exists private\.asset_sync_events_org_sequence_idx/)
+})
+
+test('event timestamp migration replaces pull RPC without changing its signature', async () => {
+  const sql = await read('../supabase/migrations/20261123155833_asset_sync_event_created_at.sql')
+  assert.match(sql, /create or replace function private\.list_asset_sync_changes/)
+  assert.match(sql, /'event_created_at',n\.created_at/)
 })
