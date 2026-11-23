@@ -225,7 +225,9 @@ export async function syncCloudAssetsIncrementally(
     if(page.currentGeneration<resetGeneration)throw new Error('Cloud reset generation thấp hơn cursor Local; dừng đồng bộ an toàn.')
     let lastResetIndex=-1
     for(let i=0;i<page.items.length;i++)if(page.items[i].eventType==='reset')lastResetIndex=i
+    const lastResetGenerationInPage=lastResetIndex>=0?page.items[lastResetIndex].resetGeneration??resetGeneration:resetGeneration
     const generationGap=page.currentGeneration>resetGeneration
+    const resetAfterPageMarker=lastResetIndex>=0&&page.currentGeneration>lastResetGenerationInPage
     if(generationGap&&lastResetIndex<0&&!page.hasMore)throw new Error('Feed thiếu Reset barrier dù generation Cloud đã tăng; không advance cursor.')
     for(let i=0;i<page.items.length;i++){
       const event=page.items[i]
@@ -235,6 +237,7 @@ export async function syncCloudAssetsIncrementally(
       // pages before the marker) because the preflight reset already purged Local.
       if(lastResetIndex>=0&&i<lastResetIndex)continue
       if(generationGap&&lastResetIndex<0&&event.eventType!=='reset')continue
+      if(resetAfterPageMarker&&i>lastResetIndex&&event.eventType!=='reset')continue
       if(event.eventType==='reset'){
         const appliedGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
         resetGeneration=Math.max(resetGeneration,event.resetGeneration??appliedGeneration)
