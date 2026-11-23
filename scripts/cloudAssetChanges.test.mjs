@@ -35,3 +35,11 @@ test('Dexie persists a cursor per organization without inventing bootstrap curso
   assert.match(db, /assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt'/)
   assert.doesNotMatch(db, /assetSyncCursors.*upgrade/)
 })
+
+test('cursor reader is tenant-scoped, read-only and refuses local-preview cursors', async () => {
+  const source = await read('../src/lib/cloudAssetChanges.ts')
+  assert.match(source, /readAssetSyncCursor/)
+  assert.match(source, /organizationId === 'local-preview'/)
+  assert.match(source, /db\.assetSyncCursors\.get\(organizationId\)/)
+  assert.match(source, /Cursor Incremental Pull Local bị hỏng/)
+})
