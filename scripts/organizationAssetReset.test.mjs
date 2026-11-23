@@ -78,6 +78,7 @@ test('Dexie stores a per-organization reset generation without touching Local Pr
 test('Cloud sync, imports, edit locks, mutation retry and group-history mirror use unique v2 RPCs with the reset barrier', async () => {
   const source = await read('../src/lib/cloudAssets.ts')
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(source, /Re-check after the read[\s\S]*?await ensureOrganizationAssetResetApplied/)
   assert.match(source, /p_reset_generation:resetGeneration/)
   assert.match(source, /rpc\('import_asset_preserving_identity_v2'/)
   assert.match(source, /rpc\('apply_cloud_asset_mutation_with_lock_v2'/)
@@ -97,6 +98,10 @@ test('App applies reset before tenant asset reads, reservation retries and audit
   assert.match(source, /rpc\('record_cloud_asset_history_event_v2'/)
   assert.match(source, /p_reset_generation:resetGeneration/)
   assert.match(source, /currentEntry\.syncStatus!=='pending'/)
+  assert.match(source, /db\.transaction\('rw',\[db\.assets,db\.assetHistory\]/)
+  assert.match(source, /current\.localScope!==scope\|\|current\.code!==after\.code/)
+  assert.match(source, /currentAsset\.localScope!==organizationId\|\|currentAsset\.code!==currentEntry\.assetCode/)
+  assert.match(source, /syncStatus:'local_only'/)
   assert.match(source, /retryPendingLocalReservations=async\(\)=>\{[\s\S]*?await ensureOrganizationAssetResetApplied\(client,organizationId\)/)
   assert.match(source, /await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?syncCloudAssetsToLocal/)
   assert.match(source, /window\.addEventListener\('focus',runSync\)/)
