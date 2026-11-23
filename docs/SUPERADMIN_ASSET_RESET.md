@@ -74,7 +74,7 @@ Bảng đăng ký device lưu organization, device ID, user, nhãn nền tảng,
 - Bao nhiêu Local đã acknowledge generation mới.
 - Bao nhiêu Local đã đăng ký còn chờ.
 - Thời điểm last-seen của từng Local.
-- Lưu ý: số thiết bị là số đã đăng ký bằng phiên bản hỗ trợ reset. Các installation cũ chưa chạy bản mới chưa thể xuất hiện trong registry; khi mở bản mới và đăng nhập lại, chúng sẽ đăng ký, purge và acknowledge. RPC legacy sẽ bị server từ chối sau khi generation tăng, kể cả khi installation chưa được registry nhận diện.
+- Lưu ý: số thiết bị là số đã đăng ký bằng phiên bản hỗ trợ reset. Các installation cũ chưa chạy bản mới chưa thể xuất hiện trong registry; khi mở bản mới và kết nối bằng tài khoản còn quyền truy cập, chúng sẽ đăng ký, purge và acknowledge. Thiết bị đã đăng ký trước đó vẫn có thể acknowledge sau khi user bị gỡ membership. RPC legacy sẽ bị server từ chối sau khi generation tăng, kể cả khi installation chưa được registry nhận diện.
 
 Thiết bị không kết nối được không thể bị xóa vật lý từ xa tại thời điểm reset; trạng thái phải là **Chờ thiết bị kết nối**, không được giả mạo là đã xóa.
 
