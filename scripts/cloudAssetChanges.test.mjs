@@ -33,6 +33,7 @@ test('Dexie persists a cursor per organization without inventing bootstrap curso
   assert.match(db, /assetSyncCursors!: Table<AssetSyncCursor, string>/)
   assert.match(db, /this\.version\(8\)\.stores/)
   assert.match(db, /assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt'/)
+  assert.match(db, /bootstrapComplete: boolean/)
   assert.doesNotMatch(db, /assetSyncCursors.*upgrade/)
 })
 
@@ -49,4 +50,30 @@ test('empty pages cannot advance cursor and reset markers require generation', a
   assert.match(source, /page rỗng không được nhảy cursor/)
   assert.match(source, /Reset event thiếu generation/)
   assert.match(source, /thiếu định danh thiết bị cho event/)
+})
+
+test('bootstrap checkpoint is persisted as incomplete until full scan finishes and page cursor advances only after completion', async () => {
+  const source = await read('../src/lib/cloudAssetChanges.ts')
+  assert.match(source, /bootstrapComplete: false/)
+  assert.match(source, /markAssetSyncBootstrapComplete/)
+  assert.match(source, /advanceAssetSyncCursor/)
+  assert.match(source, /if \(!cursor\.bootstrapComplete\)/)
+  assert.match(source, /if \(!cursor \|\| !cursor\.bootstrapComplete\)/)
+})
+
+test('event parser requires a timestamp and Incremental Pull uses full-scan fallback when RPC is unavailable', async () => {
+  const source = await read('../src/lib/cloudAssetChanges.ts')
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  assert.match(source, /eventCreatedAt/)
+  assert.match(source, /Event thiếu timestamp hợp lệ/)
+  assert.match(cloud, /syncCloudAssetsToLocal\(client,organizationId,options\)/)
+  assert.match(cloud, /isMissingAssetSyncRpc/)
+})
+
+test('page application validates tenant, applies reset barrier and advances cursor after page processing', async () => {
+  const cloud = await read('../src/lib/cloudAssets.ts')
+  assert.match(cloud, /event\.organizationId!==organizationId/)
+  assert.match(cloud, /event\.eventType==='reset'/)
+  assert.match(cloud, /ensureOrganizationAssetResetApplied\(client,organizationId\)/)
+  assert.match(cloud, /advanceAssetSyncCursor\(organizationId,page\.nextCursor,resetGeneration\)/)
 })
