@@ -105,13 +105,10 @@ export async function syncCloudAssetsToLocal(
         continue
       }
       if(cloud.deletedAt){
-        const pendingDelete=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
-        await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
-          await db.assets.update(local.id,{deletedAt:cloud.deletedAt,updatedAt:cloud.updatedAt})
-          await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:cloud.updatedAt,lastSyncedLocalUpdatedAt:cloud.updatedAt,status:'linked',lastVerifiedAt:now()})
-          for(const mutation of pendingDelete)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
-        })
-        summary.updated++
+        const result=await reconcileCloudDeletion(organizationId,local,link,cloud.deletedAt,cloud.updatedAt)
+        if(result==='conflict')summary.conflicts++
+        else if(result==='protected')summary.protectedLocal++
+        else summary.updated++
         continue
       }
       if(link.status==='conflict'){
@@ -158,15 +155,65 @@ export async function syncCloudAssetsToLocal(
     const local=await db.assets.where('[localScope+code]').equals([organizationId,tombstone.code]).first()
     if(!local||local.deletedAt===tombstone.deleted_at)continue
     const link=await db.assetCloudLinks.get(organizationId+':'+local.id)
-    const pending=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id]).filter(m=>m.status==='pending'||m.status==='processing').toArray()
-    await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
-      await db.assets.update(local.id,{deletedAt:tombstone.deleted_at,updatedAt:tombstone.updated_at})
-      if(link)await db.assetCloudLinks.update(link.id,{cloudUpdatedAt:tombstone.updated_at,lastSyncedLocalUpdatedAt:tombstone.updated_at,status:'linked',lastVerifiedAt:now()})
-      for(const mutation of pending)await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:now(),lastError:'Thiết bị đã bị Admin xóa trên Cloud; mutation Local không còn được áp dụng.'})
-    })
-    summary.updated++
+    if(!link||link.cloudCode!==tombstone.code){
+      summary.protectedLocal++
+      continue
+    }
+    const result=await reconcileCloudDeletion(organizationId,local,link,tombstone.deleted_at,tombstone.updated_at)
+    if(result==='conflict')summary.conflicts++
+    else if(result==='protected')summary.protectedLocal++
+    else summary.updated++
   }
   return summary
+}
+
+type CloudDeletionResult='updated'|'conflict'|'protected'
+
+/**
+ * Apply a Cloud tombstone without erasing a newer Local snapshot.
+ * A deletion arriving while Local has unsynced work becomes a conflict;
+ * the Local payload and its version timestamp remain available for review.
+ */
+async function reconcileCloudDeletion(
+  organizationId:string,
+  local:Asset,
+  link:AssetCloudLink,
+  deletedAt:string,
+  cloudUpdatedAt:string
+):Promise<CloudDeletionResult>{
+  if(link.organizationId!==organizationId||link.assetId!==local.id||link.cloudCode!==local.code)return 'protected'
+  const mutations=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,local.id])
+    .filter(m=>m.status==='pending'||m.status==='processing'||m.status==='conflict').toArray()
+  const localChanged=local.updatedAt!==link.lastSyncedLocalUpdatedAt
+  const needsReview=localChanged||mutations.length>0||link.status==='conflict'
+  const at=now()
+  const reason='Thiết bị đã bị Admin xóa trên Cloud trong khi Local có thay đổi chưa đồng bộ hoặc mutation chưa xác nhận. Dữ liệu Local được giữ lại để đối chiếu.'
+  await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations],async()=>{
+    // Reflect the remote deletion, but do not replace Local updatedAt when it
+    // represents a newer unsynced snapshot; that timestamp is part of conflict detection.
+    await db.assets.update(local.id,needsReview
+      ? {deletedAt,updatedAt:local.updatedAt}
+      : {deletedAt,updatedAt:cloudUpdatedAt})
+    await db.assetCloudLinks.update(link.id,needsReview
+      ? {status:'conflict',lastVerifiedAt:at}
+      : {cloudUpdatedAt,lastSyncedLocalUpdatedAt:cloudUpdatedAt,status:'linked',lastVerifiedAt:at})
+    for(const mutation of mutations){
+      if(mutation.status==='pending'||mutation.status==='processing'){
+        await db.assetMutations.update(mutation.mutationId,{status:'conflict',updatedAt:at,lastError:reason})
+      }
+    }
+    if(needsReview&&!mutations.some(m=>m.status==='conflict')){
+      await db.assetMutations.add({
+        mutationId:uid(),organizationId,assetId:local.id,payload:toMutationPayload(local),
+        expectedCloudUpdatedAt:link.cloudUpdatedAt,localUpdatedAt:local.updatedAt,
+        status:'conflict',attempts:0,createdAt:at,updatedAt:at,lastError:reason
+      })
+    }else if(needsReview){
+      const existing=mutations.find(m=>m.status==='conflict')
+      if(existing)await db.assetMutations.update(existing.mutationId,{lastError:reason,updatedAt:at})
+    }
+  })
+  return needsReview?'conflict':'updated'
 }
 
 export async function importLocalAsset(client: SupabaseClient, organizationId: string, asset: Asset) {
