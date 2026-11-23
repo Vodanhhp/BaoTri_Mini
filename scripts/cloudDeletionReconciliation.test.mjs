@@ -184,3 +184,36 @@ test('sign out clears cached tenant assets and sensitive modal state before anot
  const signOut = source.slice(source.indexOf('const signOut = async'), source.indexOf('if (!sessionReady)', source.indexOf('const signOut = async')))
  for (const setter of ['setAssets([])','setLocalPreviewAssets([])','setDetailAsset(null)','setImageViewer(null)','setEditing(null)','setShowForm(false)','setCloudPanel(false)','setOrganizationContexts([])','setOrganizationId(\'\')']) assert.ok(signOut.includes(setter), 'missing '+setter)
 })
+
+test('organization deletion migration removes every RESTRICT dependency before deleting the tenant', async () => {
+ const sql = await read('../supabase/migrations/20261123120000_fix_platform_delete_organization_dependencies.sql')
+ const required = [
+  'private.asset_group_change_history',
+  'public.asset_activity_history',
+  'public.assets',
+  'private.asset_id_sequence_reservations',
+  'private.asset_id_sequences',
+  'public.organization_equipment_catalog',
+  'private.organization_plan_change_history',
+  'private.organization_plan_change_requests',
+  'public.organization_members',
+  'public.roles'
+ ]
+ const deletePositions = required.map(table => sql.indexOf('delete from '+table))
+ for (let i=0;i<required.length;i++) assert.notEqual(deletePositions[i],-1,'missing cleanup for '+required[i])
+ const tenantDelete=sql.indexOf('delete from public.organizations')
+ assert.ok(tenantDelete>Math.max(...deletePositions),'tenant must be deleted after every dependent table')
+ assert.match(sql,/security definer\\nset search_path = ''/)
+ assert.match(sql,/revoke all on function private\\.platform_delete_organization/)
+})
+
+test('organization lifecycle UI extracts the server error body from Supabase FunctionsHttpError', async () => {
+ const source = await read('../src/PlatformAdminPanel.tsx')
+ assert.match(source,/const functionErrorMessage=async\\(error:unknown\\)=>/)
+ assert.match(source,/context instanceof Response/)
+ assert.match(source,/payload\\.error==='string'/)
+ assert.match(source,/throw new Error\\(await functionErrorMessage\\(error\\)\\)/)
+ const edge = await read('../supabase/functions/platform-manage-organization/index.ts')
+ assert.match(edge,/detail\\?\\.code==='23503'\\?409:400/)
+ assert.match(edge,/response\\(\\{error:message,code:/)
+})
