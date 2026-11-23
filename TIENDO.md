@@ -1330,7 +1330,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Reset xóa Cloud assets, receipts/locks, Local assets/images, links, mutations và drafts; giữ Local/Cloud audit history, group history, catalog, tài khoản, memberships, roles/permissions, Plan và cấu hình tổ chức.
 - Giữ sequence counters và confirmed reservation history để tránh tái sử dụng mã thiết bị; reservation chưa hoàn tất chuyển released.
 - Bổ sung device registry để theo dõi last-seen và generation đã acknowledge; máy offline được báo “Chờ thiết bị kết nối”, không tuyên bố reset hoàn tất khi còn máy chờ.
-- Chặn dữ liệu Local cũ sống lại bằng server-side generation barrier: RPC import/update/soft-delete/audit cũ bị thu hồi; chữ ký mới bắt buộc mang reset generation hiện hành, client mới purge trước sync.
+- Chặn dữ liệu Local cũ sống lại bằng server-side generation barrier: chữ ký legacy chỉ được phép khi generation = 0 và bị chặn sau lần reset đầu; chữ ký mới bắt buộc mang reset generation hiện hành, client mới purge trước sync.
 - Tài liệu thiết kế: docs/SUPERADMIN_ASSET_RESET.md.
 - Branch triển khai: feature/superadmin-org-asset-reset, được tạo trên head PR #30 (PR #30 vẫn OPEN, chưa merge).
 - Chỉ khảo sát và thêm tài liệu thiết kế; chưa có migration, chưa thay đổi Supabase Test/Production, chưa deploy Edge Function, chưa merge PR.
