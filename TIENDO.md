@@ -1330,8 +1330,23 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Reset xóa Cloud assets, receipts/locks, Local assets/images, links, mutations và drafts; giữ Local/Cloud audit history, group history, catalog, tài khoản, memberships, roles/permissions, Plan và cấu hình tổ chức.
 - Giữ sequence counters và confirmed reservation history để tránh tái sử dụng mã thiết bị; reservation chưa hoàn tất chuyển released.
 - Bổ sung device registry để theo dõi last-seen và generation đã acknowledge; máy offline được báo “Chờ thiết bị kết nối”, không tuyên bố reset hoàn tất khi còn máy chờ.
-- Chặn dữ liệu Local cũ sống lại bằng server-side reset barrier: import hồ sơ có created_at trước hoặc bằng mốc reset bị từ chối; client mới purge trước sync.
+- Chặn dữ liệu Local cũ sống lại bằng server-side generation barrier: RPC import/update/soft-delete/audit cũ bị thu hồi; chữ ký mới bắt buộc mang reset generation hiện hành, client mới purge trước sync.
 - Tài liệu thiết kế: docs/SUPERADMIN_ASSET_RESET.md.
 - Branch triển khai: feature/superadmin-org-asset-reset, được tạo trên head PR #30 (PR #30 vẫn OPEN, chưa merge).
 - Chỉ khảo sát và thêm tài liệu thiết kế; chưa có migration, chưa thay đổi Supabase Test/Production, chưa deploy Edge Function, chưa merge PR.
 - Lưu ý giới hạn vật lý: máy offline không thể bị xóa dữ liệu tức thời từ xa; dữ liệu được xóa tại Local khi máy chạy lại và kết nối, trước khi cho phép đồng bộ.
+
+
+### Triển khai Reset toàn bộ thiết bị — checkpoint 23/11/2026
+
+- Tiếp tục trên branch `feature/superadmin-org-asset-reset`, PR #31 (DRAFT, OPEN), base `fix/cloud-delete-sync-preserve-local`. PR #30 vẫn OPEN, không merge.
+- Đã kiểm tra schema Supabase Test ở chế độ chỉ đọc. Xác nhận FK audit/group history, receipts, edit locks; xác nhận reservations và sequence counters. Không đọc/ghi dữ liệu nghiệp vụ.
+- Đã thêm migration nguồn `supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql`: reset generation theo organization, device registry, reset request idempotency/audit, status/reset RPC, generation-aware import/mutation/soft-delete/history RPC; thu hồi các chữ ký ghi cũ; giữ audit và sequence counters/history. **Chưa apply migration lên Test hoặc Production.**
+- Đã thêm Edge Function nguồn `supabase/functions/platform-reset-organization-assets/index.ts`: xác thực owner, re-auth mật khẩu, xác nhận chính xác tên tổ chức và request UUID; có endpoint trạng thái.
+- Đã thêm nút **Reset thiết bị** và modal xác nhận trong Superadmin, hiển thị Cloud count và trạng thái các Local đã đăng ký.
+- Đã thêm `src/lib/assetReset.ts`, Dexie v7 reset generation; purge tenant scope assets (bao gồm ảnh nhúng), links, mutations, drafts; giữ asset/group history với trạng thái Local-only để không replay event cũ; acknowledge chỉ sau transaction thành công. Local Preview và tenant khác không bị xóa.
+- Đã gắn guard trước tenant asset load, Cloud sync, import, lấy khóa sửa, mutation retry, history mirror, reservation retry; kiểm tra thêm khi online và khi tab nhận focus. Kiểm tra Local snapshot hiện hành trước khi import/mutation.
+- Đã thêm regression test source `scripts/organizationAssetReset.test.mjs`.
+- Giới hạn đã ghi rõ: registry chỉ thống kê installation đã chạy phiên bản có hỗ trợ reset. Installation cũ chưa đăng ký cần mở bản mới/kết nối để đăng ký và purge; các RPC ghi cũ bị thu hồi để ngăn ghi ngược lên Cloud. Máy offline chỉ purge sau khi reconnect và chạy bản mới.
+- Hiện trạng: chỉ sửa source/docs/tests trên branch GitHub. Không apply migration, không deploy Edge Function, không thay đổi Production, không merge PR. Chưa có CI/build verification cho nhánh này và chưa chạy browser E2E.
+- Bước tiếp theo: rà soát kỹ SQL/function signatures, grants, TypeScript và regression tests; sau đó chỉ xin phép áp dụng migration trên Supabase Test khi source đã được kiểm tra. Không tự động apply.
