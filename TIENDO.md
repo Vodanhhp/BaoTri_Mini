@@ -1450,3 +1450,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bỏ index trùng primary key bằng migration cleanup `20261123155408_asset_sync_feed_index_cleanup.sql`.
 - Incremental Pull chưa bật; Full Scan hiện hành tiếp tục. Tiếp theo triển khai page apply/cursor atomic ở Dexie, bootstrap Checkpoint→Full Scan→Catch-up, reset barrier, conflict protection, session/org cancellation và test end-to-end.
 - CI xanh trên commit `89260897841035ef54b0361857343978031b62a8`; docs/test commits mới hơn đang chạy kiểm tra lại.
+
+
+### Incremental Pull – client integration (23/11/2026)
+
+- App sync scheduler đã chuyển sang `syncCloudAssetsIncrementally`; bootstrap checkpoint → Full Scan cũ (một lần) → Catch-up Pull; bootstrap chưa hoàn tất thì Full Scan được lặp lại an toàn.
+- Cursor Dexie theo tổ chức có `bootstrapComplete`; Pull page size 200, cursor advance chỉ sau khi xử lý hết event page. Asset/link/mutation xử lý từng transaction và idempotent; cursor là transaction riêng, không phải atomic với cả page. Crash trước cursor commit sẽ replay page, không bỏ event.
+- Upsert reuse Cloud reconcile logic; soft/hard-delete reuse tombstone/conflict protection; Reset barrier skip snapshot trước marker (cả page trước marker khi generation gap) để không phục hồi asset đã reset.
+- Nếu RPC chưa có ở môi trường, fallback Full Scan; Production chưa migrate/deploy. Scheduler online/focus/visibility/60s, chưa Realtime.
+- Test DB transaction smoke-test: create/upsert, soft-delete, restore/upsert, hard-delete, reset marker và event timestamp; rollback hoàn toàn. Sau kiểm tra không còn test asset, event hay counter rows. Test dataset thật không bị thay đổi.
+- CI test/build đang xác minh commit mới nhất; còn cần browser test hai thiết bị, cancel/org switch, interrupted-page replay và reset giữa các page trước khi đánh giá feature hoàn chỉnh.
