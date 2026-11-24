@@ -3,6 +3,7 @@ import {
   type InventoryItem, type InventoryMovement, type InventoryMovementType,
   type InventoryMutation, type InventorySyncStatus
 } from '../db'
+import { requestSync } from './syncEngine'
 
 export type InventoryActor = {
   organizationId: string
@@ -188,7 +189,7 @@ export async function createInventoryItem(
     updatedAt: at
   }
 
-  return db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations], async () => {
+  const created = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations], async () => {
     await assertCodeAvailable(actor.organizationId, code)
     const mutation = makeMutation(actor, itemId, 'create', { item: metadataSnapshot(item), opening_quantity: openingQuantity }, at)
     const movement = openingQuantity > 0
@@ -214,6 +215,8 @@ export async function createInventoryItem(
     await db.inventoryMutations.add(mutation)
     return item
   })
+  requestSync()
+  return created
 }
 
 /** Metadata editing intentionally has no quantity field. Stock can only change through movements. */
@@ -232,7 +235,7 @@ export async function updateInventoryItemMetadata(
   validateNonNegative(input.minQuantity, 'Tồn tối thiểu')
   validateNonNegative(input.unitPrice, 'Đơn giá')
 
-  return db.transaction('rw', [db.inventoryItems, db.inventoryMutations, db.inventoryCloudLinks], async () => {
+  const updated = await db.transaction('rw', [db.inventoryItems, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Không tìm thấy vật tư trong tổ chức hiện tại.')
     if (current.updatedAt !== expectedLocalUpdatedAt) throw new Error('Thông tin vật tư đã thay đổi ở nơi khác. Hãy tải lại trước khi lưu.')
@@ -260,6 +263,8 @@ export async function updateInventoryItemMetadata(
     await db.inventoryMutations.add(mutation)
     return next
   })
+  requestSync()
+  return updated
 }
 
 /** Post a stock-in or stock-out movement atomically with the new Local balance. */
@@ -277,7 +282,7 @@ export async function postInventoryMovement(
   const cleanReason = clean(reason)
   if (!cleanReason) throw new Error('Lý do giao dịch không được để trống.')
 
-  return db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
+  const posted = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Vật tư không tồn tại trong tổ chức hiện tại.')
     const delta = type === 'Nhập' ? quantity : -quantity
@@ -293,6 +298,8 @@ export async function postInventoryMovement(
     await db.inventoryMutations.add(mutation)
     return movement
   })
+  requestSync()
+  return posted
 }
 
 /** Inventory count adjustment accepts the counted quantity, never a user-supplied delta. */
@@ -308,7 +315,7 @@ export async function adjustInventoryCount(
   const cleanReason = clean(reason)
   if (!cleanReason) throw new Error('Lý do kiểm kê không được để trống.')
 
-  return db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
+  const adjusted = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Vật tư không tồn tại trong tổ chức hiện tại.')
     const delta = countedQuantity - current.quantity
@@ -324,6 +331,8 @@ export async function adjustInventoryCount(
     await db.inventoryMutations.add(mutation)
     return { status: 'adjusted', movement, quantity: next.quantity }
   })
+  if (adjusted.status === 'adjusted') requestSync()
+  return adjusted
 }
 
 export async function archiveInventoryItem(actor: InventoryActor, itemId: string): Promise<void> {
@@ -340,6 +349,7 @@ export async function archiveInventoryItem(actor: InventoryActor, itemId: string
     await db.inventoryItems.put({ ...current, archivedAt: at, updatedAt: at })
     await db.inventoryMutations.add(mutation)
   })
+  requestSync()
 }
 
 function movementPayload(movement: InventoryMovement): Record<string, unknown> {
