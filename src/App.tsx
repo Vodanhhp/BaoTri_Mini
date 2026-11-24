@@ -433,6 +433,10 @@ export default function App() {
       const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,organizationId,snapshot,equipmentCatalog?.updated_at||'')
       setEquipmentCatalog(saved)
       return saved
+    } catch(error) {
+      const refreshed=await loadOrganizationEquipmentCatalog(supabase,organizationId).catch(()=>null)
+      if(refreshed)setEquipmentCatalog(refreshed)
+      throw error
     } finally {
       setCatalogSaveBusy(false)
     }
@@ -444,7 +448,7 @@ export default function App() {
     const code=newTypeCode.trim().toUpperCase().replace(/[^A-Z0-9]/g,'')
     const aliases=newTypeAliases.split(',').map(value=>value.trim()).filter(Boolean)
     if(!name||code.length<2||code.length>4){setError('Tên loại thiết bị và mã viết tắt 2–4 ký tự là bắt buộc.');return}
-    if(equipmentCatalog.snapshot.equipmentDictionary.some(item=>item.shortCode.toUpperCase()===code)){
+    if(equipmentCatalog.snapshot.equipmentDictionary.some(item=>item.shortCode.toUpperCase().replace(/[^A-Z0-9]/g,'')===code)){
       setError('Mã loại thiết bị đã tồn tại trong Snapshot của tổ chức.');return
     }
     if(newTypeGroup&&!equipmentCatalog.snapshot.equipmentGroups.some(group=>group.code===newTypeGroup)){
@@ -464,7 +468,7 @@ export default function App() {
     const name=newGroupName.trim()
     const code=newGroupCode.trim().toUpperCase().replace(/[^A-Z0-9]/g,'')
     if(!name||code.length<2||code.length>4){setError('Tên nhóm và mã nhóm 2–4 ký tự là bắt buộc.');return}
-    if(equipmentCatalog.snapshot.equipmentGroups.some(group=>group.code.toUpperCase()===code)){
+    if(equipmentCatalog.snapshot.equipmentGroups.some(group=>group.code.toUpperCase().replace(/[^A-Z0-9]/g,'')===code)){
       setError('Mã nhóm thiết bị đã tồn tại trong Snapshot của tổ chức.');return
     }
     try{
