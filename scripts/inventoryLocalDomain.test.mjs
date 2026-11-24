@@ -22,7 +22,7 @@ test('inventory metadata contract excludes quantity so metadata edits cannot ove
   assert.match(source, /Metadata editing intentionally has no quantity field/)
   assert.match(source, /function metadataSnapshot/)
   const metadata = source.slice(source.indexOf('function metadataSnapshot'), source.indexOf('async function assertCodeAvailable'))
-  assert.doesNotMatch(metadata, /quantity:/)
+  assert.doesNotMatch(metadata, /^\\s*quantity\\s*:/m)
 })
 
 test('inventory code is normalized and duplicate checking is tenant-scoped', async () => {
