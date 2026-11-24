@@ -2157,3 +2157,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sửa ngày lưu kho và ngày xóa mềm trong danh sách xuất Excel/hồ sơ thiết bị: truyền nguyên timestamp vào `formatDateVN()`, không cắt `slice(0,10)` theo ngày UTC gây lệch ngày gần nửa đêm.
 - Bổ sung regression tests bảo đảm ngày kho lấy theo UTC+7 và timestamp lưu kho/xóa mềm được định dạng như thời điểm tuyệt đối.
 - Không thay đổi timestamp lưu trữ, dữ liệu, schema, quyền, Supabase hoặc luồng đồng bộ Local ↔ Cloud.
+
+
+### Mở rộng Reset toàn bộ thiết bị kèm xóa sạch vật tư — 24/11/2026
+
+- Mở rộng quy trình Reset có phê duyệt Admin doanh nghiệp → Superadmin: khi Superadmin duyệt, Cloud xóa hồ sơ thiết bị và toàn bộ miền dữ liệu kho vật tư của đúng tổ chức.
+- Reset vật tư là **xóa sạch**, không giữ danh mục nhóm, vật tư, số lượng tồn, vật tư lưu trữ, lịch sử nhập/xuất/điều chỉnh, mutation receipts, sự kiện đồng bộ, liên kết Cloud hay cursor đồng bộ. Không có bảng nhóm vật tư trên Cloud; nhóm Local được xóa cùng vật tư.
+- Local trên từng thiết bị đã đăng ký sẽ purge các bảng vật tư và cursor theo organization khi thiết bị online trở lại, trước khi chạy bất kỳ luồng đồng bộ thiết bị hoặc vật tư nào. Thiết bị offline chưa thể nhận lệnh; khi online sẽ áp dụng reset generation trước khi sync.
+- Cloud reset ghi nhận số lượng vật tư/giao dịch đã xóa trong kết quả và lịch sử yêu cầu. Khóa hàng tổ chức trong trigger ghi vật tư giúp thao tác ghi đang chạy hoàn tất trước reset, tránh đan xen với transaction xóa.
+- Giữ nguyên cơ chế reset generation, phê duyệt, xác thực lại mật khẩu Superadmin, nhật ký kiểm toán thiết bị, danh mục thiết bị dùng chung, tài khoản, phân quyền, Plan và lịch sử/sequence đặt mã thiết bị.
+- Migration chính thức: `supabase/migrations/20261124150248_reset_equipment_and_inventory.sql`, khớp version `20261124150248` đã được ghi nhận trên Supabase chính thức `BAOTRI-Mini-New`. Migration đã áp dụng thành công; chỉ thay đổi schema/RPC/trigger, **không chạy Reset và không xóa dữ liệu hiện có**.
+- Bổ sung regression tests cho Cloud purge, Local purge, reset barrier và nội dung xác nhận UI. CI trước khi áp dụng migration đã đạt 183/183 tests và build thành công; cần chạy lại sau khi đồng bộ migration vào thư mục chính thức. Chưa kiểm thử browser/device thực tế.

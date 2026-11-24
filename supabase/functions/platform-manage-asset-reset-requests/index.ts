@@ -48,7 +48,7 @@ Deno.serve(async(req)=>{
   })
   if(error)throw error
   const status=data?.status
-  const message=status==='executed'?'Đã duyệt và thực hiện Reset thiết bị.':status==='rejected'?'Đã từ chối yêu cầu Reset.':'Đã ghi nhận yêu cầu thực hiện thất bại; không báo Reset thành công.'
+  const message=status==='executed'?'Đã duyệt và thực hiện Reset toàn bộ thiết bị + vật tư.':status==='rejected'?'Đã từ chối yêu cầu Reset.':'Đã ghi nhận yêu cầu thực hiện thất bại; không báo Reset thành công.'
   return response({ok:status!=='failed',result:data,message},status==='failed'?409:200,origin)
  }catch(error){
   const detail=error as {message?:unknown;code?:unknown}
