@@ -197,7 +197,7 @@ export async function saveOrganizationEquipmentCatalogSnapshot(
     .eq('organization_id', organizationId)
     .eq('updated_at', expectedUpdatedAt)
     .select('plan_code,source_data_version,snapshot,updated_at')
-    .single()
+    .maybeSingle()
 
   if (error) throw new Error('Không lưu được từ điển thiết bị của tổ chức: ' + error.message)
   if (!data) throw new Error('Catalog Snapshot đã được Admin khác cập nhật. Hãy tải lại danh mục rồi thực hiện lại để tránh ghi đè thay đổi.')
