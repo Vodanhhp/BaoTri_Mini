@@ -651,25 +651,44 @@ export default function App() {
   },[cloudLease?.assetId,cloudLease?.token,cloudLease?.lost,organizationId])
 
   const updateSmartDraft=async(patch:Partial<Asset>,afterChange?:()=>void)=>{
-    const reservationId=editing?.idReservationId
-    if(reservationId&&supabase&&organizationId){
+    const currentEditing=editing
+    const reservationId=currentEditing?.idReservationId
+    if(reservationId){
+      // A reservation may already be confirmed even when this editor still
+      // holds a stale "reserved" draft snapshot. Check durable Local state
+      // before any release attempt; a saved asset owns its issued ID forever.
+      let persistedAsset:Asset|undefined
+      try{
+        persistedAsset=await db.assets.get(currentEditing.id)
+      }catch(cause){
+        setError('Không xác minh được thiết bị đã lưu Local hay chưa. Để bảo vệ số thứ tự, hệ thống không giải phóng reservation. '+(cause instanceof Error?cause.message:String(cause)))
+        return
+      }
+      if(persistedAsset||currentEditing.idReservationStatus==='confirmed'){
+        setError(persistedAsset?.idReservationStatus==='confirmed'||currentEditing.idReservationStatus==='confirmed'
+          ?'Số thứ tự đã được Cloud xác nhận và không thể giải phóng hoặc tái sử dụng. Giữ nguyên tên/loại/nhóm/mã cơ sở/ngày cấu thành mã đã cấp.'
+          :'Thiết bị đã được lưu tại Local nhưng số thứ tự chưa xác nhận hoàn tất. Hãy lưu lại để thử xác nhận; không thay đổi thông tin cấu thành mã đã giữ.')
+        return
+      }
+      if(!supabase||!organizationId){
+        setError('Cần kết nối Cloud và chọn đúng tổ chức để giải phóng reservation chưa sử dụng. Thông tin chưa được thay đổi.')
+        return
+      }
       setReservationReleaseBusy(true)
       try{
         await releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)
-        setEditing(current=>current?{...current,idReservationId:undefined}:current)
-        if(editing){
-          await db.assetDrafts.delete(editing.id).catch(()=>false)
-          setRecoverableDrafts(current=>current.filter(item=>item.id!==editing.id))
-        }
+        setEditing(current=>current?{...current,idReservationId:undefined,idReservationStatus:undefined}:current)
+        await db.assetDrafts.delete(currentEditing.id).catch(()=>false)
+        setRecoverableDrafts(current=>current.filter(item=>item.id!==currentEditing.id))
       }catch(cause){
-        setError('Chưa giải phóng được số thứ tự đang giữ. Kiểm tra kết nối rồi thử lại trước khi đổi thông tin. '+(cause instanceof Error?cause.message:String(cause)))
+        setError('Chưa giải phóng được số thứ tự chưa sử dụng. Kiểm tra kết nối rồi thử lại trước khi đổi thông tin. '+(cause instanceof Error?cause.message:String(cause)))
         return
       }finally{
         setReservationReleaseBusy(false)
       }
     }
     setError('')
-    setEditing(current=>current?{...current,...patch,idReservationId:undefined}:current)
+    setEditing(current=>current?{...current,...patch,idReservationId:undefined,idReservationStatus:undefined}:current)
     afterChange?.()
   }
 
