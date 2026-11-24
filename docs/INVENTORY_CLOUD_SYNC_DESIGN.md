@@ -245,3 +245,12 @@ Queue-order hardening:
 - Validate run `45352426021`: passed.
 - These checks do not validate the draft SQL against PostgreSQL and do not constitute browser runtime/E2E testing.
 - Cloud feature gate remains disabled; no hosted database changes, migration execution, merge or deployment.
+
+
+## 13. Final CI checkpoint (24/11/2026)
+
+- Latest branch head: `e12dbc70f668a32e80a0a3bb93212855c1cc7307`.
+- Build & Test run `45352665344`: 132/132 tests passed, 0 failed; TypeScript/Vite build passed.
+- Validate run `45352665333`: passed.
+- The added SQL-draft assertions cover RPC declarations, RLS, SECURITY INVOKER, mutation idempotency, six-decimal validation, and ledger constraints.
+- These tests inspect the SQL draft's declared contract only. They do not prove SQL syntax or runtime behavior; PostgreSQL 17 local validation remains required.
