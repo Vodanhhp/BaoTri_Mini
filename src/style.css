@@ -1934,3 +1934,15 @@ html,body,#root,.app-shell{
     animation-iteration-count:1!important;
   }
 }
+
+
+/* Form controls fill their grid cell; search controls keep their flexible row layout. */
+#root .app-shell .field :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select){
+  width:100%;
+  min-width:0;
+}
+#root .app-shell .searchbar input{
+  flex:1 1 auto;
+  width:0;
+  min-width:0;
+}
