@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { formatDateVN, formatDateTimeVN } from './lib/dateTime'
 import { type InventoryItem, type InventoryMovement } from './db'
 import { Download, Package } from 'lucide-react'
 import type { OrganizationEquipmentCatalogRecord } from './lib/smartEquipmentIdClient'
@@ -141,8 +142,8 @@ export default function InventoryPanel(props: Props) {
         'Đơn giá':item.unitPrice,'Giá trị tồn':item.quantity*item.unitPrice,
         'Vị trí lưu kho':item.location||'','Nhà cung cấp':item.supplier||'',
         'Trạng thái hồ sơ':item.archivedAt?'Đã lưu trữ':'Đang theo dõi',
-        'Ngày tạo':new Date(item.createdAt).toLocaleDateString('vi-VN'),
-        'Cập nhật lần cuối':new Date(item.updatedAt).toLocaleDateString('vi-VN')
+        'Ngày tạo':formatDateVN(item.createdAt),
+        'Cập nhật lần cuối':formatDateVN(item.updatedAt)
       }))
       await downloadExcelReport(rows,'ton-kho-vat-tu.xlsx','BÁO CÁO TỒN KHO VẬT TƯ','Tồn kho vật tư',headers,'landscape')
       setNotice('Đã xuất '+rows.length+' vật tư ra Excel.')
@@ -336,7 +337,7 @@ export default function InventoryPanel(props: Props) {
           <tbody>{selectedMovements.map(movement=>{
             const item=items.find(row=>row.id===movement.itemId)
             return <tr key={movement.id}>
-              <td>{new Date(movement.date+'T00:00:00').toLocaleDateString('vi-VN')}</td>
+              <td>{formatDateVN(movement.date)}</td>
               <td>{item?.code||'—'}</td>
               <td><span className={'status '+(movement.type==='Nhập'?'green':movement.type==='Xuất'?'orange':'gray')}>{movement.type}</span></td>
               <td>{numberText(movement.quantity)} {item?.unit||''}</td>
@@ -397,7 +398,7 @@ export default function InventoryPanel(props: Props) {
     {printItem&&<section className="inventory-print-sheet" aria-label="Phiếu thông tin vật tư">
       <header className="inventory-print-header">
         <div className="inventory-print-brand"><strong>{organizationName||'ĐƠN VỊ / DOANH NGHIỆP'}</strong><span>BAOTRI MINI · PHIẾU THÔNG TIN VẬT TƯ</span></div>
-        <small>Ngày in: {new Date().toLocaleString('vi-VN')}</small>
+        <small>Ngày in: {formatDateTimeVN(new Date())}</small>
       </header>
       <h1>{printItem.name}</h1>
       <p className="inventory-print-code">Mã vật tư: <b>{printItem.code}</b></p>
@@ -409,16 +410,16 @@ export default function InventoryPanel(props: Props) {
         <tr><th>Số lượng tồn</th><td><b>{numberText(printItem.quantity)} {printItem.unit}</b></td><th>Tồn tối thiểu</th><td>{numberText(printItem.minQuantity)} {printItem.unit}</td></tr>
         <tr><th>Đơn giá</th><td>{moneyText(printItem.unitPrice)}</td><th>Giá trị tồn</th><td>{moneyText(printItem.quantity*printItem.unitPrice)}</td></tr>
         <tr><th>Vị trí lưu kho</th><td>{printItem.location||'—'}</td><th>Nhà cung cấp</th><td>{printItem.supplier||'—'}</td></tr>
-        <tr><th>Trạng thái</th><td>{printItem.archivedAt?'Đã lưu trữ':'Đang hoạt động'}</td><th>Ngày tạo</th><td>{new Date(printItem.createdAt).toLocaleString('vi-VN')}</td></tr>
-        <tr><th>Người tạo</th><td>{printItem.createdByLabel||'—'}</td><th>Cập nhật lần cuối</th><td>{new Date(printItem.updatedAt).toLocaleString('vi-VN')}</td></tr>
-        {printItem.archivedAt&&<tr><th>Thời điểm lưu trữ</th><td colSpan={3}>{new Date(printItem.archivedAt).toLocaleString('vi-VN')}</td></tr>}
+        <tr><th>Trạng thái</th><td>{printItem.archivedAt?'Đã lưu trữ':'Đang hoạt động'}</td><th>Ngày tạo</th><td>{formatDateTimeVN(printItem.createdAt)}</td></tr>
+        <tr><th>Người tạo</th><td>{printItem.createdByLabel||'—'}</td><th>Cập nhật lần cuối</th><td>{formatDateTimeVN(printItem.updatedAt)}</td></tr>
+        {printItem.archivedAt&&<tr><th>Thời điểm lưu trữ</th><td colSpan={3}>{formatDateTimeVN(printItem.archivedAt)}</td></tr>}
       </tbody></table>
       <h2>2. Lịch sử nhập – xuất – điều chỉnh</h2>
       <table className="inventory-print-history">
         <thead><tr><th>STT</th><th>Ngày giờ</th><th>Nghiệp vụ</th><th>Số lượng</th><th>Tồn trước</th><th>Tồn sau</th><th>Lý do / ghi chú</th><th>Người thực hiện</th></tr></thead>
         <tbody>
           {movements.filter(movement=>movement.itemId===printItem.id).slice().sort((a,b)=>a.createdAt.localeCompare(b.createdAt)).map((movement,index)=><tr key={movement.id}>
-            <td>{index+1}</td><td>{new Date(movement.createdAt).toLocaleString('vi-VN')}</td>
+            <td>{index+1}</td><td>{formatDateTimeVN(movement.createdAt)}</td>
             <td>{movement.type==='Điều chỉnh'?'Kiểm kê / điều chỉnh':movement.type==='Nhập'?'Nhập kho':'Xuất kho'}</td>
             <td>{movement.type==='Điều chỉnh'?numberText(movement.countedQuantity??movement.balanceAfter)+' '+printItem.unit:numberText(movement.quantity)+' '+printItem.unit}</td>
             <td>{numberText(movement.balanceBefore)}</td><td>{numberText(movement.balanceAfter)}</td>
