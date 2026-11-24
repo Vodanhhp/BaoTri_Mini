@@ -1626,3 +1626,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sau merge, đối chiếu lại trực tiếp: source trên `main` có đúng 45 file migration; 45/45 version khớp chính xác với migration history của `BAOTRI Mini New`; không thiếu, không thừa, không trùng version.
 - PR #39 đổi nhãn sidebar `Tổng quan thiết bị` thành `Trang tổng quan` đã được squash-merge vào `main`, merge commit: `dc849d080105abc450eb762313d551cb6a3e6e31`.
 - Hai PR chỉ cập nhật repository. Chưa triển khai Vercel Production; chưa chạy migration và không thay đổi dữ liệu/cấu hình Supabase. PR #27/#28/#29 cũ chưa được merge riêng lẻ.
+
+
+### Rà soát bảo vệ phát hành GitHub Pages và vệ sinh repository (24/11/2026)
+
+- Kiểm tra workflow GitHub Pages trên `main`: phát hiện workflow trước đó cho phép push từ cả `main` và `feature/smart-equipment-id-engine`; đồng thời build production đặt `VITE_ENABLE_LOCAL_PREVIEW=true`, có thể làm lộ nút vào chế độ Local Preview trên trang đăng nhập chính thức.
+- Tạo PR #41 trên nhánh `fix/release-hygiene-and-pages-guard`: giới hạn deploy tự động chỉ từ `main`, bỏ biến bật Local Preview khỏi build production; giữ `workflow_dispatch` cho thao tác chạy thủ công.
+- Thêm `.gitignore`; loại `.env.local` khỏi Git nhưng giữ `.env.example`; xóa 6.609 file thuộc `node_modules/` khỏi repository, giữ `package-lock.json` để `npm ci` cài dependency.
+- Đã xác minh tree của nhánh PR: không còn file tracked trong `node_modules/`, không còn `.env.local`, vẫn còn `.env.example` và `package-lock.json`.
+- CI PR đang chạy: Build and test và Validate BAOTRI Mini. Chưa kết luận PASS cho đến khi workflow hoàn tất.
+- Đây là thay đổi repository trên nhánh riêng; chưa merge và chưa deploy. Giữ nguyên tên miền/DNS; không sửa Vercel, không chạy migration, không thay đổi dữ liệu hoặc cấu hình Supabase.
