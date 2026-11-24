@@ -36,5 +36,5 @@ test('inventory has mobile card layouts for items and movement history while ret
   assert.match(css, /\.inventory-desktop-table\{display:none\}/)
   assert.match(css, /\.inventory-mobile-list\{display:grid;gap:9px\}/)
   assert.match(css, /width:100%;max-width:560px/)
-  assert.match(css, /max-height:calc\\(100dvh - 36px\\)/)
+  assert.match(css, /max-height:calc\(100dvh - 36px\)/)
 })
