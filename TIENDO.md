@@ -1514,3 +1514,47 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Trigger `organization_equipment_catalog_audit_snapshot` đã tồn tại, gọi hàm SECURITY DEFINER trong schema private với `search_path=''` và `row_security=off`.
 - Security Advisor sau migration không báo finding mới liên quan bảng history/trigger; còn các cảnh báo tồn tại từ trước trong private tables, SECURITY DEFINER RPC public và leaked-password protection. Không thay đổi các mục ngoài phạm vi PR.
 - Chưa thực hiện UPDATE Snapshot thử nghiệm, chưa phát sinh audit row giả; cần kiểm thử bằng phiên Admin/KTV thực tế để xác nhận actor_user_id và before/after.
+
+
+## 24/11/2026 – PR #35: Tự động đồng bộ thiết bị Local → Cloud
+
+- Người dùng xác nhận yêu cầu: hồ sơ thiết bị mới tạo trên PC phải tự đồng bộ lên Cloud; Mobile tự Pull về Local, không phụ thuộc nút “Nhập lên Cloud”.
+- Tạo branch mới từ main SHA `0aefbdc6203c7b17e6d099c10c326b00af7666fd`: `feature/automatic-local-cloud-asset-sync`.
+- Mở PR nháp #35: https://github.com/Vodanhhp/BaoTri_Mini/pull/35. Chưa merge, chưa deploy.
+- Frontend: Dexie version 9 bổ sung `assetImportQueue` bền vững, lưu trạng thái/attempt/backoff/lỗi; scheduler tự phát hiện hồ sơ Local chưa liên kết, retry tự động và phục hồi queue processing bị gián đoạn; gọi sync ngay sau khi lưu thiết bị; reset generation xóa queue tương ứng.
+- Quyền: Technician hiện có `assets.create` nhưng không có `assets.import`. Không mở rộng quyền import hàng loạt cho KTV. Migration mới chỉ cho phép `assets.create` import hồ sơ có reservation Smart ID đã confirmed, khớp tổ chức + asset UUID + mã quản lý + actor (hoặc Admin có settings.manage). Hồ sơ Local cũ không có Smart ID reservation chỉ tự import khi tài khoản có `assets.import` (Admin); Local Preview và hồ sơ đã xóa mềm bị loại khỏi tự động sync.
+- Giữ nguyên UUID/mã quản lý, import idempotent, không ghi đè Cloud; trùng mã/UUID chuyển conflict; ảnh vẫn chỉ Local.
+- Migration source `20261124030549_auto_local_asset_sync_permission.sql` được dựng từ function hiện hành trên Supabase Test, giữ hỗ trợ trạng thái Lưu kho. Đã apply migration `auto_local_asset_sync_permission` lên đúng Supabase Test `dskeaiyvldiwlsfqkboq` (version `20261124030549`); không truy cập Production.
+- CI trên head đầu tiên `6010a44af724e4c86f405a1386e99824fc7b0e3f`: Build and test + Validate BAOTRI Mini đều SUCCESS. Sau đó bổ sung xử lý retry khi frontend/backend triển khai lệch phiên bản; head mới `559a67c52c4a9cc4e54b61ee2a49e2e9855090bb` đang chờ CI.
+- Còn phải: review toàn bộ diff; kiểm tra queue reset/retry/conflict; kiểm thử PC → Cloud → Mobile thực tế. CI Build and test + Validate BAOTRI Mini trên head mới nhất `9becffdc68e68048090f343a16a996e43a319f75` đều SUCCESS. Test rollback-only trên tổ chức `BAOTRI Mini` (0 asset, Technician role) xác nhận KTV có `assets.create` + reservation Smart ID confirmed có thể import lên Cloud; KTV không có `assets.import` bị từ chối khi import hồ sơ legacy không có reservation. Admin có `assets.import` vẫn import được hồ sơ legacy (rollback-only). Sau rollback, asset count, reservation count và import receipt count đều bằng 0; không để lại fixture. Mỗi chu kỳ giới hạn tối đa 25 import để không chặn Cloud Pull khi tenant có nhiều hồ sơ cũ; nếu hồ sơ được đối chiếu Cloud thủ công và đã có link thì queue được đánh dấu hoàn tất. Không chạm Production và không merge nếu chưa có phê duyệt riêng.
+
+
+### PR #35 – phục hồi race import và kiểm tra bảo mật (24/11/2026, checkpoint mới)
+
+- Phát hiện tình huống Cloud đã commit import receipt với snapshot A nhưng Local đổi sang snapshot B trước khi client tạo Cloud link. Retry cùng mutation ID với payload B gây lỗi `Import mutation ID reused with different request`; trước đó có nguy cơ retry mãi và không tạo được link.
+- Đã bổ sung luồng phục hồi có kiểm chứng: RPC `verify_cloud_asset_import_receipt` chỉ xác nhận receipt nếu đúng organization, asset UUID = mutation ID, actor hiện tại và người gọi có `assets.create` hoặc `assets.import`. RPC trả về Cloud snapshot hiện tại cùng timestamp Local snapshot gốc từ receipt.
+- Chỉ sau khi receipt được xác minh, Local mới tạo Cloud link. Nếu Local và Cloud khác snapshot, giữ nguyên Local, đặt link `conflict`, tạo AssetMutation conflict để người dùng chọn Cloud hoặc Local. Nếu payload đã khớp thì link được xác nhận bình thường. Nếu không xác minh được receipt, không link dựa riêng vào mã quản lý; queue giữ retry có backoff.
+- Đã sửa classifier để lỗi reuse mutation ID đồng bộ cả ba nơi: lỗi permanent, queue status conflict và conflict counter; không còn retry vô hạn.
+- Bảo mật RPC: implementation SECURITY DEFINER nằm trong schema `private`, `search_path=''`, `row_security=off`; public RPC wrapper SECURITY INVOKER. Private helper yêu cầu auth.uid, quyền tạo/nhập, receipt actor khớp và asset UUID khớp. Đã sửa cả migration source đầu tiên để không có giai đoạn tạo public SECURITY DEFINER verifier.
+- Đã áp dụng trên Supabase Test `dskeaiyvldiwlsfqkboq` các migration version: `20261124042123`, `20261124042150`, `20261124042230`; trước đó `20261124030549` cũng đã được áp dụng. Không truy cập/chỉnh sửa Production.
+- SQL kiểm tra sau cùng: private helper SECURITY DEFINER, public wrapper SECURITY INVOKER; anon không có EXECUTE; authenticated có quyền gọi public wrapper và private helper. Security Advisor vẫn có 22 public SECURITY DEFINER findings tồn tại từ trước; không phát sinh finding mới cho verifier. Các cảnh báo RLS private tables/no policies và leaked-password protection vẫn chưa xử lý, ngoài phạm vi thay đổi này.
+- Bổ sung test tự động `scripts/automaticLocalAssetImportRecovery.test.mjs` cho receipt verification, race recovery, fail-safe khi không xác minh được và phân loại conflict.
+- CI cuối cùng trên head `c32948a80e6e3c15377975b0843d0c928da7106e`: **Build and test SUCCESS** (Unit tests SUCCESS, Build SUCCESS); **Validate BAOTRI Mini SUCCESS** (Build SUCCESS).
+- PR #35 vẫn Draft, mergeable, ahead main 39 commits, behind 0. Chưa merge, chưa deploy. Chưa có browser E2E PC → Cloud → Mobile; cần kiểm thử thực tế trước khi xin duyệt merge.
+
+### PR #35 – bổ sung trigger đồng bộ cho lưu Local thông thường (24/11/2026)
+
+- Review luồng lưu phát hiện nhánh lưu Local thông thường (không đi qua Smart ID reservation) chưa phát `requestSync()` ngay sau khi IndexedDB commit; chỉ dựa vào scheduler định kỳ 60 giây.
+- Đã sửa `src/App.tsx`: phát `requestSync()` ngay sau khi ghi thiết bị Local thành công, trước khi ghi lịch sử/tải lại giao diện. Smart ID flow đã có trigger riêng.
+- Bổ sung test trong `scripts/automaticLocalAssetImportRecovery.test.mjs` để bảo đảm nhánh lưu Local thông thường luôn phát yêu cầu đồng bộ sau IndexedDB write.
+- Commits bổ sung: `6e7107e689794290918a615174cde613313cd288` (code), `e4dd9d8ca8e9a66ac9176840c5236ec2251db8d8` (test).
+- Chưa có CI result cho các commit mới tại thời điểm ghi checkpoint; chờ GitHub Actions. PR vẫn Draft, chưa merge/deploy; chưa kiểm thử E2E PC → Cloud → Mobile. Không truy cập Production.
+
+### PR #35 – xử lý yêu cầu sync đến trong khi một lượt sync đang chạy (24/11/2026)
+
+- Review scheduler phát hiện `execute()` bỏ qua yêu cầu mới khi `running=true`. Nếu người dùng lưu thiết bị trong lúc lượt sync cũ đang chạy, event `requestSync` có thể bị mất và phải chờ polling tiếp theo.
+- Đã sửa `src/lib/syncEngine.ts`: ghi nhận `rerunRequested`, sau khi lượt hiện tại hoàn tất sẽ chạy thêm một lượt nếu tab còn active/visible và có mạng; nhiều yêu cầu trong cùng lượt được gộp thành một lượt kế tiếp.
+- Bổ sung test `scripts/syncEngine.test.mjs` kiểm tra coalescing/rerun; test đồng thời giữ kiểm tra event listener `baotri:sync-request`.
+- CI head cuối cùng `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d`: **Build and test SUCCESS** (Unit tests 110/110, Build SUCCESS); **Validate BAOTRI Mini SUCCESS**.
+- Các commit sửa liên quan: `6547266cfb4274ddddc0fa4d246a6c5e813282fc` (scheduler rerun), `fab085aec3d0e40392b15c13b2e5a833af0212fe` (TypeScript visibility guard), `2a214df8fb22e144c108cf3206dbe17b81d0eb2d` (test assertion), `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d` (regex test correction).
+- PR #35 vẫn Draft, chưa merge/deploy; browser E2E PC → Cloud → Mobile vẫn cần kiểm thử thực tế. Không truy cập/chỉnh sửa Supabase Production.

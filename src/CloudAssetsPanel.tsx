@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Asset } from './db'
-import { db, now, uid, type AssetMutation } from './db'
+import { db, now, uid, type AssetMutation, type AssetImportQueueItem } from './db'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { acquireCloudAssetLock, applyCloudAssetMutation, downloadCloudAsset, importLocalAsset, listCloudAssets, retryCloudAssetMutation, releaseCloudAssetLock, toMutationPayload, getLocalDeviceId, getDeviceLabel, type CloudAsset } from './lib/cloudAssets'
 
@@ -12,6 +12,7 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
  const [deletedCloudCodes,setDeletedCloudCodes]=useState<string[]>([])
  const [linkedIds,setLinkedIds]=useState<string[]>([])
  const [pending,setPending]=useState<AssetMutation[]>([])
+ const [importQueue,setImportQueue]=useState<AssetImportQueueItem[]>([])
  const [selected,setSelected]=useState<string[]>([])
  const [selectedPreview,setSelectedPreview]=useState<string[]>([])
  const [loading,setLoading]=useState(false)
@@ -246,8 +247,10 @@ export default function CloudAssetsPanel({client,organizationId,localAssets,loca
     <div className="cloud-section-head"><h3>Local chưa liên kết</h3><div className="cloud-row-actions"><button className="soft-btn small" onClick={()=>setSelected(candidates.map(a=>a.id))}>Chọn tất cả</button><button className="primary-btn small" disabled={!canImport||selected.length===0||!!busyId} onClick={()=>void importSelected()}>Nhập đã chọn ({selected.length})</button></div></div>
     {candidates.length===0?<p className="empty-small">Không có hồ sơ Local chưa liên kết trong tổ chức này.</p>:<div className="cloud-list">{candidates.map(a=>{
      const collision=cloud.some(row=>row.code===a.code)
+     const queued=importQueue.find(item=>item.assetId===a.id)
+     const queueLabel=queued?.status==='processing'?'Tự động đồng bộ: đang gửi lên Cloud':queued?.status==='pending'?'Tự động đồng bộ: đang chờ retry':queued?.status==='conflict'?'Tự động đồng bộ: cần đối chiếu':queued?.status==='permanent'?'Tự động đồng bộ: tạm dừng do lỗi':''
      return <div className="cloud-row" key={a.id}>
-      <label className="cloud-select"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,a.id]:prev.filter(id=>id!==a.id))}/><span className="cloud-row-main"><b>{a.code} · {a.name}</b><small>{a.category} · {a.location||'Chưa có vị trí'} · {a.images?.length||0} ảnh Local {collision?'· Mã quản lý đã có trên Cloud':''}</small></span></label>
+      <label className="cloud-select"><input type="checkbox" checked={selected.includes(a.id)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,a.id]:prev.filter(id=>id!==a.id))}/><span className="cloud-row-main"><b>{a.code} · {a.name}</b><small>{a.category} · {a.location||'Chưa có vị trí'} · {a.images?.length||0} ảnh Local {collision?'· Mã quản lý đã có trên Cloud':''}{queueLabel?' · '+queueLabel:''}{queued?.lastError?' · '+queued.lastError:''}</small></span></label>
       <div className="cloud-row-actions">{canImport&&<button className="primary-btn small" disabled={!!busyId} onClick={()=>void importOne(a)}>{busyId===a.id?'Đang nhập…':'Nhập lên Cloud'}</button>}</div>
      </div>
     })}</div>}

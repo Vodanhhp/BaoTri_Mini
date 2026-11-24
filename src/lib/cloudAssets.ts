@@ -394,10 +394,187 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
     id: organizationId+':'+asset.id, organizationId, assetId: asset.id, cloudCode: cloud.code,
     cloudUpdatedAt: cloud.updatedAt, lastSyncedLocalUpdatedAt: asset.updatedAt, status:'linked', lastVerifiedAt:now()
   }
-  await db.assetCloudLinks.put(link)
+  await db.transaction('rw',[db.assetCloudLinks,db.assetImportQueue],async()=>{
+    await db.assetCloudLinks.put(link)
+    const queued=await db.assetImportQueue.get(organizationId+':'+asset.id)
+    if(queued)await db.assetImportQueue.update(queued.id,{status:'applied',updatedAt:now(),lastError:undefined,nextAttemptAt:undefined,failureKind:undefined})
+  })
   await ensureOrganizationAssetResetApplied(client,organizationId)
   if(!await db.assets.get(asset.id))throw new Error('Tổ chức vừa được reset sau khi nhập Cloud; Local snapshot cũ đã được xóa.')
   return {cloud,alreadyPresent:result.already_present===true}
+}
+
+/**
+ * Recover the narrow race where Cloud committed the immutable import receipt,
+ * but Local changed before the client could persist its Cloud link. The import
+ * RPC intentionally rejects reusing the same mutation ID with a different
+ * payload. Rather than retry forever, link only the exact UUID+code found on
+ * Cloud and create an explicit Local-vs-Cloud conflict for user review.
+ */
+async function recoverCommittedImportWithChangedLocalSnapshot(
+  client:SupabaseClient,
+  organizationId:string,
+  attempted:Asset,
+  errorMessage:string
+):Promise<boolean>{
+  if(!errorMessage.includes('Import mutation ID reused with different request'))return false
+  const current=await db.assets.get(attempted.id)
+  if(!current||current.localScope!==organizationId||current.code!==attempted.code||current.deletedAt)return false
+
+  // The public Cloud list intentionally hides internal UUIDs. Verify the
+  // immutable import receipt through a narrowly scoped RPC before linking by code.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  const {data:verificationData,error:verificationError}=await client.rpc('verify_cloud_asset_import_receipt',{
+    p_organization_id:organizationId,p_asset_id:attempted.id,p_mutation_id:attempted.id
+  })
+  if(verificationError)throw new Error('Chưa xác minh được biên nhận import Cloud: '+verificationError.message)
+  const verification=verificationData as {verified?:boolean;asset?:Record<string,unknown>|null;receipt_updated_at?:string}|null
+  if(verification?.verified!==true||!verification.asset||!verification.receipt_updated_at)return false
+  const receiptUpdatedAt=verification.receipt_updated_at
+  if(verification.asset.asset_key!==attempted.code||verification.asset.code!==attempted.code)return false
+  const cloud=cloudAssetFromRow(verification.asset)
+
+  // The user may have edited or reset the Local row while receipt verification ran.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  const at=now()
+  const samePayload=JSON.stringify(toImportPayload(current))===JSON.stringify(toImportPayload(cloud))
+  await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations,db.assetImportQueue],async()=>{
+    const latest=await db.assets.get(attempted.id)
+    if(!latest||latest.localScope!==organizationId||latest.code!==attempted.code||latest.updatedAt!==current.updatedAt){
+      throw new Error('Local tiếp tục thay đổi trong lúc phục hồi import; giữ nguyên hàng đợi để kiểm tra lại.')
+    }
+    const link:AssetCloudLink={
+      id:organizationId+':'+attempted.id,organizationId,assetId:attempted.id,cloudCode:cloud.code,
+      cloudUpdatedAt:cloud.updatedAt,
+      lastSyncedLocalUpdatedAt:samePayload?latest.updatedAt:receiptUpdatedAt,
+      status:samePayload?'linked':'conflict',lastVerifiedAt:at
+    }
+    await db.assetCloudLinks.put(link)
+    const queued=await db.assetImportQueue.get(organizationId+':'+attempted.id)
+    if(samePayload){
+      if(queued)await db.assetImportQueue.update(queued.id,{status:'applied',updatedAt:at,lastError:undefined,nextAttemptAt:undefined,failureKind:undefined})
+      return
+    }
+    const existing=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,attempted.id])
+      .filter(m=>m.status==='conflict').first()
+    if(!existing)await db.assetMutations.add({
+      mutationId:uid(),organizationId,assetId:attempted.id,payload:toMutationPayload(latest),
+      expectedCloudUpdatedAt:cloud.updatedAt,localUpdatedAt:latest.updatedAt,
+      status:'conflict',attempts:0,createdAt:at,updatedAt:at,
+      lastError:'Cloud đã nhận snapshot Local trước đó, nhưng Local tiếp tục thay đổi trong lúc import. Giữ cả hai phiên bản để đối chiếu.'
+    })
+    if(queued)await db.assetImportQueue.update(queued.id,{
+      status:'conflict',failureKind:'permanent',lastError:'Cloud đã nhận snapshot cũ; Local đã thay đổi. Cần đối chiếu Local/Cloud.',
+      nextAttemptAt:undefined,updatedAt:at
+    })
+  })
+  return true
+}
+
+export type LocalAssetImportSyncResult = { queued:number; imported:number; failed:number; conflicts:number }
+
+export async function syncPendingLocalAssetImports(
+  client: SupabaseClient,
+  organizationId: string,
+  options: { canCreate: boolean; canImportLegacy: boolean; shouldContinue?:()=>boolean }
+): Promise<LocalAssetImportSyncResult> {
+  const result:LocalAssetImportSyncResult={queued:0,imported:0,failed:0,conflicts:0}
+  if(!options.canCreate&&!options.canImportLegacy)return result
+  const [assets,links]=await Promise.all([
+    db.assets.where('localScope').equals(organizationId).toArray(),
+    db.assetCloudLinks.where('organizationId').equals(organizationId).toArray()
+  ])
+  const linked=new Set(links.map(link=>link.assetId))
+  const byId=new Map(assets.map(asset=>[asset.id,asset]))
+  const eligible=assets.filter(asset=>{
+    if(linked.has(asset.id)||asset.localScope!==organizationId||asset.deletedAt)return false
+    const hasVerifiedSmartId=Boolean(asset.idReservationId&&asset.idComponentsSnapshot&&asset.equipmentTypeCode)
+    return (hasVerifiedSmartId&&options.canCreate)||options.canImportLegacy
+  })
+  for(const asset of eligible){
+    if(options.shouldContinue&&!options.shouldContinue())break
+    const id=organizationId+':'+asset.id
+    const existing=await db.assetImportQueue.get(id)
+    if(!existing){
+      const at=now()
+      await db.assetImportQueue.put({
+        id,organizationId,assetId:asset.id,reservationId:asset.idReservationId,
+        localUpdatedAt:asset.updatedAt,status:'pending',attempts:0,createdAt:at,updatedAt:at
+      })
+      result.queued++
+    }else if((existing.localUpdatedAt!==asset.updatedAt||existing.status==='applied')&&!linked.has(asset.id)){
+      await db.assetImportQueue.update(id,{
+        reservationId:asset.idReservationId,localUpdatedAt:asset.updatedAt,
+        status:'pending',failureKind:undefined,lastError:undefined,nextAttemptAt:undefined,updatedAt:now()
+      })
+    }
+  }
+  const queue=await db.assetImportQueue.where('organizationId').equals(organizationId).toArray()
+  let processed=0
+  for(const item of queue){
+    if(options.shouldContinue&&!options.shouldContinue())break
+    if(processed>=25)break
+    if(item.status==='processing'){
+      if(Date.now()-Date.parse(item.updatedAt)<=60_000)continue
+      await db.assetImportQueue.update(item.id,{status:'pending',updatedAt:now()})
+    }
+    const existingLink=await db.assetCloudLinks.get(organizationId+':'+item.assetId)
+    if(existingLink){
+      await db.assetImportQueue.update(item.id,{status:'applied',updatedAt:now(),lastError:undefined,nextAttemptAt:undefined})
+      continue
+    }
+    if(item.status==='applied'||item.status==='conflict'||item.status==='permanent')continue
+    if(item.nextAttemptAt&&Date.parse(item.nextAttemptAt)>Date.now())continue
+    const asset=byId.get(item.assetId)??await db.assets.get(item.assetId)
+    if(!asset||asset.localScope!==organizationId||asset.deletedAt){
+      await db.assetImportQueue.delete(item.id)
+      continue
+    }
+    const hasVerifiedSmartId=Boolean(asset.idReservationId&&asset.idComponentsSnapshot&&asset.equipmentTypeCode)
+    if(!(hasVerifiedSmartId&&options.canCreate)&&!options.canImportLegacy)continue
+    const at=now()
+    processed++
+    await db.assetImportQueue.update(item.id,{status:'processing',attempts:item.attempts+1,lastAttemptAt:at,updatedAt:at})
+    try{
+      await importLocalAsset(client,organizationId,asset)
+      result.imported++
+    }catch(error){
+      const message=error instanceof Error?error.message:String(error)
+      if(message.includes('Import mutation ID reused with different request')){
+        try{
+          if(await recoverCommittedImportWithChangedLocalSnapshot(client,organizationId,asset,message)){
+            result.conflicts++
+            continue
+          }
+        }catch(recoveryError){
+          const attempts=item.attempts+1
+          const delay=Math.min(15*60_000,30_000*Math.pow(2,Math.min(attempts-1,5)))*(0.8+Math.random()*0.4)
+          await db.assetImportQueue.update(item.id,{
+            status:'pending',failureKind:'transient',
+            lastError:'Cloud có thể đã nhận snapshot cũ; chưa xác minh được để tạo liên kết an toàn. '+(recoveryError instanceof Error?recoveryError.message:String(recoveryError)),
+            nextAttemptAt:new Date(Date.now()+delay).toISOString(),updatedAt:now()
+          })
+          result.failed++
+          continue
+        }
+      }
+      // During a staged rollout, the old RPC may still return the former
+      // assets.import-only error. Keep a verified Smart ID import retryable so
+      // applying the matching migration later does not strand the Local record.
+      const permissionMigrationPending=hasVerifiedSmartId&&options.canCreate&&/Missing assets\.import permission/i.test(message)
+      const permanent=!permissionMigrationPending&&/already exists|different Cloud content|UUID already|does not match|Import mutation ID reused with different request|invalid|unsupported|reservation has been released|reservation not found|confirmed reservation cannot be reassigned|Missing assets\.import|permission|reset generation is stale|stale; purge/i.test(message)
+      const attempts=item.attempts+1
+      const delay=Math.min(15*60_000,30_000*Math.pow(2,Math.min(attempts-1,5)))*(0.8+Math.random()*0.4)
+      await db.assetImportQueue.update(item.id,{
+        status:permanent?( /already exists|different Cloud content|UUID already|does not match|Import mutation ID reused with different request/i.test(message)?'conflict':'permanent'):'pending',
+        failureKind:permanent?'permanent':'transient',lastError:message,
+        nextAttemptAt:permanent?undefined:new Date(Date.now()+delay).toISOString(),updatedAt:now()
+      })
+      if(permanent&&/already exists|different Cloud content|UUID already|does not match|Import mutation ID reused with different request/i.test(message))result.conflicts++
+      else result.failed++
+    }
+  }
+  return result
 }
 
 export async function downloadCloudAsset(organizationId: string, cloud: CloudAsset, existing?: Asset) {

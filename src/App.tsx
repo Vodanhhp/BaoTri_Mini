@@ -11,10 +11,10 @@ import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
-import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
+import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
-import { startSyncEngine } from './lib/syncEngine'
+import { requestSync, startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
 import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, saveOrganizationEquipmentCatalogSnapshot, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
@@ -245,14 +245,15 @@ export default function App() {
     const applyKnownOrganizationResets=async()=>{
       if(!navigator.onLine)return
       try{
-        const [localRows,resetRows,historyRows,draftRows,mutationRows,linkRows,groupRows]=await Promise.all([
+        const [localRows,resetRows,historyRows,draftRows,mutationRows,linkRows,groupRows,importQueueRows]=await Promise.all([
           db.assets.toArray(),
           db.organizationAssetResetStates.toArray(),
           db.assetHistory.toArray(),
           db.assetDrafts.toArray(),
           db.assetMutations.toArray(),
           db.assetCloudLinks.toArray(),
-          db.assetGroupChanges.toArray()
+          db.assetGroupChanges.toArray(),
+          db.assetImportQueue.toArray()
         ])
         const scopes=new Set<string>([
           ...localRows.map(row=>row.localScope),
@@ -261,7 +262,8 @@ export default function App() {
           ...draftRows.map(row=>row.organizationId),
           ...mutationRows.map(row=>row.organizationId),
           ...linkRows.map(row=>row.organizationId),
-          ...groupRows.map(row=>row.organizationId)
+          ...groupRows.map(row=>row.organizationId),
+          ...importQueueRows.map(row=>row.organizationId)
         ])
         scopes.delete('local-preview')
         for(const scope of scopes){
@@ -296,6 +298,12 @@ export default function App() {
       setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
       try{
         await ensureOrganizationAssetResetApplied(client,organizationId)
+        const contextCanCreate=context.permissions.includes('assets.create')
+        const contextCanImportLegacy=context.permissions.includes('assets.import')
+        const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
+          canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
+        })
+        if(!active)return
         const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
         if(!active)return
         let retried=0
@@ -344,7 +352,7 @@ export default function App() {
         if(!active)return
         await loadAssets(organizationId)
         if(!active)return
-        setCloudSyncMessage('Cloud → Local hoàn tất: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Tự retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
+        setCloudSyncMessage('Local → Cloud: '+importSummary.imported+' thiết bị mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' cần đối chiếu. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
       }catch(cause){
         if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))
       }finally{
@@ -872,7 +880,7 @@ export default function App() {
             await db.assets.update(savedByOtherTab.id,{idReservationStatus:'confirmed'})
             await db.assetDrafts.delete(value.id).catch(()=>false)
             setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
-            await loadAssets();setShowForm(false);setEditing(null)
+            await loadAssets();setShowForm(false);setEditing(null);requestSync()
             notify('Thiết bị đã được lưu và xác nhận từ phiên khác.')
             return
           }
@@ -903,11 +911,12 @@ export default function App() {
             components:value.idComponentsSnapshot!
           })
           await db.assets.update(value.id,{idReservationStatus:'confirmed'})
-          await loadAssets();setShowForm(false);setEditing(null)
+          await loadAssets();setShowForm(false);setEditing(null);requestSync()
           notify('Đã lưu Local và Cloud xác nhận số thứ tự: '+value.code)
         }catch(confirmError){
           await loadAssets()
           setEditing(value)
+          requestSync()
           throw confirmError
         }
         return
@@ -988,6 +997,8 @@ export default function App() {
       }else{
         await db.assets.put(value)
       }
+      // Queue the automatic Local-to-Cloud pass immediately after the Local write commits.
+      requestSync()
       await recordAssetHistory(previous,value)
       await loadAssets();setShowForm(false);setEditing(null);notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
