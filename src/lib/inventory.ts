@@ -319,7 +319,7 @@ export async function adjustInventoryCount(
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Vật tư không tồn tại trong tổ chức hiện tại.')
     const delta = countedQuantity - current.quantity
-    if (delta === 0) return { status: 'no_change', quantity: current.quantity }
+    if (delta === 0) return { status: 'no_change' as const, quantity: current.quantity }
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
     const mutation = makeMutation(actor, itemId, 'adjust_count', {}, at, link?.cloudUpdatedAt)
@@ -329,7 +329,7 @@ export async function adjustInventoryCount(
     await db.inventoryItems.put(next)
     await db.inventoryMovements.add(movement)
     await db.inventoryMutations.add(mutation)
-    return { status: 'adjusted', movement, quantity: next.quantity }
+    return { status: 'adjusted' as const, movement, quantity: next.quantity }
   })
   if (adjusted.status === 'adjusted') requestSync()
   return adjusted
