@@ -2168,3 +2168,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Giữ nguyên cơ chế reset generation, phê duyệt, xác thực lại mật khẩu Superadmin, nhật ký kiểm toán thiết bị, danh mục thiết bị dùng chung, tài khoản, phân quyền, Plan và lịch sử/sequence đặt mã thiết bị.
 - Migration chính thức: `supabase/migrations/20261124150248_reset_equipment_and_inventory.sql`, khớp version `20261124150248` đã được ghi nhận trên Supabase chính thức `BAOTRI-Mini-New`. Migration đã áp dụng thành công; chỉ thay đổi schema/RPC/trigger, **không chạy Reset và không xóa dữ liệu hiện có**.
 - Bổ sung regression tests cho Cloud purge, Local purge, reset barrier và nội dung xác nhận UI. CI trước khi áp dụng migration đã đạt 183/183 tests và build thành công; cần chạy lại sau khi đồng bộ migration vào thư mục chính thức. Chưa kiểm thử browser/device thực tế.
+
+
+### Bổ sung yêu cầu đổi tên doanh nghiệp và thu gọn Thuê bao doanh nghiệp — 24/11/2026
+
+- Bổ sung luồng **Yêu cầu đổi tên doanh nghiệp** trong cửa sổ Thuê bao doanh nghiệp. Admin đang hoạt động nhập tên mới và ghi chú; khi gửi chỉ tạo yêu cầu chờ duyệt, không đổi tên tổ chức ngay.
+- Super Admin có danh sách riêng để đối chiếu tên hiện tại/tên đề nghị, người gửi và lý do; duyệt/từ chối yêu cầu bằng xác thực lại mật khẩu. Khi từ chối bắt buộc có lý do. Khi duyệt, transaction kiểm tra tên hiện tại chưa bị thay đổi rồi mới cập nhật organizations.name.
+- Lưu lịch sử tên cũ/tên mới, người yêu cầu, người duyệt và ghi chú. Không đổi organization_id, thành viên, tài khoản, Plan, thiết bị, vật tư hoặc lịch sử nghiệp vụ.
+- Mỗi doanh nghiệp chỉ có một yêu cầu đổi tên đang chờ. Tên mới phải có 2–160 ký tự và khác tên hiện tại.
+- Thu gọn cửa sổ Thuê bao: Plan và đổi tên đặt cạnh nhau trên PC, xếp dọc trên điện thoại; trường nhập/ghi chú ngắn hơn; Reset và lịch sử tiếp tục là các khu vực riêng.
+- Migration đang đặt tại docs/pending-migrations/20261124165000_organization_name_change_requests.sql. **Chưa áp dụng lên Supabase Production** và hai Edge Function mới chưa triển khai. Chờ người dùng duyệt trước khi thay đổi backend Production.
+- Nhánh feat/organization-name-change-requests; cần chạy Build/Test và review CI trước khi mở PR. Chưa kiểm tra trực quan trên trình duyệt PC/mobile.
