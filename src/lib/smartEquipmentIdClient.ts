@@ -127,7 +127,9 @@ export async function reserveSmartEquipmentId(
     month_year: reservation.month_year ?? null,
     standard_equipment_name: input.standardEquipmentName,
     group_name_at_creation: reservation.group_name_at_creation
-      ?? (groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null),
+      ?? (reservation.plan_code === 'A'
+        ? input.groupNameAtCreation ?? null
+        : (groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null)),
     source_data_version: reservation.source_data_version,
     issued_at: new Date().toISOString()
   }
