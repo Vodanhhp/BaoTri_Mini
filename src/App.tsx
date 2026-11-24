@@ -998,7 +998,7 @@ export default function App() {
         await db.assets.put(value)
       }
       await recordAssetHistory(previous,value)
-      await loadAssets();setShowForm(false);setEditing(null);notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
+      await loadAssets();setShowForm(false);setEditing(null);requestSync();notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setBusy(false)}
   }
