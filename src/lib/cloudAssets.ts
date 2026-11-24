@@ -435,7 +435,7 @@ export async function syncPendingLocalAssetImports(
         localUpdatedAt:asset.updatedAt,status:'pending',attempts:0,createdAt:at,updatedAt:at
       })
       result.queued++
-    }else if(existing.localUpdatedAt!==asset.updatedAt&&existing.status!=='applied'){
+    }else if((existing.localUpdatedAt!==asset.updatedAt||existing.status==='applied')&&!linked.has(asset.id)){
       await db.assetImportQueue.update(id,{
         reservationId:asset.idReservationId,localUpdatedAt:asset.updatedAt,
         status:'pending',failureKind:undefined,lastError:undefined,nextAttemptAt:undefined,updatedAt:now()
@@ -445,6 +445,10 @@ export async function syncPendingLocalAssetImports(
   const queue=await db.assetImportQueue.where('organizationId').equals(organizationId).toArray()
   for(const item of queue){
     if(options.shouldContinue&&!options.shouldContinue())break
+    if(item.status==='processing'){
+      if(Date.now()-Date.parse(item.updatedAt)<=60_000)continue
+      await db.assetImportQueue.update(item.id,{status:'pending',updatedAt:now()})
+    }
     if(item.status==='applied'||item.status==='conflict'||item.status==='permanent')continue
     if(item.nextAttemptAt&&Date.parse(item.nextAttemptAt)>Date.now())continue
     const asset=byId.get(item.assetId)??await db.assets.get(item.assetId)
