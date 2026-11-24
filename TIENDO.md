@@ -1480,3 +1480,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Read-only kiểm tra Supabase Test: tổ chức `BAOTRI Mini Test 02` đang active, hiện có 1 asset (`BOM-NUO-001`) và 1 active member role Admin. Chỉ xác định đây là ứng viên test; **chưa sửa/xóa/reset/import dữ liệu**, chưa dùng làm test fixture cho thao tác destructive.
 - Môi trường trợ lý hiện không có quyền điều khiển browser của người dùng; web fetch không đọc được site custom domain. Browser E2E chưa chạy. Cần user thao tác hai thiết bị/phiên browser và báo kết quả từng bước; khi cần test Reset, phải chọn/confirm tenant test chuyên dụng và backup/fixture rõ ràng.
 - Hướng tiếp theo: bắt đầu E2E không destructive (Pull/Update/Offline retry) trước; ghi nhận pass/fail và lỗi; sau đó mới kiểm thử reset barrier với tenant test đã được xác nhận riêng. Không dùng Production.
+
+
+## 24/11/2026 – PR #34: Quản lý từ điển thiết bị riêng theo tổ chức
+
+- Theo rà soát luồng tạo thiết bị, cả Plan A/B/C/D đều thiếu phương án chọn thủ công loại thiết bị khi phân tích tên trả về `not-found`; UI trước đó chỉ cho chọn khi `ambiguous`.
+- Đã mở PR nháp #34: `feature/org-equipment-dictionary-management` → `main`.
+- Người dùng thống nhất: Admin của tổ chức được bổ sung loại thiết bị và nhóm thiết bị vào từ điển riêng; KTV chỉ được chọn mục đã có.
+- UI mới: khi không nhận diện được tên, người dùng chọn loại có sẵn; Admin có thêm biểu mẫu bổ sung loại chuẩn, mã 2–4 ký tự, alias và nhóm gợi ý. Admin có thể thêm nhóm riêng; KTV không có nút thêm.
+- Plan A cho phép phân nhóm vận hành tùy chọn, nhưng mã quản lý Plan A vẫn chỉ gồm mã loại + số thứ tự; Plan B/C/D vẫn yêu cầu nhóm như quy tắc hiện hành.
+- Snapshot cập nhật có optimistic concurrency theo `updated_at`; migration mới tạo lịch sử before/after cho mỗi lần cập nhật Snapshot. RLS hiện có `settings.manage` bảo vệ quyền cập nhật Catalog.
+- Bổ sung unit test Plan A group optional. GitHub Actions trên head `d1609267b4069b717b8d4a5029adc7ada5301c2c`: Build/Test SUCCESS và Validate SUCCESS.
+- Chưa áp dụng migration lên Supabase Test hoặc Production; chưa thử giao diện thực tế trên trình duyệt. Không merge PR #34 khi chưa có phê duyệt riêng.
