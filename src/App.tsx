@@ -1434,7 +1434,7 @@ export default function App() {
       <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button>{!detailAsset.deletedAt&&(localPreview||canUpdate)&&<button className="primary-btn" onClick={()=>{const selected=detailAsset;setDetailAsset(null);void openAssetEditor(selected)}}>Chỉnh sửa hồ sơ</button>}</div>
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
-      {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><div className="asset-sticker-info"><strong><small>MÃ ID</small>{detailAsset.code}</strong><strong><small>TÊN THIẾT BỊ</small>{displayAssetName(detailAsset)}</strong></div></div>}
+      {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><div className="asset-sticker-info"><strong>{detailAsset.code}</strong><strong>{displayAssetName(detailAsset)}</strong></div></div>}
       {printAssetMode==='detail'&&<div className="asset-print-report equipment-print-report">
         <header className="equipment-print-org">
           <div className="equipment-print-org-name">{currentOrganization?.name||'Đơn vị sử dụng'}</div>
