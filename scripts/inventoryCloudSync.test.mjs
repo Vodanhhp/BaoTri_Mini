@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const cloud = readFileSync(new URL('../src/lib/inventoryCloud.ts', import.meta.url), 'utf8')
-const migration = readFileSync(new URL('../supabase/migrations/20261124160000_inventory_local_cloud_sync.sql', import.meta.url), 'utf8')
+const migration = readFileSync(new URL('../supabase/migrations/20261124125830_inventory_local_cloud_sync.sql', import.meta.url), 'utf8')
 const panel = readFileSync(new URL('../src/InventoryPanel.tsx', import.meta.url), 'utf8')
 
 test('inventory Cloud sync is enabled only through the shared sync engine for organization sessions', () => {
