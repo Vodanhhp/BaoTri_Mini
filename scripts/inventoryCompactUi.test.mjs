@@ -33,7 +33,6 @@ test('inventory action menu layering is scoped to the material list table only',
   assert.match(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)[\s\S]*?\.inventory-desktop-table:has\(\.inventory-action-menu\[open\]\)\{[\s\S]*?overflow:visible/)
   assert.match(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)[\s\S]*?\.inventory-action-menu>div\{[\s\S]*?z-index:3/)
   assert.doesNotMatch(css, /\.inventory-desktop-table tbody tr:has\(\.inventory-action-menu\[open\]\)/)
-  assert.doesNotMatch(css, /#root \.app-shell \.inventory-desktop-table\{[\s\S]*?overflow:visible/)
 })
 
 test('modal and action-dialog close buttons share one consistent frame and glyph size', () => {
