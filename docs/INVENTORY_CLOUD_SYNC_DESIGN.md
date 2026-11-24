@@ -232,3 +232,16 @@ Queue-order hardening:
 - The target's existing `private.has_org_permission(uuid,text)` and `private.has_org_role(uuid,text)` definitions were inspected read-only. They verify active organization membership and assigned active roles; role grants confirm Admin all five Inventory permissions, Technician view/create/update/adjust, Viewer view only.
 - The SQL is a draft only and has not been syntax-validated against a local PostgreSQL instance. It has not been added to `supabase/migrations`, executed, or applied to any Supabase project.
 - Before converting it into a migration, review all SQL carefully, validate locally against PostgreSQL 17, and generate the migration filename with `supabase migration new` on a checked-out repository.
+
+
+## 12. Latest Local + dormant Cloud client verification (24/11/2026)
+
+- Corrected opening-balance movement snapshots: opening movement now starts at balance 0 and ends at the opening quantity.
+- Added per-item `localSequence` and used it for deterministic mutation order even when multiple changes share the same millisecond.
+- Local quantity/minimum/price inputs are limited to six decimal places; quantity arithmetic is normalized to six decimals to avoid JavaScript floating-point artifacts creating false count adjustments.
+- Server SQL draft rejects values beyond the same six-decimal scale. Server remains the final authority.
+- Latest verified source commit: `8db7a157876952fea9da066b22684be3e3abbba6`.
+- Build & Test run `45352426608`: 132/132 tests passed, 0 failed; TypeScript/Vite build passed.
+- Validate run `45352426021`: passed.
+- These checks do not validate the draft SQL against PostgreSQL and do not constitute browser runtime/E2E testing.
+- Cloud feature gate remains disabled; no hosted database changes, migration execution, merge or deployment.
