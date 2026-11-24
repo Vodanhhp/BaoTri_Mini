@@ -2096,3 +2096,37 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Theo yêu cầu, bỏ hai nhãn **MÃ ID** và **TÊN THIẾT BỊ**; bên phải QR chỉ còn giá trị mã quản lý và tên thiết bị.
 - Giữ nguyên nội dung được mã hóa trong QR, kích thước tem 50 × 30 mm và bố cục QR bên trái, thông tin bên phải.
 - Chỉ chỉnh giao diện tem, CSS và regression test; không thay đổi dữ liệu, quyền, Supabase hoặc đồng bộ Local ↔ Cloud.
+
+
+### Quy chuẩn thống nhất: In tem QR và in chi tiết thiết bị — 24/11/2026
+
+Áp dụng làm chuẩn giao diện in cho các lần phát triển/chỉnh sửa tiếp theo. Khi sửa một trong hai biểu mẫu, cần giữ các nguyên tắc dưới đây trừ khi người dùng yêu cầu thay đổi rõ ràng.
+
+#### 1. Tem QR thiết bị
+
+- Khổ tem: **50 × 30 mm**.
+- Bố cục: **mã QR ở bên trái**, thông tin thiết bị ở bên phải.
+- Phần thông tin bên phải chỉ gồm đúng hai nội dung theo thứ tự:
+  1. **Mã quản lý/Mã ID thiết bị**.
+  2. **Tên thiết bị**.
+- Không hiển thị nhãn mô tả “MÃ ID”, “TÊN THIẾT BỊ” hoặc các nhãn tương tự; chỉ in giá trị mã và tên.
+- QR tiếp tục mã hóa bằng mã quản lý thiết bị (detailAsset.code); không tự ý đổi payload, kích thước QR hoặc cách tra cứu.
+- Mã và tên phải dễ đọc, được phép tự xuống dòng khi nội dung dài nhưng không tràn khỏi diện tích tem.
+- Không thay đổi dữ liệu thiết bị, quyền hoặc logic nghiệp vụ chỉ để phục vụ bố cục tem.
+
+#### 2. Phiếu in chi tiết thiết bị
+
+- Khổ giấy **A4 dọc**, lề in **14 mm**; hỗ trợ nhiều trang khi nội dung dài.
+- Đầu phiếu: tên doanh nghiệp/đơn vị đang sử dụng, tiếp theo là nhận diện **BAOTRI MINI** và tiêu đề biểu mẫu rõ ràng.
+- Phần thông tin thiết bị phải thể hiện các dữ liệu hiện có phù hợp hồ sơ: mã quản lý, tên, nhóm/loại, vị trí, hãng, model, serial, công suất/thông số, ngày đưa vào sử dụng, chu kỳ bảo trì, trạng thái (bao gồm Lưu kho khi có), thông tin tạo/cập nhật và các trường liên quan đang được hệ thống lưu.
+- Có QR để nhận diện/tra cứu thiết bị và khu vực ghi chú riêng.
+- Phần lịch sử trình bày theo thời gian tăng dần, thể hiện thời điểm, sự kiện, nội dung thay đổi (bao gồm giá trị trước/sau khi hệ thống có lưu) và người thực hiện. Không tự dựng lại lịch sử cho dữ liệu cũ chưa từng được ghi nhận.
+- Bảng lịch sử phải có tiêu đề cột lặp lại khi sang trang; hạn chế ngắt một dòng sự kiện giữa hai trang. Giữ bố cục cột cân đối, dễ đọc, ưu tiên đủ chỗ cho nội dung thay đổi.
+- Cuối phiếu có đường phân cách/khoảng đệm và thông tin **Người yêu cầu in: [vai trò] — [tên tài khoản]**, căn phải; lấy từ phiên đăng nhập hiện hành.
+- Biểu mẫu phải in được nhiều trang và không làm thay đổi dữ liệu, lịch sử, quyền, schema, Supabase hay đồng bộ Local ↔ Cloud.
+
+#### 3. Nguyên tắc duy trì
+
+- Tem QR và phiếu chi tiết thiết bị là hai biểu mẫu khác nhau nhưng phải thống nhất về nhận diện, độ rõ ràng và tính gọn gàng.
+- Mọi thay đổi giao diện in cần có regression test tương ứng; không coi test mã nguồn là bằng chứng đã kiểm tra bản in thực tế.
+- Sau thay đổi, ghi rõ trạng thái CI/build/deploy. Chỉ xác nhận hình thức in đạt sau khi có kiểm tra trực quan bằng trình duyệt hoặc bản in/lưu PDF; không mặc định đã kiểm tra máy in vật lý.
