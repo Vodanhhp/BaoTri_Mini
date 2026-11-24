@@ -1584,3 +1584,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã phát hành Vercel Production trên project `baotri-mini-new`: deployment `dpl_DCy46FNP7C5X7W5wJnvcgc6wdUD5`, target `production`, trạng thái `READY`, commit code `26315965dc93d0224f062cd3c04db18f2b257514`, alias `baotri.vieclamhp247.com`.
 - Không tạo migration và không thay đổi dữ liệu Supabase. Đích dữ liệu vẫn là `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq)); không truy cập `old` hoặc Test cũ.
 - Chưa kiểm thử browser E2E thao tác thực tế trên PC/Mobile. Sau khi phát hành, cần người dùng mở Production và thử chỉnh sửa một draft Smart ID chưa lưu cùng một thiết bị đã lưu/đã xác nhận để xác nhận UI phản hồi đúng.
+
+
+### Cho phép sửa Ngày đưa vào sử dụng sau khi cấp Smart ID (24/11/2026)
+
+- Đã thống nhất nghiệp vụ: sau khi thiết bị được lưu Local và reservation Smart ID ở trạng thái `confirmed`, Admin/KTV được sửa riêng trường `commissionedAt` theo quyền cập nhật thiết bị hiện có.
+- Thay đổi ngày không giải phóng reservation, không cấp lại số thứ tự, không sửa mã quản lý và không thay đổi `idComponentsSnapshot`; phần MMYY tiếp tục phản ánh thời điểm cấp mã ban đầu.
+- Các trường cấu thành mã (tên/loại/nhóm/mã cơ sở) vẫn bị khóa sau khi cấp; reservation chưa xác nhận vẫn yêu cầu hoàn tất xác nhận trước khi chỉnh sửa.
+- Lịch sử thiết bị hiện đã theo dõi `commissionedAt` như trường “Ngày đưa vào sử dụng”; thay đổi được ghi nhận cùng người sửa và thời điểm.
+- Đã bổ sung regression test cho nhánh chỉ sửa ngày trên thiết bị đã lưu/confirmed và kiểm tra không release hoặc xóa snapshot định danh.
+- Thay đổi chỉ áp dụng mã nguồn; chưa merge/deploy và không truy cập/chỉnh sửa Supabase Production.

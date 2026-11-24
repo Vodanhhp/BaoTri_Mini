@@ -31,3 +31,24 @@ test('unpersisted drafts release only after an explicit Cloud acknowledgement', 
   assert.match(update, /await releaseSmartEquipmentIdReservation\(supabase,organizationId,reservationId\)[\s\S]*?await db\.assetDrafts\.delete\(currentEditing\.id\)/)
   assert.match(update, /catch\(cause\)[\s\S]*?Chưa giải phóng được số thứ tự chưa sử dụng[\s\S]*?return/)
 })
+
+test('a saved asset with a confirmed Smart ID may edit only its commissioning date without releasing or changing the issued ID', async () => {
+  const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const start = app.indexOf('const updateSmartDraft=')
+  const end = app.indexOf('const closeEditor=', start)
+  const update = app.slice(start, end)
+  const confirmedGuard = update.indexOf("if(persistedAsset||currentEditing.idReservationStatus==='confirmed')")
+  const dateOnly = update.indexOf("const isCommissioningDateOnly=Object.keys(patch).length===1&&Object.prototype.hasOwnProperty.call(patch,'commissionedAt')")
+  const allowDate = update.indexOf("if(persistedAsset?.idReservationStatus==='confirmed'&&isCommissioningDateOnly)")
+  const release = update.indexOf('releaseSmartEquipmentIdReservation(supabase,organizationId,reservationId)')
+  assert.ok(confirmedGuard >= 0 && dateOnly > confirmedGuard && allowDate > dateOnly)
+  assert.ok(release > allowDate, 'The confirmed-record date-only path must return before reservation release')
+  assert.match(update.slice(allowDate, release), /setEditing\(current=>current\?\{\.\.\.current,\.\.\.patch\}:current\)/)
+  assert.doesNotMatch(update.slice(allowDate, release), /idReservationId:undefined|idReservationStatus:undefined/)
+  assert.match(update, /Có thể sửa riêng ngày đưa vào sử dụng/)
+})
+
+test('the Smart ID issuance snapshot month-year is documented as immutable when commissioning date changes', async () => {
+  const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(app, /Mã quản lý và phần tháng\/năm \(MMYY\) theo thời điểm cấp mã sẽ được giữ nguyên/)
+})
