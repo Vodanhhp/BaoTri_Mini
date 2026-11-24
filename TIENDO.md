@@ -1733,3 +1733,19 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung điều kiện an toàn: chỉ được lưu trữ vật tư khi tồn Local bằng 0; phải xử lý số tồn bằng giao dịch kho trước.
 - Run #715 trước đó có một assertion test false-positive vì regex khớp `min_quantity`; đã thu hẹp regex và chạy lại thành công. Không phải lỗi sản phẩm.
 - Chỉ xác nhận CI/build; chưa xác nhận browser runtime/E2E.
+
+
+
+## Kho vật tư — Cloud client foundation (24/11/2026)
+
+- Thêm `src/lib/inventoryCloud.ts`: client RPC create/update/movement/archive và Incremental Pull.
+- Queue mutation theo từng vật tư, thứ tự Local tạo; mỗi RPC dùng timestamp mới nhất từ `InventoryCloudLink.cloudUpdatedAt`, không dùng timestamp cũ được lưu cùng mutation khi offline.
+- Mutation conflict chặn các mutation sau của cùng vật tư; pull kiểm tra organization, event type, sequence, page cursor; không ghi đè Local còn pending và lưu `conflictSnapshot`.
+- Movement đồng bộ theo ID ổn định, append-only; mutation UUID giữ nguyên khi retry timeout.
+- Local inventory writes gọi `requestSync()`; App dùng chung scheduler hiện tại, hỗ trợ quyền `inventory.view` độc lập với `assets.view`; InventoryPanel refresh khi có event pull.
+- Đã thêm `InventoryCloudLink.conflictSnapshot` và test contract `scripts/inventoryCloudContract.test.mjs`.
+- **Feature gate `INVENTORY_CLOUD_SYNC_ENABLED = false`**: client Cloud chưa được phép chạy vì chưa có SQL migration được review/apply. Giao diện vẫn ghi rõ kho chỉ lưu Local.
+- Chưa tạo migration file: workspace hiện không có checkout repo/Supabase CLI executable; không tự đặt tên migration. Cần tạo bằng `supabase migration new` trong checkout đúng repo rồi mới đưa SQL vào.
+- Không chạy SQL, không apply migration, không sửa dữ liệu Supabase New/Test/Production.
+- CI trên commit `5f0605e6a1285cba75d55236f90e838d1ac50aef`: 129/129 tests PASS, Vite build PASS, Validate PASS. Commit mới hơn có feature gate đang chờ CI xác nhận.
+- Chưa có browser runtime/E2E PC-Mobile.
