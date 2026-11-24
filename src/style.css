@@ -2823,3 +2823,49 @@ html,body,#root,.app-shell{
   .equipment-print-footer>span {align-self:flex-start;}
   .equipment-print-footer strong {align-self:flex-end;max-width:75%;margin-top:8px;text-align:right;font-size:9pt;line-height:1.5;color:#111;}
 }
+
+
+/* 24/11/2026 — Gọn khu vực thuê bao và yêu cầu đổi tên doanh nghiệp. */
+#root .plan-request-modal .organization-change-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start;margin:8px 0 4px
+}
+#root .plan-request-modal .organization-change-card{
+ min-width:0;padding:11px;border:1px solid var(--border,#dbe1e8);border-radius:10px;background:var(--card,#fff);display:grid;align-content:start;gap:9px
+}
+#root .plan-request-modal .organization-change-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#root .plan-request-modal .organization-change-card-head h3{font-size:13px;margin:2px 0 0}
+#root .plan-request-modal .organization-change-kicker{font-size:9px;font-weight:750;letter-spacing:.07em;color:var(--muted,#64748b)}
+#root .plan-request-modal .organization-current-name{display:grid;gap:3px;padding:8px 9px;border-radius:7px;background:var(--surface-2,#f8fafc)}
+#root .plan-request-modal .organization-current-name small{font-size:9px;color:var(--muted,#64748b)}
+#root .plan-request-modal .organization-current-name b{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+#root .plan-request-modal .organization-name-form{display:grid;gap:8px}
+#root .plan-request-modal .organization-name-form .field{display:grid;gap:4px;font-size:10px}
+#root .plan-request-modal .organization-name-form :is(input,select,textarea){min-width:0;width:100%;font-size:11px;padding:8px 9px}
+#root .plan-request-modal .organization-name-form textarea{min-height:52px}
+#root .plan-request-modal .organization-name-form .primary-btn{justify-self:start;min-height:32px;padding:7px 11px;font-size:10px}
+#root .plan-request-modal .organization-name-hint{margin:0;font-size:9px;line-height:1.4;color:var(--muted,#64748b)}
+#root .plan-request-modal .organization-plan-over-limit{color:var(--danger,#b91c1c);font-size:10px;line-height:1.4}
+#root .plan-request-modal .organization-pending-name{display:grid;gap:4px;margin:0;padding:8px 9px}
+#root .plan-request-modal .organization-pending-name span{font-size:10px;font-weight:650;overflow-wrap:anywhere}
+#root .plan-request-modal .organization-pending-name small{font-size:9px;line-height:1.35}
+#root .plan-request-modal .organization-name-history{display:grid;gap:5px;padding-top:7px;border-top:1px solid var(--border,#e5e7eb)}
+#root .plan-request-modal .organization-name-history>b{font-size:10px}
+#root .plan-request-modal .organization-name-history-row{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;padding:5px 0;border-bottom:1px solid var(--border,#eef0f3)}
+#root .plan-request-modal .organization-name-history-row>div{display:grid;gap:2px;min-width:0}
+#root .plan-request-modal .organization-name-history-row>div>span{font-size:10px;font-weight:650;overflow-wrap:anywhere}
+#root .plan-request-modal .organization-name-history-row small{font-size:9px;color:var(--muted,#64748b);overflow-wrap:anywhere}
+#root .plan-request-modal .organization-name-history-row .status{font-size:9px;white-space:nowrap}
+#root .platform-name-requests-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border,#e5e7eb)}
+#root .platform-name-requests-table-wrap{width:100%;overflow-x:auto}
+#root .platform-name-requests-table{width:100%;min-width:850px;table-layout:fixed;font-size:11px}
+#root .platform-name-requests-table :is(th,td){padding:8px;vertical-align:top;white-space:normal;overflow-wrap:anywhere}
+#root .platform-name-requests-table th:nth-child(1){width:16%}
+#root .platform-name-requests-table th:nth-child(2){width:23%}
+#root .platform-name-requests-table th:nth-child(3){width:16%}
+#root .platform-name-requests-table th:nth-child(4){width:19%}
+#root .platform-name-requests-table th:nth-child(5){width:11%}
+#root .platform-name-requests-table th:nth-child(6){width:15%}
+@media(max-width:680px){
+ #root .plan-request-modal .organization-change-grid{grid-template-columns:minmax(0,1fr);gap:8px}
+ #root .plan-request-modal .organization-change-card{padding:9px}
+}
