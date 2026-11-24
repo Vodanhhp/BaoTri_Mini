@@ -1558,3 +1558,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - CI head cuối cùng `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d`: **Build and test SUCCESS** (Unit tests 110/110, Build SUCCESS); **Validate BAOTRI Mini SUCCESS**.
 - Các commit sửa liên quan: `6547266cfb4274ddddc0fa4d246a6c5e813282fc` (scheduler rerun), `fab085aec3d0e40392b15c13b2e5a833af0212fe` (TypeScript visibility guard), `2a214df8fb22e144c108cf3206dbe17b81d0eb2d` (test assertion), `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d` (regex test correction).
 - PR #35 vẫn Draft, chưa merge/deploy; browser E2E PC → Cloud → Mobile vẫn cần kiểm thử thực tế. Không truy cập/chỉnh sửa Supabase Production.
+
+
+### Phát hành Production BAOTRI-Mini-New (24/11/2026)
+
+- Đích dữ liệu chính thức: Supabase project `BAOTRI-Mini-New`, ID `dskeaiyvldiwlsfqkboq`, trạng thái `ACTIVE_HEALTHY`, region `ap-southeast-1`. Các migration hiện có đến `20261124042230`, gồm các migration PR #35: `20261124030549`, `20261124042123`, `20261124042150`, `20261124042230`.
+- PR #35 `feat: automatic Local-to-Cloud asset synchronization` đã chuyển Ready for Review và được squash-merge vào `main`. Merge commit: `cda7332ca6a5f6a119bd11f1a15c9a4e06a17c26`.
+- Vercel project `prj_De80PT3JC04b3NqtXHRL6JD8QMoo` đã đổi tên từ `baotri-mini-new-preview` thành `baotri-mini-new`.
+- Đã cấu hình Production env `VITE_SUPABASE_URL` và `VITE_SUPABASE_PUBLISHABLE_KEY` trỏ đúng Supabase `BAOTRI-Mini-New`. Giá trị public key không ghi vào checkpoint.
+- Đã gắn domain `baotri.vieclamhp247.com` vào Vercel project; Vercel trả `verified=true`.
+- Deployment Production: `dpl_EHNx9xRns4xiNxU1HyWYFWHRhMR9`, target `production`, branch `main`, commit `cda7332ca6a5f6a119bd11f1a15c9a4e06a17c26`, trạng thái `READY`. Alias đã được gán gồm `baotri.vieclamhp247.com`.
+- Build Vercel chạy `tsc -b && vite build` thành công; Vite build thành công. Còn cảnh báo bundle JS khoảng 746.40 kB lớn hơn ngưỡng 500 kB; không làm build thất bại.
+- Chưa thực hiện browser E2E thực tế PC → Cloud → Mobile và chưa xác nhận thao tác nghiệp vụ trực tiếp trên trình duyệt production. Cần kiểm tra đăng nhập, tạo/cập nhật thiết bị Local, tự đồng bộ Cloud, Mobile Pull, quyền Admin/KTV/Viewer và lịch sử thiết bị.
+- Không truy cập/chỉnh sửa project Supabase cũ hoặc Test cũ; không chạy migration bổ sung trên dự án cũ.
