@@ -188,3 +188,29 @@ The current Supabase changelog also records the staged change to default Data AP
 - Confirm whether a linked asset may be archived/deleted after a movement references it; the initial design uses a restrictive composite foreign key.
 - Add durable conflict snapshots to Local Inventory mutation/link records before enabling pull reconciliation.
 - Add tests for duplicate code, mutation replay with same/different payload, concurrent stock-out, zero-delta adjustment, stale Cloud timestamp, permission denial, and feed commit ordering.
+
+
+## 10. Cloud client implementation checkpoint (24/11/2026)
+
+Client-side Cloud protocol code is now present on the feature branch:
+
+- `src/lib/inventoryCloud.ts` implements the agreed RPC client contract for create, metadata update, movement, archive and incremental pull.
+- Pending mutations are grouped and sent sequentially per item in Local creation order. Each mutation reads the latest `InventoryCloudLink.cloudUpdatedAt`; the stale expected timestamp captured at Local write time is not reused.
+- A conflict blocks later mutations for that item. Existing conflict records are included in queue inspection.
+- RPC results are validated before marking a mutation applied. Network failures retry with the same mutation UUID; recognized authorization/version/identity conflicts are held for manual resolution.
+- Pull validates tenant, event type, event sequence, page size and next cursor. Item, movement, mutation/link state and cursor are applied through Dexie transactions.
+- Remote events do not overwrite pending Local state; the Cloud snapshot is retained in `InventoryCloudLink.conflictSnapshot`.
+- Append-only movement records are deduplicated by stable movement ID and mutation ID.
+- Local inventory writes call the existing shared `requestSync()` scheduler. The existing App sync cycle now understands `inventory.view` separately from `assets.view`, and the inventory panel refreshes after pull events.
+- The App feature gate `INVENTORY_CLOUD_SYNC_ENABLED` is deliberately `false`. The client code is dormant until the SQL migration is reviewed, approved, applied and verified. The UI continues to state that Inventory is Local-only.
+
+Important implementation boundary:
+- No Inventory SQL migration file has been generated yet. The available workspace has no checked-out repository / Supabase CLI executable; per Supabase migration workflow, the migration filename must be generated with `supabase migration new` on a repository checkout rather than invented manually.
+- No SQL was applied or executed against Supabase for this feature.
+- The client contract and SQL design must be reviewed together before enabling the feature gate.
+
+Verification:
+- Build and test run #? on commit `5f0605e6a1285cba75d55236f90e838d1ac50aef`: 129/129 tests passed, Vite build passed.
+- Validate workflow on the same commit passed.
+- A newer commit adds the explicit Cloud feature gate and is currently being rechecked; do not treat the earlier run as proof of that newer commit.
+- Browser PC/mobile runtime tests are still pending.
