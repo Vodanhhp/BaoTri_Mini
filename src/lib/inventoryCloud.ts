@@ -418,12 +418,12 @@ async function pushPendingInventoryMutations(
     if (!shouldContinue()) break
     for (const mutation of rows) {
       if (!shouldContinue()) break
-      if (!canPush(mutation, permissions)) continue
       const link = await db.inventoryCloudLinks.get(linkId(organizationId, mutation.itemId))
       if (link?.status === CONFLICT || mutation.status === 'conflict') {
         if (mutation.status !== 'conflict') conflicts++
         break
       }
+      if (!canPush(mutation, permissions)) continue
       if (!pendingOrProcessing(mutation)) continue
       try {
         await pushOneInventoryMutation(client, organizationId, mutation)
