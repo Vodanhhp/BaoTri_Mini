@@ -253,6 +253,13 @@ export type InventoryCloudLink = {
   lastSyncedLocalUpdatedAt: string
   status: CloudLinkStatus
   lastVerifiedAt?: string
+  conflictSnapshot?: {
+    sequence?: number
+    item: Record<string, unknown>
+    movement?: Record<string, unknown> | null
+    detectedAt: string
+    reason: string
+  }
 }
 
 export type InventorySyncCursor = {
