@@ -1749,3 +1749,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Không chạy SQL, không apply migration, không sửa dữ liệu Supabase New/Test/Production.
 - CI trên commit `5f0605e6a1285cba75d55236f90e838d1ac50aef`: 129/129 tests PASS, Vite build PASS, Validate PASS. Commit mới hơn có feature gate đang chờ CI xác nhận.
 - Chưa có browser runtime/E2E PC-Mobile.
+
+
+
+### Queue order hardening
+- Thêm `InventoryMutation.localSequence`, tăng tuần tự theo từng vật tư trong Dexie transaction.
+- Cloud worker sort theo `localSequence` trước, `createdAt` chỉ làm fallback; tránh sai thứ tự khi nhiều giao dịch cùng millisecond.
+- Đây là sequence Local; sequence feed Cloud vẫn do server quản lý.
