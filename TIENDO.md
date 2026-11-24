@@ -2178,4 +2178,4 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Mỗi doanh nghiệp chỉ có một yêu cầu đổi tên đang chờ. Tên mới phải có 2–160 ký tự và khác tên hiện tại.
 - Thu gọn cửa sổ Thuê bao: Plan và đổi tên đặt cạnh nhau trên PC, xếp dọc trên điện thoại; trường nhập/ghi chú ngắn hơn; Reset và lịch sử tiếp tục là các khu vực riêng.
 - Migration đang đặt tại docs/pending-migrations/20261124165000_organization_name_change_requests.sql. **Chưa áp dụng lên Supabase Production** và hai Edge Function mới chưa triển khai. Chờ người dùng duyệt trước khi thay đổi backend Production.
-- Nhánh feat/organization-name-change-requests; cần chạy Build/Test và review CI trước khi mở PR. Chưa kiểm tra trực quan trên trình duyệt PC/mobile.
+- PR #59 đang OPEN, chưa merge. Build/Test SUCCESS (run 45424755831: 185 tests pass và Vite/TypeScript build thành công); Validate SUCCESS (run 45424755901). Chưa áp dụng migration/deploy Edge Functions lên Production và chưa kiểm tra trực quan trên trình duyệt PC/mobile.
