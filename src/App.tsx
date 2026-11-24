@@ -665,9 +665,18 @@ export default function App() {
         return
       }
       if(persistedAsset||currentEditing.idReservationStatus==='confirmed'){
+        // The commissioning date is editable asset metadata after issuance.
+        // The immutable ID snapshot (including its original MMYY) remains untouched.
+        const isCommissioningDateOnly=Object.keys(patch).length===1&&Object.prototype.hasOwnProperty.call(patch,'commissionedAt')
+        if(persistedAsset?.idReservationStatus==='confirmed'&&isCommissioningDateOnly){
+          setError('')
+          setEditing(current=>current?{...current,...patch}:current)
+          afterChange?.()
+          return
+        }
         setError(persistedAsset?.idReservationStatus==='confirmed'||currentEditing.idReservationStatus==='confirmed'
-          ?'Số thứ tự đã được Cloud xác nhận và không thể giải phóng hoặc tái sử dụng. Giữ nguyên tên/loại/nhóm/mã cơ sở/ngày cấu thành mã đã cấp.'
-          :'Thiết bị đã được lưu tại Local nhưng số thứ tự chưa xác nhận hoàn tất. Hãy lưu lại để thử xác nhận; không thay đổi thông tin cấu thành mã đã giữ.')
+          ?'Số thứ tự đã được Cloud xác nhận. Có thể sửa riêng ngày đưa vào sử dụng; không được thay đổi tên/loại/nhóm/mã cơ sở hoặc thông tin cấu thành mã đã cấp.'
+          :'Thiết bị đã được lưu tại Local nhưng số thứ tự chưa xác nhận hoàn tất. Hãy lưu lại để thử xác nhận; chưa thể sửa thông tin cấu thành mã.')
         return
       }
       if(!supabase||!organizationId){
@@ -1274,7 +1283,7 @@ export default function App() {
         <label className="field">Ngày đưa vào sử dụng{isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')?' *':''}<input type="date" required={Boolean(isNewSmartAsset&&equipmentCatalog&&(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D'))} value={editing.commissionedAt} disabled={reservationReleaseBusy} onChange={event=>{
           const value=event.target.value
           void updateSmartDraft({commissionedAt:value})
-        }}/></label>
+        }}/>{editing.idComponentsSnapshot&&(editing.idComponentsSnapshot.plan==='C'||editing.idComponentsSnapshot.plan==='D')&&editing.idReservationStatus==='confirmed'&&<small>Ngày này có thể được chỉnh sửa. Mã quản lý và phần tháng/năm (MMYY) theo thời điểm cấp mã sẽ được giữ nguyên.</small>}</label>
         <label className="field">Chu kỳ bảo trì<select value={editing.cycle} onChange={event=>setEditing({...editing,cycle:event.target.value})}><option value="">Chưa thiết lập</option>{ASSET_CYCLES.map(item=><option key={item} value={item}>{item}</option>)}{editing.cycle&&!ASSET_CYCLES.includes(editing.cycle as typeof ASSET_CYCLES[number])&&<option value={editing.cycle}>{editing.cycle} · giá trị cũ</option>}</select></label>
         <label className="field">Trạng thái<select value={editing.archivedAt?'Lưu kho':editing.status} onChange={event=>setEditing({...editing,status:event.target.value as AssetStatus,archivedAt:event.target.value==='Lưu kho'?(editing.archivedAt||now()):undefined})}>{STATUSES.map(item=><option key={item}>{item}</option>)}</select></label>
         {isNewAssetDraft?<label className="field full-field"><span><input type="checkbox" checked={editing.transferredFromOtherFacility} onChange={event=>setEditing({...editing,transferredFromOtherFacility:event.target.checked,createdByLabel:event.target.checked?'Chuyển nơi khác tới':undefined})}/> Thiết bị được chuyển từ cơ sở khác đến</span><small>Khi chọn, tên thiết bị sẽ hiển thị thêm dấu * và trường Người thêm ghi “Chuyển nơi khác tới”. Mã quản lý vẫn sinh theo quy tắc bình thường.</small></label>:editing.transferredFromOtherFacility?<div className="field full-field muted">* Thiết bị được chuyển từ cơ sở khác đến</div>:null}
