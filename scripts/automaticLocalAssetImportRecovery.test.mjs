@@ -67,3 +67,12 @@ test('mutation receipt reuse race is consistently classified as a visible confli
   assert.match(cloud, /status:permanent\?\( \/already exists\|different Cloud content\|UUID already\|does not match\|Import mutation ID reused with different request/)
   assert.match(cloud, /if\(permanent&&\/already exists\|different Cloud content\|UUID already\|does not match\|Import mutation ID reused with different request/)
 })
+
+test('regular Local asset saves request immediate sync after the IndexedDB write', async () => {
+  const app = await read('../src/App.tsx')
+  const saveStart = app.lastIndexOf('const groupChanged=Boolean(previous&&isAdmin&&previous.category!==value.category)')
+  const saveEnd = app.indexOf('const addImages', saveStart)
+  assert.ok(saveStart >= 0 && saveEnd > saveStart)
+  const saveFlow = app.slice(saveStart, saveEnd)
+  assert.match(saveFlow, /await db\.assets\.put\(value\)[\s\S]*?requestSync\(\)[\s\S]*?await recordAssetHistory\(previous,value\)/)
+})
