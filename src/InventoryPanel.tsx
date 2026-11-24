@@ -280,9 +280,9 @@ export default function InventoryPanel(props: Props) {
                 <details className="inventory-action-menu">
                   <summary>Thao tác <span aria-hidden="true">⌄</span></summary>
                   <div>
-                    {canAdjust&&!item.archivedAt&&<><button type="button" onClick={()=>openMovement(item,'Nhập')}>Nhập kho</button><button type="button" onClick={()=>openMovement(item,'Xuất')}>Xuất kho</button><button type="button" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê / điều chỉnh</button></>}
-                    {canUpdate&&!item.archivedAt&&<button type="button" onClick={()=>openEdit(item)}>Sửa thông tin</button>}
-                    {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="danger" onClick={()=>void archiveItem(item)}>Lưu trữ vật tư</button>}
+                    {canAdjust&&!item.archivedAt&&<><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Nhập')}}>Nhập kho</button><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Xuất')}}>Xuất kho</button><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Điều chỉnh')}}>Kiểm kê / điều chỉnh</button></>}
+                    {canUpdate&&!item.archivedAt&&<button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openEdit(item)}}>Sửa thông tin</button>}
+                    {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="danger" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');void archiveItem(item)}}>Lưu trữ vật tư</button>}
                     {item.archivedAt&&<span className="inventory-action-muted">Vật tư đã lưu trữ</span>}
                   </div>
                 </details>
