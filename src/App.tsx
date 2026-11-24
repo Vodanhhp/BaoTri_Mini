@@ -148,8 +148,6 @@ export default function App() {
       })
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next)
-      setPlatformAccess(false)
-      setPlatformAccessReady(false)
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       if (event === 'SIGNED_OUT') {
         setOrganizationContexts([])
