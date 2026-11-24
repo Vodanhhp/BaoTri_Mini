@@ -1639,3 +1639,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Workflow Pages hiện chỉ tự deploy khi có push lên `main`; nhánh thử nghiệm không tự phát hành lên website chính thức.
 - Giữ nguyên tên miền/DNS; không sửa Vercel, không chạy migration, không thay đổi dữ liệu hoặc cấu hình Supabase.
 - Giới hạn xác minh: GitHub xác nhận deploy thành công, nhưng phiên kiểm tra này không phân giải được DNS của domain để tự kiểm tra HTTP trực tiếp. Cần người dùng mở website trên trình duyệt để xác nhận giao diện thực tế.
+
+
+### Khắc phục lỗi Supabase Invalid API key trên GitHub Pages (24/11/2026)
+
+- Người dùng phản ánh sau khi phát hành, giao diện báo `Không đọc được tổ chức/tư cách thành viên: Invalid API key`.
+- Đã kiểm tra cấu hình của project Supabase chính thức `BAOTRI Mini New` (ID `dskeaiyvldiwlsfqkboq`): project ACTIVE_HEALTHY; URL khớp; publishable key dạng `sb_publishable_` đang active; legacy anon key cũng đang active và thuộc đúng project.
+- Workflow production trước đó đã nhúng publishable key đúng theo kết quả API của Supabase. Do lỗi vẫn xuất hiện ở runtime, thay bằng legacy anon key đang active (khóa public tương thích ngược của chính project này) để loại trừ khác biệt tương thích giữa API gateway và publishable key.
+- Đồng bộ `.env.example` với cấu hình key mới; giữ nguyên tên biến ứng dụng đang đọc để không làm thay đổi luồng khởi tạo Supabase.
+- Thêm bước kiểm tra build: xác nhận URL và key Supabase thực sự được nhúng trong các asset đã build; không in giá trị key ra log.
+- Chưa thay đổi database, migration, RLS, Auth users, dữ liệu tổ chức, Storage hoặc project Supabase.
+- Thay đổi đang nằm trên nhánh `fix/supabase-api-key-compatibility`; cần CI PASS và review trước khi merge/deploy. Chưa khẳng định lỗi runtime đã hết cho đến khi bản sửa được phát hành và đăng nhập/tải membership được kiểm tra thực tế.
