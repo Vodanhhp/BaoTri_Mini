@@ -148,6 +148,8 @@ export default function App() {
       })
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next)
+      setPlatformAccess(false)
+      setPlatformAccessReady(false)
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       if (event === 'SIGNED_OUT') {
         setOrganizationContexts([])
@@ -171,7 +173,7 @@ export default function App() {
       .catch(()=>{if(active)setPlatformAccess(false)})
       .finally(()=>{if(active)setPlatformAccessReady(true)})
     return()=>{active=false}
-  },[session?.user.id])
+  },[session?.user.id,session?.user.email,session?.user.email_confirmed_at])
 
   useEffect(() => {
     let active = true
