@@ -1622,4 +1622,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đổi tên 12 file SQL theo đúng version đã áp dụng, giữ nguyên nội dung SQL; khôi phục 3 file source đã có trong các PR trước: `20261122124403_add_cloud_asset_lock_anchor.sql`, `20261122125135_fix_asset_mutation_receipt_actor_column.sql`, `20261123105735_allow_stored_asset_status_in_cloud.sql`.
 - Cập nhật các regression test đang tham chiếu tên file migration cũ; bổ sung `scripts/supabaseMigrationInventory.test.mjs` kiểm tra danh sách file nguồn khớp chính xác 45 migration đã áp dụng, không trùng version.
 - Đây là đồng bộ source/test với database history đã tồn tại; không tạo migration mới, không chạy migration, không ghi dữ liệu Supabase, không thay đổi Edge Functions, Storage, Auth hoặc Vercel Production.
-- Chờ CI/build và review PR trước khi hợp nhất. Các PR #27/#28/#29 cũ được xem là phạm vi trùng lặp/lịch sử, không merge riêng lẻ.
+- PR #40 đã được squash-merge vào `main`, merge commit: `6d762a33dbcd856c327d290eb6ef2907110df09d`. CI trước merge: Build and test PASS; Validate BAOTRI Mini PASS.
+- Sau merge, đối chiếu lại trực tiếp: source trên `main` có đúng 45 file migration; 45/45 version khớp chính xác với migration history của `BAOTRI Mini New`; không thiếu, không thừa, không trùng version.
+- PR #39 đổi nhãn sidebar `Tổng quan thiết bị` thành `Trang tổng quan` đã được squash-merge vào `main`, merge commit: `dc849d080105abc450eb762313d551cb6a3e6e31`.
+- Hai PR chỉ cập nhật repository. Chưa triển khai Vercel Production; chưa chạy migration và không thay đổi dữ liệu/cấu hình Supabase. PR #27/#28/#29 cũ chưa được merge riêng lẻ.
