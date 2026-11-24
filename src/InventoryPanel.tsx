@@ -316,8 +316,8 @@ export default function InventoryPanel(props: Props) {
             <div><small>Tồn kho</small><strong>{numberText(item.quantity)} {item.unit}</strong></div>
             <div><small>Tồn tối thiểu</small><strong>{numberText(item.minQuantity)} {item.unit}</strong></div>
           </div>
-          <div className="inventory-mobile-actions"><button type="button" className="soft-btn" onClick={()=>setPrintItem(item)}>In phiếu</button>
-          {(canAdjust&&!item.archivedAt||canUpdate&&!item.archivedAt||canDelete&&isAdmin&&!item.archivedAt)&&<div className="inventory-mobile-actions">
+          <div className="inventory-mobile-actions">
+            <button type="button" className="soft-btn" onClick={()=>setPrintItem(item)}>In phiếu</button>
             {canAdjust&&!item.archivedAt&&<><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Nhập')}>Nhập</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Xuất')}>Xuất</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê</button></>}
             {canUpdate&&!item.archivedAt&&<button type="button" className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button>}
             {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="soft-btn danger" onClick={()=>void archiveItem(item)}>Lưu trữ</button>}
