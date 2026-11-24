@@ -16,7 +16,7 @@ test('committed import recovery verifies the exact actor-owned UUID receipt befo
   assert.match(helper, /receipt_updated_at/)
   assert.match(helper, /status:samePayload\?'linked':'conflict'/)
   assert.match(helper, /status:'conflict',attempts:0/)
-  assert.match(helper, /lastSyncedLocalUpdatedAt:samePayload\?latest\.updatedAt:verification\.receipt_updated_at/)
+  assert.match(helper, /lastSyncedLocalUpdatedAt:samePayload\?latest\.updatedAt:receiptUpdatedAt/)
   assert.match(helper, /latest\.updatedAt!==current\.updatedAt/)
   assert.doesNotMatch(helper, /row\.id===attempted\.id/)
 })
