@@ -1990,3 +1990,20 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cả hai trang dùng chung trạng thái tải/lỗi/chưa có Catalog, tránh hiển thị nhầm Plan mặc định. Dữ liệu được truyền từ Catalog Snapshot đã tải ở App; không phát sinh truy vấn mới.
 - Chỉ thay đổi React presentation, CSS và regression test. Không thay đổi nghiệp vụ kho/thiết bị, quyền, dữ liệu Local/Cloud, Supabase, schema, migration hoặc cấu hình Cloud sync.
 - Nhánh `feat/shared-organization-plan-banner`; chưa merge và chưa deploy. Cần chạy CI Build/Test và kiểm tra trực quan desktop/mobile trước khi kết luận hoàn tất.
+
+
+## Đồng bộ Kho vật tư Local ↔ Cloud — 24/11/2026
+
+- Người dùng đã cho phép thao tác trực tiếp trên Supabase chính thức `BAOTRI Mini New` (project `dskeaiyvldiwlsfqkboq`), không tạo Supabase Development Branch. Đây là môi trường đang phát triển, chưa đưa vào vận hành thực tế.
+- Đã áp dụng migration `inventory_local_cloud_sync` (version `20261124125830`) trực tiếp lên project chính thức. Migration tạo:
+  - `public.inventory_items`: hồ sơ vật tư theo tổ chức, mã chuẩn hóa duy nhất trong tổ chức.
+  - `public.inventory_movements`: giao dịch nhập/xuất/điều chỉnh, chỉ ghi nối tiếp; số tồn được cập nhật cùng giao dịch.
+  - `private.inventory_mutation_receipts`: chống áp dụng lặp mutation khi retry.
+  - `private.inventory_sync_events`: change feed có sequence tăng dần để các máy Local pull.
+  - 5 RPC: `create_inventory_item`, `update_inventory_item_metadata`, `apply_inventory_movement`, `archive_inventory_item`, `list_inventory_sync_changes`.
+- Quyền Cloud kiểm tra lại ở server bằng `private.has_org_permission`; RLS cho phép đọc theo `inventory.view`; không cấp quyền ghi trực tiếp vào bảng cho authenticated. RPC kiểm tra quyền create/update/adjust/delete; chỉ Admin được lưu trữ vật tư và thay đổi tồn tối thiểu.
+- Đồng bộ dùng Local-first: Local tạo mutation, Cloud xác thực và ghi nhận idempotent; các máy khác nhận event theo cursor. Update/movement/archive dùng `updated_at` kỳ vọng để phát hiện xung đột. Không có thao tác xóa cứng vật tư.
+- Đã bật `INVENTORY_CLOUD_SYNC_ENABLED = true` trên nhánh tính năng; thay nhãn giao diện kho thành “Lưu tại thiết bị Local · Tự đồng bộ Cloud khi có mạng”.
+- Đã thêm kiểm thử hợp đồng `scripts/inventoryCloudSync.test.mjs` và cập nhật `scripts/inventoryCompactUi.test.mjs`.
+- Migration đã được kiểm tra lại sau áp dụng: hai bảng public, hai policy RLS và đủ 5 RPC tồn tại. Chưa chạy thử RPC có JWT người dùng, chưa kiểm thử hai trình duyệt/thiết bị thật; chưa được xem là xác nhận E2E.
+- Nhánh mã nguồn: `feat/inventory-local-cloud-sync`. Chưa merge, chưa deploy frontend. Không thay đổi dữ liệu kho hiện có, không bật đồng bộ ở production frontend cho đến khi PR được review/merge và kiểm thử.
