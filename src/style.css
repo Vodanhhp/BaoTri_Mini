@@ -2724,3 +2724,42 @@ html,body,#root,.app-shell{
 #root .app-shell .inventory-catalog-table .inventory-name-link small{font-size:10px;font-weight:400;line-height:1.3;color:var(--muted)}
 #root .app-shell .inventory-mobile-card-head .inventory-name-link b{font-size:13px;font-weight:700;line-height:1.35;color:var(--text)}
 #root .app-shell .inventory-mobile-card-head .inventory-name-link small{font-size:10px;font-weight:400;line-height:1.3;color:var(--muted);margin-top:2px}
+
+
+/* Phiếu vật tư A4 dọc — chỉ hiển thị khi in */
+.inventory-print-sheet{display:none}
+@page{size:A4 portrait;margin:14mm}
+@media print{
+  html,body,#root{width:100%!important;min-height:0!important;background:#fff!important}
+  body *{visibility:hidden!important}
+  .inventory-print-sheet,.inventory-print-sheet *{visibility:visible!important}
+  .inventory-print-sheet{
+    display:block!important;position:absolute!important;inset:0 auto auto 0!important;
+    width:100%!important;color:#111!important;background:#fff!important;
+    font:10pt/1.4 Arial,sans-serif!important
+  }
+  .inventory-print-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:16px}
+  .inventory-print-header div{display:grid;gap:3px}
+  .inventory-print-header strong{font-size:13pt;letter-spacing:.5px}
+  .inventory-print-header span{font-size:9pt;font-weight:700}
+  .inventory-print-header small{font-size:8pt}
+  .inventory-print-sheet h1{font-size:18pt;line-height:1.25;margin:0 0 3px;overflow-wrap:anywhere}
+  .inventory-print-code{font-size:9pt;margin:0 0 16px}
+  .inventory-print-sheet h2{font-size:11pt;margin:14px 0 7px;padding-bottom:4px;border-bottom:1px solid #777;break-after:avoid}
+  .inventory-print-sheet table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt}
+  .inventory-print-sheet th,.inventory-print-sheet td{border:1px solid #777;padding:5px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+  .inventory-print-info th{width:17%;background:#f0f0f0;font-weight:700}
+  .inventory-print-info td{width:33%}
+  .inventory-print-history th{background:#eaeaea;font-weight:700}
+  .inventory-print-history th:nth-child(1){width:5%}
+  .inventory-print-history th:nth-child(2){width:13%}
+  .inventory-print-history th:nth-child(3){width:13%}
+  .inventory-print-history th:nth-child(4){width:10%}
+  .inventory-print-history th:nth-child(5),.inventory-print-history th:nth-child(6){width:8%}
+  .inventory-print-history th:nth-child(7){width:25%}
+  .inventory-print-history th:nth-child(8){width:18%}
+  .inventory-print-history thead{display:table-header-group}
+  .inventory-print-history tr{break-inside:avoid;page-break-inside:avoid}
+  .inventory-print-footer{margin-top:14px;padding-top:6px;border-top:1px solid #aaa;font-size:8pt;color:#444}
+  button,.modal-backdrop,.inventory-workspace{visibility:hidden!important}
+}
