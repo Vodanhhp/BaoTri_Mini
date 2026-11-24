@@ -1,10 +1,8 @@
--- Verify that the authenticated actor owns the exact Local-to-Cloud import
--- receipt before recovering a link after a lost response / Local snapshot race.
+-- Verify that the authenticated actor owns the exact Local-to-Cloud import receipt.
+-- The privileged lookup remains private; the exposed RPC wrapper is invoker-only.
 begin;
-create or replace function public.verify_cloud_asset_import_receipt(
-  p_organization_id uuid,
-  p_asset_id uuid,
-  p_mutation_id uuid
+create or replace function private.verify_cloud_asset_import_receipt(
+  p_organization_id uuid,p_asset_id uuid,p_mutation_id uuid
 ) returns jsonb
 language plpgsql
 security definer
@@ -27,30 +25,36 @@ begin
      and not private.has_org_permission(p_organization_id,'assets.import') then
     raise exception 'Missing asset create/import permission' using errcode='42501';
   end if;
-
   select * into v_receipt
   from public.asset_import_receipts
   where organization_id=p_organization_id and mutation_id=p_mutation_id;
-
   if not found or v_receipt.asset_id<>p_asset_id or v_receipt.actor_user_id<>v_actor then
     return jsonb_build_object('verified',false,'asset',null);
   end if;
-
   select * into v_asset
   from public.assets
   where organization_id=p_organization_id and id=p_asset_id;
-
   if not found then
     return jsonb_build_object('verified',true,'asset',null);
   end if;
-
   return jsonb_build_object(
     'verified',true,
     'asset',(to_jsonb(v_asset)-'id')||jsonb_build_object('asset_key',v_asset.code)
   );
 end;
 $function$;
-
+revoke all on function private.verify_cloud_asset_import_receipt(uuid,uuid,uuid) from public,anon;
+grant usage on schema private to authenticated;
+grant execute on function private.verify_cloud_asset_import_receipt(uuid,uuid,uuid) to authenticated;
+create or replace function public.verify_cloud_asset_import_receipt(
+  p_organization_id uuid,p_asset_id uuid,p_mutation_id uuid
+) returns jsonb
+language sql
+security invoker
+set search_path = ''
+as $function$
+  select private.verify_cloud_asset_import_receipt(p_organization_id,p_asset_id,p_mutation_id);
+$function$;
 revoke all on function public.verify_cloud_asset_import_receipt(uuid,uuid,uuid) from public,anon;
 grant execute on function public.verify_cloud_asset_import_receipt(uuid,uuid,uuid) to authenticated;
 commit;
