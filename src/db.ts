@@ -176,6 +176,93 @@ export type AssetMutation = {
   deviceId?: string
 }
 
+
+export type InventorySyncStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
+export type InventoryMovementType = 'Nhập' | 'Xuất' | 'Điều chỉnh'
+export type InventoryMutationOperation = 'create' | 'update_metadata' | 'post_movement' | 'adjust_count' | 'archive'
+
+export type InventoryItem = {
+  id: string
+  organizationId: string
+  localScope: string
+  code: string
+  codeNormalized: string
+  name: string
+  group: string
+  unit: string
+  partNumber?: string
+  size?: string
+  quantity: number
+  minQuantity: number
+  location: string
+  supplier: string
+  unitPrice: number
+  createdByUserId?: string
+  createdByLabel?: string
+  createdAt: string
+  updatedAt: string
+  archivedAt?: string
+}
+
+export type InventoryMovement = {
+  id: string
+  organizationId: string
+  itemId: string
+  date: string
+  type: InventoryMovementType
+  /** Absolute movement quantity. Always greater than zero. */
+  quantity: number
+  /** Signed balance delta: positive for stock-in, negative for stock-out. */
+  quantityDelta: number
+  balanceBefore: number
+  balanceAfter: number
+  countedQuantity?: number
+  reason: string
+  note?: string
+  performedBy: string
+  actorUserId?: string
+  linkedAssetId?: string
+  mutationId: string
+  syncStatus: InventorySyncStatus
+  createdAt: string
+}
+
+export type InventoryMutation = {
+  mutationId: string
+  organizationId: string
+  itemId: string
+  operation: InventoryMutationOperation
+  payload: Record<string, unknown>
+  expectedCloudUpdatedAt?: string
+  localUpdatedAt: string
+  status: InventorySyncStatus
+  attempts: number
+  createdAt: string
+  updatedAt: string
+  appliedAt?: string
+  cloudUpdatedAt?: string
+  lastError?: string
+  nextAttemptAt?: string
+}
+
+export type InventoryCloudLink = {
+  id: string
+  organizationId: string
+  itemId: string
+  cloudUpdatedAt: string
+  lastSyncedLocalUpdatedAt: string
+  status: CloudLinkStatus
+  lastVerifiedAt?: string
+}
+
+export type InventorySyncCursor = {
+  organizationId: string
+  lastSequence: number
+  bootstrapComplete: boolean
+  initializedAt: string
+  updatedAt: string
+}
+
 class BaoTriDatabase extends Dexie {
   assets!: Table<Asset, string>
   assetCloudLinks!: Table<AssetCloudLink, string>
@@ -186,6 +273,11 @@ class BaoTriDatabase extends Dexie {
   assetImportQueue!: Table<AssetImportQueueItem, string>
   organizationAssetResetStates!: Table<OrganizationAssetResetState, string>
   assetSyncCursors!: Table<AssetSyncCursor, string>
+  inventoryItems!: Table<InventoryItem, string>
+  inventoryMovements!: Table<InventoryMovement, string>
+  inventoryMutations!: Table<InventoryMutation, string>
+  inventoryCloudLinks!: Table<InventoryCloudLink, string>
+  inventorySyncCursors!: Table<InventorySyncCursor, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -266,6 +358,24 @@ class BaoTriDatabase extends Dexie {
       organizationAssetResetStates: 'organizationId, generation',
       assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt',
       assetImportQueue: 'id, organizationId, assetId, [organizationId+assetId], status, nextAttemptAt, updatedAt'
+    })
+    // v10: add organization-scoped Local-first inventory stores without changing
+    // existing Asset records or the existing equipment sync tables.
+    this.version(10).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
+      assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]',
+      organizationAssetResetStates: 'organizationId, generation',
+      assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt',
+      assetImportQueue: 'id, organizationId, assetId, [organizationId+assetId], status, nextAttemptAt, updatedAt',
+      inventoryItems: 'id, organizationId, [organizationId+codeNormalized], [organizationId+name], [organizationId+group], archivedAt, updatedAt',
+      inventoryMovements: 'id, organizationId, itemId, [organizationId+itemId], date, type, mutationId',
+      inventoryMutations: 'mutationId, organizationId, itemId, [organizationId+itemId], status, updatedAt, nextAttemptAt',
+      inventoryCloudLinks: 'id, organizationId, itemId, [organizationId+itemId], status',
+      inventorySyncCursors: 'organizationId, lastSequence, updatedAt'
     })
   }
 }
