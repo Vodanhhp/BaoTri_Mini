@@ -1964,3 +1964,20 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nhánh thực hiện: `security/superadmin-secret-identity`. Chưa merge, chưa deploy frontend hoặc Edge Functions.
 - Chưa thể cấu hình secret từ công cụ kết nối hiện có. Bước cần hoàn tất trên Supabase Dashboard: thêm Edge Function Secret `PLATFORM_OWNER_EMAIL` với email tài khoản Super Admin hiện tại. Không gửi giá trị secret trong chat hoặc commit vào repo.
 - Sau khi secret được lưu, cần deploy các Edge Functions đã thay đổi (`platform-check-access`, `platform-get-overview`, `platform-create-customer`, `platform-manage-organization`, `platform-manage-plan-requests`, `platform-manage-asset-reset-requests`) và chạy kiểm thử quyền Super Admin/tài khoản thường. Chỉ hoàn tất triển khai sau khi secret đã được xác nhận.
+
+
+### Bổ sung sau khi người dùng xác nhận đã lưu Secret — triển khai Production
+
+- Người dùng xác nhận đã lưu `PLATFORM_OWNER_EMAIL` trong Edge Function Secrets của dự án BAOTRI Mini New. Giá trị Secret không được đọc hoặc hiển thị qua công cụ; không yêu cầu người dùng gửi lại.
+- Theo tài liệu Supabase, secret mới có hiệu lực ngay; đã triển khai các function dùng biến môi trường đó.
+- Deploy thành công trên project `dskeaiyvldiwlsfqkboq`, tất cả giữ `verify_jwt=true`:
+  - `platform-check-access` v1 (mới)
+  - `platform-get-overview` v6
+  - `platform-create-customer` v5
+  - `platform-manage-organization` v4
+  - `platform-manage-plan-requests` v7
+  - `platform-manage-asset-reset-requests` v5
+  - `manage-organization-members` v8 (chỉ loại bỏ hằng số email cũ không dùng)
+- Danh sách Edge Functions xác nhận các function trên đang ACTIVE sau deploy.
+- Build & Test và Validate BAOTRI Mini trên commit trước lần cập nhật TIENDO này đều SUCCESS. Cần chạy lại CI cho commit tài liệu cuối cùng trước khi merge PR.
+- Chưa thực hiện đăng nhập thực tế bằng trình duyệt; chưa xác minh endpoint bằng JWT người dùng Super Admin và tài khoản thường. Đây là bước kiểm thử sau khi frontend được deploy.
