@@ -21,14 +21,29 @@ export function requestSync(): void {
 export function startSyncEngine(options: SyncEngineOptions): () => void {
   let stopped = false
   let running = false
+  let rerunRequested = false
   const intervalMs = Math.max(15_000, options.intervalMs ?? 60_000)
 
   const execute = async () => {
-    if (stopped || running || (options.isActive && !options.isActive())) return
+    if (stopped || (options.isActive && !options.isActive())) return
+    // Do not lose a Local-write request that arrives during an active sync pass.
+    if (running) {
+      rerunRequested = true
+      return
+    }
     if (!navigator.onLine || document.visibilityState === 'hidden') return
     running = true
     try {
-      await options.run()
+      do {
+        rerunRequested = false
+        await options.run()
+      } while (
+        !stopped &&
+        rerunRequested &&
+        navigator.onLine &&
+        document.visibilityState !== 'hidden' &&
+        (!options.isActive || options.isActive())
+      )
     } finally {
       running = false
     }
