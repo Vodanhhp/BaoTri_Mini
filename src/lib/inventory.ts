@@ -270,7 +270,7 @@ export async function updateInventoryItemMetadata(
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Không tìm thấy vật tư trong tổ chức hiện tại.')
     if (current.updatedAt !== expectedLocalUpdatedAt) throw new Error('Thông tin vật tư đã thay đổi ở nơi khác. Hãy tải lại trước khi lưu.')
-    if (!actor.isAdmin && input.minQuantity !== current.minQuantity) throw new Error('Chỉ Admin được thay đổi tồn tối thiểu.')
+    if (!actor.isAdmin && minQuantity !== roundInventoryQuantity(current.minQuantity)) throw new Error('Chỉ Admin được thay đổi tồn tối thiểu.')
     await assertCodeAvailable(actor.organizationId, code, itemId)
     const at = now()
     const next: InventoryItem = {
@@ -355,8 +355,10 @@ export async function adjustInventoryCount(
   const adjusted = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Vật tư không tồn tại trong tổ chức hiện tại.')
-    const delta = countedQuantity - current.quantity
-    if (delta === 0) return { status: 'no_change' as const, quantity: current.quantity }
+    const normalizedCurrent = roundInventoryQuantity(current.quantity)
+    const normalizedCounted = roundInventoryQuantity(countedQuantity)
+    const delta = roundInventoryQuantity(normalizedCounted - normalizedCurrent)
+    if (delta === 0) return { status: 'no_change' as const, quantity: normalizedCurrent }
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
@@ -380,7 +382,7 @@ export async function archiveInventoryItem(actor: InventoryActor, itemId: string
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Không tìm thấy vật tư trong tổ chức hiện tại.')
     if (current.archivedAt) return
-    if (current.quantity !== 0) throw new Error('Chỉ lưu trữ vật tư khi số tồn đã bằng 0. Hãy xử lý số tồn bằng giao dịch kho trước.')
+    if (roundInventoryQuantity(current.quantity) !== 0) throw new Error('Chỉ lưu trữ vật tư khi số tồn đã bằng 0. Hãy xử lý số tồn bằng giao dịch kho trước.')
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
