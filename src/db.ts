@@ -24,6 +24,7 @@ export type AssetImportQueueItem = {
   organizationId: string
   assetId: string
   reservationId?: string
+  localUpdatedAt: string
   status: AssetImportQueueStatus
   attempts: number
   createdAt: string
