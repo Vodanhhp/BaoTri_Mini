@@ -2168,3 +2168,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Giữ nguyên cơ chế reset generation, phê duyệt, xác thực lại mật khẩu Superadmin, nhật ký kiểm toán thiết bị, danh mục thiết bị dùng chung, tài khoản, phân quyền, Plan và lịch sử/sequence đặt mã thiết bị.
 - Migration chính thức: `supabase/migrations/20261124150248_reset_equipment_and_inventory.sql`, khớp version `20261124150248` đã được ghi nhận trên Supabase chính thức `BAOTRI-Mini-New`. Migration đã áp dụng thành công; chỉ thay đổi schema/RPC/trigger, **không chạy Reset và không xóa dữ liệu hiện có**.
 - Bổ sung regression tests cho Cloud purge, Local purge, reset barrier và nội dung xác nhận UI. CI trước khi áp dụng migration đã đạt 183/183 tests và build thành công; cần chạy lại sau khi đồng bộ migration vào thư mục chính thức. Chưa kiểm thử browser/device thực tế.
+
+
+### Bổ sung yêu cầu đổi tên doanh nghiệp trong Thuê bao doanh nghiệp — 24/11/2026
+
+- Thêm mục **Yêu cầu đổi tên doanh nghiệp** trong cửa sổ Thuê bao doanh nghiệp, dành cho Admin đang hoạt động của tổ chức.
+- Admin nhập tên mới (2–160 ký tự) và ghi chú tùy chọn. Hệ thống hiển thị tên hiện tại, chặn gửi nếu tên không đổi, và chỉ cho phép một yêu cầu chờ duyệt tại một thời điểm.
+- Gửi yêu cầu không cập nhật tên ngay. Super Admin có màn hình danh sách riêng, thấy doanh nghiệp, tên cũ/tên mới, người gửi và ghi chú; khi duyệt/từ chối phải xác thực lại mật khẩu và xác nhận thao tác. Từ chối bắt buộc có lý do.
+- Khi duyệt, chỉ cập nhật `organizations.name`; giữ nguyên organization UUID, tài khoản/thành viên, thiết bị, vật tư, lịch sử, Plan và dữ liệu đồng bộ. Bảng lịch sử riêng lưu tên cũ, tên mới, người gửi, người duyệt, trạng thái và thời điểm xử lý.
+- Bổ sung migration `20261124173000_organization_name_change_requests.sql` và hai Edge Functions `organization-name-change-requests`, `platform-manage-organization-name-change-requests`. Migration chỉ tạo bảng/RPC/index/quyền; không sửa tên tổ chức hiện có.
+- Bố cục phần Thuê bao được bổ sung theo dạng gọn: tên hiện tại, form đổi tên, ghi chú và lịch sử; giảm padding/khoảng cách, giữ cuộn ngang có kiểm soát trên màn hình nhỏ.
+- Nhánh `feat/organization-name-change-request`; chưa merge, chưa áp dụng migration Production và chưa deploy Edge Functions tại thời điểm ghi chú. Cần chạy CI, rà soát migration/RPC/Edge Function và kiểm tra UI trước khi phát hành.
