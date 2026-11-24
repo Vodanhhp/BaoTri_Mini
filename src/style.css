@@ -2491,3 +2491,73 @@ html,body,#root,.app-shell{
   #root .member-management-modal .member-actions{grid-column:2;grid-row:1}
   #root .member-management-modal .member-action-menu summary{width:30px;min-width:30px;height:29px;min-height:29px}
 }
+
+
+/* 24/11/2026 — compact organization subscription and request history */
+#root .plan-request-modal{
+  width:min(940px,96vw)!important;
+  max-width:940px!important;
+  padding:16px!important;
+  gap:10px;
+}
+#root .plan-request-modal .modal-head{padding-bottom:8px;margin-bottom:0}
+#root .plan-request-modal .modal-head h2{font-size:18px}
+#root .plan-request-modal .modal-head p{font-size:11px;margin-top:3px}
+#root .plan-request-modal .platform-plan-summary{padding:10px 12px;margin-bottom:8px!important}
+#root .plan-request-modal .form-grid{gap:9px}
+#root .plan-request-modal .field{gap:5px}
+#root .plan-request-modal .field textarea{min-height:64px}
+#root .plan-request-modal .auth-note{padding:9px 11px;font-size:10px;line-height:1.45}
+#root .plan-request-modal .modal-actions{gap:7px;margin-top:2px}
+#root .plan-request-modal .plan-section-divider{margin:7px 0!important}
+#root .plan-request-modal .plan-history-heading,
+#root .plan-request-modal .reset-history-heading{font-size:13px;margin:3px 0 6px}
+#root .plan-request-modal .organization-reset-request-section{
+  margin-top:8px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb)
+}
+#root .plan-request-modal .reset-request-head{margin-bottom:8px;gap:8px}
+#root .plan-request-modal .reset-request-head h3{font-size:13px;margin:0 0 3px}
+#root .plan-request-modal .reset-request-head p{font-size:10px;line-height:1.4}
+#root .plan-request-modal .plan-history-table-wrap,
+#root .plan-request-modal .reset-history-table-wrap{
+  max-height:none;width:100%;overflow-x:auto;border-radius:8px
+}
+#root .plan-request-modal .plan-history-table,
+#root .plan-request-modal .reset-history-table{
+  width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10px
+}
+#root .plan-request-modal .plan-history-table th,
+#root .plan-request-modal .reset-history-table th{
+  padding:7px 8px;font-size:9px;white-space:normal
+}
+#root .plan-request-modal .plan-history-table td,
+#root .plan-request-modal .reset-history-table td{
+  padding:7px 8px;font-size:10px;vertical-align:top;white-space:normal;overflow-wrap:anywhere
+}
+#root .plan-request-modal .plan-history-table th:nth-child(1),
+#root .plan-request-modal .plan-history-table td:nth-child(1){width:27%}
+#root .plan-request-modal .plan-history-table th:nth-child(2),
+#root .plan-request-modal .plan-history-table td:nth-child(2){width:18%}
+#root .plan-request-modal .plan-history-table th:nth-child(3),
+#root .plan-request-modal .plan-history-table td:nth-child(3){width:37%}
+#root .plan-request-modal .plan-history-table th:nth-child(4),
+#root .plan-request-modal .plan-history-table td:nth-child(4){width:18%}
+#root .plan-request-modal .reset-history-table th:nth-child(1),
+#root .plan-request-modal .reset-history-table td:nth-child(1){width:18%}
+#root .plan-request-modal .reset-history-table th:nth-child(2),
+#root .plan-request-modal .reset-history-table td:nth-child(2),
+#root .plan-request-modal .reset-history-table th:nth-child(3),
+#root .plan-request-modal .reset-history-table td:nth-child(3){width:10%;text-align:center}
+#root .plan-request-modal .reset-history-table th:nth-child(4),
+#root .plan-request-modal .reset-history-table td:nth-child(4){width:44%}
+#root .plan-request-modal .reset-history-table th:nth-child(5),
+#root .plan-request-modal .reset-history-table td:nth-child(5){width:18%}
+#root .plan-request-modal .table-note-cell small{margin:1px 0;font-size:9px;line-height:1.35}
+@media(max-width:680px){
+  #root .plan-request-modal{padding:12px!important;gap:8px}
+  #root .plan-request-modal .plan-history-table th,
+  #root .plan-request-modal .reset-history-table th,
+  #root .plan-request-modal .plan-history-table td,
+  #root .plan-request-modal .reset-history-table td{padding:6px 5px;font-size:9px}
+  #root .plan-request-modal .reset-history-table{min-width:0!important}
+}
