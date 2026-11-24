@@ -389,7 +389,8 @@ async function pushOneInventoryMutation(
         lastSyncedLocalUpdatedAt: latestMutation.localUpdatedAt,
         status: laterPending.some(row => row.status === 'conflict') ? CONFLICT : LINKED,
         lastVerifiedAt: now(),
-        ...(previous?.conflictSnapshot ? { conflictSnapshot: previous.conflictSnapshot } : {})
+        ...(laterPending.some(row => row.status === 'conflict') && previous?.conflictSnapshot
+          ? { conflictSnapshot: previous.conflictSnapshot } : {})
       }
       await db.inventoryCloudLinks.put(nextLink)
     })
@@ -477,7 +478,8 @@ async function applyInventoryEvent(organizationId: string, event: InventorySyncE
         lastSyncedLocalUpdatedAt: localMutation.localUpdatedAt,
         status: laterPending.some(row => row.status === 'conflict') ? CONFLICT : LINKED,
         lastVerifiedAt: now(),
-        ...(existingLink?.conflictSnapshot ? { conflictSnapshot: existingLink.conflictSnapshot } : {})
+        ...(laterPending.some(row => row.status === 'conflict') && existingLink?.conflictSnapshot
+          ? { conflictSnapshot: existingLink.conflictSnapshot } : {})
       })
       return
     }
