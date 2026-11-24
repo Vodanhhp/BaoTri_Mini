@@ -2007,3 +2007,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã thêm kiểm thử hợp đồng `scripts/inventoryCloudSync.test.mjs` và cập nhật `scripts/inventoryCompactUi.test.mjs`.
 - Migration đã được kiểm tra lại sau áp dụng: hai bảng public, hai policy RLS và đủ 5 RPC tồn tại. Chưa chạy thử RPC có JWT người dùng, chưa kiểm thử hai trình duyệt/thiết bị thật; chưa được xem là xác nhận E2E.
 - Nhánh mã nguồn: `feat/inventory-local-cloud-sync`. Chưa merge, chưa deploy frontend. Không thay đổi dữ liệu kho hiện có, không bật đồng bộ ở production frontend cho đến khi PR được review/merge và kiểm thử.
+
+- Bổ sung migration hardening `20261124130401_inventory_cloud_sync_hardening.sql` (đã áp dụng trực tiếp, version `20261124130401`): khóa mã vật tư khi sửa metadata, kiểm tra số kiểm kê khớp tồn sau điều chỉnh, và thu hồi quyền gọi trực tiếp helper ghi change-feed.
