@@ -35,7 +35,7 @@ test('unpersisted drafts release only after an explicit Cloud acknowledgement', 
 test('a saved asset with a confirmed Smart ID may edit only its commissioning date without releasing or changing the issued ID', async () => {
   const app = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const start = app.indexOf('const updateSmartDraft=')
-  const end = app.indexOf('\\n\\n  const closeEditor=', start)
+  const end = app.indexOf('const closeEditor=', start)
   const update = app.slice(start, end)
   const confirmedGuard = update.indexOf("if(persistedAsset||currentEditing.idReservationStatus==='confirmed')")
   const dateOnly = update.indexOf("const isCommissioningDateOnly=Object.keys(patch).length===1&&Object.prototype.hasOwnProperty.call(patch,'commissionedAt')")
