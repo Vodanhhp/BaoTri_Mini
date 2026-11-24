@@ -59,12 +59,13 @@ export async function ensureOrganizationAssetResetApplied(
     const appliedAt = now()
     await db.transaction('rw', [
       db.assets, db.assetCloudLinks, db.assetMutations, db.assetDrafts,
-      db.assetGroupChanges, db.assetHistory, db.organizationAssetResetStates
+      db.assetGroupChanges, db.assetHistory, db.assetImportQueue, db.organizationAssetResetStates
     ], async () => {
       await db.assets.where('localScope').equals(organizationId).delete()
       await db.assetCloudLinks.where('organizationId').equals(organizationId).delete()
       await db.assetMutations.where('organizationId').equals(organizationId).delete()
       await db.assetDrafts.where('organizationId').equals(organizationId).delete()
+      await db.assetImportQueue.where('organizationId').equals(organizationId).delete()
 
       // Keep historical rows, but prevent stale queued audit mirrors from being replayed.
       await db.assetGroupChanges.where('organizationId').equals(organizationId)
