@@ -1,0 +1,62 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readdir } from 'node:fs/promises'
+
+const appliedMigrationFiles = [
+  "20261121022414_001_identity_and_organizations.sql",
+  "20261121022440_005_roles_and_permissions.sql",
+  "20261121022513_006_private_rbac_helpers.sql",
+  "20261121022858_007_assets_import_permission_and_builtin_roles.sql",
+  "20261121023532_008_cloud_asset_sync_and_locking.sql",
+  "20261121024116_009_activate_invited_memberships_on_email_confirm.sql",
+  "20261121024405_010_private_cloud_sync_rpc_wrappers.sql",
+  "20261121045631_platform_organization_lifecycle.sql",
+  "20261121094439_smart_equipment_id_engine_v1.sql",
+  "20261121094441_smart_equipment_id_local_first_reservations.sql",
+  "20261121094443_smart_equipment_id_audit_hardening.sql",
+  "20261121094444_smart_equipment_id_cloud_mirror_metadata.sql",
+  "20261121094447_smart_equipment_id_admin_confirmation.sql",
+  "20261121094449_smart_equipment_id_admin_group_mutation.sql",
+  "20261121094451_smart_equipment_id_local_group_audit_mirror.sql",
+  "20261121094453_smart_equipment_id_catalog_snapshot_validation.sql",
+  "20261121094809_smart_equipment_id_private_rpc_wrappers.sql",
+  "20261121100426_platform_customer_plan_provisioning.sql",
+  "20261121120907_platform_customer_provisioning_idempotency.sql",
+  "20261121120954_grant_service_role_customer_provisioning_idempotency.sql",
+  "20261122032223_cloud_asset_public_key_api.sql",
+  "20261122034136_fix_customer_provisioning_service_role_claim.sql",
+  "20261122034438_remove_unreliable_jwt_role_check_customer_provisioning.sql",
+  "20261122034910_remove_unreliable_jwt_guard_inner_customer_provisioning.sql",
+  "20261122055755_cloud_asset_sync_pagination_and_platform_read.sql",
+  "20261122105818_organization_plan_change_workflow.sql",
+  "20261122105819_serialize_smart_id_reservations_with_plan_changes.sql",
+  "20261122105821_preserve_smart_id_reservation_retries_after_plan_change.sql",
+  "20261122124403_add_cloud_asset_lock_anchor.sql",
+  "20261122125135_fix_asset_mutation_receipt_actor_column.sql",
+  "20261122133229_admin_soft_delete_assets.sql",
+  "20261122141731_asset_activity_history.sql",
+  "20261123105735_allow_stored_asset_status_in_cloud.sql",
+  "20261123120236_fix_platform_delete_organization_dependencies.sql",
+  "20261123132922_superadmin_organization_asset_reset.sql",
+  "20261123135424_organization_asset_reset_approval_workflow.sql",
+  "20261123140308_require_asset_reset_rejection_reason.sql",
+  "20261123155243_asset_sync_change_feed.sql",
+  "20261123155408_asset_sync_feed_index_cleanup.sql",
+  "20261123155833_asset_sync_event_created_at.sql",
+  "20261124010024_organization_equipment_catalog_audit.sql",
+  "20261124030549_auto_local_asset_sync_permission.sql",
+  "20261124042123_verify_cloud_asset_import_receipt.sql",
+  "20261124042150_verify_cloud_asset_import_receipt_timestamp.sql",
+  "20261124042230_move_import_receipt_verifier_private.sql"
+]
+
+test('BAOTRI Mini New source migration inventory exactly matches applied database history', async () => {
+  const files = (await readdir(new URL('../supabase/migrations/', import.meta.url)))
+    .filter(file => file.endsWith('.sql'))
+    .sort()
+  const expected = [...appliedMigrationFiles].sort()
+  const versionPrefixes = files.map(file => file.slice(0,14))
+
+  assert.equal(new Set(versionPrefixes).size, versionPrefixes.length, 'migration version prefixes must be unique')
+  assert.deepEqual(files, expected, 'source migration files must exactly match BAOTRI Mini New applied history')
+})

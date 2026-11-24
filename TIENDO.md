@@ -1613,3 +1613,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - CSS chỉ áp dụng ở viewport tối đa 680px: giới hạn thông báo còn 2 dòng, phần dư hiển thị ellipsis; cho phép ngắt chuỗi dài; bỏ border/padding thừa của kiểu `.auth-note`. Trên PC giữ nguyên nội dung đầy đủ.
 - Đã triển khai Vercel Production trên đúng project `baotri-mini-new`; deployment `dpl_CDsP9b2DzbPGcAnDt3nzNACeajwG`, trạng thái `READY`, domain production `baotri.vieclamhp247.com`.
 - Thay đổi chỉ gồm CSS; không thay đổi logic đồng bộ, không chạy migration, không sửa dữ liệu hoặc cấu hình Supabase. Chưa có xác nhận kiểm tra lại trên điện thoại sau triển khai; cần người dùng mở lại trang và kiểm tra chiều cao header.
+
+
+### Đối chiếu và đồng bộ source migration với BAOTRI Mini New (24/11/2026)
+
+- Đối chiếu trực tiếp migration history của Supabase project `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`) với thư mục `supabase/migrations` trên `main`: database có 45 migration đã áp dụng; source ban đầu có 42 file, trong đó 12 file dùng version prefix không khớp và thiếu 3 source migration.
+- Tạo nhánh `fix/reconcile-new-project-migration-inventory` để xử lý đúng theo history của project New; không lấy danh sách migration của Test làm chuẩn và không sửa project Test.
+- Đổi tên 12 file SQL theo đúng version đã áp dụng, giữ nguyên nội dung SQL; khôi phục 3 file source đã có trong các PR trước: `20261122124403_add_cloud_asset_lock_anchor.sql`, `20261122125135_fix_asset_mutation_receipt_actor_column.sql`, `20261123105735_allow_stored_asset_status_in_cloud.sql`.
+- Cập nhật các regression test đang tham chiếu tên file migration cũ; bổ sung `scripts/supabaseMigrationInventory.test.mjs` kiểm tra danh sách file nguồn khớp chính xác 45 migration đã áp dụng, không trùng version.
+- Đây là đồng bộ source/test với database history đã tồn tại; không tạo migration mới, không chạy migration, không ghi dữ liệu Supabase, không thay đổi Edge Functions, Storage, Auth hoặc Vercel Production.
+- Chờ CI/build và review PR trước khi hợp nhất. Các PR #27/#28/#29 cũ được xem là phạm vi trùng lặp/lịch sử, không merge riêng lẻ.
