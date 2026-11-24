@@ -60,6 +60,7 @@ export default function InventoryPanel(props: Props) {
     ])
     setItems(nextItems)
     setMovements(nextMovements)
+    window.dispatchEvent(new Event('baotri:inventory-updated'))
     setSelected(current => current ? nextItems.find(item => item.id === current.id) ?? null : null)
   }, [organizationId, canView, includeArchived])
 
