@@ -10,7 +10,7 @@ import AccountProfilePanel from './AccountProfilePanel'
 import PlatformAdminPanel from './PlatformAdminPanel'
 import { OrganizationPlanPanel } from './PlanChangePanels'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
-import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory } from './db'
+import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory, type InventoryItem } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
@@ -72,7 +72,7 @@ export default function App() {
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
-  const [activeModule,setActiveModule]=useState<'assets'|'inventory'>('assets')
+  const [activeModule,setActiveModule]=useState<'dashboard'|'assets'|'inventory'>('dashboard')
   const [organizationReady,setOrganizationReady]=useState(false)
   const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
   const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
@@ -99,6 +99,7 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(!supabase)
   const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
+  const [dashboardInventoryItems, setDashboardInventoryItems] = useState<InventoryItem[]>([])
   const [localPreviewAssets, setLocalPreviewAssets] = useState<Asset[]>([])
   const [cloudSyncMessage,setCloudSyncMessage] = useState('')
   const [recoverableDrafts, setRecoverableDrafts] = useState<AssetDraft[]>([])
@@ -287,6 +288,20 @@ export default function App() {
       window.removeEventListener('focus',applyKnownOrganizationResets)
     }
   },[session?.user.id])
+
+  useEffect(() => {
+    let active = true
+    const scope = localPreview ? 'local-preview' : session && organizationId ? organizationId : ''
+    const canReadInventory = localPreview || Boolean(organizationContexts.find(item => item.id === organizationId)?.permissions.includes('inventory.view'))
+    if (!scope || !canReadInventory) {
+      setDashboardInventoryItems([])
+      return () => { active = false }
+    }
+    db.inventoryItems.where('organizationId').equals(scope).toArray()
+      .then(rows => { if (active) setDashboardInventoryItems(rows) })
+      .catch(cause => { if (active) setError('Không tải được số liệu kho cho trang tổng quan: ' + (cause instanceof Error ? cause.message : String(cause))) })
+    return () => { active = false }
+  }, [session?.user.id, localPreview, organizationId, organizationContexts])
 
   useEffect(()=>{
     if(!session?.user.id||!supabase||!organizationReady||!organizationId||localPreview){
@@ -1207,7 +1222,7 @@ export default function App() {
       <button type="button" className="mobile-menu-close" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}><X size={18}/><span>Đóng menu</span></button>
       <div className="brand"><span className="brand-icon"><Wrench size={21}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div>
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
-      <button className="nav-item"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
+      <button className={"nav-item"+(activeModule==='dashboard'?' active':'')} onClick={()=>{setActiveModule('dashboard');setMobileMenuOpen(false)}}><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
       <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
       {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
       {session&&<div className="sidebar-settings">
@@ -1224,13 +1239,34 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">{activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='inventory'?'Kho vật tư':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="page-heading"><div className="eyebrow">{activeModule==='dashboard'?'TỔNG QUAN HỆ THỐNG':activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='dashboard'?'Trang tổng quan':activeModule==='inventory'?'Kho vật tư':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
         <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
         {activeModule==='inventory'
           ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
-          : <>
+          : activeModule==='dashboard'
+            ? <div className="overview-workspace">
+                <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · TỔNG QUAN</div><h2>{currentOrganization?.name||'Không gian bảo trì'}</h2><p>Tổng hợp tình hình thiết bị và vật tư trong cùng một màn hình.</p></div><div className="welcome-icon"><LayoutDashboard size={42}/></div></section>
+                <section className="overview-section"><div className="overview-section-head"><div><h2>Thiết bị</h2><p>Tình trạng tài sản, máy móc đang quản lý</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('assets')}>Mở danh mục thiết bị →</button></div>
+                  <div className="stat-grid">
+                    <div className="stat-card"><div className="stat-icon blue"><Building2 size={20}/></div><div><small>Đang quản lý</small><strong>{activeAssets.length}</strong><span>Thiết bị chưa lưu kho / thanh lý</span></div></div>
+                    <div className="stat-card"><div className="stat-icon purple"><Activity size={20}/></div><div><small>Đang hoạt động</small><strong>{activeAssets.filter(item=>item.status==='Đang hoạt động').length}</strong><span>Sẵn sàng vận hành</span></div></div>
+                    <div className="stat-card"><div className="stat-icon orange"><Wrench size={20}/></div><div><small>Đang sửa chữa</small><strong>{repairingCount}</strong><span>Cần theo dõi xử lý</span></div></div>
+                    <div className="stat-card"><div className="stat-icon red"><Archive size={20}/></div><div><small>Ngừng sử dụng</small><strong>{stoppedCount}</strong><span>Không tính thiết bị đã lưu kho</span></div></div>
+                  </div>
+                </section>
+                {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
+                  <div className="stat-grid">
+                    <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
+                    <div className="stat-card"><div className="stat-icon red"><Activity size={20}/></div><div><small>Sắp hết hàng</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt&&item.quantity<=item.minQuantity).length}</strong><span>Tồn bằng hoặc thấp hơn mức tối thiểu</span></div></div>
+                    <div className="stat-card"><div><small>Tổng số lượng tồn</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).reduce((sum,item)=>sum+item.quantity,0).toLocaleString('vi-VN',{maximumFractionDigits:3})}</strong><span>Cộng theo đơn vị của từng vật tư</span></div></div>
+                    <div className="stat-card"><div><small>Giá trị tồn ước tính</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).reduce((sum,item)=>sum+item.quantity*item.unitPrice,0).toLocaleString('vi-VN',{maximumFractionDigits:0})} đ</strong><span>Theo đơn giá đang khai báo</span></div></div>
+                  </div>
+                </section>}
+                <section className="overview-section overview-future"><div><div className="eyebrow">MỞ RỘNG THEO LỘ TRÌNH</div><h2>Checklist & công việc bảo trì</h2><p>Khu vực tổng quan dành cho thống kê Checklist, kiểm tra định kỳ, công việc và kế hoạch bảo trì khi các phân hệ này được tích hợp vào BAOTRI Mini.</p></div><span className="status gray">Sẽ bổ sung</span></section>
+              </div>
+            : <>
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
