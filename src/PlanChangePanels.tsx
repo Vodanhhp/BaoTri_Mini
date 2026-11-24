@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
+import { formatDateTimeVN } from './lib/dateTime'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {loadOrganizationEquipmentCatalog,type OrganizationEquipmentCatalogRecord} from './lib/smartEquipmentIdClient'
 
@@ -12,7 +13,7 @@ type PlanRequest={
  reviewed_at?:string;review_note?:string;applied_catalog_version?:string
 }
 const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
-const dateTime=(value:string)=>value?new Date(value).toLocaleString('vi-VN'):'—'
+const dateTime=(value:string)=>value?formatDateTimeVN(value):'—'
 const invokeErrorMessage=async(error:unknown)=>{
  const fallback=error instanceof Error?error.message:String(error)
  const context=(error as {context?:unknown}|null)?.context
