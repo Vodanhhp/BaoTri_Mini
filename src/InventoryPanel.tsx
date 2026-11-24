@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { db, type InventoryItem, type InventoryMovement } from './db'
+import { type InventoryItem, type InventoryMovement } from './db'
 import {
   archiveInventoryItem, createInventoryItem, listInventoryItems, listInventoryMovements,
   postInventoryMovement, adjustInventoryCount, updateInventoryItemMetadata,
