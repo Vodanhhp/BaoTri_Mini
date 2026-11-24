@@ -1,3 +1,5 @@
+import { formatDateTimeVN } from './dateTime'
+
 export type ExcelOrientation = 'portrait' | 'landscape'
 
 export async function downloadExcelReport(
@@ -34,7 +36,7 @@ export async function downloadExcelReport(
 
   addBanner(title, 32, 'FF155B4B', 'FFFFFFFF', 16, true)
   addBanner('BAOTRI · QUẢN LÝ BẢO TRÌ', 22, 'FFE6F2ED', 'FF155B4B', 10, true)
-  addBanner(`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`, 20, 'FFF3F7F5', 'FF52645F', 10)
+  addBanner(`Ngày xuất: ${formatDateTimeVN(new Date())}`, 20, 'FFF3F7F5', 'FF52645F', 10)
   addBanner(`Tổng số bản ghi: ${rows.length}`, 20, 'FFF3F7F5', 'FF52645F', 10)
   worksheet.addRow([])
 
