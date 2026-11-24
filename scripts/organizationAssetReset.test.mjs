@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises'
 const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
 test('reset migration uses an organization-scoped monotonic generation and idempotent request key', async () => {
-  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  const sql = await read('../supabase/migrations/20261123132922_superadmin_organization_asset_reset.sql')
   assert.match(sql, /organization_asset_reset_state/)
   assert.match(sql, /generation bigint not null default 0/)
   assert.match(sql, /primary key \(organization_id, request_id\)/)
@@ -16,7 +16,7 @@ test('reset migration uses an organization-scoped monotonic generation and idemp
 })
 
 test('reset preserves audit rows, catalog, memberships, roles, plan and sequence history', async () => {
-  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  const sql = await read('../supabase/migrations/20261123132922_superadmin_organization_asset_reset.sql')
   assert.match(sql, /alter table public\.asset_activity_history alter column asset_id drop not null/)
   assert.match(sql, /alter table private\.asset_group_change_history alter column asset_id drop not null/)
   assert.match(sql, /update public\.asset_activity_history[\s\S]*?set asset_id = null/)
@@ -30,7 +30,7 @@ test('reset preserves audit rows, catalog, memberships, roles, plan and sequence
 })
 
 test('legacy RPC signatures work only before the first reset; new signatures require generation', async () => {
-  const sql = await read('../supabase/migrations/20261123130000_superadmin_organization_asset_reset.sql')
+  const sql = await read('../supabase/migrations/20261123132922_superadmin_organization_asset_reset.sql')
   assert.match(sql, /private\.assert_legacy_asset_sync_allowed/)
   assert.match(sql, /if v_generation <> 0 then/)
   assert.match(sql, /perform private\.assert_legacy_asset_sync_allowed\(p_organization_id\)/)
@@ -139,7 +139,7 @@ test('reset is requested by organization Admin and reviewed in the Superadmin re
 
 
 test('asset reset requires an organization request and a Superadmin approval before execution', async () => {
- const sql = await read('../supabase/migrations/20261123150000_organization_asset_reset_approval_workflow.sql')
+ const sql = await read('../supabase/migrations/20261123135424_organization_asset_reset_approval_workflow.sql')
  assert.match(sql,/organization_asset_reset_approval_requests/)
  assert.match(sql,/status in \('pending','approved','executed','rejected','failed'\)/)
  assert.match(sql,/where status in \('pending','approved'\)/)
@@ -173,7 +173,7 @@ test('tenant and platform reset UIs use request and approval endpoints, not dire
 test('Superadmin must provide a non-empty rejection reason in UI, Edge Function and database RPC', async () => {
  const ui = await read('../src/PlanChangePanels.tsx')
  const edge = await read('../supabase/functions/platform-manage-asset-reset-requests/index.ts')
- const migration = await read('../supabase/migrations/20261123160000_require_asset_reset_rejection_reason.sql')
+ const migration = await read('../supabase/migrations/20261123140308_require_asset_reset_rejection_reason.sql')
  assert.match(ui,/decision==='reject'&&!reviewNote\.trim\(\)/)
  assert.match(ui,/required=\{decision==='reject'\}/)
  assert.match(edge,/action==='reject'&&!reviewNote/)
