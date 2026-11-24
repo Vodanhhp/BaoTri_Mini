@@ -1723,3 +1723,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Mở Draft PR để CI chạy; xử lý lỗi build/test nếu có.
 - Hoàn tất kiểm tra Local UI và permission.
 - Sau đó thiết kế Cloud inventory schema/RPC/feed riêng cho project New, xin phê duyệt trước mọi thao tác apply migration.
+
+
+
+### Cập nhật CI Kho vật tư (24/11/2026)
+- Draft PR #43: https://github.com/Vodanhhp/BaoTri_Mini/pull/43.
+- Build and test run #717 trên commit `4d956af20f0740a1aed2446cbd49bf2943aa6d62`: 123/123 test PASS, 0 fail; Vite production build PASS.
+- Validate BAOTRI Mini run #374 cùng commit: `npm ci` và `npm run build` PASS.
+- Bổ sung điều kiện an toàn: chỉ được lưu trữ vật tư khi tồn Local bằng 0; phải xử lý số tồn bằng giao dịch kho trước.
+- Run #715 trước đó có một assertion test false-positive vì regex khớp `min_quantity`; đã thu hẹp regex và chạy lại thành công. Không phải lỗi sản phẩm.
+- Chỉ xác nhận CI/build; chưa xác nhận browser runtime/E2E.
