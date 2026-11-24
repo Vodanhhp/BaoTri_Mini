@@ -1813,3 +1813,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Danh mục nhóm chuẩn hiện giữ nguyên 13 nhóm trong form hiện tại. Tài liệu Plan/Template của BAOTRI mới mô tả từ điển theo ngành/quy mô/doanh nghiệp, nhưng chưa có hợp đồng dữ liệu inventory-group theo từng Plan trong source hiện hành; vì vậy chưa tự suy diễn quota hoặc ẩn/hiện nhóm theo Plan. Phần này cần được nối với inventory dictionary trong Plan khi có cấu hình chính thức.
 - Không thay đổi Supabase, migration, RLS, Auth, Storage, Vercel hoặc Production trong đợt này.
 - Cần CI Build/Test PASS và kiểm tra giao diện thực tế PC/mobile trước khi merge/deploy. PR sẽ để riêng, không tự merge.
+
+
+## Tối ưu giao diện Kho vật tư trên mobile — đang triển khai (24/11/2026)
+
+- Nhánh riêng: `feat/inventory-mobile-cards`; không sửa trực tiếp `main`.
+- Chuyển danh mục vật tư và lịch sử giao dịch sang dạng thẻ ở màn hình hẹp; bảng hiện tại vẫn giữ nguyên trên desktop.
+- Thẻ vật tư ưu tiên mã/tên, trạng thái, nhóm/vị trí, tồn hiện tại/tồn tối thiểu và các thao tác theo đúng permission hiện có.
+- Thẻ lịch sử ưu tiên ngày, mã/tên vật tư, loại giao dịch, số lượng, tồn trước/sau, lý do và người thực hiện.
+- Tối ưu bộ lọc, nhóm nút thao tác, thẻ thống kê, nhóm vật tư tùy chỉnh và kích thước/cuộn modal trên mobile.
+- Không thay đổi nghiệp vụ tồn kho, Local/Cloud sync, schema, quyền hoặc dữ liệu. Không thay đổi Supabase và không triển khai Production trong bước này.
+- Cần chạy CI Build/Test; chưa xác nhận kiểm thử trực quan trên thiết bị thật. PR sẽ để người dùng kiểm tra; không tự merge.
