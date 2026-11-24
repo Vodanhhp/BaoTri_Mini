@@ -20,7 +20,8 @@ test('organization subscription history tables use compact responsive columns', 
   assert.match(section, /reset-history-table th:nth-child\(4\)[\s\S]*width:44%/)
   assert.match(section, /plan-history-table th:nth-child\(3\)[\s\S]*width:37%/)
   assert.match(section, /organization-reset-request-section/)
-  assert.match(section, /organization-change-grid[\\s\\S]*repeat\\(2,minmax\\(0,1fr\\)\\)/)
+  assert.match(section, /organization-change-grid/)
+  assert.match(section, /grid-template-columns:repeat\\(2,minmax\\(0,1fr\\)\\)/)
   assert.match(section, /@media\(max-width:680px\)[\s\S]*reset-history-table\{min-width:0!important\}/)
 })
 
