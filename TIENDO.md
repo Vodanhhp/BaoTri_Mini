@@ -1813,3 +1813,48 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Danh mục nhóm chuẩn hiện giữ nguyên 13 nhóm trong form hiện tại. Tài liệu Plan/Template của BAOTRI mới mô tả từ điển theo ngành/quy mô/doanh nghiệp, nhưng chưa có hợp đồng dữ liệu inventory-group theo từng Plan trong source hiện hành; vì vậy chưa tự suy diễn quota hoặc ẩn/hiện nhóm theo Plan. Phần này cần được nối với inventory dictionary trong Plan khi có cấu hình chính thức.
 - Không thay đổi Supabase, migration, RLS, Auth, Storage, Vercel hoặc Production trong đợt này.
 - Cần CI Build/Test PASS và kiểm tra giao diện thực tế PC/mobile trước khi merge/deploy. PR sẽ để riêng, không tự merge.
+
+
+## Tối ưu giao diện Kho vật tư trên mobile — đang triển khai (24/11/2026)
+
+- Nhánh riêng: `feat/inventory-mobile-cards`; không sửa trực tiếp `main`.
+- Chuyển danh mục vật tư và lịch sử giao dịch sang dạng thẻ ở màn hình hẹp; bảng hiện tại vẫn giữ nguyên trên desktop.
+- Thẻ vật tư ưu tiên mã/tên, trạng thái, nhóm/vị trí, tồn hiện tại/tồn tối thiểu và các thao tác theo đúng permission hiện có.
+- Thẻ lịch sử ưu tiên ngày, mã/tên vật tư, loại giao dịch, số lượng, tồn trước/sau, lý do và người thực hiện.
+- Tối ưu bộ lọc, nhóm nút thao tác, thẻ thống kê, nhóm vật tư tùy chỉnh và kích thước/cuộn modal trên mobile.
+- Không thay đổi nghiệp vụ tồn kho, Local/Cloud sync, schema, quyền hoặc dữ liệu. Không thay đổi Supabase và không triển khai Production trong bước này.
+- Cần chạy CI Build/Test; chưa xác nhận kiểm thử trực quan trên thiết bị thật. PR sẽ để người dùng kiểm tra; không tự merge.
+
+
+## 24/11/2026 — Chuẩn hóa giao diện toàn ứng dụng (đang review)
+
+- Người dùng phản ánh giao diện PC/mobile còn thiếu đồng bộ: nút và ô nhập không đều kích thước, bảng dài và có khoảng trắng dư.
+- Đã rà soát quy chuẩn cũ tại `docs/UI_TABLE_STANDARD.md`. Quy chuẩn trước đó có các điểm chưa phù hợp với yêu cầu mới: nút thao tác nhỏ 30px, bảng phổ thông mặc định min-width 620px, nhiều CSS module tự ghi đè kích thước.
+- Đã bổ sung lớp quy chuẩn dùng chung ở cuối `src/style.css`:
+  - Nút thao tác 40px; nút biểu tượng 40×40px.
+  - Input/select một dòng 40px; textarea tối thiểu 96px; checkbox/radio có kích thước riêng.
+  - Hệ khoảng cách 4/8/12/16/24px.
+  - Panel, form, modal và thống kê dùng mật độ/padding thống nhất; PC/mobile chỉ thay đổi bố cục.
+  - Bảng tiêu chuẩn mặc định co theo vùng chứa, table-layout fixed, cell padding 8×10px; chỉ bảng nhiều cột có min-width riêng.
+  - Giữ cỡ chữ dữ liệu 12px, thông tin phụ 11px; mobile dùng input 16px để tránh tự zoom khi focus.
+- Cập nhật `docs/UI_TABLE_STANDARD.md` thành quy chuẩn giao diện chung toàn ứng dụng, không còn chỉ là quy chuẩn bảng.
+- Thêm `scripts/uiConsistency.test.mjs` để khóa các quy tắc kích thước và mật độ cơ bản.
+- Phạm vi chỉ là trình bày giao diện; không thay đổi nghiệp vụ, phân quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
+- Các thay đổi đang nằm trên nhánh `feat/inventory-mobile-cards` / PR #45; chưa merge, chưa deploy.
+- Cần chạy CI/build/unit test và kiểm tra trực quan trên desktop/tablet/mobile trước khi kết luận đạt. Chưa có xác nhận kiểm thử trên thiết bị thật.
+
+
+## 24/11/2026 — Tinh gọn Quản trị tổ chức / Quản lý tài khoản
+
+- Người dùng phản ánh khu vực quản lý thành viên có khoảng trắng lớn, danh sách tài khoản khó nhìn/không hiển thị hết rõ ràng.
+- Nguyên nhân trong CSS cũ: `.member-list-wrap` có `max-height` 230–350px và `overflow:auto`, tạo vùng cuộn lồng bên trong modal; nhiều breakpoint ghi đè chiều cao danh sách, kích thước nút và form.
+- Đã chỉnh `src/OrganizationMembersPanel.tsx`: thêm tiêu đề “Danh sách thành viên” và bộ đếm tổng số/đang lọc để nhìn rõ danh sách đã được nạp.
+- Đã bổ sung lớp CSS cuối file để:
+  - Bỏ giới hạn chiều cao và cuộn lồng của danh sách; modal là vùng cuộn chính, hiển thị đầy đủ các thành viên.
+  - Thu gọn sáu thẻ thống kê thành lưới 3 cột trên PC, 2 cột trên mobile; cân bằng kích thước và khoảng cách.
+  - Cân lại cột thông tin tài khoản, vai trò/trạng thái và nhóm nút; nút thao tác cao 40px đồng bộ.
+  - Form mời tài khoản dùng các cột rõ ràng trên PC và một cột trên mobile; input/select cao 40px.
+  - Giảm padding/khoảng trống dư ở header, toolbar, danh sách, phần mời và ghi chú.
+- Thêm `scripts/organizationMembersUi.test.mjs` để kiểm tra không tái xuất hiện cuộn lồng/giới hạn chiều cao và kích thước không đồng bộ.
+- Chỉ thay đổi trình bày; không thay đổi Edge Functions, Auth, quyền, dữ liệu thành viên hoặc Supabase.
+- Đang nằm trên PR #45, chưa merge và chưa deploy. Cần CI và kiểm tra trực quan sau khi cập nhật.

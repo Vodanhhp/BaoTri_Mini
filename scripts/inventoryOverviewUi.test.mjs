@@ -24,3 +24,17 @@ test('inventory form auto-generates item codes and allows organization-scoped cu
   assert.match(panel, /createInventoryGroup\(actor, newGroupName\)/)
   assert.match(panel, /Thông tin bổ sung \(không bắt buộc\)/)
 })
+
+test('inventory has mobile card layouts for items and movement history while retaining desktop tables', async () => {
+  const panel = await read('../src/InventoryPanel.tsx')
+  const css = await read('../src/style.css')
+  assert.match(panel, /inventory-mobile-list/)
+  assert.match(panel, /inventory-mobile-card/)
+  assert.match(panel, /inventory-movement-list/)
+  assert.match(panel, /Tồn trước → sau/)
+  assert.match(panel, /inventory-desktop-table/)
+  assert.match(css, /\.inventory-desktop-table\{display:none\}/)
+  assert.match(css, /\.inventory-mobile-list\{display:grid;gap:9px\}/)
+  assert.match(css, /width:100%;max-width:560px/)
+  assert.match(css, /max-height:calc\(100dvh - 36px\)/)
+})

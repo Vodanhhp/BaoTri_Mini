@@ -229,7 +229,7 @@ export default function InventoryPanel(props: Props) {
         <label className="field"><span>Tình trạng tồn</span><select value={stockFilter} onChange={event=>setStockFilter(event.target.value as 'all'|'low')}><option value="all">Tất cả</option><option value="low">Sắp hết hàng</option></select></label>
       </div>
       <div className="asset-result-count">Hiển thị {visibleItems.length}/{items.length} vật tư</div>
-      <div className="table-wrap table-standard-wrap">
+      <div className="table-wrap table-standard-wrap inventory-desktop-table">
         <table className="table-standard"><thead><tr><th>Mã / Tên vật tư</th><th>Nhóm</th><th>Tồn kho</th><th>Tồn tối thiểu</th><th>Vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>
             {visibleItems.map(item=><tr key={item.id} className={item.archivedAt?'inventory-archived-row':''}>
@@ -249,11 +249,30 @@ export default function InventoryPanel(props: Props) {
           </tbody>
         </table>
       </div>
+      <div className="inventory-mobile-list" aria-label="Danh mục vật tư dạng thẻ">
+        {visibleItems.map(item=><article key={item.id} className={`inventory-mobile-card ${item.archivedAt?'inventory-archived-row':''}`}>
+          <div className="inventory-mobile-card-head">
+            <button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.code}</b><span>{item.name}</span></button>
+            <span className={'status '+(item.archivedAt?'gray':item.quantity<=item.minQuantity?'red':'green')}>{item.archivedAt?'Đã lưu trữ':item.quantity<=item.minQuantity?'Sắp hết':'Đủ tồn'}</span>
+          </div>
+          <div className="inventory-mobile-meta">{item.group}{item.location?' · '+item.location:''}</div>
+          <div className="inventory-mobile-quantities">
+            <div><small>Tồn kho</small><strong>{numberText(item.quantity)} {item.unit}</strong></div>
+            <div><small>Tồn tối thiểu</small><strong>{numberText(item.minQuantity)} {item.unit}</strong></div>
+          </div>
+          {(canAdjust&&!item.archivedAt||canUpdate&&!item.archivedAt||canDelete&&isAdmin&&!item.archivedAt)&&<div className="inventory-mobile-actions">
+            {canAdjust&&!item.archivedAt&&<><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Nhập')}>Nhập</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Xuất')}>Xuất</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê</button></>}
+            {canUpdate&&!item.archivedAt&&<button type="button" className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button>}
+            {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="soft-btn danger" onClick={()=>void archiveItem(item)}>Lưu trữ</button>}
+          </div>}
+        </article>)}
+        {visibleItems.length===0&&<div className="table-empty-state">Chưa có vật tư phù hợp. {canCreate?'Bạn có thể thêm vật tư mới.':''}</div>}
+      </div>
     </section>
 
     <section className="panel">
       <div className="panel-head"><div><h2>{selected?'Lịch sử vật tư: '+selected.name:'Lịch sử giao dịch kho gần đây'}</h2><p>Giao dịch được lưu append-only; không có thao tác sửa hoặc xóa phiếu đã ghi.</p></div>{selected&&<button type="button" className="soft-btn" onClick={()=>setSelected(null)}>Xem tất cả</button>}</div>
-      <div className="table-wrap table-standard-wrap">
+      <div className="table-wrap table-standard-wrap inventory-desktop-table">
         <table className="table-standard"><thead><tr><th>Ngày</th><th>Mã vật tư</th><th>Loại</th><th>Số lượng</th><th>Tồn trước</th><th>Tồn sau</th><th>Lý do</th><th>Người thực hiện</th></tr></thead>
           <tbody>{selectedMovements.map(movement=>{
             const item=items.find(row=>row.id===movement.itemId)
@@ -269,6 +288,26 @@ export default function InventoryPanel(props: Props) {
             </tr>
           })}{selectedMovements.length===0&&<tr><td colSpan={8}><div className="table-empty-state">Chưa có giao dịch kho.</div></td></tr>}</tbody>
         </table>
+      </div>
+      <div className="inventory-mobile-list inventory-movement-list" aria-label="Lịch sử giao dịch dạng thẻ">
+        {selectedMovements.map(movement=>{
+          const item=items.find(row=>row.id===movement.itemId)
+          return <article key={movement.id} className="inventory-mobile-card inventory-movement-card">
+            <div className="inventory-mobile-card-head">
+              <strong>{item?.code||'Vật tư không còn trong danh mục'}</strong>
+              <span className={'status '+(movement.type==='Nhập'?'green':movement.type==='Xuất'?'orange':'gray')}>{movement.type}</span>
+            </div>
+            {item&&<div className="inventory-mobile-meta">{item.name}</div>}
+            <div className="inventory-mobile-meta">{new Date(movement.date+'T00:00:00').toLocaleDateString('vi-VN')}</div>
+            <div className="inventory-mobile-quantities">
+              <div><small>Số lượng</small><strong>{numberText(movement.quantity)} {item?.unit||''}</strong></div>
+              <div><small>Tồn trước → sau</small><strong>{numberText(movement.balanceBefore)} → {numberText(movement.balanceAfter)}</strong></div>
+            </div>
+            <div className="inventory-mobile-detail"><small>Lý do</small><span>{movement.reason||'—'}</span></div>
+            <div className="inventory-mobile-detail"><small>Người thực hiện</small><span>{movement.performedBy||'—'}</span></div>
+          </article>
+        })}
+        {selectedMovements.length===0&&<div className="table-empty-state">Chưa có giao dịch kho.</div>}
       </div>
     </section>
 
