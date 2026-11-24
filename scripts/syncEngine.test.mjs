@@ -13,7 +13,7 @@ test('sync scheduler runs on startup, reconnect, focus and visible-tab return', 
   assert.match(source, /document\.visibilityState === 'hidden'/)
   assert.match(source, /if \(stopped \|\| \(options\.isActive/)
   assert.match(source, /if \(running\) \{\s*rerunRequested = true\s*return\s*\}/)
-  assert.match(source, /while \\([\\s\\S]*rerunRequested[\\s\\S]*canContinueSync\\(\\)/)
+  assert.match(source, /while \([\s\S]*rerunRequested[\s\S]*canContinueSync\(\)/)
   assert.match(source, /addEventListener\(SYNC_REQUEST_EVENT, onRequest\)/)
   assert.match(source, /clearInterval\(timer\)/)
 })
