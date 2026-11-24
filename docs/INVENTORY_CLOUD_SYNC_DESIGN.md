@@ -72,7 +72,7 @@ Use a fixed numeric precision that matches Local validation; before enabling Clo
 
 - `private.inventory_mutation_receipts`: idempotency receipt keyed by `(organization_id,mutation_id)`; stores actor, operation, exact request payload and result snapshots.
 - `private.inventory_sync_counters`: one monotonically increasing sequence per organization.
-- `private.inventory_sync_events`: immutable ordered events with `item_upsert`, `item_archive`, or `movement_append`, item snapshot, optional movement snapshot, and server timestamp.
+- `private.inventory_sync_events`: immutable ordered events with `mutation_id`, event type (`item_upsert`, `item_archive`, or `movement_append`), item snapshot, optional movement snapshot, and server timestamp. The mutation ID lets a device recognize its own mutation after a lost RPC response.
 - `private.inventory_activity_history`: append-only audit of metadata changes and archive actions; movement rows remain the authoritative quantity history.
 
 All private tables enable RLS and revoke direct access from `public`, `anon`, and `authenticated`.
