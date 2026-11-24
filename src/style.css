@@ -1946,3 +1946,53 @@ html,body,#root,.app-shell{
   width:0;
   min-width:0;
 }
+
+
+/* Authentication and platform-admin surfaces share the same control scale. */
+#root button,
+#root .app-shell button{
+  min-height:40px;
+  font-family:var(--font-family-ui);
+  line-height:1.25;
+}
+#root :is(.auth-page,.platform-admin-workspace) :is(.auth-submit,.platform-action-buttons button,.platform-org-actions button){
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:40px;
+  min-height:40px;
+  padding:0 12px;
+  border-radius:8px;
+  font-size:12px!important;
+  line-height:1.2;
+}
+#root .platform-admin-modal .platform-org-actions button{
+  min-width:0;
+  white-space:nowrap;
+}
+#root .platform-admin-modal .platform-action-buttons button{
+  min-height:40px;
+  height:40px;
+  padding:0 12px;
+}
+#root :is(.auth-input,.scan-manual-control,.member-search){
+  min-height:40px;
+}
+#root .auth-input input{
+  height:38px;
+  min-height:38px;
+  font-size:16px;
+}
+#root .auth-page .auth-submit{
+  min-width:120px;
+}
+@media(max-width:680px){
+  #root .auth-page .auth-card{
+    width:min(100%,440px);
+    margin:14px;
+    padding:22px 18px;
+  }
+  #root .auth-page .auth-input input{
+    font-size:16px;
+  }
+}
