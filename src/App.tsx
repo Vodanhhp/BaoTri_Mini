@@ -97,6 +97,8 @@ export default function App() {
   const [cloudLease,setCloudLease]=useState<ActiveCloudLease|null>(null)
   const [passwordRecovery,setPasswordRecovery]=useState(false)
   const [sessionReady, setSessionReady] = useState(!supabase)
+  const [platformAccess,setPlatformAccess]=useState(false)
+  const [platformAccessReady,setPlatformAccessReady]=useState(false)
   const [localPreview, setLocalPreview] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
   const [dashboardInventoryItems, setDashboardInventoryItems] = useState<InventoryItem[]>([])
@@ -159,6 +161,17 @@ export default function App() {
       data.subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(()=>{
+    let active=true
+    if(!session?.user.id||!supabase){setPlatformAccess(false);setPlatformAccessReady(true);return()=>{active=false}}
+    setPlatformAccess(false);setPlatformAccessReady(false)
+    supabase.functions.invoke('platform-check-access',{body:{}})
+      .then(({data,error})=>{if(active)setPlatformAccess(!error&&data?.allowed===true)})
+      .catch(()=>{if(active)setPlatformAccess(false)})
+      .finally(()=>{if(active)setPlatformAccessReady(true)})
+    return()=>{active=false}
+  },[session?.user.id])
 
   useEffect(() => {
     let active = true
@@ -1220,7 +1233,8 @@ export default function App() {
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
-  if(session&&supabase&&session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at))return <PlatformAdminPanel client={supabase} onClose={()=>{}} fullPage/>
+  if(session&&supabase&&!platformAccessReady)return <div className="loading-screen">Đang xác minh quyền quản trị nền tảng…</div>
+  if(session&&supabase&&platformAccess)return <PlatformAdminPanel client={supabase} onClose={()=>{}} fullPage/>
   if (!session && !localPreview) return <AuthScreen client={supabase} errorMessage={error} onLocalPreview={() => setLocalPreview(true)}/>
   if(session&&!organizationReady)return <div className="loading-screen">Đang tải tổ chức và quyền tài khoản…</div>
   if(session&&organizationContexts.length===0)return <main className="auth-page"><section className="auth-card"><h1>Tài khoản chưa được cấp tổ chức</h1><p className="auth-intro">Đăng nhập thành công, nhưng chưa có membership đang hoạt động. Admin cần khởi tạo tổ chức và gán vai trò cho tài khoản này.</p>{error&&<div className="auth-error">{error}</div>}<button className="auth-submit" onClick={()=>void signOut()}>Đăng xuất</button></section></main>
@@ -1261,7 +1275,7 @@ export default function App() {
 {canMutate&&<button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>}
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setOrganizationPlanPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><Building2 size={15}/><span>Gói dịch vụ</span></button>}
-          {session.user.email?.toLowerCase()==='tuanluongpham1980@gmail.com'&&Boolean(session.user.email_confirmed_at)&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
+          {platformAccess&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
         </div>}
       </div>}
       <div className="sidebar-bottom"><ShieldCheck size={15}/> Dữ liệu thiết bị Local</div>
