@@ -270,7 +270,7 @@ export default function InventoryPanel(props: Props) {
         <table className="table-standard inventory-catalog-table"><colgroup><col className="col-material"/><col className="col-group"/><col className="col-stock"/><col className="col-min-stock"/><col className="col-location"/><col className="col-status"/><col className="col-actions"/></colgroup><thead><tr><th>Mã / Tên vật tư</th><th>Nhóm</th><th>Tồn kho</th><th>Tồn tối thiểu</th><th>Vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>
             {visibleItems.map(item=><tr key={item.id} className={item.archivedAt?'inventory-archived-row':''}>
-              <td><button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.code}</b><small>{item.name}</small></button></td>
+              <td><button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.name}</b><small>{item.code}</small></button></td>
               <td>{item.group}</td>
               <td><b>{numberText(item.quantity)} {item.unit}</b></td>
               <td>{numberText(item.minQuantity)} {item.unit}</td>
@@ -295,7 +295,7 @@ export default function InventoryPanel(props: Props) {
       <div className="inventory-mobile-list" aria-label="Danh mục vật tư dạng thẻ">
         {visibleItems.map(item=><article key={item.id} className={`inventory-mobile-card ${item.archivedAt?'inventory-archived-row':''}`}>
           <div className="inventory-mobile-card-head">
-            <button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.code}</b><span>{item.name}</span></button>
+            <button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.name}</b><small>{item.code}</small></button>
             <span className={'status '+(item.archivedAt?'gray':item.quantity<=item.minQuantity?'red':'green')}>{item.archivedAt?'Đã lưu trữ':item.quantity<=item.minQuantity?'Sắp hết':'Đủ tồn'}</span>
           </div>
           <div className="inventory-mobile-meta">{item.group}{item.location?' · '+item.location:''}</div>
