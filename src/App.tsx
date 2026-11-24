@@ -880,7 +880,7 @@ export default function App() {
             await db.assets.update(savedByOtherTab.id,{idReservationStatus:'confirmed'})
             await db.assetDrafts.delete(value.id).catch(()=>false)
             setRecoverableDrafts(current=>current.filter(item=>item.id!==value.id))
-            await loadAssets();setShowForm(false);setEditing(null)
+            await loadAssets();setShowForm(false);setEditing(null);requestSync()
             notify('Thiết bị đã được lưu và xác nhận từ phiên khác.')
             return
           }
