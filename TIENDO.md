@@ -2054,3 +2054,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thiết lập khổ giấy A4 dọc; bảng lịch sử lặp tiêu đề cột khi qua trang và tránh ngắt một dòng giao dịch giữa hai trang. Trình duyệt mở hộp thoại in để người dùng chọn máy in hoặc lưu PDF.
 - Không thay đổi dữ liệu, quyền nghiệp vụ, lịch sử gốc, schema, migration hoặc đồng bộ Local ↔ Cloud. Lưu ý: hiện hệ thống không có nhật ký riêng cho từng lần sửa metadata, nên phiếu không thể liệt kê các phiên bản thông tin cũ; phần lịch sử bao gồm các giao dịch kho và sự kiện lưu trữ hiện có.
 - Regression test bổ sung kiểm tra trường thông tin, lịch sử và định dạng A4. GitHub Actions Build and test SUCCESS (run 45404628830); GitHub Pages build/deploy SUCCESS (run 45404628906). Chưa kiểm tra trực quan bản in trên máy in vật lý; cần người dùng thử in/lưu PDF để xác nhận cách ngắt trang theo dữ liệu thực tế.
+
+### Điều chỉnh phiếu in kho vật tư — 24/11/2026
+
+- Mở rộng cột **Ngày giờ** trong bảng lịch sử từ 13% lên 21% chiều rộng bảng; giảm nhẹ các cột khác để tổng tỷ lệ vẫn bằng 100%, đồng thời giữ ngày giờ trên một dòng và giảm nhẹ cỡ chữ riêng ở ô thời gian để hạn chế tràn/chèn sang cột kế bên.
+- Phần đầu phiếu hiển thị tên doanh nghiệp/đơn vị đang đăng nhập; dòng phụ nhận diện BAOTRI MINI và tên phiếu.
+- Cuối phiếu bổ sung **Người yêu cầu in: [vai trò] — [tên tài khoản]**, lấy vai trò Admin/KTV/Viewer và tên hiển thị hoặc email tài khoản hiện hành.
+- Chỉ thay đổi thông tin nhận diện và CSS bản in; không thay đổi dữ liệu kho, lịch sử giao dịch, quyền, schema, Supabase hoặc đồng bộ Local ↔ Cloud. Chưa kiểm tra trực quan bản in trên trình duyệt/máy in thật.
