@@ -1889,3 +1889,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Màn hình hẹp tiếp tục xếp thông tin theo hai hàng; menu thao tác vẫn mở được mà không làm tràn dòng.
 - Bổ sung regression test cho tỷ lệ cột, nút ba chấm và bố cục mobile.
 - Chỉ thay đổi CSS/test/tài liệu; không đổi logic, Auth, phân quyền, dữ liệu, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.
+
+
+### 24/11/2026 — Thu gọn giao diện Thuê bao doanh nghiệp (PR #46)
+- Thu gọn modal Gói dịch vụ: giảm chiều rộng tối đa, padding, khoảng cách giữa các khối và chiều cao vùng nhập ghi chú.
+- Thu gọn khu vực yêu cầu Reset: giảm khoảng cách đầu mục, tiêu đề và phần mô tả; giữ nguyên cảnh báo, checkbox xác nhận và nút gửi.
+- Hai bảng Lịch sử yêu cầu Plan và Lịch sử yêu cầu Reset chuyển sang bố cục fixed theo chiều rộng modal, giảm padding ô và cỡ chữ phụ; bỏ min-width lớn gây cuộn ngang không cần thiết.
+- Bảng Reset ưu tiên cột Lý do/phản hồi; cột số Cloud/Local căn giữa và gọn hơn. Màn hình nhỏ vẫn giữ đủ cột trong vùng hiển thị.
+- Bổ sung regression tests cho CSS bố cục và xác nhận các hành động submit/cảnh báo vẫn hiện diện.
+- Chỉ thay đổi React markup class, CSS, test và tài liệu; không thay đổi API, luồng duyệt Plan/Reset, dữ liệu, Auth, quyền, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.
