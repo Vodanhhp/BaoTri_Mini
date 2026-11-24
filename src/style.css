@@ -2823,3 +2823,34 @@ html,body,#root,.app-shell{
   .equipment-print-footer>span {align-self:flex-start;}
   .equipment-print-footer strong {align-self:flex-end;max-width:75%;margin-top:8px;text-align:right;font-size:9pt;line-height:1.5;color:#111;}
 }
+
+
+/* Organization name-change request: compact spacing consistent with subscription panel. */
+#root .plan-request-modal .organization-name-request-section{margin-top:8px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb)}
+#root .plan-request-modal .organization-name-request-section .panel-head{margin-bottom:7px;gap:8px}
+#root .plan-request-modal .organization-name-request-section h3{font-size:13px;margin:0 0 3px}
+#root .plan-request-modal .organization-name-request-section p{font-size:10px;line-height:1.4;margin:0}
+#root .plan-request-modal .organization-name-current{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:7px 10px;margin-bottom:8px;border:1px solid var(--border);border-radius:8px;background:var(--panel-alt);font-size:11px}
+#root .plan-request-modal .organization-name-current span{color:var(--muted)}
+#root .plan-request-modal .organization-name-current b{font-size:12px}
+#root .plan-request-modal .organization-name-form{gap:8px}
+#root .plan-request-modal .organization-name-form .field{gap:4px;font-size:11px}
+#root .plan-request-modal .organization-name-form input,#root .plan-request-modal .organization-name-form textarea{padding:8px 10px;font-size:11px;min-height:36px}
+#root .plan-request-modal .organization-name-form textarea{min-height:54px}
+#root .plan-request-modal .name-change-history-wrap{width:100%;overflow-x:auto;border-radius:8px}
+#root .plan-request-modal .name-change-history-table{width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10px}
+#root .plan-request-modal .name-change-history-table th,#root .plan-request-modal .name-change-history-table td{padding:7px 8px;font-size:10px;white-space:normal;overflow-wrap:anywhere;vertical-align:top}
+#root .plan-request-modal .name-change-history-table th:nth-child(1){width:30%}
+#root .plan-request-modal .name-change-history-table th:nth-child(2){width:17%}
+#root .plan-request-modal .name-change-history-table th:nth-child(3){width:38%}
+#root .plan-request-modal .name-change-history-table th:nth-child(4){width:15%}
+.platform-name-requests{margin-top:18px}
+.name-change-platform-table-wrap{max-height:440px;overflow:auto}
+.name-change-platform-table{min-width:900px;table-layout:fixed}
+.name-change-platform-table th:nth-child(1){width:16%}.name-change-platform-table th:nth-child(2){width:24%}.name-change-platform-table th:nth-child(3){width:15%}.name-change-platform-table th:nth-child(4){width:23%}.name-change-platform-table th:nth-child(5){width:10%}.name-change-platform-table th:nth-child(6){width:12%}
+.name-change-platform-table td{white-space:normal;overflow-wrap:anywhere;vertical-align:top}
+@media(max-width:720px){
+ #root .plan-request-modal .organization-name-current{display:block}
+ #root .plan-request-modal .organization-name-current b{display:block;margin-top:3px}
+ #root .plan-request-modal .name-change-history-table{min-width:560px!important}
+}
