@@ -23,6 +23,7 @@ export function startSyncEngine(options: SyncEngineOptions): () => void {
   let running = false
   let rerunRequested = false
   const intervalMs = Math.max(15_000, options.intervalMs ?? 60_000)
+  const canContinueSync = () => navigator.onLine && document.visibilityState !== 'hidden'
 
   const execute = async () => {
     if (stopped || (options.isActive && !options.isActive())) return
@@ -40,8 +41,7 @@ export function startSyncEngine(options: SyncEngineOptions): () => void {
       } while (
         !stopped &&
         rerunRequested &&
-        navigator.onLine &&
-        document.visibilityState !== 'hidden' &&
+        canContinueSync() &&
         (!options.isActive || options.isActive())
       )
     } finally {
