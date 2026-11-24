@@ -246,14 +246,15 @@ export default function App() {
     const applyKnownOrganizationResets=async()=>{
       if(!navigator.onLine)return
       try{
-        const [localRows,resetRows,historyRows,draftRows,mutationRows,linkRows,groupRows]=await Promise.all([
+        const [localRows,resetRows,historyRows,draftRows,mutationRows,linkRows,groupRows,importQueueRows]=await Promise.all([
           db.assets.toArray(),
           db.organizationAssetResetStates.toArray(),
           db.assetHistory.toArray(),
           db.assetDrafts.toArray(),
           db.assetMutations.toArray(),
           db.assetCloudLinks.toArray(),
-          db.assetGroupChanges.toArray()
+          db.assetGroupChanges.toArray(),
+          db.assetImportQueue.toArray()
         ])
         const scopes=new Set<string>([
           ...localRows.map(row=>row.localScope),
@@ -262,7 +263,8 @@ export default function App() {
           ...draftRows.map(row=>row.organizationId),
           ...mutationRows.map(row=>row.organizationId),
           ...linkRows.map(row=>row.organizationId),
-          ...groupRows.map(row=>row.organizationId)
+          ...groupRows.map(row=>row.organizationId),
+          ...importQueueRows.map(row=>row.organizationId)
         ])
         scopes.delete('local-preview')
         for(const scope of scopes){
