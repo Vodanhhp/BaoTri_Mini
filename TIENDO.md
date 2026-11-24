@@ -2061,3 +2061,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Phần đầu phiếu hiển thị tên doanh nghiệp/đơn vị đang đăng nhập; dòng phụ nhận diện BAOTRI MINI và tên phiếu.
 - Cuối phiếu bổ sung **Người yêu cầu in: [vai trò] — [tên tài khoản]**, lấy vai trò Admin/KTV/Viewer và tên hiển thị hoặc email tài khoản hiện hành.
 - Chỉ thay đổi thông tin nhận diện và CSS bản in; không thay đổi dữ liệu kho, lịch sử giao dịch, quyền, schema, Supabase hoặc đồng bộ Local ↔ Cloud. Chưa kiểm tra trực quan bản in trên trình duyệt/máy in thật.
+
+
+### Điều chỉnh lại bố cục phiếu in kho vật tư — 24/11/2026
+
+- Thu hẹp cột Ngày giờ từ 21% xuống 14%; cho phép xuống dòng tự nhiên để không chiếm dư chiều rộng.
+- Mở rộng cột Nghiệp vụ lên 16%; Tồn trước và Tồn sau lên 9% mỗi cột; cân đối các cột còn lại, tổng chiều rộng 100%.
+- Căn giữa số liệu Tồn trước/Tồn sau; nhấn nhẹ nội dung cột Nghiệp vụ để dễ phân biệt.
+- Chuyển dòng Người yêu cầu in xuống góc phải cuối phiếu; tăng khoảng cách với phần ghi chú và tạo khoảng đệm/đường phân cách để tách thành khối chữ ký riêng.
+- Chỉ thay đổi CSS in và regression test; không đổi dữ liệu, nghiệp vụ, quyền, Supabase hoặc đồng bộ. Chưa kiểm tra trực quan bản in trên trình duyệt/máy in thật.
