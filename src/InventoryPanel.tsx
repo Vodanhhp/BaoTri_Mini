@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { type InventoryItem, type InventoryMovement } from './db'
+import { Download } from 'lucide-react'
 import {
   archiveInventoryItem, createInventoryItem, listInventoryItems, listInventoryMovements,
   postInventoryMovement, adjustInventoryCount, updateInventoryItemMetadata,
@@ -15,6 +16,7 @@ type Props = {
   canUpdate: boolean
   canAdjust: boolean
   canDelete: boolean
+  canExport: boolean
   isAdmin: boolean
 }
 
@@ -31,7 +33,7 @@ const numberText = (value: number) => value.toLocaleString('vi-VN', { maximumFra
 const moneyText = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ'
 
 export default function InventoryPanel(props: Props) {
-  const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, isAdmin } = props
+  const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, canExport, isAdmin } = props
   const actor: InventoryActor = { organizationId, userId, label: userLabel, canCreate, canUpdate, canAdjust, canDelete, isAdmin }
   const [items, setItems] = useState<InventoryItem[]>([])
   const [customGroups, setCustomGroups] = useState<string[]>([])
@@ -104,6 +106,30 @@ export default function InventoryPanel(props: Props) {
   const selectedMovements = selected
     ? movements.filter(movement => movement.itemId === selected.id)
     : movements.slice(0, 20)
+
+  const exportInventory = async () => {
+    if(!canExport)return
+    if(visibleItems.length===0){setNotice('Không có vật tư trong danh sách hiện tại để xuất Excel.');return}
+    try{
+      setError('')
+      const {downloadExcelReport}=await import('./lib/excelExport')
+      const headers=['Mã vật tư','Tên vật tư','Nhóm vật tư','Mã phụ tùng','Kích cỡ / quy cách','Đơn vị tính','Tồn hiện tại','Tồn tối thiểu','Tình trạng tồn','Đơn giá','Giá trị tồn','Vị trí lưu kho','Nhà cung cấp','Trạng thái hồ sơ','Ngày tạo','Cập nhật lần cuối']
+      const rows=visibleItems.map(item=>({
+        'Mã vật tư':item.code,'Tên vật tư':item.name,'Nhóm vật tư':item.group,
+        'Mã phụ tùng':item.partNumber||'','Kích cỡ / quy cách':item.size||'','Đơn vị tính':item.unit,
+        'Tồn hiện tại':item.quantity,'Tồn tối thiểu':item.minQuantity,
+        'Tình trạng tồn':item.archivedAt?'Đã lưu trữ':item.quantity<=item.minQuantity?'Sắp hết':'Đủ tồn',
+        'Đơn giá':item.unitPrice,'Giá trị tồn':item.quantity*item.unitPrice,
+        'Vị trí lưu kho':item.location||'','Nhà cung cấp':item.supplier||'',
+        'Trạng thái hồ sơ':item.archivedAt?'Đã lưu trữ':'Đang theo dõi',
+        'Ngày tạo':new Date(item.createdAt).toLocaleDateString('vi-VN'),
+        'Cập nhật lần cuối':new Date(item.updatedAt).toLocaleDateString('vi-VN')
+      }))
+      await downloadExcelReport(rows,'ton-kho-vat-tu.xlsx','BÁO CÁO TỒN KHO VẬT TƯ','Tồn kho vật tư',headers,'landscape')
+      setNotice('Đã xuất '+rows.length+' vật tư ra Excel.')
+    }catch(cause){setError('Xuất Excel vật tư thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
+  }
+
 
   const openCreate = () => {
     setError(''); setGroupCreateOpen(false); setNewGroupName('')
@@ -223,6 +249,7 @@ export default function InventoryPanel(props: Props) {
       <div className="panel-head">
         <div><h2>Danh mục vật tư</h2><p>Thông tin và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p></div>
         <div className="top-actions">
+          {canExport&&<button type="button" className="soft-btn" disabled={busy} onClick={()=>void exportInventory()}><Download size={16}/> Xuất Excel</button>}
           <button type="button" className={includeArchived?'soft-btn active':'soft-btn'} onClick={()=>setIncludeArchived(value=>!value)}>{includeArchived?'Ẩn vật tư lưu trữ':'Xem vật tư lưu trữ'}</button>
           {canCreate && <button type="button" className="primary-btn" onClick={openCreate}>+ Thêm vật tư</button>}
         </div>
