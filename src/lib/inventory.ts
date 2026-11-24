@@ -1,6 +1,6 @@
 import {
   db, now, uid,
-  type InventoryItem, type InventoryMovement, type InventoryMovementType,
+  type InventoryItem, type InventoryGroup, type InventoryMovement, type InventoryMovementType,
   type InventoryMutation, type InventorySyncStatus
 } from '../db'
 import { requestSync } from './syncEngine'
@@ -38,6 +38,48 @@ const clean = (value: string | undefined) => (value ?? '').trim().replace(/\s+/g
 
 export function normalizeInventoryCode(value: string): string {
   return clean(value).toLocaleUpperCase('vi-VN')
+}
+
+export function normalizeInventoryGroupName(value: string): string {
+  return clean(value).toLocaleLowerCase('vi-VN')
+}
+
+export async function listInventoryGroups(organizationId: string): Promise<InventoryGroup[]> {
+  if (!organizationId.trim()) return []
+  return db.inventoryGroups.where('organizationId').equals(organizationId).toArray()
+    .then(rows => rows.sort((a, b) => a.name.localeCompare(b.name, 'vi')))
+}
+
+export async function createInventoryGroup(actor: InventoryActor, nameInput: string): Promise<InventoryGroup> {
+  requireOrganization(actor)
+  requirePermission(actor.canCreate, 'thêm nhóm vật tư')
+  const name = clean(nameInput)
+  if (!name) throw new Error('Tên nhóm vật tư không được để trống.')
+  if (name.length > 60) throw new Error('Tên nhóm vật tư không được vượt quá 60 ký tự.')
+  const nameNormalized = normalizeInventoryGroupName(name)
+  return db.transaction('rw', [db.inventoryGroups], async () => {
+    const duplicate = await db.inventoryGroups.where('[organizationId+nameNormalized]')
+      .equals([actor.organizationId, nameNormalized]).first()
+    if (duplicate) throw new Error('Nhóm vật tư này đã tồn tại.')
+    const group: InventoryGroup = {
+      id: uid(), organizationId: actor.organizationId, name, nameNormalized,
+      createdByLabel: clean(actor.label) || 'Tài khoản', createdAt: now()
+    }
+    await db.inventoryGroups.add(group)
+    return group
+  })
+}
+
+async function nextInventoryCode(organizationId: string): Promise<string> {
+  const rows = await db.inventoryItems.where('organizationId').equals(organizationId).toArray()
+  const highest = rows.reduce((max, item) => {
+    const match = /^VT-(\\d+)$/i.exec(item.code.trim())
+    return match ? Math.max(max, Number(match[1])) : max
+  }, 0)
+  let next = highest + 1
+  while (await db.inventoryItems.where('[organizationId+codeNormalized]')
+    .equals([organizationId, normalizeInventoryCode(`VT-${String(next).padStart(3, '0')}`)]).first()) next += 1
+  return `VT-${String(next).padStart(3, '0')}`
 }
 
 function requireOrganization(actor: InventoryActor): void {
@@ -171,7 +213,6 @@ export async function createInventoryItem(
 ): Promise<InventoryItem> {
   requireOrganization(actor)
   requirePermission(actor.canCreate, 'thêm vật tư')
-  const code = clean(input.code)
   const name = clean(input.name)
   const group = clean(input.group) || 'Khác'
   const unit = clean(input.unit)
@@ -191,31 +232,31 @@ export async function createInventoryItem(
 
   const at = now()
   const itemId = uid()
-  const codeNormalized = normalizeInventoryCode(code)
-  const item: InventoryItem = {
-    id: itemId,
-    organizationId: actor.organizationId,
-    localScope: actor.organizationId,
-    code,
-    codeNormalized,
-    name,
-    group,
-    unit,
-    partNumber: clean(input.partNumber) || undefined,
-    size: clean(input.size) || undefined,
-    quantity: openingQuantity,
-    minQuantity,
-    location: clean(input.location),
-    supplier: clean(input.supplier),
-    unitPrice,
-    createdByUserId: actor.userId,
-    createdByLabel: clean(actor.label) || 'Tài khoản',
-    createdAt: at,
-    updatedAt: at
-  }
-
   const created = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations], async () => {
+    const code = await nextInventoryCode(actor.organizationId)
+    const codeNormalized = normalizeInventoryCode(code)
     await assertCodeAvailable(actor.organizationId, code)
+    const item: InventoryItem = {
+      id: itemId,
+      organizationId: actor.organizationId,
+      localScope: actor.organizationId,
+      code,
+      codeNormalized,
+      name,
+      group,
+      unit,
+      partNumber: clean(input.partNumber) || undefined,
+      size: clean(input.size) || undefined,
+      quantity: openingQuantity,
+      minQuantity,
+      location: clean(input.location),
+      supplier: clean(input.supplier),
+      unitPrice,
+      createdByUserId: actor.userId,
+      createdByLabel: clean(actor.label) || 'Tài khoản',
+      createdAt: at,
+      updatedAt: at
+    }
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
     const createItemPayload = { ...metadataSnapshot(item), created_by_label: item.createdByLabel ?? null }
     const mutation = makeMutation(actor, itemId, 'create', { item: createItemPayload, opening_quantity: openingQuantity }, at, localSequence)
