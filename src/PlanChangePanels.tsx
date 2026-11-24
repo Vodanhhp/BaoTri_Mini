@@ -134,6 +134,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
      <div className="auth-note full-field">Gửi yêu cầu không làm thay đổi Plan ngay. Super Admin sẽ xem xét điều kiện thương mại/thanh toán và quyết định duyệt hoặc từ chối. Khi đổi Plan, mã quản lý và hồ sơ thiết bị đã cấp vẫn được giữ nguyên.</div>
      <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose} disabled={busy}>Đóng</button><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
     </form>}
+    <OrganizationNameChangeRequestPanel client={client} organizationId={organizationId}/>
     <OrganizationAssetResetRequestPanel client={client} organizationId={organizationId}/>
     <div className="divider plan-section-divider"/>
     <h3 className="plan-history-heading">Lịch sử yêu cầu</h3>
@@ -348,5 +349,118 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
     </form>
    </section>
   </div>}
+ </section>
+}
+
+
+type OrganizationNameChangeRequest={
+ id:string;organization_id:string;organization_name?:string;old_name:string;requested_name:string;
+ requester_user_id:string;requester_email?:string;status:'pending'|'approved'|'rejected';
+ requester_note:string;review_note:string;requested_at:string;reviewed_at?:string
+}
+const nameStatus=(status:OrganizationNameChangeRequest['status'])=>status==='approved'?'Đã duyệt':status==='rejected'?'Từ chối':'Chờ duyệt'
+const nameStatusClass=(status:OrganizationNameChangeRequest['status'])=>status==='approved'?'green':status==='rejected'?'red':'orange'
+
+export function OrganizationNameChangeRequestPanel({client,organizationId}:{client:SupabaseClient;organizationId:string}){
+ const [currentName,setCurrentName]=useState('')
+ const [requestedName,setRequestedName]=useState('')
+ const [note,setNote]=useState('')
+ const [requests,setRequests]=useState<OrganizationNameChangeRequest[]>([])
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
+ const [error,setError]=useState(''),[message,setMessage]=useState('')
+ const load=useCallback(async()=>{
+  setLoading(true);setError('')
+  try{
+   const [org,history]=await Promise.all([
+    client.from('organizations').select('name').eq('id',organizationId).single(),
+    client.functions.invoke('organization-name-change-requests',{body:{action:'list',organizationId}})
+   ])
+   if(org.error)throw org.error
+   if(history.error)throw new Error(await invokeErrorMessage(history.error))
+   if(history.data?.error)throw new Error(history.data.error)
+   setCurrentName(org.data.name)
+   setRequests((history.data?.requests??[]) as OrganizationNameChangeRequest[])
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setLoading(false)}
+ },[client,organizationId])
+ useEffect(()=>{void load()},[load])
+ const pending=requests.some(r=>r.status==='pending')
+ const submit=async(e:FormEvent)=>{
+  e.preventDefault()
+  if(busy||pending)return
+  setBusy(true);setError('');setMessage('')
+  try{
+   const {data,error}=await client.functions.invoke('organization-name-change-requests',{body:{action:'submit',organizationId,requestedName:requestedName.trim(),note:note.trim()}})
+   if(error)throw new Error(await invokeErrorMessage(error))
+   if(data?.error)throw new Error(data.error)
+   setMessage(data?.message||'Đã gửi yêu cầu đổi tên doanh nghiệp.')
+   setRequestedName('');setNote('');await load()
+  }catch(e){setError(await invokeErrorMessage(e))}
+  finally{setBusy(false)}
+ }
+ return <section className="organization-name-request-section">
+  <div className="panel-head reset-request-head"><div><h3>Yêu cầu đổi tên doanh nghiệp</h3><p>Áp dụng khi doanh nghiệp thay đổi tên pháp lý hoặc tên giao dịch.</p></div><button type="button" className="soft-btn" onClick={()=>void load()} disabled={loading||busy}>Làm mới</button></div>
+  {error&&<div className="auth-error">{error}</div>}{message&&<div className="cloud-message">{message}</div>}
+  {loading?<div className="auth-note">Đang tải thông tin doanh nghiệp…</div>:<>
+   <div className="organization-name-current"><span>Tên đang sử dụng</span><b>{currentName||'—'}</b></div>
+   {pending?<div className="auth-note"><b>Đang có yêu cầu đổi tên chờ duyệt.</b> Không thể gửi yêu cầu khác cho đến khi Super Admin xử lý.</div>:
+    <form className="form-grid organization-name-form" onSubmit={submit}>
+     <label className="field full-field">Tên doanh nghiệp mới *<input required minLength={2} maxLength={160} value={requestedName} onChange={e=>setRequestedName(e.target.value)} placeholder="Nhập tên doanh nghiệp sau khi thay đổi"/></label>
+     <label className="field full-field">Ghi chú / lý do (không bắt buộc)<textarea rows={2} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Ví dụ: thay đổi tên theo giấy chứng nhận đăng ký doanh nghiệp…"/></label>
+     <div className="auth-note full-field">Gửi yêu cầu không đổi tên ngay. Super Admin sẽ kiểm tra hồ sơ và phê duyệt. Khi được duyệt, tên mới cập nhật trên hệ thống; mã doanh nghiệp, tài khoản, thiết bị, vật tư, lịch sử và Plan được giữ nguyên.</div>
+     <div className="modal-actions full-field"><button type="submit" className="primary-btn" disabled={busy||requestedName.trim().length<2||requestedName.trim().toLocaleLowerCase('vi')===currentName.trim().toLocaleLowerCase('vi')}>{busy?'Đang gửi…':'Gửi yêu cầu đổi tên'}</button></div>
+    </form>}
+   <h3 className="reset-history-heading">Lịch sử yêu cầu đổi tên</h3>
+   {requests.length===0?<div className="table-empty-state">Chưa có yêu cầu đổi tên.</div>:<div className="table-wrap table-standard-wrap name-change-history-wrap"><table className="table-standard name-change-history-table"><thead><tr><th>Tên cũ → tên mới</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(r=><tr key={r.id}><td><b>{r.old_name}</b><div>→ {r.requested_name}</div></td><td>{dateTime(r.requested_at)}</td><td className="table-note-cell">{r.requester_note&&<small>Lý do: {r.requester_note}</small>}{r.review_note&&<small>Phản hồi: {r.review_note}</small>}{!r.requester_note&&!r.review_note?'—':null}</td><td><span className={'status '+nameStatusClass(r.status)}>{nameStatus(r.status)}</span></td></tr>)}</tbody></table></div>}
+  </>}
+ </section>
+}
+
+export function PlatformNameChangeRequestsPanel({client}:{client:SupabaseClient}){
+ const [requests,setRequests]=useState<OrganizationNameChangeRequest[]>([])
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false)
+ const [selected,setSelected]=useState<OrganizationNameChangeRequest|null>(null)
+ const [decision,setDecision]=useState<'approve'|'reject'>('approve')
+ const [password,setPassword]=useState(''),[reviewNote,setReviewNote]=useState('')
+ const [confirmed,setConfirmed]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('')
+ const load=useCallback(async()=>{
+  setLoading(true);setError('')
+  try{const {data,error}=await client.functions.invoke('platform-manage-organization-name-change-requests',{body:{action:'list'}})
+   if(error)throw new Error(await invokeErrorMessage(error))
+   if(data?.error)throw new Error(data.error)
+   setRequests((data?.requests??[]) as OrganizationNameChangeRequest[])
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setLoading(false)}
+ },[client])
+ useEffect(()=>{void load()},[load])
+ const begin=(r:OrganizationNameChangeRequest,d:'approve'|'reject')=>{setSelected(r);setDecision(d);setPassword('');setReviewNote('');setConfirmed(false);setError('')}
+ const cancel=()=>{setSelected(null);setPassword('');setReviewNote('');setConfirmed(false)}
+ const submit=async(e:FormEvent)=>{
+  e.preventDefault();if(!selected||busy)return
+  if(decision==='reject'&&!reviewNote.trim()){setError('Bắt buộc nhập lý do từ chối.');return}
+  setBusy(true);setError('');setMessage('')
+  try{const {data,error}=await client.functions.invoke('platform-manage-organization-name-change-requests',{body:{action:decision,requestId:selected.id,password,confirmation:confirmed?'yes':'no',reviewNote}})
+   if(error)throw new Error(await invokeErrorMessage(error))
+   if(data?.error)throw new Error(data.error)
+   setMessage(data?.message||'Đã xử lý yêu cầu đổi tên.');cancel();await load()
+  }catch(e){setError(await invokeErrorMessage(e))}
+  finally{setBusy(false)}
+ }
+ return <section className="platform-name-requests">
+  <div className="panel-head"><div><h3>Yêu cầu đổi tên doanh nghiệp</h3><p>Kiểm tra tên mới trước khi phê duyệt; mọi lần đổi tên đều được lưu lịch sử.</p></div><button className="soft-btn" onClick={()=>void load()} disabled={loading}>Làm mới</button></div>
+  {error&&<div className="auth-error">{error}</div>}{message&&<div className="cloud-message">{message}</div>}
+  {loading?<div className="auth-note">Đang tải yêu cầu đổi tên…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu đổi tên doanh nghiệp.</div>:
+   <div className="table-wrap table-standard-wrap name-change-platform-table-wrap"><table className="table-standard name-change-platform-table"><thead><tr><th>Doanh nghiệp</th><th>Tên cũ → tên mới</th><th>Người gửi</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(r=><tr key={r.id}><td><b>{r.organization_name||r.organization_id}</b><small className="table-subtext">{dateTime(r.requested_at)}</small></td><td><b>{r.old_name}</b><div>→ {r.requested_name}</div></td><td>{r.requester_email||r.requester_user_id}</td><td className="table-note-cell">{r.requester_note||r.review_note||'—'}</td><td><span className={'status '+nameStatusClass(r.status)}>{nameStatus(r.status)}</span></td><td><div className="table-action-group">{r.status==='pending'&&<><button className="primary-btn small" onClick={()=>begin(r,'approve')}>Duyệt</button><button className="soft-btn small" onClick={()=>begin(r,'reject')}>Từ chối</button></>}</div></td></tr>)}</tbody></table></div>}
+  {selected&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)cancel()}}><section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="name-review-title">
+   <div className="platform-action-head"><div><span className="platform-action-kicker">XỬ LÝ YÊU CẦU ĐỔI TÊN</span><h3 id="name-review-title">{decision==='approve'?'Phê duyệt tên doanh nghiệp mới':'Từ chối yêu cầu đổi tên'}</h3><p>{selected.organization_name||selected.organization_id}</p></div><button className="icon-btn" onClick={cancel} disabled={busy}>×</button></div>
+   <div className="platform-action-note"><b>{selected.old_name}</b><br/>↓<br/><b>{selected.requested_name}</b><p>Phê duyệt chỉ cập nhật tên tổ chức; không thay đổi mã tổ chức, tài khoản, thiết bị, vật tư, lịch sử hoặc Plan.</p></div>
+   <form className="platform-action-form" onSubmit={submit}>
+    <label className="field">Ghi chú xử lý<textarea rows={2} maxLength={1000} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Ghi chú nội bộ hoặc lý do từ chối…"/></label>
+    <label className="field">Mật khẩu Super Admin *<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Nhập lại mật khẩu"/></label>
+    <label style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi đã kiểm tra thông tin tên mới và xác nhận {decision==='approve'?'phê duyệt':'từ chối'} yêu cầu.</span></label>
+    {error&&<div className="auth-error">{error}</div>}
+    <div className="platform-action-buttons"><button type="button" className="soft-btn" onClick={cancel} disabled={busy}>Hủy</button><button type="submit" className={decision==='approve'?'primary-btn':'danger-btn'} disabled={busy||!confirmed||!password||(decision==='reject'&&!reviewNote.trim())}>{busy?'Đang xử lý…':decision==='approve'?'Xác nhận phê duyệt':'Xác nhận từ chối'}</button></div>
+   </form>
+  </section></div>}
  </section>
 }
