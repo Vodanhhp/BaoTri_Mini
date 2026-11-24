@@ -44,3 +44,11 @@ test('equipment QR sticker keeps the QR and prints only the device ID and name t
   assert.match(css, /\\.asset-sticker-info\\s*\\{[^}]*width:27mm/s)
   assert.match(css, /\\.asset-sticker-info strong\\s*\\{[^}]*overflow-wrap:anywhere/s)
 })
+
+
+test('equipment list does not show a duplicate archive action; status remains managed in the equipment detail/editor', () => {
+  assert.doesNotMatch(app, /onClick=\{\(\)=>void archiveAsset\(asset\)\}[\\s\\S]{0,100}Lưu kho/)
+  assert.match(app, /Thay đổi trạng thái/)
+  assert.match(app, /value=\{editing\.archivedAt\?'Lưu kho':editing\.status\}/)
+  assert.match(app, /const restoreAsset = async \(asset: Asset\) =>/)
+})
