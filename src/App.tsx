@@ -430,7 +430,7 @@ export default function App() {
     }
     setCatalogSaveBusy(true)
     try {
-      const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,organizationId,snapshot)
+      const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,organizationId,snapshot,equipmentCatalog?.updated_at||'')
       setEquipmentCatalog(saved)
       return saved
     } finally {
