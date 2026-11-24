@@ -2009,3 +2009,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nhánh mã nguồn: `feat/inventory-local-cloud-sync`. Chưa merge, chưa deploy frontend. Không thay đổi dữ liệu kho hiện có, không bật đồng bộ ở production frontend cho đến khi PR được review/merge và kiểm thử.
 
 - Bổ sung migration hardening `20261124130401_inventory_cloud_sync_hardening.sql` (đã áp dụng trực tiếp, version `20261124130401`): khóa mã vật tư khi sửa metadata, kiểm tra số kiểm kê khớp tồn sau điều chỉnh, và thu hồi quyền gọi trực tiếp helper ghi change-feed.
+
+- Kiểm tra tĩnh hợp đồng mã nguồn/migration: 8/8 điều kiện đạt. GitHub Actions chưa trả workflow run/status cho head commit; do đó chưa xác nhận `npm test` hoặc `npm run build` đã chạy. Không có kiểm thử RPC bằng JWT, browser hoặc thiết bị thật trong bước này.
