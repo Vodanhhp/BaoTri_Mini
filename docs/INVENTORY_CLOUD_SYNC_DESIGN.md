@@ -220,3 +220,15 @@ Queue-order hardening:
 - Each Local inventory mutation now receives a per-item `localSequence` inside the same Dexie transaction that records it.
 - The Cloud worker orders mutations by `localSequence` first and uses `createdAt` only as a fallback. This avoids ambiguous ordering when multiple stock operations occur within the same millisecond.
 - This sequence is Local queue metadata only; Cloud sequence remains the server-owned feed cursor.
+
+
+## 11. SQL draft prepared for review (24/11/2026)
+
+- Draft SQL is stored at `docs/drafts/INVENTORY_CLOUD_MIGRATION_DRAFT.sql`, deliberately outside `supabase/migrations`.
+- It includes organization-scoped item/movement tables, private mutation receipts, append-only activity history, ordered feed counters/events, RLS, revoked direct table access, private SECURITY DEFINER implementations, and public SECURITY INVOKER wrappers.
+- RPC signatures and JSON field names match `src/lib/inventoryCloud.ts`.
+- Server derives code normalization, actor identity, movement balances and event sequence. Stock quantity updates and movement insertion are atomic.
+- SQL and Local both target six decimal places; Local rejects values that would be rounded by Cloud.
+- The target's existing `private.has_org_permission(uuid,text)` and `private.has_org_role(uuid,text)` definitions were inspected read-only. They verify active organization membership and assigned active roles; role grants confirm Admin all five Inventory permissions, Technician view/create/update/adjust, Viewer view only.
+- The SQL is a draft only and has not been syntax-validated against a local PostgreSQL instance. It has not been added to `supabase/migrations`, executed, or applied to any Supabase project.
+- Before converting it into a migration, review all SQL carefully, validate locally against PostgreSQL 17, and generate the migration filename with `supabase migration new` on a checked-out repository.
