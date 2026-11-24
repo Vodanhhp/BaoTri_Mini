@@ -2656,3 +2656,47 @@ html,body,#root,.app-shell{
   height:18px!important;
   flex:0 0 18px;
 }
+
+
+/* 24/11/2026 — Compact transaction history table; do not inherit the wide catalog table sizing. */
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-wrap{
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table{
+  width:100%;
+  min-width:0!important;
+  table-layout:fixed;
+  white-space:normal;
+  font-size:11px;
+}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-date{width:10%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-code{width:10%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-type{width:10%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-quantity{width:11%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-before{width:10%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-after{width:10%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-reason{width:17%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table .history-user{width:22%}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table :is(th,td){
+  padding:7px 8px;
+  font-size:11px!important;
+  line-height:1.4;
+  vertical-align:middle;
+  overflow-wrap:anywhere;
+}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table th{
+  white-space:normal;
+  font-size:10px!important;
+}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-history-table td .status{
+  padding:3px 7px;
+  font-size:9px!important;
+  white-space:nowrap;
+}
+
+/* The hamburger drawer control is mobile-only; prevent generic icon-button rules from showing it on PC. */
+@media(min-width:681px){
+  #root .app-shell .topbar>.mobile-menu-toggle{display:none!important}
+}
