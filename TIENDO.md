@@ -2037,4 +2037,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Điều chỉnh danh sách vật tư ở cả bảng desktop và thẻ mobile: tên vật tư là dòng chính, cỡ chữ nổi bật; mã vật tư chuyển xuống dòng phụ, cỡ chữ nhỏ hơn.
 - Không thay đổi nội dung/cấu trúc dữ liệu, mã định danh, tìm kiếm theo mã hoặc tên, thao tác chọn hồ sơ, nghiệp vụ kho hay đồng bộ Local ↔ Cloud.
 - Bổ sung regression test kiểm tra đúng thứ tự và kiểu hiển thị ở cả desktop/mobile.
-- Đã commit trực tiếp trên main: 3fff1a5 (markup), 1ff34ff (CSS), b0cd36c (test). Chờ CI và triển khai Pages; chưa kiểm tra trực quan sau deploy.
+- Đã commit trực tiếp trên main: 3fff1a5 (markup), 1ff34ff (CSS), b0cd36c (test). CI Build and test đã SUCCESS (run 45402482628); GitHub Pages build và deploy đã SUCCESS (run 45402482620). Chưa kiểm tra trực quan trên trình duyệt sau deploy.
+
+
+### Rà soát mã nguồn đồng bộ vật tư sau kiểm thử thực tế — 24/11/2026
+
+- Rà soát `src/lib/syncEngine.ts`: đồng bộ được kích hoạt khi có sự kiện online, focus, tab hiển thị trở lại, yêu cầu đồng bộ sau thao tác Local và chu kỳ định kỳ (mặc định 60 giây; tối thiểu 15 giây). Khi đang chạy mà có yêu cầu mới, engine đánh dấu chạy lại để tránh bỏ lỡ yêu cầu.
+- Rà soát `src/lib/inventoryCloud.ts`: đẩy mutation theo thứ tự sequence từng vật tư; pull theo cursor và page 200 event; kiểm tra organization, event type, sequence và snapshot trước khi áp dụng. Mutation lỗi tạm thời có backoff; lỗi được phân loại conflict thì dừng chuỗi mutation của vật tư để không tự ghi đè.
+- RPC dùng mutation ID làm khóa idempotency; movement được đối chiếu ID/nội dung trước khi thêm vào Local. Không phát hiện lỗi rõ ràng trong luồng pull/reconnect qua rà soát tĩnh này.
+- Rà soát tĩnh không thay thế thử nghiệm mạng chập chờn, offline write/reconnect push, retry thực tế hoặc hai máy sửa đồng thời. Các trường hợp này vẫn nằm trong danh sách kiểm thử tiếp theo.
