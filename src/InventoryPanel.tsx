@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { type InventoryItem, type InventoryMovement } from './db'
-import { Download } from 'lucide-react'
+import { Download, Package } from 'lucide-react'
+import type { OrganizationEquipmentCatalogRecord } from './lib/smartEquipmentIdClient'
+import OrganizationPlanSummary from './OrganizationPlanSummary'
 import {
   archiveInventoryItem, createInventoryItem, listInventoryItems, listInventoryMovements,
   postInventoryMovement, adjustInventoryCount, updateInventoryItemMetadata,
@@ -18,6 +20,9 @@ type Props = {
   canDelete: boolean
   canExport: boolean
   isAdmin: boolean
+  equipmentCatalog: OrganizationEquipmentCatalogRecord | null
+  equipmentCatalogLoading: boolean
+  equipmentCatalogError: string
 }
 
 type FormMode = 'create' | 'edit' | null
@@ -33,7 +38,7 @@ const numberText = (value: number) => value.toLocaleString('vi-VN', { maximumFra
 const moneyText = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ'
 
 export default function InventoryPanel(props: Props) {
-  const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, canExport, isAdmin } = props
+  const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, canExport, isAdmin, equipmentCatalog, equipmentCatalogLoading, equipmentCatalogError } = props
   const actor: InventoryActor = { organizationId, userId, label: userLabel, canCreate, canUpdate, canAdjust, canDelete, isAdmin }
   const [items, setItems] = useState<InventoryItem[]>([])
   const [customGroups, setCustomGroups] = useState<string[]>([])
@@ -227,13 +232,14 @@ export default function InventoryPanel(props: Props) {
   if (!canView) return <section className="panel"><div className="panel-head"><div><h2>Kho vật tư</h2><p>Tài khoản chưa được cấp quyền inventory.view.</p></div></div></section>
 
   return <div className="inventory-workspace">
-    <section className="inventory-page-heading">
+    <section className="welcome inventory-welcome">
       <div>
         <div className="eyebrow">BAOTRI MINI · KHO VẬT TƯ</div>
-        <h2>Kho vật tư</h2>
+        <h2>Quản lý vật tư tập trung</h2>
         <p>Quản lý danh mục, nhập – xuất – kiểm kê và theo dõi tồn tối thiểu.</p>
+        {organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}
       </div>
-      <div className="inventory-storage-pill"><span aria-hidden="true">●</span> Lưu tại thiết bị Local <i>·</i> Cloud chưa bật</div>
+      <div className="inventory-welcome-side"><div className="welcome-icon"><Package size={38}/></div><div className="inventory-storage-pill"><span aria-hidden="true">●</span> Lưu tại thiết bị Local <i>·</i> Cloud chưa bật</div></div>
     </section>
 
     <div className="stat-grid inventory-stats">
