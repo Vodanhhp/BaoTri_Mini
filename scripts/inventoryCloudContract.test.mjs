@@ -6,6 +6,7 @@ const cloud = readFileSync(new URL('../src/lib/inventoryCloud.ts', import.meta.u
 const local = readFileSync(new URL('../src/lib/inventory.ts', import.meta.url), 'utf8')
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const design = readFileSync(new URL('../docs/INVENTORY_CLOUD_SYNC_DESIGN.md', import.meta.url), 'utf8')
+const sqlDraft = readFileSync(new URL('../docs/drafts/INVENTORY_CLOUD_MIGRATION_DRAFT.sql', import.meta.url), 'utf8')
 
 test('Inventory Cloud writes are routed through the reviewed RPC contract only', () => {
   for (const rpc of [
@@ -55,4 +56,22 @@ test('Cloud contract preserves server-side permissions, idempotency and append-o
   assert.match(design, /mutation UUID is stable across retries|Every Local mutation UUID is stable across retries/)
   assert.match(design, /No update\/delete endpoint/)
   assert.match(design, /SECURITY INVOKER/)
+})
+
+test('Cloud SQL remains a draft and matches the client RPC and precision contract', () => {
+  assert.match(sqlDraft, /DRAFT ONLY — do not apply directly/)
+  for (const rpc of [
+    'create_inventory_item',
+    'update_inventory_item_metadata',
+    'apply_inventory_movement',
+    'archive_inventory_item',
+    'list_inventory_sync_changes'
+  ]) assert.match(sqlDraft, new RegExp('public\\\\.' + rpc))
+  assert.match(sqlDraft, /alter table public\.inventory_items enable row level security/)
+  assert.match(sqlDraft, /alter table public\.inventory_movements enable row level security/)
+  assert.match(sqlDraft, /security invoker/)
+  assert.match(sqlDraft, /private\.has_org_permission/)
+  assert.match(sqlDraft, /unique \(organization_id, mutation_id\)/)
+  assert.match(sqlDraft, /scale\(\(p_movement->>'quantity'\)::numeric\) > 6/)
+  assert.match(local, /function validateScale/)
 })
