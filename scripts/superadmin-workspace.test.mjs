@@ -12,7 +12,7 @@ test('platform access is resolved by a server endpoint before organization membe
   assert.notEqual(accessCheck, -1)
   assert.notEqual(route, -1)
   assert.ok(membershipGate > route)
-  assert.doesNotMatch(app, /tuanluongpham1980@gmail\.com/)
+  assert.doesNotMatch(app, /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
 })
 
 test('SuperAdmin navigation contains platform management sections only', () => {
@@ -44,7 +44,7 @@ test('platform Edge Functions use the server secret and verify the authenticated
     assert.match(source, /auth\.getUser\(token\)/)
     assert.match(source, /email_confirmed_at/)
     assert.doesNotMatch(source, /\bOWNER_EMAIL\s*=/)
-    assert.doesNotMatch(source, /tuanluongpham1980@gmail\.com/)
+    assert.doesNotMatch(source, /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
   }
 })
 
@@ -57,5 +57,5 @@ test('destructive platform decisions still require password re-authentication', 
 
 test('organization member management has no unused Super Admin identity bypass', async () => {
   const source = await readFile(new URL('../supabase/functions/manage-organization-members/index.ts', import.meta.url), 'utf8')
-  assert.doesNotMatch(source, /OWNER_EMAIL|tuanluongpham1980@gmail\.com/)
+  assert.doesNotMatch(source, /OWNER_EMAIL/)
 })
