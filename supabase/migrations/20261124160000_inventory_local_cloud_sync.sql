@@ -23,7 +23,8 @@ create table if not exists public.inventory_items (
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
   archived_at timestamptz,
-  constraint inventory_items_org_code_unique unique (organization_id, code_normalized)
+  constraint inventory_items_org_code_unique unique (organization_id, code_normalized),
+  constraint inventory_items_org_id_unique unique (organization_id, id)
 );
 
 create index if not exists inventory_items_org_updated_idx
