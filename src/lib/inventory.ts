@@ -73,7 +73,7 @@ export async function createInventoryGroup(actor: InventoryActor, nameInput: str
 async function nextInventoryCode(organizationId: string): Promise<string> {
   const rows = await db.inventoryItems.where('organizationId').equals(organizationId).toArray()
   const highest = rows.reduce((max, item) => {
-    const match = /^VT-(\\d+)$/i.exec(item.code.trim())
+    const match = /^VT-(\d+)$/i.exec(item.code.trim())
     return match ? Math.max(max, Number(match[1])) : max
   }, 0)
   let next = highest + 1
