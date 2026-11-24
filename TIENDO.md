@@ -1492,3 +1492,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Snapshot cập nhật có optimistic concurrency theo `updated_at`; migration mới tạo lịch sử before/after cho mỗi lần cập nhật Snapshot. RLS hiện có `settings.manage` bảo vệ quyền cập nhật Catalog.
 - Bổ sung unit test Plan A group optional. GitHub Actions trên head `d1609267b4069b717b8d4a5029adc7ada5301c2c`: Build/Test SUCCESS và Validate SUCCESS.
 - Chưa áp dụng migration lên Supabase Test hoặc Production; chưa thử giao diện thực tế trên trình duyệt. Không merge PR #34 khi chưa có phê duyệt riêng.
+
+
+### Rà soát bổ sung PR #34 – 24/11/2026
+
+- Đối chiếu migration nền `20261121094439_smart_equipment_id_engine_v1.sql`: bảng Catalog đã có RLS; UPDATE chỉ được phép với `settings.manage`, cột được cấp quyền ghi là `snapshot, updated_at`. Vì vậy KTV không thể ghi Catalog chỉ bằng cách gọi Data API trực tiếp.
+- Migration audit mới dùng SECURITY DEFINER trigger để ghi Snapshot trước/sau; bảng lịch sử chỉ cấp SELECT cho authenticated và RLS giới hạn `settings.manage`. Chưa thấy lỗ hổng ghi trực tiếp qua authenticated trong cấu hình migration hiện có.
+- Đã xác minh Plan A chọn nhóm vận hành không đưa group_code vào business ID; tên nhóm được lưu ở category và `group_name_at_creation`. Plan B/C/D vẫn giữ yêu cầu nhóm.
+- Phát hiện và sửa một rủi ro UI: dữ liệu đang nhập ở biểu mẫu thêm từ điển có thể tồn tại khi đổi tổ chức/hồ sơ; đồng thời phản hồi lưu bất đồng bộ có thể cập nhật nhầm Catalog state sau khi người dùng chuyển tổ chức. Đã reset form theo organization/draft và chỉ cập nhật state khi vẫn ở đúng tổ chức.
+- CI trên head `5d7c167a01c2b5be6f169ac5445936d6af9a98c5`: Build SUCCESS, Unit tests SUCCESS, Validate SUCCESS.
+- Còn phải kiểm thử thủ công bằng Admin/KTV trên Supabase Test: chọn loại khi not-found, Admin thêm loại/alias, Admin thêm nhóm, KTV bị từ chối cập nhật Catalog qua UI và Data API, Plan A optional group, Plan B/C/D required group; đồng thời xác nhận history log có before/after.
+- Migration chưa áp dụng lên bất kỳ Supabase project nào. PR vẫn Draft, chưa merge.
