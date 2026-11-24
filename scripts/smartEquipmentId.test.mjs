@@ -94,12 +94,20 @@ test('normalizes Vietnamese accents, case and punctuation when matching', () => 
   assert.equal(result.normalizedName, 'Bơm nước')
 })
 
-test('Plan A does not require a group and rejects an explicitly selected group', () => {
+test('Plan A does not require a group but can retain an optional organization group', () => {
   const valid = analyze({ plan: 'A' })
   assert.equal(valid.status, 'matched')
   assert.equal(valid.requiresUserConfirmation, false)
   assert.equal(valid.groupCode, undefined)
-  assert.equal(analyze({ plan: 'A', selectedGroupCode: 'NUO' }).status, 'invalid-input')
+  const planAGroupCatalog = {
+    ...catalog,
+    equipmentGroups: [{ code: 'OPS', name: 'Nhóm vận hành', availableFromPlan: 'A' }]
+  }
+  const grouped = analyze({ plan: 'A', catalog: planAGroupCatalog, selectedGroupCode: 'OPS' })
+  assert.equal(grouped.status, 'matched')
+  assert.equal(grouped.groupCode, 'OPS')
+  assert.equal(grouped.previewId, undefined)
+  assert.equal(formatEquipmentId({ plan: 'A', equipmentCode: 'BOM', groupCode: 'OPS', sequence: 1 }), 'BOM-001')
 })
 
 test('Plan B suggestion is not treated as user confirmation', () => {

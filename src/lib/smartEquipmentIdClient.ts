@@ -9,6 +9,7 @@ export type OrganizationEquipmentCatalogRecord = {
   plan_code: PlanCode
   source_data_version: string
   snapshot: EquipmentCatalog
+  updated_at: string
 }
 
 export type SmartSequenceReservation = {
@@ -36,7 +37,7 @@ export async function loadOrganizationEquipmentCatalog(
 ): Promise<OrganizationEquipmentCatalogRecord | null> {
   const { data, error } = await client
     .from('organization_equipment_catalog')
-    .select('plan_code,source_data_version,snapshot')
+    .select('plan_code,source_data_version,snapshot,updated_at')
     .eq('organization_id', organizationId)
     .maybeSingle()
 
@@ -126,7 +127,9 @@ export async function reserveSmartEquipmentId(
     month_year: reservation.month_year ?? null,
     standard_equipment_name: input.standardEquipmentName,
     group_name_at_creation: reservation.group_name_at_creation
-      ?? (groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null),
+      ?? (reservation.plan_code === 'A'
+        ? input.groupNameAtCreation ?? null
+        : (groupCode && expectedGroup === groupCode ? input.groupNameAtCreation ?? null : null)),
     source_data_version: reservation.source_data_version,
     issued_at: new Date().toISOString()
   }
@@ -178,4 +181,25 @@ export async function releaseSmartEquipmentIdReservation(
   if (result?.status !== 'released' && result?.status !== 'not_found') {
     throw new Error('Cloud chưa xác nhận giải phóng số thứ tự.')
   }
+}
+
+
+/** Save organization-owned catalog additions. RLS permits settings.manage only. */
+export async function saveOrganizationEquipmentCatalogSnapshot(
+  client: SupabaseClient,
+  organizationId: string,
+  snapshot: EquipmentCatalog,
+  expectedUpdatedAt: string
+): Promise<OrganizationEquipmentCatalogRecord> {
+  const { data, error } = await client
+    .from('organization_equipment_catalog')
+    .update({ snapshot, updated_at: new Date().toISOString() })
+    .eq('organization_id', organizationId)
+    .eq('updated_at', expectedUpdatedAt)
+    .select('plan_code,source_data_version,snapshot,updated_at')
+    .maybeSingle()
+
+  if (error) throw new Error('Không lưu được từ điển thiết bị của tổ chức: ' + error.message)
+  if (!data) throw new Error('Catalog Snapshot đã được Admin khác cập nhật. Hãy tải lại danh mục rồi thực hiện lại để tránh ghi đè thay đổi.')
+  return data as OrganizationEquipmentCatalogRecord
 }

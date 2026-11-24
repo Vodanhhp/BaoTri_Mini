@@ -1480,3 +1480,37 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Read-only kiểm tra Supabase Test: tổ chức `BAOTRI Mini Test 02` đang active, hiện có 1 asset (`BOM-NUO-001`) và 1 active member role Admin. Chỉ xác định đây là ứng viên test; **chưa sửa/xóa/reset/import dữ liệu**, chưa dùng làm test fixture cho thao tác destructive.
 - Môi trường trợ lý hiện không có quyền điều khiển browser của người dùng; web fetch không đọc được site custom domain. Browser E2E chưa chạy. Cần user thao tác hai thiết bị/phiên browser và báo kết quả từng bước; khi cần test Reset, phải chọn/confirm tenant test chuyên dụng và backup/fixture rõ ràng.
 - Hướng tiếp theo: bắt đầu E2E không destructive (Pull/Update/Offline retry) trước; ghi nhận pass/fail và lỗi; sau đó mới kiểm thử reset barrier với tenant test đã được xác nhận riêng. Không dùng Production.
+
+
+## 24/11/2026 – PR #34: Quản lý từ điển thiết bị riêng theo tổ chức
+
+- Theo rà soát luồng tạo thiết bị, cả Plan A/B/C/D đều thiếu phương án chọn thủ công loại thiết bị khi phân tích tên trả về `not-found`; UI trước đó chỉ cho chọn khi `ambiguous`.
+- Đã mở PR nháp #34: `feature/org-equipment-dictionary-management` → `main`.
+- Người dùng thống nhất: Admin của tổ chức được bổ sung loại thiết bị và nhóm thiết bị vào từ điển riêng; KTV chỉ được chọn mục đã có.
+- UI mới: khi không nhận diện được tên, người dùng chọn loại có sẵn; Admin có thêm biểu mẫu bổ sung loại chuẩn, mã 2–4 ký tự, alias và nhóm gợi ý. Admin có thể thêm nhóm riêng; KTV không có nút thêm.
+- Plan A cho phép phân nhóm vận hành tùy chọn, nhưng mã quản lý Plan A vẫn chỉ gồm mã loại + số thứ tự; Plan B/C/D vẫn yêu cầu nhóm như quy tắc hiện hành.
+- Snapshot cập nhật có optimistic concurrency theo `updated_at`; migration mới tạo lịch sử before/after cho mỗi lần cập nhật Snapshot. RLS hiện có `settings.manage` bảo vệ quyền cập nhật Catalog.
+- Bổ sung unit test Plan A group optional. GitHub Actions trên head `d1609267b4069b717b8d4a5029adc7ada5301c2c`: Build/Test SUCCESS và Validate SUCCESS.
+- Chưa áp dụng migration lên Supabase Test hoặc Production; chưa thử giao diện thực tế trên trình duyệt. Không merge PR #34 khi chưa có phê duyệt riêng.
+
+
+### Rà soát bổ sung PR #34 – 24/11/2026
+
+- Đối chiếu migration nền `20261121094439_smart_equipment_id_engine_v1.sql`: bảng Catalog đã có RLS; UPDATE chỉ được phép với `settings.manage`, cột được cấp quyền ghi là `snapshot, updated_at`. Vì vậy KTV không thể ghi Catalog chỉ bằng cách gọi Data API trực tiếp.
+- Migration audit mới dùng SECURITY DEFINER trigger để ghi Snapshot trước/sau; bảng lịch sử chỉ cấp SELECT cho authenticated và RLS giới hạn `settings.manage`. Chưa thấy lỗ hổng ghi trực tiếp qua authenticated trong cấu hình migration hiện có.
+- Đã xác minh Plan A chọn nhóm vận hành không đưa group_code vào business ID; tên nhóm được lưu ở category và `group_name_at_creation`. Plan B/C/D vẫn giữ yêu cầu nhóm.
+- Phát hiện và sửa một rủi ro UI: dữ liệu đang nhập ở biểu mẫu thêm từ điển có thể tồn tại khi đổi tổ chức/hồ sơ; đồng thời phản hồi lưu bất đồng bộ có thể cập nhật nhầm Catalog state sau khi người dùng chuyển tổ chức. Đã reset form theo organization/draft và chỉ cập nhật state khi vẫn ở đúng tổ chức.
+- CI trên head `5d7c167a01c2b5be6f169ac5445936d6af9a98c5`: Build SUCCESS, Unit tests SUCCESS, Validate SUCCESS.
+- Còn phải kiểm thử thủ công bằng Admin/KTV trên Supabase Test: chọn loại khi not-found, Admin thêm loại/alias, Admin thêm nhóm, KTV bị từ chối cập nhật Catalog qua UI và Data API, Plan A optional group, Plan B/C/D required group; đồng thời xác nhận history log có before/after.
+- Migration chưa áp dụng lên bất kỳ Supabase project nào. PR vẫn Draft, chưa merge.
+
+
+### Supabase Test – áp dụng audit Catalog (24/11/2026)
+
+- Đã áp dụng migration `organization_equipment_catalog_audit` lên đúng Supabase Test `dskeaiyvldiwlsfqkboq`; không truy cập/chỉnh sửa Production.
+- Supabase ghi nhận migration version `20261124010024`. Đã đồng bộ tên file migration trong PR thành `20261124010024_organization_equipment_catalog_audit.sql` để tránh migration drift khi triển khai tiếp.
+- SQL xác nhận: bảng history có RLS bật; authenticated có SELECT nhưng không có INSERT; anon không có SELECT.
+- Policy SELECT duy nhất giới hạn bởi `private.has_org_permission(organization_id, 'settings.manage')`.
+- Trigger `organization_equipment_catalog_audit_snapshot` đã tồn tại, gọi hàm SECURITY DEFINER trong schema private với `search_path=''` và `row_security=off`.
+- Security Advisor sau migration không báo finding mới liên quan bảng history/trigger; còn các cảnh báo tồn tại từ trước trong private tables, SECURITY DEFINER RPC public và leaked-password protection. Không thay đổi các mục ngoài phạm vi PR.
+- Chưa thực hiện UPDATE Snapshot thử nghiệm, chưa phát sinh audit row giả; cần kiểm thử bằng phiên Admin/KTV thực tế để xác nhận actor_user_id và before/after.
