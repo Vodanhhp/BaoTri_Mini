@@ -1594,3 +1594,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Lịch sử thiết bị hiện đã theo dõi `commissionedAt` như trường “Ngày đưa vào sử dụng”; thay đổi được ghi nhận cùng người sửa và thời điểm.
 - Đã bổ sung regression test cho nhánh chỉ sửa ngày trên thiết bị đã lưu/confirmed và kiểm tra không release hoặc xóa snapshot định danh.
 - Thay đổi chỉ áp dụng mã nguồn; chưa merge/deploy và không truy cập/chỉnh sửa Supabase Production.
+
+
+### Xác nhận thực tế sau triển khai sửa Ngày đưa vào sử dụng (24/11/2026)
+
+- PR #37 cho phép Admin/KTV sửa riêng trường Ngày đưa vào sử dụng (`commissionedAt`) sau khi thiết bị đã lưu và Smart ID reservation ở trạng thái `confirmed` đã được squash-merge vào `main`; merge commit: `036705818c7db3136afad15d15854b81fa1ccf42`.
+- Đã triển khai Vercel Production trên project `baotri-mini-new`; deployment `45UxqQt5L7vwUxBVJCCG2FymdQzQ`, trạng thái `READY`, domain `baotri.vieclamhp247.com`.
+- Người dùng đã kiểm tra trực tiếp trên Production và xác nhận: sửa được ngày đưa vào sử dụng trên thiết bị đã có Smart ID; lưu thành công và dữ liệu tự động đồng bộ lên Cloud.
+- Kết quả kiểm thử nghiệp vụ thực tế: **PASS** cho luồng sửa ngày → lưu Local → tự động đồng bộ Cloud.
+- Quy tắc định danh được giữ nguyên: không giải phóng reservation, không cấp lại số thứ tự, không thay đổi mã quản lý hoặc `idComponentsSnapshot`; phần MMYY vẫn phản ánh thời điểm cấp mã ban đầu.
+- Không chạy migration, không thay đổi dữ liệu Supabase hoặc cấu hình project cũ trong đợt sửa lỗi này.
