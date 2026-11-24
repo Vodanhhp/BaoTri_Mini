@@ -15,6 +15,7 @@ import { loadOrganizationContext, type OrganizationContext } from './lib/organiz
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
+import { syncInventoryCloud } from './lib/inventoryCloud'
 import { requestSync, startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
@@ -291,70 +292,92 @@ export default function App() {
     }
     const client=supabase!
     const context=organizationContexts.find(item=>item.id===organizationId)
-    if(!context?.permissions.includes('assets.view')){setCloudSyncMessage('Tài khoản không có quyền xem thiết bị của tổ chức; bỏ qua đồng bộ Cloud.');return}
+    const canViewAssets=Boolean(context?.permissions.includes('assets.view'))
+    const canViewInventory=Boolean(context?.permissions.includes('inventory.view'))
+    if(!context||(!canViewAssets&&!canViewInventory)){
+      setCloudSyncMessage('Tài khoản không có quyền xem thiết bị hoặc kho vật tư của tổ chức; bỏ qua đồng bộ Cloud.')
+      return
+    }
     let active=true
     let running=false
     const runSync=async()=>{
       if(!active||running||!navigator.onLine)return
       running=true
-      setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
+      setCloudSyncMessage('Đang tự động đồng bộ thiết bị và kho vật tư từ Cloud…')
       try{
-        await ensureOrganizationAssetResetApplied(client,organizationId)
-        const contextCanCreate=context.permissions.includes('assets.create')
-        const contextCanImportLegacy=context.permissions.includes('assets.import')
-        const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
-          canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
-        })
-        if(!active)return
-        const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
-        if(!active)return
-        let retried=0
-        let retryFailed=0
-        const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
-        if(contextCanMutate&&context.permissions.includes('assets.update')){
-          const pending=await db.assetMutations.where('organizationId').equals(organizationId)
-            .filter(m=>(m.status==='pending'&&m.failureKind!=='permanent'&&(!m.nextAttemptAt||Date.parse(m.nextAttemptAt)<=Date.now()))||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
-          for(const mutation of pending){
-            if(!active||!navigator.onLine)break
-            try{
-              await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
-              retried++
-            }catch{
-              retryFailed++
-            }
-          }
-          // A failed first attempt records its Local audit event as pending.
-          // Mirror it only after the corresponding Cloud mutation is confirmed.
-          const pendingHistory=await db.assetHistory.where('organizationId').equals(organizationId)
-            .filter(entry=>entry.syncStatus==='pending').toArray()
-          for(const entry of pendingHistory){
-            if(!active||!navigator.onLine)break
-            try{
-              const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
-              const currentEntry=await db.assetHistory.get(entry.id)
-              if(!currentEntry||currentEntry.syncStatus!=='pending')continue
-              const currentAsset=await db.assets.get(currentEntry.assetId)
-              if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
-                await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
-                continue
+        let assetMessage=''
+        if(canViewAssets){
+          await ensureOrganizationAssetResetApplied(client,organizationId)
+          const contextCanCreate=context.permissions.includes('assets.create')
+          const contextCanImportLegacy=context.permissions.includes('assets.import')
+          const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
+            canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
+          })
+          if(!active)return
+          const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
+          if(!active)return
+          let retried=0
+          let retryFailed=0
+          const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
+          if(contextCanMutate&&context.permissions.includes('assets.update')){
+            const pending=await db.assetMutations.where('organizationId').equals(organizationId)
+              .filter(m=>(m.status==='pending'&&m.failureKind!=='permanent'&&(!m.nextAttemptAt||Date.parse(m.nextAttemptAt)<=Date.now()))||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
+            for(const mutation of pending){
+              if(!active||!navigator.onLine)break
+              try{
+                await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
+                retried++
+              }catch{
+                retryFailed++
               }
-              const mutation=await db.assetMutations.get(currentEntry.id)
-              if(mutation&&mutation.status!=='applied')continue
-              const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
-                p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
-                p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
-                p_reset_generation:resetGeneration
-              })
-              if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
-            }catch{
-              // Keep the audit event pending; the next online sync retries it.
+            }
+            // Mirror Local audit entries only after their matching mutation is confirmed.
+            const pendingHistory=await db.assetHistory.where('organizationId').equals(organizationId)
+              .filter(entry=>entry.syncStatus==='pending').toArray()
+            for(const entry of pendingHistory){
+              if(!active||!navigator.onLine)break
+              try{
+                const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+                const currentEntry=await db.assetHistory.get(entry.id)
+                if(!currentEntry||currentEntry.syncStatus!=='pending')continue
+                const currentAsset=await db.assets.get(currentEntry.assetId)
+                if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+                  await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+                  continue
+                }
+                const mutation=await db.assetMutations.get(currentEntry.id)
+                if(mutation&&mutation.status!=='applied')continue
+                const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
+                  p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+                  p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
+                  p_reset_generation:resetGeneration
+                })
+                if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
+              }catch{
+                // Keep the audit event pending; the next online/focus sync retries it.
+              }
             }
           }
+          if(!active)return
+          await loadAssets(organizationId)
+          if(!active)return
+          assetMessage='Thiết bị — Local → Cloud: '+importSummary.imported+' mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' xung đột. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.'
         }
-        if(!active)return
-        await loadAssets(organizationId)
-        if(!active)return
-        setCloudSyncMessage('Local → Cloud: '+importSummary.imported+' thiết bị mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' cần đối chiếu. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
+
+        let inventoryMessage=''
+        if(canViewInventory){
+          const inventorySummary=await syncInventoryCloud(client,organizationId,{
+            view:context.permissions.includes('inventory.view'),
+            create:context.permissions.includes('inventory.create'),
+            update:context.permissions.includes('inventory.update'),
+            adjust:context.permissions.includes('inventory.adjust'),
+            delete:context.permissions.includes('inventory.delete'),
+            isAdmin:context.isAdmin
+          },{shouldContinue:()=>active&&navigator.onLine})
+          if(!active)return
+          inventoryMessage='Kho vật tư — đẩy '+inventorySummary.pushed+', lỗi '+inventorySummary.pushFailed+', xung đột '+inventorySummary.conflicts+', nhận '+inventorySummary.pulled+' sự kiện ('+inventorySummary.pages+' trang).'
+        }
+        if(active)setCloudSyncMessage([assetMessage,inventoryMessage].filter(Boolean).join(' | '))
       }catch(cause){
         if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))
       }finally{
