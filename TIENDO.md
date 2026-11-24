@@ -1949,3 +1949,17 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rủi ro cần xử lý riêng trước khi mở rộng quản trị nền tảng: email định danh Super Admin đang hard-code trong frontend và Edge Functions trong repo công khai. Các Edge Functions hiện cũng tự xác thực email đã xác minh và một luồng quản trị yêu cầu xác thực lại mật khẩu; tuy vậy email vẫn bị lộ trong mã nguồn. Đề xuất chuyển định danh này sang Supabase Function Secret/config, sau đó deploy và kiểm tra quyền lại. Chưa thay đổi vì đây là thay đổi backend/secret cần phê duyệt riêng.
 - Chưa thực hiện kiểm thử trình duyệt end-to-end, thiết bị thật, invitation email hoặc thao tác trên Supabase Production; CI xanh không thay thế các kiểm thử này.
 - Ghi chú cấu hình: workflow Pages hiện hành là `.github/workflows/pages.yml`; các ghi chú cũ trong phần TIENDO có nhắc `deploy-pages.yml` là lịch sử, không phải workflow đang chạy.
+
+
+## 24/11/2026 — Chuyển định danh Super Admin sang Supabase Function Secret
+
+- Người dùng đã đồng ý thực hiện chuyển định danh và rà soát.
+- Rà soát toàn bộ 10 Edge Function trong repo: tìm thấy email hard-code trong 5 endpoint quản trị nền tảng; thêm một hằng số email không còn được sử dụng trong `manage-organization-members`. Không phát hiện thêm endpoint khác dùng email đó để cấp quyền.
+- Frontend `src/App.tsx` trước đây tự so sánh email công khai để mở màn hình Super Admin. Thay bằng lời gọi endpoint `platform-check-access`; endpoint xác minh JWT và email đã xác nhận ở phía máy chủ.
+- Năm Edge Functions quản trị đọc `PLATFORM_OWNER_EMAIL` từ môi trường máy chủ, chuẩn hóa chữ thường và từ chối đóng nếu secret chưa được cấu hình. Luồng xác thực lại mật khẩu của các thao tác nhạy cảm được giữ nguyên.
+- Xóa hằng số email không dùng trong `manage-organization-members`; không thay đổi quyền thành viên tổ chức.
+- Bổ sung regression test để khóa việc không hard-code email, xác thực token/email xác nhận và giữ xác thực lại mật khẩu cho các thao tác phá hủy/duyệt.
+- Phạm vi thay đổi chỉ gồm frontend access gate, Edge Function source, regression test và tài liệu. Không sửa schema, migration, RLS, Auth user, dữ liệu, Storage hoặc bật Cloud sync.
+- Nhánh thực hiện: `security/superadmin-secret-identity`. Chưa merge, chưa deploy frontend hoặc Edge Functions.
+- Chưa thể cấu hình secret từ công cụ kết nối hiện có. Bước cần hoàn tất trên Supabase Dashboard: thêm Edge Function Secret `PLATFORM_OWNER_EMAIL` với email tài khoản Super Admin hiện tại. Không gửi giá trị secret trong chat hoặc commit vào repo.
+- Sau khi secret được lưu, cần deploy các Edge Functions đã thay đổi (`platform-check-access`, `platform-get-overview`, `platform-create-customer`, `platform-manage-organization`, `platform-manage-plan-requests`, `platform-manage-asset-reset-requests`) và chạy kiểm thử quyền Super Admin/tài khoản thường. Chỉ hoàn tất triển khai sau khi secret đã được xác nhận.
