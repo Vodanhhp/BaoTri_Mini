@@ -297,10 +297,17 @@ export default function App() {
       setDashboardInventoryItems([])
       return () => { active = false }
     }
-    db.inventoryItems.where('organizationId').equals(scope).toArray()
-      .then(rows => { if (active) setDashboardInventoryItems(rows) })
-      .catch(cause => { if (active) setError('Không tải được số liệu kho cho trang tổng quan: ' + (cause instanceof Error ? cause.message : String(cause))) })
-    return () => { active = false }
+    const refreshDashboardInventory = () => {
+      void db.inventoryItems.where('organizationId').equals(scope).toArray()
+        .then(rows => { if (active) setDashboardInventoryItems(rows) })
+        .catch(cause => { if (active) setError('Không tải được số liệu kho cho trang tổng quan: ' + (cause instanceof Error ? cause.message : String(cause))) })
+    }
+    refreshDashboardInventory()
+    window.addEventListener('baotri:inventory-updated', refreshDashboardInventory)
+    return () => {
+      active = false
+      window.removeEventListener('baotri:inventory-updated', refreshDashboardInventory)
+    }
   }, [session?.user.id, localPreview, organizationId, organizationContexts])
 
   useEffect(()=>{
