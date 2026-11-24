@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2 } from 'lucide-react'
+import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
+import InventoryPanel from './InventoryPanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -67,6 +68,7 @@ export default function App() {
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
+  const [activeModule,setActiveModule]=useState<'assets'|'inventory'>('assets')
   const [organizationReady,setOrganizationReady]=useState(false)
   const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
   const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
@@ -1158,6 +1160,11 @@ export default function App() {
   const canCreate=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.create'))
   const canDelete=Boolean(currentOrganization?.isAdmin)
   const canChangeStatus=Boolean(localPreview||(canMutate&&currentOrganization?.permissions.includes('assets.update')))
+  const canInventoryView=Boolean(currentOrganization?.permissions.includes('inventory.view'))
+  const canInventoryCreate=Boolean(currentOrganization?.permissions.includes('inventory.create'))
+  const canInventoryUpdate=Boolean(currentOrganization?.permissions.includes('inventory.update'))
+  const canInventoryAdjust=Boolean(currentOrganization?.permissions.includes('inventory.adjust'))
+  const canInventoryDelete=Boolean(currentOrganization?.isAdmin&&currentOrganization?.permissions.includes('inventory.delete'))
   const activeAssets = assets.filter(item => !item.archivedAt && !item.deletedAt && item.status !== 'Thanh lý')
   const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt && !item.deletedAt).length
   const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt && !item.deletedAt).length
@@ -1168,8 +1175,9 @@ export default function App() {
       <button type="button" className="mobile-menu-close" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}><X size={18}/><span>Đóng menu</span></button>
       <div className="brand"><span className="brand-icon"><Wrench size={21}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div>
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
-      <button className="nav-item active"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
-      <button className="nav-item"><Building2 size={17}/><span>Danh mục thiết bị</span></button>
+      <button className="nav-item"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
+      <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
+      {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
@@ -1184,10 +1192,13 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
-        <div className="top-actions">{session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="page-heading"><div className="eyebrow">{activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='inventory'?'Kho vật tư':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
+        {activeModule==='inventory'
+          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
+          : <>
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
@@ -1225,6 +1236,7 @@ export default function App() {
           </tbody></table></div>
         </div>
         <div className="footnote"><ShieldCheck size={15}/> Thiết bị Local thuộc phạm vi tổ chức hiện chọn. Dùng Local ↔ Cloud để nhập hoặc tải hồ sơ có kiểm soát. Ảnh chưa đồng bộ Cloud.</div>
+          </>}
       </div>
     </main>
     {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy&&!reservationReleaseBusy)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor} disabled={busy||reservationReleaseBusy}><X size={17}/></button></div>
