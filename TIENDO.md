@@ -1756,3 +1756,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm `InventoryMutation.localSequence`, tăng tuần tự theo từng vật tư trong Dexie transaction.
 - Cloud worker sort theo `localSequence` trước, `createdAt` chỉ làm fallback; tránh sai thứ tự khi nhiều giao dịch cùng millisecond.
 - Đây là sequence Local; sequence feed Cloud vẫn do server quản lý.
+
+
+
+### Cloud SQL draft (24/11/2026)
+- Tạo bản nháp SQL tại `docs/drafts/INVENTORY_CLOUD_MIGRATION_DRAFT.sql`, ngoài `supabase/migrations`.
+- Có bảng item/movement, mutation receipt, audit append-only, feed sequence/event, RLS, revoke quyền truy cập bảng trực tiếp; private SECURITY DEFINER implementations và public SECURITY INVOKER wrappers.
+- RPC contract khớp `src/lib/inventoryCloud.ts`; server tự chuẩn hóa mã, xác định actor, tính tồn và sequence.
+- Local + Cloud thống nhất tối đa 6 chữ số thập phân; Local từ chối giá trị sẽ bị Cloud làm tròn.
+- Đã đọc định nghĩa helper `private.has_org_permission` và `private.has_org_role` trên Supabase New bằng truy vấn read-only. Quyền role xác nhận: Admin đủ 5 quyền, Technician view/create/update/adjust, Viewer chỉ view.
+- SQL hiện chỉ là draft; chưa được PostgreSQL 17 validate, chưa đưa vào `supabase/migrations`, chưa chạy hoặc apply lên bất kỳ Supabase project nào.
+- Trước khi thành migration: review SQL, kiểm tra cú pháp bằng PostgreSQL 17 local, tạo tên migration bằng `supabase migration new` trong checkout đúng repo.
