@@ -205,3 +205,11 @@ Next:
 2. Kiểm tra lại UI/permission gating và Local data flows.
 3. Sau khi Local phase được xác minh, thiết kế Cloud inventory migration/RPC/change feed độc lập theo đúng schema New; không dùng migration draft từ repo cũ.
 4. Chỉ apply migration lên project Test/New khi có phê duyệt riêng và xác định rõ target.
+
+### CI verification update (24/11/2026)
+- Draft PR #43: `https://github.com/Vodanhhp/BaoTri_Mini/pull/43`.
+- Build and test run #717, commit `4d956af20f0740a1aed2446cbd49bf2943aa6d62`: 123 tests passed, 0 failed; Vite production build PASS.
+- Validate BAOTRI Mini run #374 on the same commit: `npm ci` and `npm run build` PASS.
+- Added safety rule: a material item can be archived only when its Local stock balance is exactly zero; stock must first be handled through a movement.
+- The earlier run #715 had one false-positive assertion in the new test (matched `min_quantity`); narrowed the assertion and reran successfully. No product code failure was observed in that test.
+- These are CI/static checks only; no browser runtime/E2E confirmation yet.
