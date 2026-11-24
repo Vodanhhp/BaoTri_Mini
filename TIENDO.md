@@ -1789,3 +1789,27 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Validate run `45352665333`: PASS.
 - Test SQL draft kiểm tra khai báo RPC, RLS, SECURITY INVOKER, idempotency, precision 6 số và constraint ledger. Đây là test contract/static, không chứng minh SQL syntax/runtime.
 - SQL vẫn cần được validate bằng PostgreSQL 17 local trước khi chuyển thành migration.
+
+
+## Điều chỉnh biểu mẫu vật tư và trang tổng quan chung (24/11/2026)
+
+### Mục tiêu và phạm vi
+- Làm gọn thao tác thêm vật tư: mã nội bộ tự sinh VT-001, VT-002…; người dùng không nhập mã quản lý.
+- Giữ mã phụ tùng, tên, nhóm, đơn vị, kích cỡ/thông số và tồn tối thiểu ở phần chính; vị trí, nhà cung cấp, đơn giá chuyển vào phần thông tin bổ sung.
+- Không nhập tồn đầu kỳ trong biểu mẫu mới; tồn chỉ thay đổi qua Nhập, Xuất hoặc Kiểm kê.
+- Cho phép bổ sung nhóm vật tư riêng theo tổ chức, đồng thời giữ danh mục nhóm chuẩn hiện có.
+- Trang Tổng quan hiển thị chung số liệu thiết bị + vật tư; dành khu vực tích hợp Checklist/công việc bảo trì trong giai đoạn sau.
+
+### Thay đổi trên branch feat/inventory-codes-groups-overview
+- src/db.ts: Dexie v11 thêm bảng inventoryGroups có phạm vi organization; không thay database name, không xóa hoặc đổi dữ liệu hiện có.
+- src/lib/inventory.ts: sinh mã vật tư tuần tự theo số VT lớn nhất đã có trong tổ chức; không tái sử dụng mã cũ; mã tự sinh không được thay đổi khi sửa metadata. Thêm API tạo/liệt kê nhóm tùy chỉnh và kiểm tra trùng tên không phân biệt hoa thường.
+- src/InventoryPanel.tsx: bỏ trường nhập mã và tồn đầu kỳ khỏi form; nhóm có lựa chọn thêm nhóm mới; trường ít dùng chuyển vào phần thông tin bổ sung.
+- src/App.tsx: Trang Tổng quan là trang vào mặc định, tổng hợp thống kê thiết bị và vật tư; có vùng chờ Checklist/công việc bảo trì. Thống kê kho tự làm mới sau thao tác Local.
+- src/style.css: bổ sung style responsive cho dashboard và form rút gọn.
+- Tests: scripts/inventoryLocalDomain.test.mjs, scripts/inventoryOverviewUi.test.mjs.
+
+### Ranh giới và giới hạn
+- Kho vật tư vẫn Local-only; mã VT và nhóm tùy chỉnh được tạo trên từng trình duyệt/thiết bị. Cloud sync vẫn tắt; không khẳng định dữ liệu PC/Mobile đã dùng chung.
+- Danh mục nhóm chuẩn hiện giữ nguyên 13 nhóm trong form hiện tại. Tài liệu Plan/Template của BAOTRI mới mô tả từ điển theo ngành/quy mô/doanh nghiệp, nhưng chưa có hợp đồng dữ liệu inventory-group theo từng Plan trong source hiện hành; vì vậy chưa tự suy diễn quota hoặc ẩn/hiện nhóm theo Plan. Phần này cần được nối với inventory dictionary trong Plan khi có cấu hình chính thức.
+- Không thay đổi Supabase, migration, RLS, Auth, Storage, Vercel hoặc Production trong đợt này.
+- Cần CI Build/Test PASS và kiểm tra giao diện thực tế PC/mobile trước khi merge/deploy. PR sẽ để riêng, không tự merge.
