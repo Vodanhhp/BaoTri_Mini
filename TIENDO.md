@@ -2139,3 +2139,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Gỡ hàm xử lý lưu kho trực tiếp chỉ phục vụ nút đã bỏ; luồng cập nhật trạng thái trong hồ sơ và form cập nhật vẫn giữ nguyên, bao gồm ghi nhận trạng thái/lịch sử theo cơ chế hiện hành.
 - Bổ sung regression test xác nhận danh sách không còn nút Lưu kho riêng và bộ chọn trạng thái trong hồ sơ/form vẫn tồn tại.
 - Thay đổi nằm trên nhánh `ui/remove-duplicate-archive-action`; cần CI/build kiểm tra trước khi merge. Chưa kiểm tra trực quan trên trình duyệt.
+
+
+### Chuẩn hóa ngày giờ toàn hệ thống theo Việt Nam — 24/11/2026
+
+- Quy ước duy nhất cho giao diện BAOTRI Mini: múi giờ `Asia/Ho_Chi_Minh` (UTC+7). Mọi ngày giờ hiển thị ở thiết bị, vật tư, lịch sử, quản trị tổ chức, yêu cầu Plan, thông báo retry và báo cáo Excel phải đi qua helper dùng `Intl.DateTimeFormat` với `timeZone` chỉ định rõ; không phụ thuộc múi giờ máy tính hoặc trình duyệt.
+- Dữ liệu thời điểm trên Local/Cloud tiếp tục lưu dưới dạng ISO timestamp/UTC để giữ đúng một thời điểm tuyệt đối; chỉ quy đổi sang giờ Việt Nam ở lớp hiển thị. Không cộng/trừ 7 giờ thủ công.
+- Giá trị ngày thuần (SQL DATE/HTML date input) được xử lý như ngày lịch Việt Nam, tránh lệch ngày do parse UTC. Giới hạn ngày sinh cũng lấy ngày hiện tại theo UTC+7.
+- Thêm regression test cho helper, xử lý ngày thuần, giới hạn ngày và các màn hình sử dụng định dạng ngày giờ. Chưa thay đổi schema, dữ liệu, RLS, Auth, migration hay logic đồng bộ.
+- Cần xác nhận CI/build và deploy; chưa thực hiện kiểm thử trực quan trên mọi thiết bị/múi giờ hệ điều hành.
