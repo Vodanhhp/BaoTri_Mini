@@ -1955,6 +1955,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 
 - Người dùng đã đồng ý thực hiện chuyển định danh và rà soát.
 - Rà soát toàn bộ 10 Edge Function trong repo: tìm thấy email hard-code trong 5 endpoint quản trị nền tảng; thêm một hằng số email không còn được sử dụng trong `manage-organization-members`. Không phát hiện thêm endpoint khác dùng email đó để cấp quyền.
+- Rà soát thêm các vị trí frontend, test và tài liệu liên quan; đã loại email cụ thể khỏi cây mã hiện tại và các ghi chú TIENDO cũ. Các commit lịch sử trước đó vẫn có thể chứa email; chưa viết lại Git history để tránh ảnh hưởng các nhánh/PR đang mở.
 - Frontend `src/App.tsx` trước đây tự so sánh email công khai để mở màn hình Super Admin. Thay bằng lời gọi endpoint `platform-check-access`; endpoint xác minh JWT và email đã xác nhận ở phía máy chủ.
 - Năm Edge Functions quản trị đọc `PLATFORM_OWNER_EMAIL` từ môi trường máy chủ, chuẩn hóa chữ thường và từ chối đóng nếu secret chưa được cấu hình. Luồng xác thực lại mật khẩu của các thao tác nhạy cảm được giữ nguyên.
 - Xóa hằng số email không dùng trong `manage-organization-members`; không thay đổi quyền thành viên tổ chức.
