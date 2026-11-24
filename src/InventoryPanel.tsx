@@ -282,8 +282,8 @@ export default function InventoryPanel(props: Props) {
 
     <section className="panel">
       <div className="panel-head"><div><h2>{selected?'Lịch sử vật tư: '+selected.name:'Lịch sử giao dịch kho gần đây'}</h2><p>Giao dịch được lưu append-only; không có thao tác sửa hoặc xóa phiếu đã ghi.</p></div>{selected&&<button type="button" className="soft-btn" onClick={()=>setSelected(null)}>Xem tất cả</button>}</div>
-      <div className="table-wrap table-standard-wrap inventory-desktop-table">
-        <table className="table-standard"><thead><tr><th>Ngày</th><th>Mã vật tư</th><th>Loại</th><th>Số lượng</th><th>Tồn trước</th><th>Tồn sau</th><th>Lý do</th><th>Người thực hiện</th></tr></thead>
+      <div className="table-wrap table-standard-wrap inventory-desktop-table inventory-history-wrap">
+        <table className="table-standard inventory-history-table"><colgroup><col className="history-date"/><col className="history-code"/><col className="history-type"/><col className="history-quantity"/><col className="history-before"/><col className="history-after"/><col className="history-reason"/><col className="history-user"/></colgroup><thead><tr><th>Ngày</th><th>Mã vật tư</th><th>Loại</th><th>Số lượng</th><th>Tồn trước</th><th>Tồn sau</th><th>Lý do</th><th>Người thực hiện</th></tr></thead>
           <tbody>{selectedMovements.map(movement=>{
             const item=items.find(row=>row.id===movement.itemId)
             return <tr key={movement.id}>
