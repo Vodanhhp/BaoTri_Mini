@@ -1572,3 +1572,15 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Build Vercel chạy `tsc -b && vite build` thành công; Vite build thành công. Còn cảnh báo bundle JS khoảng 746.40 kB lớn hơn ngưỡng 500 kB; không làm build thất bại.
 - Chưa thực hiện browser E2E thực tế PC → Cloud → Mobile và chưa xác nhận thao tác nghiệp vụ trực tiếp trên trình duyệt production. Cần kiểm tra đăng nhập, tạo/cập nhật thiết bị Local, tự đồng bộ Cloud, Mobile Pull, quyền Admin/KTV/Viewer và lịch sử thiết bị.
 - Không truy cập/chỉnh sửa project Supabase cũ hoặc Test cũ; không chạy migration bổ sung trên dự án cũ.
+
+### Sửa lỗi giải phóng Smart ID reservation đã Confirmed (24/11/2026)
+
+- Nguyên nhân: `updateSmartDraft()` gọi `release_asset_id_sequence_reservation` khi draft còn giữ `idReservationId`, nhưng state giao diện có thể cũ và không phản ánh reservation đã được Cloud xác nhận sau khi Local commit.
+- Đã sửa `src/App.tsx`: trước khi release, kiểm tra bản ghi bền vững trong IndexedDB. Nếu bản ghi đã tồn tại hoặc state đã `confirmed`, không gọi RPC release và chặn thay đổi các trường cấu thành mã đã cấp. Nếu không đọc được IndexedDB hoặc thiếu kết nối/organization, fail-closed và giữ nguyên dữ liệu.
+- Với draft chưa lưu Local: chỉ xóa draft sau khi Cloud xác nhận release thành công; nếu release thất bại thì giữ reservation/draft để retry.
+- Bổ sung `scripts/smartEquipmentReservationReleaseGuard.test.mjs` kiểm tra không release khi đã lưu/confirmed, fail-closed khi không xác minh được và chỉ cleanup sau Cloud acknowledgement.
+- PR #36 đã squash-merge vào `main`: merge commit `26315965dc93d0224f062cd3c04db18f2b257514`.
+- CI trên head `85de5aac052e7e4f1932069415ac47d2b625280c`: **Build and test SUCCESS (112/112 tests)**; **Validate BAOTRI Mini SUCCESS**. Vercel build cũng thành công; cảnh báo bundle JS khoảng 747 kB vượt ngưỡng 500 kB vẫn còn.
+- Đã phát hành Vercel Production trên project `baotri-mini-new`: deployment `dpl_DCy46FNP7C5X7W5wJnvcgc6wdUD5`, target `production`, trạng thái `READY`, commit code `26315965dc93d0224f062cd3c04db18f2b257514`, alias `baotri.vieclamhp247.com`.
+- Không tạo migration và không thay đổi dữ liệu Supabase. Đích dữ liệu vẫn là `BAOTRI-Mini-New` (`dskeaiyvldiwlsfqkboq)); không truy cập `old` hoặc Test cũ.
+- Chưa kiểm thử browser E2E thao tác thực tế trên PC/Mobile. Sau khi phát hành, cần người dùng mở Production và thử chỉnh sửa một draft Smart ID chưa lưu cùng một thiết bị đã lưu/đã xác nhận để xác nhận UI phản hồi đúng.
