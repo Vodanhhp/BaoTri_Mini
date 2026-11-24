@@ -1454,7 +1454,7 @@ export default function App() {
           ['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.deletedAt?'Đã xóa mềm':detailAsset.archivedAt?'Lưu kho':detailAsset.status],
           ['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—'],
           ['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],
-          ['Ngày tạo hồ sơ',dateText(detailAsset.createdAt?.slice(0,10))],['Cập nhật lần cuối',dateText(detailAsset.updatedAt?.slice(0,10))]
+          ['Ngày tạo hồ sơ',dateText(detailAsset.createdAt.slice(0,10))],['Cập nhật lần cuối',dateText(detailAsset.updatedAt.slice(0,10))]
         ].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table>
         <div className="equipment-print-notes"><strong>Ghi chú</strong><p>{detailAsset.notes||'Không có ghi chú.'}</p></div>
         <h3 className="equipment-print-section">II. LỊCH SỬ THAY ĐỔI THIẾT BỊ</h3>
