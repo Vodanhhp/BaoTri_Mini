@@ -1541,3 +1541,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung test tự động `scripts/automaticLocalAssetImportRecovery.test.mjs` cho receipt verification, race recovery, fail-safe khi không xác minh được và phân loại conflict.
 - CI cuối cùng trên head `c32948a80e6e3c15377975b0843d0c928da7106e`: **Build and test SUCCESS** (Unit tests SUCCESS, Build SUCCESS); **Validate BAOTRI Mini SUCCESS** (Build SUCCESS).
 - PR #35 vẫn Draft, mergeable, ahead main 39 commits, behind 0. Chưa merge, chưa deploy. Chưa có browser E2E PC → Cloud → Mobile; cần kiểm thử thực tế trước khi xin duyệt merge.
+
+### PR #35 – bổ sung trigger đồng bộ cho lưu Local thông thường (24/11/2026)
+
+- Review luồng lưu phát hiện nhánh lưu Local thông thường (không đi qua Smart ID reservation) chưa phát `requestSync()` ngay sau khi IndexedDB commit; chỉ dựa vào scheduler định kỳ 60 giây.
+- Đã sửa `src/App.tsx`: phát `requestSync()` ngay sau khi ghi thiết bị Local thành công, trước khi ghi lịch sử/tải lại giao diện. Smart ID flow đã có trigger riêng.
+- Bổ sung test trong `scripts/automaticLocalAssetImportRecovery.test.mjs` để bảo đảm nhánh lưu Local thông thường luôn phát yêu cầu đồng bộ sau IndexedDB write.
+- Commits bổ sung: `6e7107e689794290918a615174cde613313cd288` (code), `e4dd9d8ca8e9a66ac9176840c5236ec2251db8d8` (test).
+- Chưa có CI result cho các commit mới tại thời điểm ghi checkpoint; chờ GitHub Actions. PR vẫn Draft, chưa merge/deploy; chưa kiểm thử E2E PC → Cloud → Mobile. Không truy cập Production.
