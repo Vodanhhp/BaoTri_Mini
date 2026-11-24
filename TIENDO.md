@@ -1631,8 +1631,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 ### Rà soát bảo vệ phát hành GitHub Pages và vệ sinh repository (24/11/2026)
 
 - Kiểm tra workflow GitHub Pages trên `main`: phát hiện workflow trước đó cho phép push từ cả `main` và `feature/smart-equipment-id-engine`; đồng thời build production đặt `VITE_ENABLE_LOCAL_PREVIEW=true`, có thể làm lộ nút vào chế độ Local Preview trên trang đăng nhập chính thức.
-- Tạo PR #41 trên nhánh `fix/release-hygiene-and-pages-guard`: giới hạn deploy tự động chỉ từ `main`, bỏ biến bật Local Preview khỏi build production; giữ `workflow_dispatch` cho thao tác chạy thủ công.
-- Thêm `.gitignore`; loại `.env.local` khỏi Git nhưng giữ `.env.example`; xóa 6.609 file thuộc `node_modules/` khỏi repository, giữ `package-lock.json` để `npm ci` cài dependency.
-- Đã xác minh tree của nhánh PR: không còn file tracked trong `node_modules/`, không còn `.env.local`, vẫn còn `.env.example` và `package-lock.json`.
-- CI PR đang chạy: Build and test và Validate BAOTRI Mini. Chưa kết luận PASS cho đến khi workflow hoàn tất.
-- Đây là thay đổi repository trên nhánh riêng; chưa merge và chưa deploy. Giữ nguyên tên miền/DNS; không sửa Vercel, không chạy migration, không thay đổi dữ liệu hoặc cấu hình Supabase.
+- PR #41 trên nhánh `fix/release-hygiene-and-pages-guard` đã được người dùng phê duyệt và squash-merge vào `main`.
+- Merge commit: `92112667ebb1906d672752267121e582549b9617`.
+- Thay đổi đã phát hành: giới hạn deploy tự động chỉ từ `main`, bỏ biến bật Local Preview khỏi build production; giữ `workflow_dispatch`; thêm `.gitignore`; loại `.env.local` khỏi Git nhưng giữ `.env.example`; xóa 6.609 file thuộc `node_modules/` khỏi repository, giữ `package-lock.json`.
+- Kiểm tra lại tree trên `main`: không còn `.env.local`, không còn file tracked trong `node_modules/`; `.env.example` và `package-lock.json` vẫn tồn tại; `CNAME` giữ nguyên `baotri.vieclamhp247.com`.
+- Workflow sau merge: GitHub Pages run #297 (`45338121932`) **PASS**, gồm build, bảo toàn CNAME, upload Pages artifact và deploy; Build and test run #711 (`45338121991`) **PASS**, gồm npm ci, unit tests và build.
+- Workflow Pages hiện chỉ tự deploy khi có push lên `main`; nhánh thử nghiệm không tự phát hành lên website chính thức.
+- Giữ nguyên tên miền/DNS; không sửa Vercel, không chạy migration, không thay đổi dữ liệu hoặc cấu hình Supabase.
+- Giới hạn xác minh: GitHub xác nhận deploy thành công, nhưng phiên kiểm tra này không phân giải được DNS của domain để tự kiểm tra HTTP trực tiếp. Cần người dùng mở website trên trình duyệt để xác nhận giao diện thực tế.
