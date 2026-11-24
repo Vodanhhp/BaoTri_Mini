@@ -1549,3 +1549,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung test trong `scripts/automaticLocalAssetImportRecovery.test.mjs` để bảo đảm nhánh lưu Local thông thường luôn phát yêu cầu đồng bộ sau IndexedDB write.
 - Commits bổ sung: `6e7107e689794290918a615174cde613313cd288` (code), `e4dd9d8ca8e9a66ac9176840c5236ec2251db8d8` (test).
 - Chưa có CI result cho các commit mới tại thời điểm ghi checkpoint; chờ GitHub Actions. PR vẫn Draft, chưa merge/deploy; chưa kiểm thử E2E PC → Cloud → Mobile. Không truy cập Production.
+
+### PR #35 – xử lý yêu cầu sync đến trong khi một lượt sync đang chạy (24/11/2026)
+
+- Review scheduler phát hiện `execute()` bỏ qua yêu cầu mới khi `running=true`. Nếu người dùng lưu thiết bị trong lúc lượt sync cũ đang chạy, event `requestSync` có thể bị mất và phải chờ polling tiếp theo.
+- Đã sửa `src/lib/syncEngine.ts`: ghi nhận `rerunRequested`, sau khi lượt hiện tại hoàn tất sẽ chạy thêm một lượt nếu tab còn active/visible và có mạng; nhiều yêu cầu trong cùng lượt được gộp thành một lượt kế tiếp.
+- Bổ sung test `scripts/syncEngine.test.mjs` kiểm tra coalescing/rerun; test đồng thời giữ kiểm tra event listener `baotri:sync-request`.
+- CI head cuối cùng `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d`: **Build and test SUCCESS** (Unit tests 110/110, Build SUCCESS); **Validate BAOTRI Mini SUCCESS**.
+- Các commit sửa liên quan: `6547266cfb4274ddddc0fa4d246a6c5e813282fc` (scheduler rerun), `fab085aec3d0e40392b15c13b2e5a833af0212fe` (TypeScript visibility guard), `2a214df8fb22e144c108cf3206dbe17b81d0eb2d` (test assertion), `573d6ecdb6c6d7250dc2a760f8be09fce96b5e2d` (regex test correction).
+- PR #35 vẫn Draft, chưa merge/deploy; browser E2E PC → Cloud → Mobile vẫn cần kiểm thử thực tế. Không truy cập/chỉnh sửa Supabase Production.
