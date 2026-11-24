@@ -1604,3 +1604,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kết quả kiểm thử nghiệp vụ thực tế: **PASS** cho luồng sửa ngày → lưu Local → tự động đồng bộ Cloud.
 - Quy tắc định danh được giữ nguyên: không giải phóng reservation, không cấp lại số thứ tự, không thay đổi mã quản lý hoặc `idComponentsSnapshot`; phần MMYY vẫn phản ánh thời điểm cấp mã ban đầu.
 - Không chạy migration, không thay đổi dữ liệu Supabase hoặc cấu hình project cũ trong đợt sửa lỗi này.
+
+
+### Thu gọn thông báo đồng bộ trong header trên mobile (24/11/2026)
+
+- Từ ảnh người dùng cung cấp, xác định thông báo `.auth-note` hiển thị kết quả đồng bộ Cloud → Local dài và bị xuống nhiều dòng, làm header chiếm gần nửa màn hình điện thoại.
+- PR #38 đã được squash-merge vào `main`; merge commit: `6c2cc09fdd6f869034fa22b5671b5496445b7e31`.
+- CSS chỉ áp dụng ở viewport tối đa 680px: giới hạn thông báo còn 2 dòng, phần dư hiển thị ellipsis; cho phép ngắt chuỗi dài; bỏ border/padding thừa của kiểu `.auth-note`. Trên PC giữ nguyên nội dung đầy đủ.
+- Đã triển khai Vercel Production trên đúng project `baotri-mini-new`; deployment `dpl_CDsP9b2DzbPGcAnDt3nzNACeajwG`, trạng thái `READY`, domain production `baotri.vieclamhp247.com`.
+- Thay đổi chỉ gồm CSS; không thay đổi logic đồng bộ, không chạy migration, không sửa dữ liệu hoặc cấu hình Supabase. Chưa có xác nhận kiểm tra lại trên điện thoại sau triển khai; cần người dùng mở lại trang và kiểm tra chiều cao header.
