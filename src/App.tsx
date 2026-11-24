@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { formatDateVN, formatDateTimeVN } from './lib/dateTime'
 import type { Session } from '@supabase/supabase-js'
 import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
 import AuthScreen from './AuthScreen'
@@ -45,7 +46,7 @@ const emptyAsset = (): Asset => ({
   status: 'Đang hoạt động', notes: '', images: [], createdAt: now(), updatedAt: now()
 })
 const displayAssetName = (asset: Pick<Asset,'name'|'transferredFromOtherFacility'>) => asset.transferredFromOtherFacility && !asset.name.endsWith('*') ? asset.name + '*' : asset.name
-const dateText = (value: string) => value ? new Date(value + (value.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('vi-VN') : '—'
+const dateText = (value: string) => value ? formatDateVN(value) : '—'
 const imageToDataUrl = async (file: File): Promise<string> => {
   if (!file.type.startsWith('image/')) throw new Error('Chỉ chấp nhận tệp hình ảnh.')
   const bitmap = await createImageBitmap(file)
@@ -1307,7 +1308,7 @@ export default function App() {
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
           <div className="asset-toolbar">{canMutate&&recoverableDrafts.map(draft=><div className="draft-recovery-row" key={draft.id}>
-            <div><b>{draft.asset.name||draft.asset.originalName||'Thiết bị chưa đặt tên'}</b><small>Reservation {draft.reservationId.slice(0,8)} · {new Date(draft.updatedAt).toLocaleString('vi-VN')}</small></div>
+            <div><b>{draft.asset.name||draft.asset.originalName||'Thiết bị chưa đặt tên'}</b><small>Reservation {draft.reservationId.slice(0,8)} · {formatDateTimeVN(draft.updatedAt)}</small></div>
             <div className="top-actions"><button className="primary-btn" onClick={()=>resumeAssetDraft(draft)}>Tiếp tục</button><button className="soft-btn" onClick={()=>void discardAssetDraft(draft)}>Hủy giữ số</button></div>
           </div>)}</div>
         </div>}
@@ -1451,7 +1452,7 @@ export default function App() {
         <h3 className="equipment-print-section">II. LỊCH SỬ THAY ĐỔI THIẾT BỊ</h3>
         <table className="equipment-print-history"><thead><tr><th>STT</th><th>Ngày giờ</th><th>Sự kiện</th><th>Nội dung thay đổi</th><th>Người thực hiện</th></tr></thead><tbody>
           {assetHistory.slice().sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt)).map((entry,index)=><tr key={entry.id}>
-            <td>{index+1}</td><td>{entry.occurredAt?new Date(entry.occurredAt).toLocaleString('vi-VN'):'—'}</td>
+            <td>{index+1}</td><td>{entry.occurredAt?formatDateTimeVN(entry.occurredAt):'—'}</td>
             <td>{({created:'Tạo thiết bị',updated:'Cập nhật hồ sơ',status_changed:'Thay đổi trạng thái',archived:'Đưa vào lưu kho',restored:'Khôi phục khỏi lưu kho',deleted:'Xóa mềm'} as Record<string,string>)[entry.eventType]||entry.eventType}</td>
             <td><strong>{entry.summary||'—'}</strong>{entry.changes?.length>0&&<ul>{entry.changes.map((change,changeIndex)=><li key={changeIndex}>{change.label}: {change.before||'—'} → {change.after||'—'}</li>)}</ul>}</td>
             <td>{entry.actorLabel||'—'}</td>
