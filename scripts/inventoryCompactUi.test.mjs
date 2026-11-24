@@ -18,11 +18,11 @@ test('inventory workspace uses compact page hierarchy and Local storage context'
 test('inventory row actions are grouped in a single accessible disclosure menu', () => {
   assert.match(panel, /<details className="inventory-action-menu">/)
   assert.match(panel, /<summary>Thao tác/)
-  assert.match(panel, /openMovement\(item,'Nhập'\)/)
-  assert.match(panel, /openMovement\(item,'Xuất'\)/)
-  assert.match(panel, /openMovement\(item,'Điều chỉnh'\)/)
-  assert.match(panel, /openEdit\(item\)/)
-  assert.match(panel, /archiveItem\(item\)/)
+  assert.match(panel, /currentTarget\.closest\('details'\)\?\.removeAttribute\('open'\);openMovement\(item,'Nhập'\)/)
+  assert.match(panel, /currentTarget\.closest\('details'\)\?\.removeAttribute\('open'\);openMovement\(item,'Xuất'\)/)
+  assert.match(panel, /currentTarget\.closest\('details'\)\?\.removeAttribute\('open'\);openMovement\(item,'Điều chỉnh'\)/)
+  assert.match(panel, /currentTarget\.closest\('details'\)\?\.removeAttribute\('open'\);openEdit\(item\)/)
+  assert.match(panel, /currentTarget\.closest\('details'\)\?\.removeAttribute\('open'\);void archiveItem\(item\)/)
 })
 
 test('inventory styles define compact responsive hierarchy and action menu', () => {
