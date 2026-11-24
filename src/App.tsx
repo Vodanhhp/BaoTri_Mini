@@ -14,9 +14,10 @@ import { loadOrganizationContext, type OrganizationContext } from './lib/organiz
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
-import { startSyncEngine } from './lib/syncEngine'
+import { requestSync, startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
+import { syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, saveOrganizationEquipmentCatalogSnapshot, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý', 'Lưu kho']
@@ -296,6 +297,12 @@ export default function App() {
       setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
       try{
         await ensureOrganizationAssetResetApplied(client,organizationId)
+        const contextCanCreate=context.permissions.includes('assets.create')
+        const contextCanImportLegacy=context.permissions.includes('assets.import')
+        const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
+          canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
+        })
+        if(!active)return
         const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
         if(!active)return
         let retried=0
@@ -344,7 +351,7 @@ export default function App() {
         if(!active)return
         await loadAssets(organizationId)
         if(!active)return
-        setCloudSyncMessage('Cloud → Local hoàn tất: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Tự retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
+        setCloudSyncMessage('Local → Cloud: '+importSummary.imported+' thiết bị mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' cần đối chiếu. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
       }catch(cause){
         if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))
       }finally{
@@ -903,11 +910,12 @@ export default function App() {
             components:value.idComponentsSnapshot!
           })
           await db.assets.update(value.id,{idReservationStatus:'confirmed'})
-          await loadAssets();setShowForm(false);setEditing(null)
+          await loadAssets();setShowForm(false);setEditing(null);requestSync()
           notify('Đã lưu Local và Cloud xác nhận số thứ tự: '+value.code)
         }catch(confirmError){
           await loadAssets()
           setEditing(value)
+          requestSync()
           throw confirmError
         }
         return
