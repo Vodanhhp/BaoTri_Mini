@@ -68,6 +68,7 @@ test('all inventory mutations are organization-scoped and permission checked loc
   assert.match(source, /requirePermission\(actor\.canUpdate/)
   assert.match(source, /requirePermission\(actor\.canAdjust/)
   assert.match(source, /requirePermission\(actor\.canDelete && actor\.isAdmin/)
+  assert.match(source, /current\.quantity !== 0/)
   assert.match(source, /current\.organizationId !== actor\.organizationId/)
 })
 
