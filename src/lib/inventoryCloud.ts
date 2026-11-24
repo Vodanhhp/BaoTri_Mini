@@ -250,7 +250,7 @@ function rpcErrorMessage(error: unknown): string {
 }
 
 function isConflictError(error: unknown): boolean {
-  return ['40001', '23505', '55000', 'P0002'].includes(rpcErrorCode(error))
+  return ['40001', '23505', '42501', '55000', 'P0002'].includes(rpcErrorCode(error))
 }
 
 function linkId(organizationId: string, itemId: string): string {
@@ -536,9 +536,10 @@ async function pullInventoryChanges(
       })
     })
     pulled += page.items.length
+    const previousCursor = cursor.lastSequence
     cursor = { ...cursor, lastSequence: page.nextCursor, bootstrapComplete: true, updatedAt: now() }
     if (!page.hasMore) break
-    if (page.nextCursor <= cursor.lastSequence && page.items.length === 0) throw new Error('Inventory feed không tiến cursor.')
+    if (page.nextCursor <= previousCursor) throw new Error('Inventory feed không tiến cursor.')
   } while (true)
   return { pulled, pages }
 }
