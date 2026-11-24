@@ -1689,3 +1689,37 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - PR #42 đã được người dùng phê duyệt, squash-merge vào `main`, merge commit `5446a4bce29614940d3921be2783cd7139b46849`.
 - GitHub Pages deployment và Build/Unit Test đều PASS.
 - Người dùng đã xác nhận trực tiếp: đăng nhập Production hoạt động trở lại sau triển khai.
+
+
+
+## Kho vật tư — Phase 0 và Local foundation (24/11/2026)
+
+### Phase 0 read-only trên Supabase New
+- Đã xác minh project ref `dskeaiyvldiwlsfqkboq`, ACTIVE_HEALTHY, PostgreSQL 17.12.
+- Migration history trong DB khớp source đến `20261124042230_move_import_receipt_verifier_private`.
+- 5 permission `inventory.*` đã tồn tại. Trên 4 organization hiện có: Admin đủ quyền; Technician view/create/update/adjust; Viewer chỉ view. Không thêm permission trùng.
+- Database chưa có Inventory tables hoặc Inventory RPC. Asset Change Feed chỉ dành cho Asset; không tái sử dụng trực tiếp.
+- Chỉ truy vấn đọc; không thay đổi DB, RLS, Auth, Storage hoặc dữ liệu.
+
+### Local foundation đã code trên branch `feat/inventory-management-foundation`
+- Dexie v10 thêm stores: `inventoryItems`, `inventoryMovements`, `inventoryMutations`, `inventoryCloudLinks`, `inventorySyncCursors`; giữ nguyên database name và các store/version Asset hiện có.
+- Thêm `src/lib/inventory.ts`: tạo vật tư + tồn đầu kỳ nguyên tử, cập nhật metadata, nhập, xuất, điều chỉnh theo số kiểm kê, lưu trữ Admin.
+- Mã vật tư chuẩn hóa và kiểm tra trùng theo organization; metadata form/service không cho sửa quantity.
+- Movement lưu số lượng, delta có dấu, tồn trước/sau, lý do, người thực hiện, mutation ID; không cho xuất âm; kiểm kê không chênh lệch không tạo movement.
+- Thêm `src/InventoryPanel.tsx` và điều hướng Kho vật tư theo `inventory.view`; Admin/KTV/Viewer được giới hạn theo các permission hiện có.
+- UI ghi rõ kho mới chỉ lưu Local; chưa bật Cloud sync. Chưa có migration Cloud.
+
+### Files
+- `src/db.ts`, `src/lib/inventory.ts`, `src/InventoryPanel.tsx`, `src/App.tsx`, `src/style.css`, `scripts/inventoryLocalDomain.test.mjs`.
+- Cập nhật `docs/INVENTORY_MODULE_DESIGN.md`.
+
+### Chưa hoàn tất
+- Chưa chạy GitHub CI trên branch; cần Draft PR để workflow Build/Unit Test chạy.
+- Chưa test giao diện thực tế trên trình duyệt.
+- Chưa xây Cloud SQL/RPC/change feed/worker.
+- Không apply migration, không sửa Supabase New/Test, không merge hoặc deploy.
+
+### Tiếp theo
+- Mở Draft PR để CI chạy; xử lý lỗi build/test nếu có.
+- Hoàn tất kiểm tra Local UI và permission.
+- Sau đó thiết kế Cloud inventory schema/RPC/feed riêng cho project New, xin phê duyệt trước mọi thao tác apply migration.
