@@ -1552,3 +1552,385 @@ html,body,#root,.app-shell{
   .inventory-add-group .top-actions input{grid-column:1/-1;width:100%;min-width:0;min-height:44px;font-size:16px}
   .inventory-add-group .top-actions button{min-height:42px}
 }
+
+
+/* --------------------------------------------------------------------------
+   BAOTRI Mini — app-wide UI consistency layer
+   Shared sizing and density rules. Module CSS may change layout, not controls.
+   -------------------------------------------------------------------------- */
+:root{
+  --ui-control-height:40px;
+  --ui-button-height:40px;
+  --ui-control-radius:8px;
+  --ui-space-1:4px;
+  --ui-space-2:8px;
+  --ui-space-3:12px;
+  --ui-space-4:16px;
+  --ui-space-5:24px;
+  --ui-table-cell-y:8px;
+  --ui-table-cell-x:10px;
+}
+
+#root .app-shell{
+  font-size:13px;
+  line-height:1.5;
+}
+
+#root .app-shell button{
+  box-sizing:border-box;
+  min-height:var(--ui-button-height);
+  font-family:inherit;
+  line-height:1.25;
+}
+
+#root .app-shell :is(.primary-btn,.soft-btn,.text-btn,.complete-btn,.auth-submit,
+  .member-action,.platform-org-actions button,.table-action-group button,
+  .actions button,.modal-actions button,.platform-action-buttons button,.danger-btn){
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:var(--ui-button-height);
+  height:var(--ui-button-height);
+  padding:0 12px;
+  border-radius:var(--ui-control-radius);
+  font-size:12px!important;
+  line-height:1.2;
+  white-space:nowrap;
+}
+
+#root .app-shell .text-btn{
+  padding:0 8px;
+  background:transparent;
+}
+
+#root .app-shell :is(.icon-btn,.mobile-menu-toggle){
+  display:inline-grid;
+  place-items:center;
+  width:40px;
+  min-width:40px;
+  height:40px;
+  min-height:40px;
+  padding:0;
+  border-radius:var(--ui-control-radius);
+}
+
+#root .app-shell :is(.nav-item,.nav-subitem,.mobile-menu-close){
+  min-height:40px;
+  padding:8px 12px;
+  font-size:12px;
+}
+
+#root .app-shell .mobile-nav-item{
+  min-height:48px;
+  font-size:10px;
+}
+
+#root .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+#root .app-shell select{
+  box-sizing:border-box;
+  width:auto;
+  min-width:0;
+  height:var(--ui-control-height);
+  min-height:var(--ui-control-height);
+  padding:0 10px;
+  border-radius:var(--ui-control-radius);
+  font-size:13px;
+  line-height:1.35;
+}
+
+#root .app-shell textarea{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:96px;
+  padding:10px;
+  border-radius:var(--ui-control-radius);
+  font-size:13px;
+  line-height:1.5;
+}
+
+#root .app-shell :is(input[type="checkbox"],input[type="radio"]){
+  width:16px;
+  height:16px;
+  min-height:0;
+  padding:0;
+  accent-color:var(--primary);
+}
+
+#root .app-shell input[type="file"]{
+  height:auto;
+  min-height:0;
+  padding:0;
+}
+
+#root .app-shell .field{
+  min-width:0;
+  gap:5px;
+  font-size:11px;
+  line-height:1.4;
+}
+
+#root .app-shell .searchbar,
+#root .app-shell .asset-toolbar-panel .asset-searchbar{
+  box-sizing:border-box;
+  min-height:40px;
+  height:40px;
+  padding:0 10px;
+  border-radius:var(--ui-control-radius);
+}
+
+#root .app-shell .searchbar input{
+  height:38px;
+  min-height:38px;
+  padding:0;
+  border:0;
+  border-radius:0;
+}
+
+#root .app-shell .content{
+  padding:22px 28px;
+}
+
+#root .app-shell .panel{
+  min-width:0;
+  padding:16px;
+  border-radius:12px;
+}
+
+#root .app-shell .panel-head{
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#root .app-shell :is(.overview-workspace,.inventory-workspace){
+  gap:16px;
+}
+
+#root .app-shell .overview-section{
+  gap:10px;
+}
+
+#root .app-shell .stat-grid{
+  gap:12px;
+  margin:14px 0;
+}
+
+#root .app-shell .stat-card{
+  min-width:0;
+  padding:12px;
+  gap:10px;
+  border-radius:10px;
+}
+
+#root .app-shell .form-grid{
+  gap:12px;
+}
+
+#root .app-shell .modal{
+  box-sizing:border-box;
+  max-height:92dvh;
+  padding:18px;
+  border-radius:12px;
+}
+
+#root .app-shell .modal-head{
+  gap:12px;
+  margin-bottom:12px;
+}
+
+#root .app-shell .modal-head h2{
+  font-size:18px;
+  line-height:1.35;
+}
+
+#root .app-shell .modal-actions{
+  gap:8px;
+  padding-top:8px;
+}
+
+#root .app-shell .table-wrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:auto;
+  overscroll-behavior-x:contain;
+}
+
+#root .app-shell .table-standard-wrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  border-radius:10px;
+}
+
+#root .app-shell .table-wrap > table.table-standard{
+  width:100%;
+  min-width:0;
+  table-layout:fixed;
+  border-collapse:separate;
+  border-spacing:0;
+  white-space:normal;
+  font-size:12px;
+}
+
+#root .app-shell .table-wrap > table.table-standard thead th{
+  padding:8px 10px;
+  font-size:11px!important;
+  line-height:1.4;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+
+#root .app-shell .table-wrap > table.table-standard tbody td{
+  padding:8px 10px;
+  font-size:12px!important;
+  line-height:1.45;
+  white-space:normal;
+  overflow-wrap:break-word;
+  vertical-align:middle;
+}
+
+#root .app-shell .table-wrap > table.table-standard tbody td b{
+  font-size:12px!important;
+  line-height:1.4;
+}
+
+#root .app-shell .table-wrap > table.table-standard tbody td small{
+  font-size:11px!important;
+  line-height:1.4;
+}
+
+#root .app-shell .table-wrap > table.table-standard :is(.table-date-cell,.status){
+  white-space:nowrap;
+}
+
+#root .app-shell .table-action-group,
+#root .app-shell .actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  min-width:0;
+}
+
+#root .app-shell .table-action-group :is(.primary-btn,.soft-btn){
+  flex:0 0 auto;
+}
+
+#root .app-shell .table-note-cell{
+  max-width:260px;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+#root .app-shell .platform-admin-modal .platform-org-table table{
+  width:100%;
+  min-width:780px;
+  table-layout:fixed;
+}
+
+#root .app-shell .platform-admin-modal .platform-org-table :is(th,td){
+  padding:8px 9px;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+
+#root .app-shell .platform-admin-modal .platform-org-table td:last-child{
+  white-space:normal;
+}
+
+#root .app-shell .inventory-mobile-actions{
+  gap:8px;
+}
+
+#root .app-shell .inventory-mobile-actions .soft-btn{
+  width:100%;
+  min-width:0;
+  height:40px;
+  min-height:40px;
+  padding:0 8px;
+  font-size:12px!important;
+}
+
+#root .app-shell :is(.asset-filter-field select,.inventory-filters .field select){
+  width:100%;
+  height:40px;
+  min-height:40px;
+  font-size:13px;
+}
+
+#root .app-shell .inventory-workspace > .panel > .panel-head .top-actions button{
+  min-height:40px;
+  height:40px;
+  padding:0 10px;
+  font-size:12px!important;
+}
+
+#root .app-shell :is(.member-action,.platform-org-actions button){
+  min-width:0;
+}
+
+@media(max-width:1000px){
+  #root .app-shell .content{
+    padding:18px;
+  }
+  #root .app-shell .stat-grid{
+    gap:10px;
+  }
+}
+
+@media(max-width:680px){
+  #root .app-shell .content{
+    padding:14px;
+  }
+  #root .app-shell .panel{
+    padding:14px;
+    border-radius:10px;
+  }
+  #root .app-shell .stat-card{
+    padding:11px;
+  }
+  #root .app-shell .form-grid{
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+  }
+  #root .app-shell .modal{
+    width:96vw;
+    max-width:96vw;
+    max-height:94dvh;
+    padding:14px;
+    border-radius:11px;
+  }
+  #root .app-shell :is(.field input,.field select,.plan-period-control input,.plan-period-control select){
+    font-size:16px!important;
+  }
+  #root .app-shell textarea{
+    font-size:16px;
+  }
+  #root .app-shell .table-standard-wrap{
+    border-radius:9px;
+  }
+  #root .app-shell .inventory-mobile-card{
+    padding:11px;
+    gap:9px;
+  }
+  #root .app-shell .inventory-mobile-actions{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  #root .app-shell .modal-actions{
+    flex-wrap:wrap;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  #root .app-shell *,
+  #root .app-shell *::before,
+  #root .app-shell *::after{
+    scroll-behavior:auto!important;
+    transition-duration:.01ms!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+  }
+}
