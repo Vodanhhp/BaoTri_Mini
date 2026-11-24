@@ -179,3 +179,22 @@ export async function releaseSmartEquipmentIdReservation(
     throw new Error('Cloud chưa xác nhận giải phóng số thứ tự.')
   }
 }
+
+
+/** Save organization-owned catalog additions. RLS permits settings.manage only. */
+export async function saveOrganizationEquipmentCatalogSnapshot(
+  client: SupabaseClient,
+  organizationId: string,
+  snapshot: EquipmentCatalog
+): Promise<OrganizationEquipmentCatalogRecord> {
+  const { data, error } = await client
+    .from('organization_equipment_catalog')
+    .update({ snapshot, updated_at: new Date().toISOString() })
+    .eq('organization_id', organizationId)
+    .select('plan_code,source_data_version,snapshot')
+    .single()
+
+  if (error) throw new Error('Không lưu được từ điển thiết bị của tổ chức: ' + error.message)
+  if (!data) throw new Error('Không nhận được Catalog Snapshot sau khi lưu.')
+  return data as OrganizationEquipmentCatalogRecord
+}
