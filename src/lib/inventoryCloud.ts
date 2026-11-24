@@ -403,7 +403,7 @@ async function pushPendingInventoryMutations(
   organizationId: string,
   permissions: InventoryCloudPermissions,
   shouldContinue: () => boolean
-): Promise<{ pushed: number; failed: number; conflicts: number }> {
+): Promise<{ pushed: number; pushFailed: number; conflicts: number }> {
   const pending = await db.inventoryMutations.where('organizationId').equals(organizationId)
     .filter(pendingOrProcessing).toArray()
   pending.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -435,7 +435,7 @@ async function pushPendingInventoryMutations(
       }
     }
   }
-  return { pushed, failed, conflicts }
+  return { pushed, pushFailed: failed, conflicts }
 }
 
 async function applyInventoryEvent(organizationId: string, event: InventorySyncEvent): Promise<void> {
