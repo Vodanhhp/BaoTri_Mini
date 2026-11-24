@@ -17,8 +17,8 @@ export async function downloadExcelReport(
   const bodyRows = rows.map((row, index) => [index + 1, ...headers.map(header => row[header] ?? '')])
   const columnWidths = headerNames.map((header, column) => {
     const maxLength = Math.max(header.length, ...bodyRows.map(row => String(row[column] ?? '').split(/\r?\n/).reduce((max, line) => Math.max(max, line.length), 0)))
-    const maxWidth = orientation === 'portrait' ? 24 : 42
-    return column === 0 ? 7 : Math.min(maxWidth, Math.max(11, maxLength + 2))
+    const maxWidth = orientation === 'portrait' ? 20 : 28
+    return column === 0 ? 6 : Math.min(maxWidth, Math.max(9, maxLength + 1))
   })
   worksheet.columns = columnWidths.map(width => ({ width }))
 
@@ -29,7 +29,7 @@ export async function downloadExcelReport(
     const cell = row.getCell(1)
     cell.font = { name: 'Aptos', size, bold, color: { argb: fontColor } }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
-    cell.alignment = { vertical: 'middle', horizontal: 'left' }
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
   }
 
   addBanner(title, 32, 'FF155B4B', 'FFFFFFFF', 16, true)
