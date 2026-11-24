@@ -1,4 +1,5 @@
 import {useEffect,useState,type FormEvent} from 'react'
+import { todayVNDateInput } from './lib/dateTime'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {Check,KeyRound,Mail,UserRound,X} from 'lucide-react'
 
@@ -56,7 +57,7 @@ export default function AccountProfilePanel({client,onClose}:Props){
   try{
    const name=fullName.trim()
    if(!name)throw new Error('Vui lòng nhập họ và tên.')
-   if(birthDate&&birthDate>new Date().toISOString().slice(0,10))throw new Error('Ngày sinh không thể ở tương lai.')
+   if(birthDate&&birthDate>todayVNDateInput())throw new Error('Ngày sinh không thể ở tương lai.')
    const {data:updatedProfile,error:profileError}=await client.from('profiles').update({display_name:name,phone:phone.trim()||null,updated_at:new Date().toISOString()}).eq('id',userId).select('id').maybeSingle()
    if(profileError)throw new Error('Không lưu được thông tin hồ sơ: '+describeError(profileError))
    if(!updatedProfile)throw new Error('Không tìm thấy bản ghi hồ sơ để cập nhật. Hãy đăng xuất rồi đăng nhập lại.')
@@ -107,7 +108,7 @@ export default function AccountProfilePanel({client,onClose}:Props){
      <h3><UserRound size={16}/> Thông tin cá nhân</h3>
      <label className="field">Họ và tên *<input required maxLength={120} value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Nhập họ và tên"/></label>
      <label className="field">Số điện thoại<input type="tel" maxLength={30} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Số điện thoại liên hệ"/></label>
-     <label className="field">Ngày tháng năm sinh<input type="date" max={new Date().toISOString().slice(0,10)} value={birthDate} onChange={e=>setBirthDate(e.target.value)}/></label>
+     <label className="field">Ngày tháng năm sinh<input type="date" max={todayVNDateInput()} value={birthDate} onChange={e=>setBirthDate(e.target.value)}/></label>
      <div className="modal-actions"><button className="primary-btn" disabled={busy}><Check size={15}/> Lưu hồ sơ</button></div>
     </form>
     <form className="account-profile-section" onSubmit={changeEmail}>

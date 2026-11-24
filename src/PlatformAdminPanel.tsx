@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useState,type FormEvent} from 'react'
+import { formatDateVN } from './lib/dateTime'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
 import { PlatformPlanRequestsPanel, PlatformAssetResetRequestsPanel } from './PlanChangePanels'
@@ -13,7 +14,7 @@ type Overview={organizationsTotal:number;organizationsActive:number;organization
 type LifecycleAction='suspend'|'reactivate'|'delete'
 
 const number=(value:number)=>new Intl.NumberFormat('vi-VN').format(value)
-const date=(value:string)=>value?new Date(value).toLocaleDateString('vi-VN'):'—'
+const date=(value:string)=>value?formatDateVN(value):'—'
 const planRank:Record<PlanCode,number>={A:1,B:2,C:3,D:4}
 
 const functionErrorMessage=async(error:unknown)=>{
