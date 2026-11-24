@@ -2080,3 +2080,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cuối phiếu có đường phân cách và dòng **Người yêu cầu in: [vai trò] — [tên tài khoản]** căn phải, lấy từ phiên đăng nhập hiện hành.
 - Chỉ thay đổi giao diện in thiết bị, CSS và regression test. Không sửa dữ liệu, lịch sử, quyền, schema, Supabase, Cloud hoặc đồng bộ. Lịch sử hiển thị đúng những sự kiện đang được lưu; không tự tạo lịch sử cho các thay đổi cũ chưa từng được ghi nhận.
 - Nhánh feat/equipment-print-form-standard; chưa merge và chưa deploy. Chưa kiểm tra trực quan trên trình duyệt hoặc máy in vật lý. Chờ CI Build/Test và TypeScript/Vite build.
+
+
+### Bổ sung thông tin trên tem in mã QR thiết bị — 24/11/2026
+
+- Giữ nguyên QR và kích thước tem 50 × 30 mm như trước.
+- Bố trí bên phải QR hai dòng riêng: **MÃ ID** (mã quản lý thiết bị) và **TÊN THIẾT BỊ** (tên hiển thị của hồ sơ, bao gồm dấu * nếu là thiết bị chuyển từ cơ sở khác).
+- Thu gọn cỡ chữ, cho phép tự xuống dòng để tên/mã dài không tràn khỏi tem.
+- Chỉ thay đổi giao diện tem in, CSS và regression test; không thay đổi dữ liệu, mã QR được mã hóa, quyền, Supabase hoặc đồng bộ Local ↔ Cloud.
+- Nhánh `feat/equipment-qr-sticker-id-name`; chờ CI và chưa triển khai lên app chính thức.
