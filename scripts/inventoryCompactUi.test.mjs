@@ -68,3 +68,13 @@ test('inventory movement history uses compact fixed columns instead of the wide 
 test('mobile hamburger toggle is hidden on desktop despite generic icon button styles', () => {
   assert.match(css, /@media\(min-width:681px\)[\s\S]*?\.topbar>\.mobile-menu-toggle\{display:none!important\}/)
 })
+
+
+test('inventory catalog prioritizes material name and shows code as secondary text on desktop and mobile', () => {
+  assert.match(panel, /<td><button type="button" className="inventory-name-link" onClick={\(\)=>setSelected\(item\)}><b>\{item\.name\}<\/b><small>\{item\.code\}<\/small><\/button><\/td>/)
+  assert.match(panel, /className="inventory-name-link" onClick=\{\(\)=>setSelected\(item\)\}><b>\{item\.name\}<\/b><small>\{item\.code\}<\/small><\/button>/)
+  assert.match(css, /inventory-catalog-table \.inventory-name-link b\{font-size:13px/)
+  assert.match(css, /inventory-catalog-table \.inventory-name-link small\{font-size:10px/)
+  assert.match(css, /inventory-mobile-card-head \.inventory-name-link b\{font-size:13px/)
+  assert.match(css, /inventory-mobile-card-head \.inventory-name-link small\{font-size:10px/)
+})
