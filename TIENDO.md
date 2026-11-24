@@ -2046,3 +2046,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rà soát `src/lib/inventoryCloud.ts`: đẩy mutation theo thứ tự sequence từng vật tư; pull theo cursor và page 200 event; kiểm tra organization, event type, sequence và snapshot trước khi áp dụng. Mutation lỗi tạm thời có backoff; lỗi được phân loại conflict thì dừng chuỗi mutation của vật tư để không tự ghi đè.
 - RPC dùng mutation ID làm khóa idempotency; movement được đối chiếu ID/nội dung trước khi thêm vào Local. Không phát hiện lỗi rõ ràng trong luồng pull/reconnect qua rà soát tĩnh này.
 - Rà soát tĩnh không thay thế thử nghiệm mạng chập chờn, offline write/reconnect push, retry thực tế hoặc hai máy sửa đồng thời. Các trường hợp này vẫn nằm trong danh sách kiểm thử tiếp theo.
+### Bổ sung phiếu in vật tư A4 dọc — 24/11/2026
+
+- Thêm mục **In phiếu** trong menu Thao tác của từng vật tư; bổ sung nút tương ứng trên thẻ Mobile. Người có quyền xem kho có thể in phiếu, không cần quyền sửa hoặc xuất Excel.
+- Phiếu in gồm thông tin vật tư: mã/tên, nhóm, đơn vị, mã phụ tùng, quy cách, số tồn, tồn tối thiểu, đơn giá, giá trị tồn, vị trí, nhà cung cấp, trạng thái, ngày tạo, người tạo, lần cập nhật cuối; vật tư đã lưu trữ có thêm thời điểm lưu trữ.
+- Phần lịch sử in toàn bộ giao dịch nhập, xuất, kiểm kê/điều chỉnh theo thứ tự thời gian; hiển thị ngày giờ, loại nghiệp vụ, số lượng/số đếm sau kiểm kê, tồn trước/sau, lý do và người thực hiện. Vật tư lưu trữ có thêm dòng sự kiện lưu trữ theo thời điểm archivedAt.
+- Thiết lập khổ giấy A4 dọc; bảng lịch sử lặp tiêu đề cột khi qua trang và tránh ngắt một dòng giao dịch giữa hai trang. Trình duyệt mở hộp thoại in để người dùng chọn máy in hoặc lưu PDF.
+- Không thay đổi dữ liệu, quyền nghiệp vụ, lịch sử gốc, schema, migration hoặc đồng bộ Local ↔ Cloud. Lưu ý: hiện hệ thống không có nhật ký riêng cho từng lần sửa metadata, nên phiếu không thể liệt kê các phiên bản thông tin cũ; phần lịch sử bao gồm các giao dịch kho và sự kiện lưu trữ hiện có.
+- Regression test bổ sung kiểm tra trường thông tin, lịch sử và định dạng A4. GitHub Actions Build and test SUCCESS (run 45404628830); GitHub Pages build/deploy SUCCESS (run 45404628906). Chưa kiểm tra trực quan bản in trên máy in vật lý; cần người dùng thử in/lưu PDF để xác nhận cách ngắt trang theo dữ liệu thực tế.
