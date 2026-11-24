@@ -1503,3 +1503,14 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - CI trên head `5d7c167a01c2b5be6f169ac5445936d6af9a98c5`: Build SUCCESS, Unit tests SUCCESS, Validate SUCCESS.
 - Còn phải kiểm thử thủ công bằng Admin/KTV trên Supabase Test: chọn loại khi not-found, Admin thêm loại/alias, Admin thêm nhóm, KTV bị từ chối cập nhật Catalog qua UI và Data API, Plan A optional group, Plan B/C/D required group; đồng thời xác nhận history log có before/after.
 - Migration chưa áp dụng lên bất kỳ Supabase project nào. PR vẫn Draft, chưa merge.
+
+
+### Supabase Test – áp dụng audit Catalog (24/11/2026)
+
+- Đã áp dụng migration `organization_equipment_catalog_audit` lên đúng Supabase Test `dskeaiyvldiwlsfqkboq`; không truy cập/chỉnh sửa Production.
+- Supabase ghi nhận migration version `20261124010024`. Đã đồng bộ tên file migration trong PR thành `20261124010024_organization_equipment_catalog_audit.sql` để tránh migration drift khi triển khai tiếp.
+- SQL xác nhận: bảng history có RLS bật; authenticated có SELECT nhưng không có INSERT; anon không có SELECT.
+- Policy SELECT duy nhất giới hạn bởi `private.has_org_permission(organization_id, 'settings.manage')`.
+- Trigger `organization_equipment_catalog_audit_snapshot` đã tồn tại, gọi hàm SECURITY DEFINER trong schema private với `search_path=''` và `row_security=off`.
+- Security Advisor sau migration không báo finding mới liên quan bảng history/trigger; còn các cảnh báo tồn tại từ trước trong private tables, SECURITY DEFINER RPC public và leaked-password protection. Không thay đổi các mục ngoài phạm vi PR.
+- Chưa thực hiện UPDATE Snapshot thử nghiệm, chưa phát sinh audit row giả; cần kiểm thử bằng phiên Admin/KTV thực tế để xác nhận actor_user_id và before/after.
