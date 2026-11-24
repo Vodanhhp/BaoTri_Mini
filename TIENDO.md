@@ -2182,3 +2182,23 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã xác minh read-only: 2 bảng private, 3 private functions, 3 public wrappers; `authenticated` không có EXECUTE trên wrappers, `service_role` có. Không có dữ liệu tên doanh nghiệp nào được thay đổi.
 - PR #59 đang OPEN, chưa merge. Sau khi đồng bộ migration source và inventory baseline, CI trên commit `5e255dc56cddcc3e8e9d1479f4e9e3cf1d2a2cda` đã SUCCESS: Build and test run `45427489523`; Validate run `45427489608`. Chưa kiểm tra trực quan UI trên trình duyệt PC/mobile; chờ phê duyệt merge để Pages triển khai giao diện.
 - PR #59 đang OPEN, chưa merge. Build/Test SUCCESS (run 45424755831: 185 tests pass và Vite/TypeScript build thành công); Validate SUCCESS (run 45424755901). Chưa áp dụng migration/deploy Edge Functions lên Production và chưa kiểm tra trực quan trên trình duyệt PC/mobile.
+
+
+### Chốt công việc đổi tên doanh nghiệp — 24/11/2026 (cập nhật sau merge)
+
+- Đính chính các ghi chú trạng thái PR #59 ở phần trên: **PR #59 đã được merge vào `main`** theo xác nhận của người dùng; merge commit `eaa881e9f0241a9cecbf6024a2faf6f82912ddc1`. PR #60 trùng lặp đã đóng.
+- Migration `20261124153541_organization_name_change_requests.sql` đã áp dụng trên Supabase Production `BAOTRI-Mini-New`; hai Edge Functions liên quan đang ACTIVE version 1, `verify_jwt=true`.
+- CI Build/Test và Validate trên commit triển khai trước merge đều SUCCESS (runs `45427489523` và `45427489608`). Chưa xác minh được trạng thái GitHub Pages deployment sau merge và chưa kiểm tra trực quan UI qua trình duyệt; không coi hai việc này là đã hoàn tất.
+- Kiểm tra read-only sau triển khai cho thấy các bảng yêu cầu/lịch sử chưa có bản ghi; không có tên doanh nghiệp nào bị thay đổi trong quá trình triển khai.
+- Cửa sổ Thuê bao doanh nghiệp đã được người dùng mở kiểm tra và xác nhận **“ok rồi”** ngày 24/11/2026.
+
+### Kế hoạch tiếp tục ngày 25/11/2026 — Checklist kiểm thử
+
+- Tiếp tục rà soát và kiểm thử phân hệ **Checklist**; trước khi sửa code, xác định rõ luồng hiện tại, quyền Admin/KTV/Viewer, dữ liệu Local/Cloud và các điểm còn thiếu.
+- Kiểm tra danh mục/mẫu checklist: tạo, xem, sửa, trạng thái hoạt động và phạm vi áp dụng; xác nhận quyền quản lý mẫu đúng vai trò.
+- Kiểm tra thực hiện checklist: chọn thiết bị, ghi kết quả từng hạng mục, ghi chú/giá trị, lưu nháp hoặc hoàn tất (theo đúng chức năng hiện có), xem lại kết quả đã ghi.
+- Kiểm tra lịch sử/kết quả checklist gắn đúng thiết bị, tổ chức, người thực hiện và thời điểm Việt Nam (Asia/Ho_Chi_Minh).
+- Kiểm tra quyền Viewer chỉ xem; KTV thực hiện theo quyền được cấp; Admin quản lý mẫu và dữ liệu theo permission catalog.
+- Rà soát Local-first và đồng bộ: offline/online, retry, tránh ghi trùng hoặc ghi đè; không tự ý thay đổi schema, migration, RLS, Auth hay dữ liệu Production khi chưa được người dùng phê duyệt.
+- Bổ sung regression tests cho các lỗi/điểm thiếu được phát hiện; chạy CI Build/Test và Validate. Chỉ ghi nhận kiểm thử browser/PC/mobile thực tế khi đã thực hiện thật.
+- Làm theo từng bước: khảo sát → thống nhất yêu cầu → triển khai nhánh riêng/PR → kiểm tra CI → trình người dùng duyệt. Không tự merge PR hoặc thay đổi dữ liệu Production khi chưa có chấp thuận rõ ràng.
