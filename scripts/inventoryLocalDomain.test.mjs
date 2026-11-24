@@ -36,7 +36,7 @@ test('creating an item with opening stock records item, opening movement and mut
   const source = await read('../src/lib/inventory.ts')
   const create = source.slice(source.indexOf('export async function createInventoryItem'), source.indexOf('export async function updateInventoryItemMetadata'))
   assert.match(create, /db\.transaction\('rw', \[db\.inventoryItems, db\.inventoryMovements, db\.inventoryMutations\]/)
-  assert.match(create, /movementRecord\(actor, \\{ \.\.\.item, quantity: 0 \\}, 'Nhập', openingQuantity, 'Tồn đầu kỳ'/)
+  assert.match(create, /movementRecord\(actor, \{ \.\.\.item, quantity: 0 \}, 'Nhập', openingQuantity, 'Tồn đầu kỳ'/)
   assert.match(create, /if \(movement\) await db\.inventoryMovements\.add\(movement\)/)
   assert.match(create, /await db\.inventoryMutations\.add\(mutation\)/)
   assert.match(create, /openingQuantity > 0/)
