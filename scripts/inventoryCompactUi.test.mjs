@@ -95,3 +95,14 @@ test('inventory action menu and mobile actions expose a printable A4 material sh
   assert.match(css, /inventory-print-history thead\{display:table-header-group\}/)
   assert.match(css, /inventory-print-history tr\{break-inside:avoid/)
 })
+
+
+test('inventory print sheet gives the date-time column room and identifies organization and print requester', () => {
+  assert.match(panel, /organizationName: string/)
+  assert.match(panel, /userRoleLabel: string/)
+  assert.match(panel, /organizationName\|\|'ĐƠN VỊ \/ DOANH NGHIỆP'/)
+  assert.match(panel, /Người yêu cầu in:/)
+  assert.match(panel, /userRoleLabel.*userLabel/)
+  assert.match(css, /inventory-print-history th:nth-child\(2\)\{width:21%\}/)
+  assert.match(css, /inventory-print-history td:nth-child\(2\)\{white-space:nowrap/)
+})
