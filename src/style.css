@@ -2272,3 +2272,153 @@ html,body,#root,.app-shell{
     padding:8px 9px;
   }
 }
+
+
+/* 2026-11-24: compact, task-first inventory workspace */
+#root .app-shell .inventory-workspace{
+  gap:12px;
+}
+#root .app-shell .inventory-page-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:2px 2px 4px;min-width:0;
+}
+#root .app-shell .inventory-page-heading>div:first-child{min-width:0}
+#root .app-shell .inventory-page-heading .eyebrow{
+  padding:0 0 4px;color:var(--muted);font-size:10px;letter-spacing:1.1px;
+}
+#root .app-shell .inventory-page-heading h2{
+  margin:0;font-size:21px;line-height:1.25;font-weight:750;color:var(--text);
+}
+#root .app-shell .inventory-page-heading p{
+  margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.45;
+}
+#root .app-shell .inventory-storage-pill{
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+  border:1px solid var(--border);border-radius:999px;background:var(--panel);
+  color:var(--muted);padding:7px 11px;font-size:11px;white-space:nowrap;
+}
+#root .app-shell .inventory-storage-pill span{font-size:8px;color:var(--success-text)}
+#root .app-shell .inventory-storage-pill i{font-style:normal;color:var(--border)}
+#root .app-shell .inventory-stats{
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0;
+}
+#root .app-shell .inventory-stat-card{
+  min-height:76px;padding:11px 14px;box-shadow:none;
+  border-radius:10px;align-items:center;
+}
+#root .app-shell .inventory-stat-card>div{min-width:0}
+#root .app-shell .inventory-stat-card small{
+  font-size:11px!important;font-weight:600;color:var(--muted);
+}
+#root .app-shell .inventory-stat-card strong{
+  margin:2px 0 0;font-size:21px;line-height:1.25;letter-spacing:-.3px;
+}
+#root .app-shell .inventory-stat-card span{
+  margin-top:2px;font-size:10px!important;color:var(--muted);
+}
+#root .app-shell .inventory-workspace>.panel{
+  padding:16px 18px;border-radius:11px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head{
+  align-items:center;margin-bottom:12px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head h2{
+  margin:0 0 3px;font-size:15px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head p{
+  font-size:11px;line-height:1.45;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head .top-actions{
+  gap:7px;flex:0 0 auto;
+}
+#root .app-shell .inventory-filters{
+  grid-template-columns:minmax(220px,1.8fr) minmax(150px,.8fr) minmax(145px,.75fr);
+  gap:9px;margin:0 0 9px;padding:10px;
+  border:1px solid var(--border);border-radius:9px;background:var(--panel-alt);
+}
+#root .app-shell .inventory-filters .searchbar{
+  height:40px;min-height:40px;margin:0;background:var(--panel);
+}
+#root .app-shell .inventory-filters .field{gap:4px;font-size:10px}
+#root .app-shell .inventory-filters .field select{
+  height:40px;min-height:40px;background:var(--panel);
+}
+#root .app-shell .inventory-workspace .asset-result-count{
+  margin:0 0 8px;color:var(--muted);font-size:10px;line-height:1.4;
+}
+#root .app-shell .inventory-desktop-table{
+  border:1px solid var(--border);border-radius:9px;
+}
+#root .app-shell .inventory-desktop-table table{
+  table-layout:fixed;white-space:normal;
+}
+#root .app-shell .inventory-desktop-table th{
+  padding:9px 10px;font-size:10px;
+}
+#root .app-shell .inventory-desktop-table td{
+  padding:9px 10px;font-size:11px;vertical-align:middle;overflow-wrap:anywhere;
+}
+#root .app-shell .inventory-desktop-table th:nth-child(1){width:23%}
+#root .app-shell .inventory-desktop-table th:nth-child(2){width:15%}
+#root .app-shell .inventory-desktop-table th:nth-child(3){width:11%}
+#root .app-shell .inventory-desktop-table th:nth-child(4){width:12%}
+#root .app-shell .inventory-desktop-table th:nth-child(5){width:10%}
+#root .app-shell .inventory-desktop-table th:nth-child(6){width:12%}
+#root .app-shell .inventory-desktop-table th:nth-child(7){width:17%}
+#root .app-shell .inventory-desktop-table .inventory-name-link{gap:2px}
+#root .app-shell .inventory-desktop-table .inventory-name-link b{font-size:11px}
+#root .app-shell .inventory-desktop-table .inventory-name-link small{font-size:11px;line-height:1.35}
+#root .app-shell .inventory-actions-cell{overflow:visible}
+#root .app-shell .inventory-action-menu{position:relative;display:inline-block}
+#root .app-shell .inventory-action-menu summary{
+  display:inline-flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
+  height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;
+  background:var(--panel);color:var(--text);font-size:11px;font-weight:650;
+  white-space:nowrap;
+}
+#root .app-shell .inventory-action-menu summary::-webkit-details-marker{display:none}
+#root .app-shell .inventory-action-menu summary span{color:var(--muted);font-size:12px}
+#root .app-shell .inventory-action-menu>div{
+  position:absolute;right:0;top:calc(100% + 5px);z-index:12;min-width:174px;
+  display:grid;gap:2px;padding:5px;border:1px solid var(--border);
+  border-radius:9px;background:var(--panel);box-shadow:0 10px 28px #142e271f;
+}
+#root .app-shell .inventory-action-menu>div button{
+  min-height:34px;padding:6px 9px;border:0;border-radius:6px;background:transparent;
+  color:var(--text);text-align:left;font-size:11px;font-weight:550;cursor:pointer;
+}
+#root .app-shell .inventory-action-menu>div button:hover{background:var(--panel-alt)}
+#root .app-shell .inventory-action-menu>div button.danger{color:var(--danger-text)}
+#root .app-shell .inventory-action-muted{padding:8px;color:var(--muted);font-size:11px}
+#root .app-shell .inventory-workspace>.panel:last-of-type{margin-top:0}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table table{min-width:850px}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table th,
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table td{padding:8px 9px}
+@media(max-width:900px){
+  #root .app-shell .inventory-page-heading{align-items:flex-start;flex-direction:column;gap:8px}
+  #root .app-shell .inventory-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #root .app-shell .inventory-filters .searchbar{grid-column:1/-1}
+}
+@media(max-width:680px){
+  #root .app-shell .inventory-workspace{gap:10px}
+  #root .app-shell .inventory-page-heading{gap:7px;padding:0}
+  #root .app-shell .inventory-page-heading h2{font-size:19px}
+  #root .app-shell .inventory-page-heading p{font-size:11px}
+  #root .app-shell .inventory-storage-pill{padding:6px 9px;font-size:10px;white-space:normal}
+  #root .app-shell .inventory-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  #root .app-shell .inventory-stat-card{min-height:68px;padding:9px 10px}
+  #root .app-shell .inventory-stat-card:nth-child(3){grid-column:1/-1}
+  #root .app-shell .inventory-stat-card strong{font-size:19px}
+  #root .app-shell .inventory-workspace>.panel{padding:12px}
+  #root .app-shell .inventory-workspace>.panel>.panel-head{display:flex;align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:10px}
+  #root .app-shell .inventory-workspace>.panel>.panel-head .top-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  #root .app-shell .inventory-workspace>.panel>.panel-head .top-actions button{width:100%;height:40px;min-height:40px;font-size:11px!important}
+  #root .app-shell .inventory-filters{grid-template-columns:minmax(0,1fr);gap:7px;padding:8px}
+  #root .app-shell .inventory-filters .searchbar{grid-column:auto}
+  #root .app-shell .inventory-filters .field select{height:40px;min-height:40px;font-size:16px}
+  #root .app-shell .inventory-mobile-list{gap:8px}
+  #root .app-shell .inventory-mobile-card{padding:10px;border-radius:9px}
+  #root .app-shell .inventory-mobile-quantities>div{padding:8px}
+  #root .app-shell .inventory-mobile-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  #root .app-shell .inventory-mobile-actions .soft-btn{height:38px;min-height:38px}
+}
