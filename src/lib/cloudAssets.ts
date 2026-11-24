@@ -485,7 +485,7 @@ export async function syncPendingLocalAssetImports(
         failureKind:permanent?'permanent':'transient',lastError:message,
         nextAttemptAt:permanent?undefined:new Date(Date.now()+delay).toISOString(),updatedAt:now()
       })
-      if(permanent&&/already exists|different Cloud content|UUID already|does not match/i.test(message))result.conflicts++
+      if(permanent&&/already exists|different Cloud content|UUID already|does not match|Import mutation ID reused with different request/i.test(message))result.conflicts++
       else result.failed++
     }
   }
