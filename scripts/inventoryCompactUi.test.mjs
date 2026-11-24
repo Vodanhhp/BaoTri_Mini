@@ -39,3 +39,15 @@ test('modal and action-dialog close buttons share one consistent frame and glyph
   assert.match(css, /\.modal-head>\.icon-btn,[\s\S]*?\.platform-action-head>\.icon-btn\{[\s\S]*?width:36px;[\s\S]*?height:36px;[\s\S]*?font-size:22px/)
   assert.match(css, /\.modal-head>\.icon-btn svg,[\s\S]*?\.platform-action-head>\.icon-btn svg\{[\s\S]*?width:18px!important;[\s\S]*?height:18px!important/)
 })
+
+
+test('inventory catalog table has explicit column proportions and isolated menu overflow scope', () => {
+  assert.match(panel, /className="panel inventory-catalog-panel"/)
+  assert.match(panel, /inventory-desktop-table inventory-catalog-wrap/)
+  assert.match(panel, /inventory-catalog-table/)
+  assert.match(panel, /<colgroup>[\s\S]*col-material[\s\S]*col-actions/)
+  assert.match(css, /\.inventory-catalog-table \.col-material\{width:22%\}/)
+  assert.match(css, /\.inventory-catalog-table \.col-actions\{width:18%\}/)
+  assert.match(css, /\.inventory-catalog-panel > \.inventory-catalog-wrap:has\(\.inventory-action-menu\[open\]\)/)
+  assert.doesNotMatch(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)/)
+})
