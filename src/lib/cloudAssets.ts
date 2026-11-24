@@ -481,7 +481,7 @@ export async function syncPendingLocalAssetImports(
       const attempts=item.attempts+1
       const delay=Math.min(15*60_000,30_000*Math.pow(2,Math.min(attempts-1,5)))*(0.8+Math.random()*0.4)
       await db.assetImportQueue.update(item.id,{
-        status:permanent?( /already exists|different Cloud content|UUID already|does not match/i.test(message)?'conflict':'permanent'):'pending',
+        status:permanent?( /already exists|different Cloud content|UUID already|does not match|Import mutation ID reused with different request/i.test(message)?'conflict':'permanent'):'pending',
         failureKind:permanent?'permanent':'transient',lastError:message,
         nextAttemptAt:permanent?undefined:new Date(Date.now()+delay).toISOString(),updatedAt:now()
       })
