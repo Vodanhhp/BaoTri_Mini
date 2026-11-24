@@ -11,7 +11,7 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return response({error:'Method not allowed'},405,origin)
  try{
-  const owner=ownerEmail(),token=req.headers.get('Authorization')?.match(/^Bearer\\s+(.+)$/i)?.[1]?.trim()
+  const owner=ownerEmail(),token=req.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
   if(!owner)return response({error:'Server configuration missing'},500,origin)
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL'),serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),publicKey=Deno.env.get('SUPABASE_ANON_KEY')||Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
