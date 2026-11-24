@@ -1930,3 +1930,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm regression tests cho bảng lịch sử và nút hamburger desktop.
 - Chỉ thay đổi trình bày; giữ nguyên dữ liệu và nguyên tắc append-only, không sửa/xóa giao dịch; không thay đổi Supabase, Auth, RLS, Cloud sync hay nghiệp vụ kho.
 - Chưa thực hiện visual QA trên trình duyệt/thiết bị thật.
+
+
+### 24/11/2026 — Bổ sung xuất báo cáo Excel cho thiết bị và kho vật tư
+- Tái sử dụng mẫu ExcelJS từ `Vodanhhp/DuAn_BaoTRi`: tiêu đề báo cáo, ngày xuất, tổng bản ghi, hàng tiêu đề định dạng, STT, zebra rows, bộ lọc, cố định phần đầu, in A4 ngang và footer số trang.
+- Kho vật tư xuất danh sách đang hiển thị theo bộ lọc, gồm tồn, tồn tối thiểu, tình trạng, đơn giá và giá trị tồn; vật tư lưu trữ được xuất khi bật chế độ xem lưu trữ.
+- Thiết bị xuất danh sách đang hiển thị theo bộ lọc, gồm mã, thông tin kỹ thuật, vị trí, trạng thái, lưu kho và xóa mềm; không đưa ảnh vào tệp.
+- Nút xuất chỉ dành cho Admin/KTV hoặc Local Preview; Viewer không có nút xuất theo quy tắc dự án cũ. Chỉ đọc dữ liệu Local; không đổi dữ liệu, Supabase hay Cloud sync.
+- Thêm ExcelJS 4.4.0 và dependency graph từ lockfile dự án cũ; có regression tests.
+- Chờ CI/build và kiểm tra thực tế tệp Excel sau triển khai.
