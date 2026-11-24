@@ -16,18 +16,18 @@ Mọi ứng dụng trong hệ sinh thái BAOTRI dùng cùng một ngôn ngữ tr
 ## Kích thước mặc định
 | Thành phần | Chuẩn |
 |---|---:|
-| Header | 10px, đậm, padding 11px 13px |
-| Nội dung | 11–12px, line-height 1.5 |
-| Padding ô | 10px 13px |
+| Header | 11px, đậm, padding 8px 10px |
+| Nội dung | 12px, line-height 1.45–1.5; thông tin phụ 11px |
+| Padding ô | 8px 10px |
 | Bo góc khung | 12px desktop, 9px mobile |
 | Viền | 1px theo `--border` |
-| Chiều rộng tối thiểu | 620px cho bảng phổ thông; bảng nhiều cột xác định min-width theo nghiệp vụ và không bó hẹp trong modal |
-| Nút thao tác nhỏ | cao tối thiểu khoảng 30px |
+| Chiều rộng tối thiểu | 0px mặc định; chỉ đặt min-width riêng khi số cột/nghiệp vụ thực sự cần cuộn ngang |
+| Nút thao tác | cao thống nhất 40px; nút biểu tượng 40×40px |
 
 ## Responsive
-- Bọc bảng trong vùng cuộn ngang, không ép chữ thành nhiều dòng đến mức khó đọc.
+- Bọc bảng trong vùng cuộn ngang khi cần; mặc định bảng co theo vùng nội dung, không tự ép min-width 620px.
 - Cho phép sticky header khi bảng dài; vùng cuộn có `overscroll-behavior-x: contain`.
-- Mobile giảm nhẹ padding và cỡ chữ, giữ thao tác đủ lớn; không ẩn cột chứa trạng thái hoặc hành động thiết yếu.
+- Mobile giảm nhẹ padding bảng, giữ cỡ chữ đọc được và vùng chạm đủ lớn; không ẩn cột chứa trạng thái hoặc hành động thiết yếu.
 - Với bảng rất rộng, đặt `min-width` riêng theo nghiệp vụ và ghi rõ trong CSS.
 
 ## Cách áp dụng trong React
@@ -98,3 +98,39 @@ Bảng hiện tại trong BAOTRI Mini cần được bọc bằng `.table-wrap`;
 - Chỉ cho phép font chuyên dụng trong vùng in theo biểu mẫu hoặc chuỗi mã kỹ thuật cần font monospace; các ngoại lệ phải có phạm vi CSS rõ ràng và không lan sang giao diện thường.
 - Trên mobile ưu tiên tăng khả năng đọc và vùng chạm; điều chỉnh bố cục/cho cuộn thay vì giảm chữ xuống dưới chuẩn.
 - Khi thêm màn hình mới, dùng token typography thay vì đặt giá trị font-size rời rạc. Không nhúng một thang chữ riêng trong component.
+
+## Quy chuẩn giao diện chung toàn ứng dụng — BAOTRI Mini
+
+Áp dụng cho tất cả module, không chỉ bảng dữ liệu. Màn hình PC, tablet và mobile dùng chung token; breakpoint chỉ thay đổi bố cục, không tự tạo một bộ kích thước nút/ô nhập khác.
+
+### Kích thước điều khiển
+- Nút thao tác thông thường: cao **40px**; nút biểu tượng: **40×40px**.
+- Nút cùng vai trò phải cùng chiều cao, cỡ chữ, padding, bo góc và trạng thái hover/focus/disabled.
+- Chỉ nút điều hướng đáy mobile được dùng vùng cao 48px để phù hợp thao tác cảm ứng; không áp dụng ngoại lệ kích thước tùy tiện theo từng module.
+- Input và select một dòng: cao **40px**, rộng theo cột chứa; không tự đặt min-height 34/37/42/44/46px ở từng màn hình.
+- Textarea: tối thiểu 96px, cho phép tăng theo nội dung.
+- Checkbox/radio giữ kích thước điều khiển riêng, không ép cao 40px.
+- Font nhập liệu desktop 13px; mobile có thể dùng 16px để tránh trình duyệt tự phóng to khi focus.
+
+### Thang khoảng cách
+Dùng các mức 4 / 8 / 12 / 16 / 24px. Các vùng cùng cấp phải dùng cùng nhịp khoảng cách; không đặt padding lớn riêng lẻ nếu không có lý do nghiệp vụ.
+
+### Mật độ bố cục
+- Nội dung chính dùng padding 22–28px trên desktop và 14px trên mobile.
+- Panel dùng padding 16px desktop, 14px mobile.
+- Thẻ thống kê, thanh công cụ, bộ lọc và vùng thao tác phải gọn; tránh tạo khoảng trống chỉ để lấp chiều rộng.
+- Các cột trong form phải có chiều rộng bằng nhau theo grid; không để input/select tự co theo độ dài giá trị.
+
+### Bảng và dữ liệu
+- Bảng tiêu chuẩn mặc định co theo vùng chứa (min-width: 0), dùng table-layout: fixed, nội dung dài được xuống dòng trong ô.
+- Chỉ bảng thực sự nhiều cột mới có min-width riêng; phải ghi rõ lý do và giữ vùng cuộn ngang độc lập.
+- Không áp min-width 620px đại trà cho mọi bảng. Không dùng white-space: nowrap cho toàn bộ bảng.
+- Header 11px; dữ liệu 12px; thông tin phụ 11px. Không giảm cỡ chữ để ép bảng vừa màn hình.
+- Padding ô thống nhất 8px 10px; nhóm thao tác dùng chung khoảng cách và nút 40px.
+- Nếu bảng quá dày trên mobile, chuyển sang thẻ có cấu trúc; không thu nhỏ bảng desktop đến mức khó đọc.
+
+### Thành phần và ngoại lệ
+- Dùng chung token tại :root trong src/style.css; CSS theo module chỉ quyết định bố cục, không tự ý thay đổi chiều cao/cỡ chữ nút và ô nhập.
+- Không dùng inline style để đặt kích thước điều khiển. Trường hợp đặc biệt phải có lý do và class có phạm vi rõ ràng.
+- Không thay đổi nghiệp vụ, quyền, dữ liệu, đồng bộ hoặc định dạng in trong quá trình chuẩn hóa giao diện.
+- Mọi thay đổi giao diện phải kiểm tra ở ít nhất ba vùng: desktop rộng, tablet và mobile hẹp; build/test không thay thế kiểm tra trực quan.
