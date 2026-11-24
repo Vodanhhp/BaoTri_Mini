@@ -295,6 +295,11 @@ begin
        or nullif(p_opening_movement->>'id','') is null then
       raise exception 'Opening movement identity is required' using errcode='22023';
     end if;
+    if exists (
+      select 1 from jsonb_object_keys(p_opening_movement) k
+      where k not in ('id','date','quantity','quantity_delta','balance_before','balance_after',
+                      'reason','performed_by','actor_user_id')
+    ) then raise exception 'Opening movement payload contains unsupported fields' using errcode='22023'; end if;
   elsif p_opening_movement is not null then
     raise exception 'Zero opening quantity must not include a movement' using errcode='22023';
   end if;
@@ -434,6 +439,9 @@ begin
   select * into v_item from public.inventory_items
    where organization_id=p_organization_id and id=p_item_id for update;
   if not found then raise exception 'Inventory item not found' using errcode='P0002'; end if;
+  if v_item.archived_at is not null then
+    raise exception 'Archived inventory item cannot be updated' using errcode='55000';
+  end if;
   if v_item.updated_at is distinct from p_expected_cloud_updated_at then
     raise exception 'Cloud inventory version changed; preserve both snapshots and resolve manually' using errcode='40001';
   end if;
@@ -573,6 +581,9 @@ begin
   select * into v_item from public.inventory_items
    where organization_id=p_organization_id and id=p_item_id for update;
   if not found then raise exception 'Inventory item not found' using errcode='P0002'; end if;
+  if v_item.archived_at is not null then
+    raise exception 'Archived inventory item cannot receive movements' using errcode='55000';
+  end if;
   if v_item.updated_at is distinct from p_expected_cloud_updated_at then
     raise exception 'Cloud inventory version changed; preserve both snapshots and resolve manually' using errcode='40001';
   end if;
