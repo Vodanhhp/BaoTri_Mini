@@ -66,7 +66,7 @@ test('Cloud SQL remains a draft and matches the client RPC and precision contrac
     'apply_inventory_movement',
     'archive_inventory_item',
     'list_inventory_sync_changes'
-  ]) assert.match(sqlDraft, new RegExp('public\\\\.' + rpc))
+  ]) assert.ok(sqlDraft.includes('create function public.' + rpc))
   assert.match(sqlDraft, /alter table public\.inventory_items enable row level security/)
   assert.match(sqlDraft, /alter table public\.inventory_movements enable row level security/)
   assert.match(sqlDraft, /security invoker/)
