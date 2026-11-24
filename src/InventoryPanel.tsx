@@ -219,7 +219,7 @@ export default function InventoryPanel(props: Props) {
     {notice && <div className="auth-note inventory-notice">{notice}<button type="button" className="text-btn" onClick={()=>setNotice('')}>Đóng</button></div>}
     {error && !formMode && !movementMode && <div className="auth-error inventory-error">{error}</div>}
 
-    <section className="panel">
+    <section className="panel inventory-catalog-panel">
       <div className="panel-head">
         <div><h2>Danh mục vật tư</h2><p>Thông tin và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p></div>
         <div className="top-actions">
