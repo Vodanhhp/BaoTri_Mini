@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { formatDateTimeVN } from './dateTime'
 import type { Asset, AssetCloudLink, AssetMutationPayload, EquipmentIdComponentsSnapshot } from '../db'
 import { db, now, uid } from '../db'
 import { confirmSmartEquipmentIdReservation } from './smartEquipmentIdClient'
@@ -665,7 +666,7 @@ export async function retryCloudAssetMutation(client:SupabaseClient,organization
  const mutation=await db.assetMutations.get(mutationId)
  if(!mutation||mutation.organizationId!==organizationId)throw new Error('Không tìm thấy mutation Local.')
  if(mutation.status==='conflict'||mutation.failureKind==='permanent')throw new Error(mutation.lastError||'Mutation cần được xử lý thủ công; không tự retry.')
- if(mutation.nextAttemptAt&&Date.parse(mutation.nextAttemptAt)>Date.now())throw new Error('Mutation đang chờ đến lượt retry lúc '+new Date(mutation.nextAttemptAt).toLocaleString('vi-VN')+'.')
+ if(mutation.nextAttemptAt&&Date.parse(mutation.nextAttemptAt)>Date.now())throw new Error('Mutation đang chờ đến lượt retry lúc '+formatDateTimeVN(mutation.nextAttemptAt)+'.')
  const local=await db.assets.get(mutation.assetId)
  if(!local)throw new Error('Local snapshot của mutation đã mất.')
  const link=await db.assetCloudLinks.get(organizationId+':'+mutation.assetId)
