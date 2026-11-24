@@ -43,6 +43,9 @@ test('Local inventory writes request the shared sync scheduler after commit', ()
   assert.equal((local.match(/requestSync\(\)/g) ?? []).length, 5)
   assert.match(app, /syncInventoryCloud\(client,organizationId/)
   assert.match(app, /context\.permissions\.includes\('inventory\.view'\)/)
+  assert.match(app, /const INVENTORY_CLOUD_SYNC_ENABLED = false/)
+  assert.match(local, /function metadataSnapshot[\s\S]*?code: item\.code,[\s\S]*?name: item\.name/)
+  assert.doesNotMatch(local.slice(local.indexOf('function metadataSnapshot'), local.indexOf('async function assertCodeAvailable')), /code_normalized/)
 })
 
 test('Cloud contract preserves server-side permissions, idempotency and append-only movements', () => {
