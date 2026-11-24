@@ -404,6 +404,65 @@ export async function importLocalAsset(client: SupabaseClient, organizationId: s
   return {cloud,alreadyPresent:result.already_present===true}
 }
 
+/**
+ * Recover the narrow race where Cloud committed the immutable import receipt,
+ * but Local changed before the client could persist its Cloud link. The import
+ * RPC intentionally rejects reusing the same mutation ID with a different
+ * payload. Rather than retry forever, link only the exact UUID+code found on
+ * Cloud and create an explicit Local-vs-Cloud conflict for user review.
+ */
+async function recoverCommittedImportWithChangedLocalSnapshot(
+  client:SupabaseClient,
+  organizationId:string,
+  attempted:Asset,
+  errorMessage:string
+):Promise<boolean>{
+  if(!errorMessage.includes('Import mutation ID reused with different request'))return false
+  const current=await db.assets.get(attempted.id)
+  if(!current||current.localScope!==organizationId||current.code!==attempted.code||current.deletedAt)return false
+  if(current.updatedAt===attempted.updatedAt)return false
+
+  const cloudRows=await listCloudAssets(client,organizationId)
+  const cloud=cloudRows.find(row=>row.code===attempted.code&&row.id===attempted.id)
+  if(!cloud)return false
+
+  // The user may have edited or reset the Local row while the Cloud read ran.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  const at=now()
+  const samePayload=JSON.stringify(toImportPayload(current))===JSON.stringify(toImportPayload(cloud))
+  await db.transaction('rw',[db.assets,db.assetCloudLinks,db.assetMutations,db.assetImportQueue],async()=>{
+    const latest=await db.assets.get(attempted.id)
+    if(!latest||latest.localScope!==organizationId||latest.code!==attempted.code||latest.updatedAt!==current.updatedAt){
+      throw new Error('Local tiếp tục thay đổi trong lúc phục hồi import; giữ nguyên hàng đợi để kiểm tra lại.')
+    }
+    const link:AssetCloudLink={
+      id:organizationId+':'+attempted.id,organizationId,assetId:attempted.id,cloudCode:cloud.code,
+      cloudUpdatedAt:cloud.updatedAt,
+      lastSyncedLocalUpdatedAt:samePayload?latest.updatedAt:attempted.updatedAt,
+      status:samePayload?'linked':'conflict',lastVerifiedAt:at
+    }
+    await db.assetCloudLinks.put(link)
+    const queued=await db.assetImportQueue.get(organizationId+':'+attempted.id)
+    if(samePayload){
+      if(queued)await db.assetImportQueue.update(queued.id,{status:'applied',updatedAt:at,lastError:undefined,nextAttemptAt:undefined,failureKind:undefined})
+      return
+    }
+    const existing=await db.assetMutations.where('[organizationId+assetId]').equals([organizationId,attempted.id])
+      .filter(m=>m.status==='conflict').first()
+    if(!existing)await db.assetMutations.add({
+      mutationId:uid(),organizationId,assetId:attempted.id,payload:toMutationPayload(latest),
+      expectedCloudUpdatedAt:cloud.updatedAt,localUpdatedAt:latest.updatedAt,
+      status:'conflict',attempts:0,createdAt:at,updatedAt:at,
+      lastError:'Cloud đã nhận snapshot Local trước đó, nhưng Local tiếp tục thay đổi trong lúc import. Giữ cả hai phiên bản để đối chiếu.'
+    })
+    if(queued)await db.assetImportQueue.update(queued.id,{
+      status:'conflict',failureKind:'permanent',lastError:'Cloud đã nhận snapshot cũ; Local đã thay đổi. Cần đối chiếu Local/Cloud.',
+      nextAttemptAt:undefined,updatedAt:at
+    })
+  })
+  return true
+}
+
 export type LocalAssetImportSyncResult = { queued:number; imported:number; failed:number; conflicts:number }
 
 export async function syncPendingLocalAssetImports(
