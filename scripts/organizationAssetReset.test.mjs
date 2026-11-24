@@ -199,7 +199,7 @@ test('approved reset completely deletes Cloud inventory catalog, movements, muta
 test('Local approved reset atomically removes every organization-scoped inventory store and cursor', async () => {
  const source = await read('../src/lib/assetReset.ts')
  for (const store of ['inventoryGroups','inventoryItems','inventoryMovements','inventoryMutations','inventoryCloudLinks','inventorySyncCursors']) {
-  assert.match(source,new RegExp('db\\.'+store+'\\.where\\(\\'organizationId\\'\\)\\.equals\\(organizationId\\)\\.delete\\(\\)'))
+  assert.match(source,new RegExp("db\\."+store+"\\.where\\('organizationId'\\)\\.equals\\(organizationId\\)\\.delete\\(\\)"))
  }
  assert.match(source,/db\.transaction\('rw'[\s\S]*?db\.inventorySyncCursors/)
 })
