@@ -443,8 +443,10 @@ export async function syncPendingLocalAssetImports(
     }
   }
   const queue=await db.assetImportQueue.where('organizationId').equals(organizationId).toArray()
+  let processed=0
   for(const item of queue){
     if(options.shouldContinue&&!options.shouldContinue())break
+    if(processed>=25)break
     if(item.status==='processing'){
       if(Date.now()-Date.parse(item.updatedAt)<=60_000)continue
       await db.assetImportQueue.update(item.id,{status:'pending',updatedAt:now()})
@@ -464,6 +466,7 @@ export async function syncPendingLocalAssetImports(
       continue
     }
     const at=now()
+    processed++
     await db.assetImportQueue.update(item.id,{status:'processing',attempts:item.attempts+1,lastAttemptAt:at,updatedAt:at})
     try{
       await importLocalAsset(client,organizationId,asset)
@@ -474,7 +477,7 @@ export async function syncPendingLocalAssetImports(
       // assets.import-only error. Keep a verified Smart ID import retryable so
       // applying the matching migration later does not strand the Local record.
       const permissionMigrationPending=hasVerifiedSmartId&&options.canCreate&&/Missing assets\.import permission/i.test(message)
-      const permanent=!permissionMigrationPending&&/already exists|different Cloud content|UUID already|does not match|invalid|unsupported|Missing assets\.import|permission|reset generation is stale|stale; purge/i.test(message)
+      const permanent=!permissionMigrationPending&&/already exists|different Cloud content|UUID already|does not match|invalid|unsupported|reservation has been released|reservation not found|confirmed reservation cannot be reassigned|Missing assets\.import|permission|reset generation is stale|stale; purge/i.test(message)
       const attempts=item.attempts+1
       const delay=Math.min(15*60_000,30_000*Math.pow(2,Math.min(attempts-1,5)))*(0.8+Math.random()*0.4)
       await db.assetImportQueue.update(item.id,{
