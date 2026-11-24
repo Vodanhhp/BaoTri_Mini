@@ -68,6 +68,7 @@ function makeMutation(
   operation: InventoryMutation['operation'],
   payload: Record<string, unknown>,
   localUpdatedAt: string,
+  localSequence: number,
   expectedCloudUpdatedAt?: string
 ): InventoryMutation {
   const at = now()
@@ -76,6 +77,7 @@ function makeMutation(
     organizationId: actor.organizationId,
     itemId,
     operation,
+    localSequence,
     payload,
     expectedCloudUpdatedAt,
     localUpdatedAt,
@@ -84,6 +86,12 @@ function makeMutation(
     createdAt: at,
     updatedAt: at
   }
+}
+
+async function nextLocalMutationSequence(organizationId: string, itemId: string): Promise<number> {
+  const rows = await db.inventoryMutations.where('[organizationId+itemId]')
+    .equals([organizationId, itemId]).toArray()
+  return rows.reduce((max, row) => Math.max(max, row.localSequence ?? 0), 0) + 1
 }
 
 function movementRecord(
@@ -190,7 +198,8 @@ export async function createInventoryItem(
 
   const created = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations], async () => {
     await assertCodeAvailable(actor.organizationId, code)
-    const mutation = makeMutation(actor, itemId, 'create', { item: metadataSnapshot(item), opening_quantity: openingQuantity }, at)
+    const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
+    const mutation = makeMutation(actor, itemId, 'create', { item: metadataSnapshot(item), opening_quantity: openingQuantity }, at, localSequence)
     const movement = openingQuantity > 0
       ? movementRecord(actor, item, 'Nhập', openingQuantity, 'Tồn đầu kỳ', mutation.mutationId)
       : undefined
@@ -257,7 +266,8 @@ export async function updateInventoryItemMetadata(
       updatedAt: at
     }
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
-    const mutation = makeMutation(actor, itemId, 'update_metadata', { item: metadataSnapshot(next) }, at, link?.cloudUpdatedAt)
+    const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
+    const mutation = makeMutation(actor, itemId, 'update_metadata', { item: metadataSnapshot(next) }, at, localSequence, link?.cloudUpdatedAt)
     await db.inventoryItems.put(next)
     await db.inventoryMutations.add(mutation)
     return next
@@ -288,7 +298,8 @@ export async function postInventoryMovement(
     if (current.quantity + delta < 0) throw new Error('Số lượng xuất vượt tồn kho hiện tại.')
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
-    const mutation = makeMutation(actor, itemId, 'post_movement', {}, at, link?.cloudUpdatedAt)
+    const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
+    const mutation = makeMutation(actor, itemId, 'post_movement', {}, at, localSequence, link?.cloudUpdatedAt)
     const movement = movementRecord(actor, current, type, delta, cleanReason, mutation.mutationId, undefined, linkedAssetId)
     const next = { ...current, quantity: movement.balanceAfter, updatedAt: at }
     mutation.payload = { movement: movementPayload(movement), item_quantity: next.quantity }
@@ -321,7 +332,8 @@ export async function adjustInventoryCount(
     if (delta === 0) return { status: 'no_change' as const, quantity: current.quantity }
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
-    const mutation = makeMutation(actor, itemId, 'adjust_count', {}, at, link?.cloudUpdatedAt)
+    const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
+    const mutation = makeMutation(actor, itemId, 'adjust_count', {}, at, localSequence, link?.cloudUpdatedAt)
     const movement = movementRecord(actor, current, 'Điều chỉnh', delta, cleanReason, mutation.mutationId, countedQuantity)
     const next = { ...current, quantity: countedQuantity, updatedAt: at }
     mutation.payload = { movement: movementPayload(movement), item_quantity: next.quantity }
@@ -344,7 +356,8 @@ export async function archiveInventoryItem(actor: InventoryActor, itemId: string
     if (current.quantity !== 0) throw new Error('Chỉ lưu trữ vật tư khi số tồn đã bằng 0. Hãy xử lý số tồn bằng giao dịch kho trước.')
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
-    const mutation = makeMutation(actor, itemId, 'archive', { archived_at: at }, at, link?.cloudUpdatedAt)
+    const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
+    const mutation = makeMutation(actor, itemId, 'archive', { archived_at: at }, at, localSequence, link?.cloudUpdatedAt)
     await db.inventoryItems.put({ ...current, archivedAt: at, updatedAt: at })
     await db.inventoryMutations.add(mutation)
   })
