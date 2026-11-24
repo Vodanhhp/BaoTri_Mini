@@ -124,7 +124,6 @@ function movementRecord(
 function metadataSnapshot(item: InventoryItem): Record<string, unknown> {
   return {
     code: item.code,
-    code_normalized: item.codeNormalized,
     name: item.name,
     item_group: item.group,
     unit: item.unit,
