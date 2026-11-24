@@ -451,6 +451,11 @@ export async function syncPendingLocalAssetImports(
       if(Date.now()-Date.parse(item.updatedAt)<=60_000)continue
       await db.assetImportQueue.update(item.id,{status:'pending',updatedAt:now()})
     }
+    const existingLink=await db.assetCloudLinks.get(organizationId+':'+item.assetId)
+    if(existingLink){
+      await db.assetImportQueue.update(item.id,{status:'applied',updatedAt:now(),lastError:undefined,nextAttemptAt:undefined})
+      continue
+    }
     if(item.status==='applied'||item.status==='conflict'||item.status==='permanent')continue
     if(item.nextAttemptAt&&Date.parse(item.nextAttemptAt)>Date.now())continue
     const asset=byId.get(item.assetId)??await db.assets.get(item.assetId)
@@ -460,11 +465,6 @@ export async function syncPendingLocalAssetImports(
     }
     const hasVerifiedSmartId=Boolean(asset.idReservationId&&asset.idComponentsSnapshot&&asset.equipmentTypeCode)
     if(!(hasVerifiedSmartId&&options.canCreate)&&!options.canImportLegacy)continue
-    const existingLink=await db.assetCloudLinks.get(organizationId+':'+asset.id)
-    if(existingLink){
-      await db.assetImportQueue.update(item.id,{status:'applied',updatedAt:now(),lastError:undefined,nextAttemptAt:undefined})
-      continue
-    }
     const at=now()
     processed++
     await db.assetImportQueue.update(item.id,{status:'processing',attempts:item.attempts+1,lastAttemptAt:at,updatedAt:at})
