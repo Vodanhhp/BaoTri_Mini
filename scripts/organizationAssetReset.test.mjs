@@ -130,8 +130,8 @@ test('legacy direct reset endpoint is disabled and approval endpoint reauthentic
 test('reset is requested by organization Admin and reviewed in the Superadmin request queue', async () => {
   const tenant = await read('../src/PlanChangePanels.tsx')
   const ui = await read('../src/PlatformAdminPanel.tsx')
-  assert.match(tenant, /Yêu cầu Reset toàn bộ thiết bị/)
-  assert.match(tenant, /dữ liệu Local trên thiết bị đã đăng ký sẽ được xóa khi thiết bị kết nối lại/)
+  assert.match(tenant, /Yêu cầu Reset thiết bị và vật tư/)
+  assert.match(tenant, /dữ liệu Local trên các thiết bị đã đăng ký sẽ được xóa khi kết nối lại/)
   assert.match(ui, /PlatformAssetResetRequestsPanel/)
   assert.doesNotMatch(ui, /beginManagement\(org,'reset'\)/)
   assert.doesNotMatch(ui, /platform-reset-organization-assets/)
@@ -178,4 +178,41 @@ test('Superadmin must provide a non-empty rejection reason in UI, Edge Function 
  assert.match(ui,/required=\{decision==='reject'\}/)
  assert.match(edge,/action==='reject'&&!reviewNote/)
  assert.match(migration,/if p_decision='reject' and length\(btrim\(coalesce\(p_review_note,''\)\)\)=0 then/)
+})
+
+
+test('approved reset completely deletes Cloud inventory catalog, movements, mutation receipts and sync events', async () => {
+ const sql = await read('../supabase/migrations/20261124170000_reset_equipment_and_inventory.sql')
+ assert.match(sql,/delete from public\\.inventory_movements[\\s\\S]*?delete from public\\.inventory_items/)
+ assert.match(sql,/delete from private\\.inventory_mutation_receipts/)
+ assert.match(sql,/delete from private\\.inventory_sync_events/)
+ assert.match(sql,/inventory_items_deleted/)
+ assert.match(sql,/inventory_movements_deleted/)
+ assert.match(sql,/inventory_mutation_receipts_deleted/)
+ assert.match(sql,/inventory_sync_events_deleted/)
+ assert.match(sql,/for key share/)
+ assert.match(sql,/for update/)
+ assert.match(sql,/cloud_inventory_items_at_request/)
+ assert.match(sql,/cloud_inventory_movements_at_request/)
+})
+
+test('Local approved reset atomically removes every organization-scoped inventory store and cursor', async () => {
+ const source = await read('../src/lib/assetReset.ts')
+ for (const store of ['inventoryGroups','inventoryItems','inventoryMovements','inventoryMutations','inventoryCloudLinks','inventorySyncCursors']) {
+  assert.match(source,new RegExp('db\\\\.'+store+'\\\\.where\\\\(\\\\'organizationId\\\\'\\\\)\\\\.equals\\\\(organizationId\\\\)\\\\.delete\\\\(\\\\)'))
+ }
+ assert.match(source,/db\\.transaction\\('rw'[\\s\\S]*?db\\.inventorySyncCursors/)
+})
+
+test('reset barrier runs before both equipment and inventory sync, including inventory-only accounts', async () => {
+ const app = await read('../src/App.tsx')
+ assert.match(app,/await ensureOrganizationAssetResetApplied\\(client,organizationId\\)[\\s\\S]*?let assetMessage=''/)
+ assert.doesNotMatch(app,/if\\(canViewAssets\\)\\{\\s*await ensureOrganizationAssetResetApplied/)
+})
+
+test('reset request and Superadmin confirmation explicitly describe full inventory deletion', async () => {
+ const ui = await read('../src/PlanChangePanels.tsx')
+ assert.match(ui,/Yêu cầu Reset thiết bị và vật tư/)
+ assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\\/xuất\\/điều chỉnh/)
+ assert.match(ui,/xóa sạch toàn bộ thiết bị và vật tư Cloud\\/Local/)
 })
