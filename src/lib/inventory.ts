@@ -333,6 +333,7 @@ export async function archiveInventoryItem(actor: InventoryActor, itemId: string
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Không tìm thấy vật tư trong tổ chức hiện tại.')
     if (current.archivedAt) return
+    if (current.quantity !== 0) throw new Error('Chỉ lưu trữ vật tư khi số tồn đã bằng 0. Hãy xử lý số tồn bằng giao dịch kho trước.')
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
     const mutation = makeMutation(actor, itemId, 'archive', { archived_at: at }, at, link?.cloudUpdatedAt)
