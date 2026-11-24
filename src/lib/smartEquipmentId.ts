@@ -251,12 +251,10 @@ export function analyzeEquipmentName(input: SmartIdInput): SmartIdResult {
     return empty('invalid-input', 'Mã loại thiết bị trong danh mục phải được chuẩn hóa về 2–4 ký tự.', matches)
   }
 
-  if (input.plan === 'A' && input.selectedGroupCode) {
-    return empty('invalid-input', 'Plan A không có chức năng chọn/quản lý nhóm thiết bị.', matches)
-  }
-
-  const selectedGroupCode = input.plan === 'A' ? '' : (input.selectedGroupCode ? normalizeCode(input.selectedGroupCode) : '')
-  const suggestedGroupCode = input.plan === 'A' ? '' : normalizeCode(best.suggestedGroup ?? '')
+  // Plan A does not encode a group in the equipment ID, but an optional
+  // organization group may still classify the asset for operational use.
+  const selectedGroupCode = input.selectedGroupCode ? normalizeCode(input.selectedGroupCode) : ''
+  const suggestedGroupCode = normalizeCode(best.suggestedGroup ?? '')
   const resolvedGroupCode = selectedGroupCode || suggestedGroupCode
   const group = groups.find(item => normalizeCode(item.code) === resolvedGroupCode)
 
