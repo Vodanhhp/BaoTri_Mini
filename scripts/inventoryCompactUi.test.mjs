@@ -9,6 +9,8 @@ test('inventory workspace uses compact page hierarchy and Local storage context'
   assert.match(panel, /className="welcome inventory-welcome"/)
   assert.match(panel, /className="inventory-storage-pill"/)
   assert.match(panel, /Lưu tại thiết bị Local/)
+  assert.match(panel, /Tự đồng bộ Cloud khi có mạng/)
+  assert.doesNotMatch(panel, /Cloud chưa bật/)
   assert.doesNotMatch(panel, /className="inventory-page-heading"/)
 })
 
