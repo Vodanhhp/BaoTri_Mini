@@ -254,7 +254,7 @@ export function analyzeEquipmentName(input: SmartIdInput): SmartIdResult {
   // Plan A does not encode a group in the equipment ID, but an optional
   // organization group may still classify the asset for operational use.
   const selectedGroupCode = input.selectedGroupCode ? normalizeCode(input.selectedGroupCode) : ''
-  const suggestedGroupCode = normalizeCode(best.suggestedGroup ?? '')
+  const suggestedGroupCode = input.plan === 'A' && !input.selectedGroupCode ? '' : normalizeCode(best.suggestedGroup ?? '')
   const resolvedGroupCode = selectedGroupCode || suggestedGroupCode
   const group = groups.find(item => normalizeCode(item.code) === resolvedGroupCode)
 
