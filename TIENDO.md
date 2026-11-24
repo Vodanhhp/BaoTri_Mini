@@ -1990,3 +1990,30 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Cả hai trang dùng chung trạng thái tải/lỗi/chưa có Catalog, tránh hiển thị nhầm Plan mặc định. Dữ liệu được truyền từ Catalog Snapshot đã tải ở App; không phát sinh truy vấn mới.
 - Chỉ thay đổi React presentation, CSS và regression test. Không thay đổi nghiệp vụ kho/thiết bị, quyền, dữ liệu Local/Cloud, Supabase, schema, migration hoặc cấu hình Cloud sync.
 - Nhánh `feat/shared-organization-plan-banner`; chưa merge và chưa deploy. Cần chạy CI Build/Test và kiểm tra trực quan desktop/mobile trước khi kết luận hoàn tất.
+
+
+## Chuẩn giao diện và kích thước mẫu — 24/11/2026
+
+Đây là mốc chuẩn giao diện đã được người dùng kiểm tra trực tiếp và xác nhận OK sau phát hành commit `ddaff67a054fc128ef0fdd6ef764f89f23963709`. Khi phát triển module mới hoặc chỉnh sửa Thiết bị/Vật tư, ưu tiên tái sử dụng cấu trúc, token và kích thước dưới đây; không tự tạo một hệ kích thước khác nếu không có lý do rõ ràng.
+
+- `THIETBI.md`: chuẩn trình bày và hành vi giao diện phân hệ Thiết bị.
+- `VATTU.md`: chuẩn trình bày và hành vi giao diện phân hệ Kho vật tư.
+- Nguồn CSS chuẩn: `src/style.css`; component dùng chung Plan/Catalog: `src/OrganizationPlanSummary.tsx`.
+- Mốc responsive chính: desktop > 1000px; tablet 681–1000px; mobile ≤ 680px. Một số thành phần có breakpoint riêng được ghi trong CSS.
+- Kích thước trong tài liệu là kích thước CSS hiện hành/giá trị mẫu, không phải kích thước cố định của toàn bộ cửa sổ trình duyệt. Các vùng có bảng rộng được phép cuộn ngang có kiểm soát; mobile ưu tiên thẻ/card.
+
+### Kết quả phát hành giao diện 24/11/2026
+
+- PR #48 đã merge; commit phát hành `ddaff67a054fc128ef0fdd6ef764f89f23963709`.
+- Build, Unit tests và GitHub Pages deploy đều SUCCESS; người dùng đã kiểm tra Tổng quan, Thiết bị và Kho vật tư và xác nhận giao diện OK.
+- Thông tin Plan lấy từ Catalog Snapshot của tổ chức; không hardcode Plan A/B.
+- Banner xanh của Thiết bị và Kho vật tư dùng chung cách trình bày Plan/Catalog. Không thay đổi nghiệp vụ, quyền, dữ liệu Local/Cloud, Supabase hoặc trạng thái Cloud Sync.
+- Ghi chú lịch sử cũ ở phần trên từng ghi PR #48 đang review/chưa deploy đã được supersede bởi kết quả phát hành này; giữ nguyên để bảo toàn nhật ký.
+
+### Quy tắc duy trì
+
+1. Dùng chung màu, typography, khoảng cách, bo góc, trạng thái và breakpoint đã có trong `src/style.css`.
+2. Không sửa trực tiếp style toàn cục để giải quyết một lỗi cục bộ nếu có thể scope selector theo module.
+3. Desktop dùng bảng khi cần so sánh nhiều cột; mobile chuyển sang danh sách thẻ khi module đã có mẫu thẻ, tránh ép bảng quá rộng.
+4. Giữ banner phân hệ, Plan/Catalog strip và trạng thái Local/Cloud rõ ràng, không hiển thị Plan giả định khi chưa tải được dữ liệu.
+5. Khi thay đổi kích thước mẫu đã thống nhất, cập nhật đồng thời tài liệu module và regression test liên quan.
