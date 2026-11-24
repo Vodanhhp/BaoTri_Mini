@@ -2563,23 +2563,76 @@ html,body,#root,.app-shell{
 }
 
 /* 24/11/2026 — scope inventory menu layering and normalize close glyphs */
-#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
-.inventory-desktop-table:has(.inventory-action-menu[open]){
+/* Chỉ bảng Danh mục vật tư được phép cho menu thao tác vượt khỏi khung. */
+#root .app-shell .inventory-catalog-panel > .inventory-catalog-wrap:has(.inventory-action-menu[open]){
   position:relative;
   overflow:visible;
 }
-#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
-.inventory-desktop-table .inventory-actions-cell{
+#root .app-shell .inventory-catalog-panel .inventory-actions-cell{
   overflow:visible;
 }
-#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
-.inventory-desktop-table .inventory-action-menu[open]{
+#root .app-shell .inventory-catalog-panel .inventory-action-menu[open]{
   position:relative;
   z-index:2;
 }
-#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
-.inventory-desktop-table .inventory-action-menu>div{
+#root .app-shell .inventory-catalog-panel .inventory-action-menu>div{
   z-index:3;
+}
+
+/* Cố định tỷ lệ cột và nhịp hiển thị riêng cho bảng danh mục vật tư. */
+#root .app-shell .inventory-catalog-table{
+  width:100%;
+  min-width:820px;
+  table-layout:fixed;
+}
+#root .app-shell .inventory-catalog-table .col-material{width:22%}
+#root .app-shell .inventory-catalog-table .col-group{width:14%}
+#root .app-shell .inventory-catalog-table .col-stock{width:10%}
+#root .app-shell .inventory-catalog-table .col-min-stock{width:12%}
+#root .app-shell .inventory-catalog-table .col-location{width:12%}
+#root .app-shell .inventory-catalog-table .col-status{width:12%}
+#root .app-shell .inventory-catalog-table .col-actions{width:18%}
+#root .app-shell .inventory-catalog-table :is(th,td){
+  box-sizing:border-box;
+  padding:10px 11px;
+  vertical-align:middle;
+  line-height:1.45;
+}
+#root .app-shell .inventory-catalog-table thead th{
+  height:42px;
+  font-weight:650;
+}
+#root .app-shell .inventory-catalog-table tbody tr{
+  height:62px;
+}
+#root .app-shell .inventory-catalog-table .inventory-name-link{
+  width:100%;
+  min-width:0;
+  gap:4px;
+}
+#root .app-shell .inventory-catalog-table .inventory-name-link b,
+#root .app-shell .inventory-catalog-table .inventory-name-link small{
+  display:block;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+#root .app-shell .inventory-catalog-table .inventory-actions-cell{
+  white-space:nowrap;
+}
+#root .app-shell .inventory-catalog-table .inventory-action-menu{
+  width:100%;
+}
+#root .app-shell .inventory-catalog-table .inventory-action-menu>summary{
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  min-height:36px;
+  padding:6px 9px;
+  border-radius:7px;
+  white-space:nowrap;
 }
 #root .app-shell .modal-head>.icon-btn,
 #root .app-shell .platform-action-head>.icon-btn{
