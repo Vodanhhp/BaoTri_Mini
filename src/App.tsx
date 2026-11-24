@@ -997,8 +997,10 @@ export default function App() {
       }else{
         await db.assets.put(value)
       }
+      // Queue the automatic Local-to-Cloud pass immediately after the Local write commits.
+      requestSync()
       await recordAssetHistory(previous,value)
-      await loadAssets();setShowForm(false);setEditing(null);requestSync();notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
+      await loadAssets();setShowForm(false);setEditing(null);notify(groupChanged?'Đã lưu Local và ghi lịch sử đổi nhóm thiết bị.':'Đã lưu hồ sơ thiết bị Local.')
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setBusy(false)}
   }
