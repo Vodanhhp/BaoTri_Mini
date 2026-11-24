@@ -59,13 +59,24 @@ export async function ensureOrganizationAssetResetApplied(
     const appliedAt = now()
     await db.transaction('rw', [
       db.assets, db.assetCloudLinks, db.assetMutations, db.assetDrafts,
-      db.assetGroupChanges, db.assetHistory, db.assetImportQueue, db.organizationAssetResetStates
+      db.assetGroupChanges, db.assetHistory, db.assetImportQueue, db.organizationAssetResetStates,
+      db.inventoryGroups, db.inventoryItems, db.inventoryMovements, db.inventoryMutations,
+      db.inventoryCloudLinks, db.inventorySyncCursors
     ], async () => {
       await db.assets.where('localScope').equals(organizationId).delete()
       await db.assetCloudLinks.where('organizationId').equals(organizationId).delete()
       await db.assetMutations.where('organizationId').equals(organizationId).delete()
       await db.assetDrafts.where('organizationId').equals(organizationId).delete()
       await db.assetImportQueue.where('organizationId').equals(organizationId).delete()
+
+      // Full inventory reset: remove catalog, every stock movement, pending mutations,
+      // Cloud links, sync cursor and custom groups for this organization.
+      await db.inventoryGroups.where('organizationId').equals(organizationId).delete()
+      await db.inventoryItems.where('organizationId').equals(organizationId).delete()
+      await db.inventoryMovements.where('organizationId').equals(organizationId).delete()
+      await db.inventoryMutations.where('organizationId').equals(organizationId).delete()
+      await db.inventoryCloudLinks.where('organizationId').equals(organizationId).delete()
+      await db.inventorySyncCursors.where('organizationId').equals(organizationId).delete()
 
       // Keep historical rows, but prevent stale queued audit mirrors from being replayed.
       await db.assetGroupChanges.where('organizationId').equals(organizationId)
