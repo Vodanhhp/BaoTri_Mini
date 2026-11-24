@@ -1767,3 +1767,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đã đọc định nghĩa helper `private.has_org_permission` và `private.has_org_role` trên Supabase New bằng truy vấn read-only. Quyền role xác nhận: Admin đủ 5 quyền, Technician view/create/update/adjust, Viewer chỉ view.
 - SQL hiện chỉ là draft; chưa được PostgreSQL 17 validate, chưa đưa vào `supabase/migrations`, chưa chạy hoặc apply lên bất kỳ Supabase project nào.
 - Trước khi thành migration: review SQL, kiểm tra cú pháp bằng PostgreSQL 17 local, tạo tên migration bằng `supabase migration new` trong checkout đúng repo.
+
+
+
+### Latest verification — Local + dormant Cloud client (24/11/2026)
+- Sửa đúng giao dịch Tồn đầu kỳ: tồn trước = 0, tồn sau = số tồn đầu kỳ.
+- Bổ sung `InventoryMutation.localSequence` theo từng vật tư, bảo đảm đúng thứ tự kể cả khi nhiều thao tác cùng millisecond.
+- Giới hạn số lượng/tồn tối thiểu/đơn giá tối đa 6 chữ số thập phân; chuẩn hóa phép cộng/trừ để tránh lỗi floating-point tạo giao dịch kiểm kê giả.
+- SQL draft cũng từ chối giá trị quá 6 chữ số; server vẫn là nguồn xác thực cuối cùng.
+- Source commit đã xác minh: `8db7a157876952fea9da066b22684be3e3abbba6`.
+- Build & Test run `45352426608`: 132/132 test PASS, 0 fail; TypeScript/Vite build PASS.
+- Validate run `45352426021`: PASS.
+- Chưa validate SQL draft trên PostgreSQL, chưa browser runtime/E2E.
+- Feature gate Cloud vẫn OFF; không thay đổi Supabase, không apply migration, không merge/deploy.
