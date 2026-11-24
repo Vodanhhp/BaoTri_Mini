@@ -1824,3 +1824,21 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Tối ưu bộ lọc, nhóm nút thao tác, thẻ thống kê, nhóm vật tư tùy chỉnh và kích thước/cuộn modal trên mobile.
 - Không thay đổi nghiệp vụ tồn kho, Local/Cloud sync, schema, quyền hoặc dữ liệu. Không thay đổi Supabase và không triển khai Production trong bước này.
 - Cần chạy CI Build/Test; chưa xác nhận kiểm thử trực quan trên thiết bị thật. PR sẽ để người dùng kiểm tra; không tự merge.
+
+
+## 24/11/2026 — Chuẩn hóa giao diện toàn ứng dụng (đang review)
+
+- Người dùng phản ánh giao diện PC/mobile còn thiếu đồng bộ: nút và ô nhập không đều kích thước, bảng dài và có khoảng trắng dư.
+- Đã rà soát quy chuẩn cũ tại `docs/UI_TABLE_STANDARD.md`. Quy chuẩn trước đó có các điểm chưa phù hợp với yêu cầu mới: nút thao tác nhỏ 30px, bảng phổ thông mặc định min-width 620px, nhiều CSS module tự ghi đè kích thước.
+- Đã bổ sung lớp quy chuẩn dùng chung ở cuối `src/style.css`:
+  - Nút thao tác 40px; nút biểu tượng 40×40px.
+  - Input/select một dòng 40px; textarea tối thiểu 96px; checkbox/radio có kích thước riêng.
+  - Hệ khoảng cách 4/8/12/16/24px.
+  - Panel, form, modal và thống kê dùng mật độ/padding thống nhất; PC/mobile chỉ thay đổi bố cục.
+  - Bảng tiêu chuẩn mặc định co theo vùng chứa, table-layout fixed, cell padding 8×10px; chỉ bảng nhiều cột có min-width riêng.
+  - Giữ cỡ chữ dữ liệu 12px, thông tin phụ 11px; mobile dùng input 16px để tránh tự zoom khi focus.
+- Cập nhật `docs/UI_TABLE_STANDARD.md` thành quy chuẩn giao diện chung toàn ứng dụng, không còn chỉ là quy chuẩn bảng.
+- Thêm `scripts/uiConsistency.test.mjs` để khóa các quy tắc kích thước và mật độ cơ bản.
+- Phạm vi chỉ là trình bày giao diện; không thay đổi nghiệp vụ, phân quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
+- Các thay đổi đang nằm trên nhánh `feat/inventory-mobile-cards` / PR #45; chưa merge, chưa deploy.
+- Cần chạy CI/build/unit test và kiểm tra trực quan trên desktop/tablet/mobile trước khi kết luận đạt. Chưa có xác nhận kiểm thử trên thiết bị thật.
