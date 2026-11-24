@@ -296,7 +296,6 @@ export async function updateInventoryItemMetadata(
 ): Promise<InventoryItem> {
   requireOrganization(actor)
   requirePermission(actor.canUpdate, 'sửa thông tin vật tư')
-  const code = clean(input.code)
   const name = clean(input.name)
   const unit = clean(input.unit)
   if (!name || !unit) throw new Error('Tên vật tư và đơn vị tính là bắt buộc.')
@@ -312,12 +311,9 @@ export async function updateInventoryItemMetadata(
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Không tìm thấy vật tư trong tổ chức hiện tại.')
     if (current.updatedAt !== expectedLocalUpdatedAt) throw new Error('Thông tin vật tư đã thay đổi ở nơi khác. Hãy tải lại trước khi lưu.')
     if (!actor.isAdmin && minQuantity !== roundInventoryQuantity(current.minQuantity)) throw new Error('Chỉ Admin được thay đổi tồn tối thiểu.')
-    await assertCodeAvailable(actor.organizationId, code, itemId)
     const at = now()
     const next: InventoryItem = {
       ...current,
-      code,
-      codeNormalized: normalizeInventoryCode(code),
       name,
       group: clean(input.group) || 'Khác',
       unit,
