@@ -408,7 +408,7 @@ async function pushPendingInventoryMutations(
 ): Promise<{ pushed: number; pushFailed: number; conflicts: number }> {
   const candidates = await db.inventoryMutations.where('organizationId').equals(organizationId)
     .filter(mutation => mutation.status === 'conflict' || pendingOrProcessing(mutation)).toArray()
-  candidates.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  candidates.sort((a, b) => (a.localSequence ?? 0) - (b.localSequence ?? 0) || a.createdAt.localeCompare(b.createdAt))
   const byItem = new Map<string, InventoryMutation[]>()
   for (const mutation of candidates) {
     const rows = byItem.get(mutation.itemId) ?? []
