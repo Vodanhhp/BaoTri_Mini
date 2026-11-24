@@ -40,7 +40,7 @@ const numberText = (value: number) => value.toLocaleString('vi-VN', { maximumFra
 const moneyText = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ'
 
 export default function InventoryPanel(props: Props) {
-  const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, canExport, isAdmin, equipmentCatalog, equipmentCatalogLoading, equipmentCatalogError } = props
+  const { organizationId, organizationName, userId, userLabel, userRoleLabel, canView, canCreate, canUpdate, canAdjust, canDelete, canExport, isAdmin, equipmentCatalog, equipmentCatalogLoading, equipmentCatalogError } = props
   const actor: InventoryActor = { organizationId, userId, label: userLabel, canCreate, canUpdate, canAdjust, canDelete, isAdmin }
   const [items, setItems] = useState<InventoryItem[]>([])
   const [customGroups, setCustomGroups] = useState<string[]>([])
