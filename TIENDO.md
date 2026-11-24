@@ -2149,3 +2149,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm regression test cho helper, xử lý ngày thuần, giới hạn ngày và các màn hình sử dụng định dạng ngày giờ. Chưa thay đổi schema, dữ liệu, RLS, Auth, migration hay logic đồng bộ.
 - PR #55 đã merge vào `main` tại commit `b9cf8b09f25bb685b9167e392e3ad3e0c00f338f`; CI Build/Test và Validate đều thành công. Chưa xác nhận deploy production và chưa kiểm thử trực quan trên mọi thiết bị/múi giờ hệ điều hành.
 - Quy ước chính thức được ghi riêng tại `docs/DATETIME_STANDARD.md` để áp dụng cho mọi thay đổi và phân hệ mới.
+
+
+### Sửa các trường hợp biên ngày giờ Việt Nam — 24/11/2026
+
+- Sửa ngày giao dịch nhập/xuất/điều chỉnh kho: hàm tạo ngày nghiệp vụ dùng trực tiếp `todayVNDateInput()` từ helper `Asia/Ho_Chi_Minh`, không đọc ngày theo múi giờ máy tính.
+- Sửa ngày lưu kho và ngày xóa mềm trong danh sách xuất Excel/hồ sơ thiết bị: truyền nguyên timestamp vào `formatDateVN()`, không cắt `slice(0,10)` theo ngày UTC gây lệch ngày gần nửa đêm.
+- Bổ sung regression tests bảo đảm ngày kho lấy theo UTC+7 và timestamp lưu kho/xóa mềm được định dạng như thời điểm tuyệt đối.
+- Không thay đổi timestamp lưu trữ, dữ liệu, schema, quyền, Supabase hoặc luồng đồng bộ Local ↔ Cloud.

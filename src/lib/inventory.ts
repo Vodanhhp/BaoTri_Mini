@@ -4,6 +4,7 @@ import {
   type InventoryMutation, type InventorySyncStatus
 } from '../db'
 import { requestSync } from './syncEngine'
+import { todayVNDateInput } from './dateTime'
 
 export type InventoryActor = {
   organizationId: string
@@ -110,9 +111,7 @@ function roundInventoryQuantity(value: number): number {
 }
 
 function localDate(): string {
-  const date = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return todayVNDateInput()
 }
 
 function makeMutation(

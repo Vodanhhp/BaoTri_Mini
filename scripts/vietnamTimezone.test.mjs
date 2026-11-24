@@ -35,3 +35,19 @@ test('date/time displays across equipment, inventory, cloud and admin screens us
     assert.doesNotMatch(source, /toLocaleDateString\('vi-VN'\)|toLocaleString\('vi-VN'\)/, path + ' must not rely on the device timezone')
   }
 })
+
+
+test('inventory movement calendar date is always derived from Vietnam timezone', () => {
+  const inventory = read('src/lib/inventory.ts')
+  assert.match(inventory, /import \{ todayVNDateInput \} from '\.\/dateTime'/)
+  assert.match(inventory, /function localDate\(\): string \{\s*return todayVNDateInput\(\)\s*\}/)
+  assert.doesNotMatch(inventory, /date\.getFullYear\(\)|date\.getMonth\(\)|date\.getDate\(\)/)
+})
+
+test('equipment archived/deleted timestamps are formatted as instants, not truncated UTC dates', () => {
+  const app = read('src/App.tsx')
+  assert.doesNotMatch(app, /(?:archivedAt|deletedAt)\.slice\(0,\s*10\)/)
+  assert.match(app, /dateText\(asset\.archivedAt\)/)
+  assert.match(app, /dateText\(asset\.deletedAt\)/)
+  assert.match(app, /dateText\(detailAsset\.archivedAt\)/)
+})
