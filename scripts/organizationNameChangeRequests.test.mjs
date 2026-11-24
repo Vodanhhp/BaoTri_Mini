@@ -18,7 +18,7 @@ test('organization name change workflow keeps tenant requests pending until veri
  assert.match(tenant,/action==='submit'/)
  assert.match(platform,/auth\.user\.email\?\.toLowerCase\(\)!==ownerEmail/)
  assert.match(platform,/signInWithPassword/)
- assert.match(platform,/action==='approve'\|'reject'/)
+ assert.ok(platform.includes("if(!['approve','reject'].includes(action))"))
  assert.match(platform,/Bắt buộc nhập lý do từ chối yêu cầu/)
 })
 
