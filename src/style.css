@@ -2717,3 +2717,10 @@ html,body,#root,.app-shell{
  #root .app-shell .inventory-welcome-side{justify-items:end;gap:7px}
  #root .app-shell .inventory-welcome .inventory-storage-pill{white-space:normal;text-align:center;max-width:130px;line-height:1.35}
 }
+
+
+/* Kho vật tư: ưu tiên tên vật tư, mã hiển thị phụ bên dưới */
+#root .app-shell .inventory-catalog-table .inventory-name-link b{font-size:13px;font-weight:700;line-height:1.35;color:var(--text)}
+#root .app-shell .inventory-catalog-table .inventory-name-link small{font-size:10px;font-weight:400;line-height:1.3;color:var(--muted)}
+#root .app-shell .inventory-mobile-card-head .inventory-name-link b{font-size:13px;font-weight:700;line-height:1.35;color:var(--text)}
+#root .app-shell .inventory-mobile-card-head .inventory-name-link small{font-size:10px;font-weight:400;line-height:1.3;color:var(--muted);margin-top:2px}
