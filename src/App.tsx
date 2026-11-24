@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
+import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
@@ -576,6 +576,28 @@ export default function App() {
 
   const resetFilters = () => { setQuery(''); setCategoryFilter('Tất cả nhóm'); setLocationFilter('Tất cả vị trí'); setStatusFilter('Tất cả trạng thái'); setSortBy('updatedAt') }
   const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
+  const exportAssets = async () => {
+    if(!canExport)return
+    if(visibleAssets.length===0){notify('Không có thiết bị trong danh sách hiện tại để xuất Excel.');return}
+    try{
+      setError('')
+      const {downloadExcelReport}=await import('./lib/excelExport')
+      const headers=['Mã thiết bị','Tên thiết bị','Nhóm thiết bị','Hãng sản xuất','Model','Số serial','Vị trí lắp đặt','Ngày đưa vào sử dụng','Công suất / thông số','Chu kỳ bảo trì','Chuyển từ cơ sở khác','Trạng thái','Ngày lưu kho','Ngày xóa mềm','Ghi chú']
+      const rows=visibleAssets.map(asset=>({
+        'Mã thiết bị':asset.code||'','Tên thiết bị':displayAssetName(asset)||'','Nhóm thiết bị':asset.category||'',
+        'Hãng sản xuất':asset.brand||'','Model':asset.model||'','Số serial':asset.serial||'',
+        'Vị trí lắp đặt':asset.location||'','Ngày đưa vào sử dụng':dateText(asset.commissionedAt),
+        'Công suất / thông số':asset.power||'','Chu kỳ bảo trì':asset.cycle||'',
+        'Chuyển từ cơ sở khác':asset.transferredFromOtherFacility?'Có':'Không',
+        'Trạng thái':asset.deletedAt?'Đã xóa mềm':asset.archivedAt?'Lưu kho':asset.status,
+        'Ngày lưu kho':asset.archivedAt?dateText(asset.archivedAt.slice(0,10)):'',
+        'Ngày xóa mềm':asset.deletedAt?dateText(asset.deletedAt.slice(0,10)):'',
+        'Ghi chú':asset.notes||''
+      }))
+      await downloadExcelReport(rows,'danh-sach-thiet-bi.xlsx','DANH SÁCH THIẾT BỊ','Danh sách thiết bị',headers,'landscape')
+      notify('Đã xuất '+rows.length+' hồ sơ thiết bị ra Excel.')
+    }catch(cause){setError('Xuất Excel thiết bị thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
+  }
   const recordAssetHistory = async (before: Asset | undefined, after: Asset, eventType?: AssetHistory['eventType'], summary?: string, eventId?:string, deferCloud=false, force=false) => {
     const labels: Record<string,string> = {name:'Tên thiết bị',category:'Nhóm thiết bị',brand:'Hãng sản xuất',model:'Model',serial:'Số serial',location:'Vị trí lắp đặt',commissionedAt:'Ngày đưa vào sử dụng',power:'Công suất / thông số',cycle:'Chu kỳ bảo trì',cycleStartedAt:'Bắt đầu chu kỳ bảo trì',transferredFromOtherFacility:'Chuyển từ cơ sở khác',status:'Trạng thái',notes:'Ghi chú',archivedAt:'Lưu kho',deletedAt:'Xóa mềm'}
     const fields = Object.keys(labels) as Array<keyof Asset>
@@ -1208,6 +1230,7 @@ export default function App() {
   const currentOrganization=organizationContexts.find(o=>o.id===organizationId)
   const isKtv=Boolean(currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
   const canMutate=Boolean(localPreview||currentOrganization?.isAdmin||isKtv)
+  const canExport=Boolean(localPreview||currentOrganization?.isAdmin||isKtv)
   const canImport=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.import'))
   const canUpdate=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.update'))
   const canView=Boolean(currentOrganization?.permissions.includes('assets.view'))
@@ -1251,7 +1274,7 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='inventory'
-          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
+          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
           : activeModule==='dashboard'
             ? <div className="overview-workspace">
                 <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · TỔNG QUAN</div><h2>{currentOrganization?.name||'Không gian bảo trì'}</h2><p>Tổng hợp tình hình thiết bị và vật tư trong cùng một màn hình.</p></div><div className="welcome-icon"><LayoutDashboard size={42}/></div></section>
@@ -1289,7 +1312,7 @@ export default function App() {
           <div className="stat-card"><div className="stat-icon red"><SlidersHorizontal size={20}/></div><div><small>Đang sửa chữa</small><strong>{repairingCount}</strong><span>{stoppedCount} thiết bị ngừng sử dụng</span></div></div>
         </div>
         <div className="panel">
-          <div className="panel-head"><div><h2>{showDeleted?'Thiết bị đã xóa':showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{!showArchived&&!showDeleted&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setSmartEquipmentChoice('');setSmartGroupChoice('');setSmartSiteCode('00');setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}{!showDeleted&&<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button>}{canDelete&&<button className={showDeleted?'soft-btn active':'soft-btn'} onClick={()=>{setShowDeleted(v=>!v);setShowArchived(false);resetFilters()}}>{showDeleted?'Quay lại danh sách':'Thiết bị đã xóa'}</button>}</div></div>
+          <div className="panel-head"><div><h2>{showDeleted?'Thiết bị đã xóa':showArchived?'Thiết bị trong Lưu kho':'Danh sách thiết bị'}</h2><p>Tra cứu, phân loại và cập nhật hồ sơ thiết bị tại cơ sở.</p></div><div className="top-actions">{canExport&&<button type="button" className="soft-btn" onClick={()=>void exportAssets()}><Download size={16}/> Xuất Excel</button>}{!showArchived&&!showDeleted&&(localPreview||canCreate)&&<button className="primary-btn" onClick={()=>{setEditing({...emptyAsset(),localScope});setSmartEquipmentChoice('');setSmartGroupChoice('');setSmartSiteCode('00');setError('');setShowForm(true)}}><Plus size={16}/> Thêm thiết bị</button>}{!showDeleted&&<button className={showArchived?'soft-btn active':'soft-btn'} onClick={()=>{setShowArchived(v=>!v);resetFilters()}}>{showArchived?'Danh sách đang quản lý':'Mở Lưu kho'}</button>}{canDelete&&<button className={showDeleted?'soft-btn active':'soft-btn'} onClick={()=>{setShowDeleted(v=>!v);setShowArchived(false);resetFilters()}}>{showDeleted?'Quay lại danh sách':'Thiết bị đã xóa'}</button>}</div></div>
           <div className="asset-toolbar asset-toolbar-panel">
             <label className="searchbar asset-searchbar"><Search size={17}/><input aria-label="Tìm kiếm thiết bị" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Tìm theo mã quản lý, tên thiết bị, nhóm hoặc vị trí…"/></label>
             <div className="asset-filter-row">
