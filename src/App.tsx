@@ -1312,7 +1312,7 @@ export default function App() {
                 <section className="overview-section overview-future"><div><div className="eyebrow">MỞ RỘNG THEO LỘ TRÌNH</div><h2>Checklist & công việc bảo trì</h2><p>Khu vực tổng quan dành cho thống kê Checklist, kiểm tra định kỳ, công việc và kế hoạch bảo trì khi các phân hệ này được tích hợp vào BAOTRI Mini.</p></div><span className="status gray">Sẽ bổ sung</span></section>
               </div>
             : <>
-        <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/ >}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
+        <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
           <div className="asset-toolbar">{canMutate&&recoverableDrafts.map(draft=><div className="draft-recovery-row" key={draft.id}>
