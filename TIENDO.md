@@ -1567,6 +1567,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Vercel project `prj_De80PT3JC04b3NqtXHRL6JD8QMoo` đã đổi tên từ `baotri-mini-new-preview` thành `baotri-mini-new`.
 - Đã cấu hình Production env `VITE_SUPABASE_URL` và `VITE_SUPABASE_PUBLISHABLE_KEY` trỏ đúng Supabase `BAOTRI-Mini-New`. Giá trị public key không ghi vào checkpoint.
 - Đã gắn domain `baotri.vieclamhp247.com` vào Vercel project; Vercel trả `verified=true`.
+- Đã bật `previewDeploymentsDisabled=true` cho Vercel project theo yêu cầu chỉ dùng Production; deployment Preview cũ vẫn nằm trong lịch sử/alias, không phải bản đang phát hành.
 - Deployment Production: `dpl_EHNx9xRns4xiNxU1HyWYFWHRhMR9`, target `production`, branch `main`, commit `cda7332ca6a5f6a119bd11f1a15c9a4e06a17c26`, trạng thái `READY`. Alias đã được gán gồm `baotri.vieclamhp247.com`.
 - Build Vercel chạy `tsc -b && vite build` thành công; Vite build thành công. Còn cảnh báo bundle JS khoảng 746.40 kB lớn hơn ngưỡng 500 kB; không làm build thất bại.
 - Chưa thực hiện browser E2E thực tế PC → Cloud → Mobile và chưa xác nhận thao tác nghiệp vụ trực tiếp trên trình duyệt production. Cần kiểm tra đăng nhập, tạo/cập nhật thiết bị Local, tự đồng bộ Cloud, Mobile Pull, quyền Admin/KTV/Viewer và lịch sử thiết bị.
