@@ -301,6 +301,10 @@ export default function App() {
       setCloudSyncMessage('Tài khoản không có quyền xem thiết bị hoặc kho vật tư của tổ chức; bỏ qua đồng bộ Cloud.')
       return
     }
+    if(!canViewAssets&&(!canViewInventory||!INVENTORY_CLOUD_SYNC_ENABLED)){
+      setCloudSyncMessage('Kho vật tư hiện chỉ lưu tại Local; đồng bộ Cloud chưa bật.')
+      return
+    }
     let active=true
     let running=false
     const runSync=async()=>{
