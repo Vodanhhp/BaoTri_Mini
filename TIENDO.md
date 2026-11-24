@@ -1650,3 +1650,42 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm bước kiểm tra build: xác nhận URL và key Supabase thực sự được nhúng trong các asset đã build; không in giá trị key ra log.
 - Chưa thay đổi database, migration, RLS, Auth users, dữ liệu tổ chức, Storage hoặc project Supabase.
 - Thay đổi đang nằm trên nhánh `fix/supabase-api-key-compatibility`; cần CI PASS và review trước khi merge/deploy. Chưa khẳng định lỗi runtime đã hết cho đến khi bản sửa được phát hành và đăng nhập/tải membership được kiểm tra thực tế.
+
+
+
+## Tích hợp phân hệ Kho vật tư từ dự án cũ (24/11/2026)
+
+### Đối chiếu repository
+- Repo tham khảo chỉ đọc: `Vodanhhp/DuAn_BaoTRi`.
+- Repo triển khai: `Vodanhhp/BaoTri_Mini`.
+- Tạo branch `feat/inventory-management-foundation` từ `main` tại commit `5446a4bce29614940d3921be2783cd7139b46849`.
+- Không sửa repo cũ; không trộn source, migration hoặc Supabase project giữa hai dự án.
+
+### Kết quả đọc nghiệp vụ cũ
+- Đã đọc README, `src/db.ts`, các handler kho trong `src/App.tsx`, tài liệu `BAOTRI_TIENDO_VA_QUYETDINH.md` và các tài liệu thiết kế Inventory RPC.
+- Chốt kế thừa các trường vật tư: mã người dùng nhập, tên, nhóm, đơn vị, mã phụ tùng, kích cỡ, số lượng tồn, tồn tối thiểu, vị trí, nhà cung cấp, đơn giá.
+- Nhập/Xuất phải cập nhật số dư và movement lịch sử cùng transaction; không cho xuất vượt tồn.
+- Tồn đầu kỳ > 0 tạo movement Nhập/Tồn đầu kỳ cùng transaction tạo vật tư; tồn đầu kỳ = 0 không tạo movement.
+- Điều chỉnh là nhập số lượng thực tế sau kiểm kê; server tự tính delta; delta = 0 trả no_change và không tạo movement.
+- Admin/Technician có quyền tạo/sửa và thao tác kho; Viewer chỉ xem; xóa vật tư Admin-only.
+- Movement là lịch sử append-only; có thể liên kết Asset; không hard-delete lịch sử.
+- Mã vật tư không dùng Smart Equipment ID; không tự cấp lại hoặc đổi mã vật tư cũ.
+
+### Đối chiếu dự án mới
+- `src/db.ts` hiện chỉ có Asset và các bảng liên quan; chưa có InventoryItem/InventoryMovement.
+- `src/App.tsx` hiện chưa có mục điều hướng hoặc UI Kho vật tư.
+- Permission catalog của dự án mới đã có `inventory.view/create/update/adjust/delete`; không cần tạo permission trùng. Cần tiếp tục xác minh role seed và server enforcement trong Phase 0.
+- Supabase project đích vẫn là `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`). Không dùng Supabase Test/cũ làm đích cho repo mới.
+
+### Tài liệu và giới hạn hiện tại
+- Đã tạo `docs/INVENTORY_MODULE_DESIGN.md` trên branch này, commit `d7d7c7dffae7938557c8afe3ece2241eb86f599c`.
+- Tài liệu xác định kiến trúc Local-first, Local domain model, Cloud RPC/receipt/change-feed, UI, phân quyền và các phase kiểm thử.
+- Thiết kế RPC trong repo cũ là tài liệu/draft, không phải migration đã triển khai; tuyệt đối không copy/chạy trực tiếp trên project New.
+- Chưa sửa source code UI/DB, chưa tạo migration, chưa chạy test, chưa ghi dữ liệu Supabase Test/New, chưa thay đổi Auth/RLS/Storage/Edge Functions hoặc production.
+- Bước tiếp theo: hoàn tất Phase 0 read-only trên schema/migration/source hiện hành của project New; sau đó mới triển khai Local domain + UI và Cloud vertical slice theo contract riêng của project New.
+- Việc merge PR, apply migration lên Supabase hoặc phát hành production vẫn là các cổng riêng cần phê duyệt.
+
+### Xác nhận sửa lỗi đăng nhập Production (24/11/2026)
+- PR #42 đã được người dùng phê duyệt, squash-merge vào `main`, merge commit `5446a4bce29614940d3921be2783cd7139b46849`.
+- GitHub Pages deployment và Build/Unit Test đều PASS.
+- Người dùng đã xác nhận trực tiếp: đăng nhập Production hoạt động trở lại sau triển khai.
