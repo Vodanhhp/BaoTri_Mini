@@ -430,6 +430,7 @@ async function recoverCommittedImportWithChangedLocalSnapshot(
   if(verificationError)throw new Error('Chưa xác minh được biên nhận import Cloud: '+verificationError.message)
   const verification=verificationData as {verified?:boolean;asset?:Record<string,unknown>|null;receipt_updated_at?:string}|null
   if(verification?.verified!==true||!verification.asset||!verification.receipt_updated_at)return false
+  const receiptUpdatedAt=verification.receipt_updated_at
   if(verification.asset.asset_key!==attempted.code||verification.asset.code!==attempted.code)return false
   const cloud=cloudAssetFromRow(verification.asset)
 
@@ -445,7 +446,7 @@ async function recoverCommittedImportWithChangedLocalSnapshot(
     const link:AssetCloudLink={
       id:organizationId+':'+attempted.id,organizationId,assetId:attempted.id,cloudCode:cloud.code,
       cloudUpdatedAt:cloud.updatedAt,
-      lastSyncedLocalUpdatedAt:samePayload?latest.updatedAt:verification.receipt_updated_at,
+      lastSyncedLocalUpdatedAt:samePayload?latest.updatedAt:receiptUpdatedAt,
       status:samePayload?'linked':'conflict',lastVerifiedAt:at
     }
     await db.assetCloudLinks.put(link)
