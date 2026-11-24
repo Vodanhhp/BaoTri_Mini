@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
+import { Activity, Download, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
@@ -1176,15 +1176,6 @@ export default function App() {
     finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.code,lease.token).catch(()=>false);await loadAssets()}
   }
 
-  const archiveAsset = async (asset: Asset) => {
-    if(!localPreview&&!canMutate){alert('Tài khoản chỉ có quyền xem; không thể lưu kho thiết bị.');return}
-    if (!window.confirm('Đưa thiết bị ' + asset.code + ' – ' + asset.name + ' vào Lưu kho? Hồ sơ sẽ được giữ lại và có thể khôi phục.')) return
-    const link=!localPreview&&organizationId?await db.assetCloudLinks.get(organizationId+':'+asset.id):undefined
-    if(link){await mutateLinkedArchive(asset,true);return}
-    const archived={...asset,archivedAt:now(),status:'Lưu kho' as AssetStatus,updatedAt:now()}
-    await db.assets.put(archived);await recordAssetHistory(asset,archived,'archived','Đưa thiết bị vào Lưu kho')
-    await loadAssets();notify('Đã đưa thiết bị vào Lưu kho Local.')
-  }
   const restoreAsset = async (asset: Asset) => {
     if(!localPreview&&!canMutate){alert('Tài khoản chỉ có quyền xem; không thể khôi phục thiết bị.');return}
     const link=!localPreview&&organizationId?await db.assetCloudLinks.get(organizationId+':'+asset.id):undefined
@@ -1344,7 +1335,7 @@ export default function App() {
               <td><button className="asset-title-btn" onClick={()=>{setDetailAsset(asset);setSelectedAssetStatus(asset.archivedAt?'Lưu kho':asset.status);setStatusPickerOpen(false);void loadAssetHistory(asset.id,asset.code)}}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
               <td>{asset.category}</td><td>{asset.location||'—'}</td><td>{dateText(asset.commissionedAt)}</td>
               <td><span className={'status '+(asset.deletedAt?'red':asset.archivedAt?'gray':asset.status==='Đang hoạt động'?'green':asset.status==='Đang sửa chữa'?'orange':asset.status==='Thanh lý'?'red':'gray')}>{asset.deletedAt?'ĐÃ XÓA':asset.archivedAt?'Đã lưu kho':asset.status}</span></td>
-              <td className="actions">{showDeleted?null:showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{(localPreview||canUpdate)&&<button className="text-btn danger" onClick={()=>void archiveAsset(asset)} title="Đưa hồ sơ vào lưu kho"><Archive size={14}/> Lưu kho</button>}{canDelete&&!asset.deletedAt&&<button className="text-btn danger" onClick={()=>void deleteAsset(asset)} title="Đánh dấu xóa mềm"><Trash2 size={14}/> Xóa</button>}</>}</td>
+              <td className="actions">{showDeleted?null:showArchived ? ((localPreview||canUpdate) ? <button className="text-btn success-text" onClick={()=>void restoreAsset(asset)}><RotateCcw size={13}/> Khôi phục</button> : null) : <>{(localPreview||canUpdate)&&<button className="text-btn" onClick={()=>void openAssetEditor(asset)}>Sửa</button>}{canDelete&&!asset.deletedAt&&<button className="text-btn danger" onClick={()=>void deleteAsset(asset)} title="Đánh dấu xóa mềm"><Trash2 size={14}/> Xóa</button>}</>}</td>
             </tr>)}
           </tbody></table></div>
         </div>
