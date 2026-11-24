@@ -358,7 +358,7 @@ export default function InventoryPanel(props: Props) {
               <span className={'status '+(movement.type==='Nhập'?'green':movement.type==='Xuất'?'orange':'gray')}>{movement.type}</span>
             </div>
             {item&&<div className="inventory-mobile-meta">{item.name}</div>}
-            <div className="inventory-mobile-meta">{new Date(movement.date+'T00:00:00').toLocaleDateString('vi-VN')}</div>
+            <div className="inventory-mobile-meta">{formatDateVN(movement.date)}</div>
             <div className="inventory-mobile-quantities">
               <div><small>Số lượng</small><strong>{numberText(movement.quantity)} {item?.unit||''}</strong></div>
               <div><small>Tồn trước → sau</small><strong>{numberText(movement.balanceBefore)} → {numberText(movement.balanceAfter)}</strong></div>
@@ -425,7 +425,7 @@ export default function InventoryPanel(props: Props) {
             <td>{numberText(movement.balanceBefore)}</td><td>{numberText(movement.balanceAfter)}</td>
             <td>{movement.reason||movement.note||'—'}</td><td>{movement.performedBy||'—'}</td>
           </tr>)}
-          {printItem.archivedAt&&<tr><td>{movements.filter(movement=>movement.itemId===printItem.id).length+1}</td><td>{new Date(printItem.archivedAt).toLocaleString('vi-VN')}</td><td>Lưu trữ vật tư</td><td>—</td><td>{numberText(printItem.quantity)}</td><td>{numberText(printItem.quantity)}</td><td>Đưa vật tư vào trạng thái lưu trữ</td><td>—</td></tr>}
+          {printItem.archivedAt&&<tr><td>{movements.filter(movement=>movement.itemId===printItem.id).length+1}</td><td>{formatDateTimeVN(printItem.archivedAt)}</td><td>Lưu trữ vật tư</td><td>—</td><td>{numberText(printItem.quantity)}</td><td>{numberText(printItem.quantity)}</td><td>Đưa vật tư vào trạng thái lưu trữ</td><td>—</td></tr>}
           {movements.every(movement=>movement.itemId!==printItem.id)&&!printItem.archivedAt&&<tr><td colSpan={8}>Chưa có giao dịch kho.</td></tr>}
         </tbody>
       </table>
