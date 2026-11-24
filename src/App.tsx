@@ -349,9 +349,11 @@ export default function App() {
       running=true
       setCloudSyncMessage('Đang tự động đồng bộ thiết bị và kho vật tư từ Cloud…')
       try{
+        // Apply the organization reset barrier before either equipment or inventory sync.
+        // This also covers accounts that only have inventory.view permission.
+        await ensureOrganizationAssetResetApplied(client,organizationId)
         let assetMessage=''
         if(canViewAssets){
-          await ensureOrganizationAssetResetApplied(client,organizationId)
           const contextCanCreate=context.permissions.includes('assets.create')
           const contextCanImportLegacy=context.permissions.includes('assets.import')
           const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
