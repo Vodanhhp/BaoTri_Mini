@@ -64,7 +64,11 @@ export default function InventoryPanel(props: Props) {
     void refresh().catch(cause => setError(cause instanceof Error ? cause.message : 'Không tải được dữ liệu kho vật tư.'))
     const onFocus = () => { void refresh().catch(() => undefined) }
     window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    window.addEventListener('baotri:inventory-updated', onFocus)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('baotri:inventory-updated', onFocus)
+    }
   }, [refresh])
 
   const visibleItems = useMemo(() => {
