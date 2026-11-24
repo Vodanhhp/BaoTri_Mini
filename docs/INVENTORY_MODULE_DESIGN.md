@@ -162,3 +162,46 @@ Chi tiết vật tư:
 - Đã đối chiếu repo mới `Vodanhhp/BaoTri_Mini`: hiện có Asset Local/Cloud architecture; chưa có Inventory model/UI/table/migration. Permission catalog đã có các quyền inventory.
 - Tài liệu này là thiết kế triển khai, không phải xác nhận chức năng đã được code.
 - Chưa sửa source code, chưa chạy test, chưa tạo/chạy migration, chưa truy cập ghi Supabase Test/New, chưa sửa dữ liệu hoặc deploy.
+
+
+## 8. Cập nhật triển khai Local foundation (24/11/2026)
+
+Phase 0 read-only đã hoàn tất trên Supabase project New:
+
+- Project ref `dskeaiyvldiwlsfqkboq`, trạng thái ACTIVE_HEALTHY, PostgreSQL 17.12.
+- Migration history trong database khớp migration source hiện hành đến `20261124042230_move_import_receipt_verifier_private`.
+- Database đã có 5 permission inventory; role grants hiện diện trên 4 organization hiện có: Admin có đủ 5 quyền; Technician có view/create/update/adjust, không có delete; Viewer chỉ có view.
+- Không có bảng hoặc RPC inventory trong public/private schema. Không có migration kho vật tư đã áp dụng.
+- `private.has_org_permission(organization_id, permission_code)` là helper server-side hiện có; các privileged implementation hiện hành được đặt trong private schema, public RPC wrapper dùng SECURITY INVOKER.
+- Asset change feed có event schema, counter, cursor và reset semantics chuyên biệt cho Asset; không tái sử dụng cho Inventory.
+
+Phase 1 Local foundation đã được code trên branch:
+
+- Dexie database version 10 bổ sung InventoryItem, InventoryMovement, InventoryMutation, InventoryCloudLink, InventorySyncCursor; giữ nguyên DB name và các version/store hiện hữu của Asset.
+- `src/lib/inventory.ts` có Local transaction cho tạo vật tư + tồn đầu kỳ, cập nhật metadata, nhập/xuất, điều chỉnh kiểm kê và lưu trữ.
+- Mã vật tư chuẩn hóa uppercase/trim, kiểm tra trùng trong phạm vi organization.
+- Metadata input không có trường quantity; tồn chỉ đổi qua movement.
+- Movement ghi quantity tuyệt đối, signed delta, balance_before/after, người thực hiện, lý do, linked asset tùy chọn và mutation ID.
+- Xuất vượt tồn bị từ chối; kiểm kê không đổi tồn trả `no_change`, không tạo movement.
+- `src/InventoryPanel.tsx` có danh mục, tìm kiếm/lọc, cảnh báo tồn tối thiểu, thêm/sửa, nhập/xuất/kiểm kê, lưu trữ Admin và lịch sử movement; App có điều hướng “Kho vật tư” theo permission inventory.view.
+- UI ghi rõ dữ liệu kho hiện chỉ lưu Local; Cloud sync chưa bật. Không chạy migration hay ghi dữ liệu Supabase.
+
+Files changed in this phase:
+- `src/db.ts`
+- `src/lib/inventory.ts`
+- `src/InventoryPanel.tsx`
+- `src/App.tsx`
+- `src/style.css`
+- `scripts/inventoryLocalDomain.test.mjs`
+
+Pending verification:
+- GitHub Actions Build/Unit Test chưa chạy trên branch vì workflow hiện chỉ chạy khi PR mở vào main hoặc push một số branch được liệt kê.
+- Chưa có browser runtime test.
+- Chưa có Cloud SQL/RPC/change feed/worker integration.
+- Chưa apply migration, chưa đổi database, chưa deploy hoặc merge.
+
+Next:
+1. Mở Draft PR để CI chạy và sửa mọi lỗi build/test.
+2. Kiểm tra lại UI/permission gating và Local data flows.
+3. Sau khi Local phase được xác minh, thiết kế Cloud inventory migration/RPC/change feed độc lập theo đúng schema New; không dùng migration draft từ repo cũ.
+4. Chỉ apply migration lên project Test/New khi có phê duyệt riêng và xác định rõ target.
