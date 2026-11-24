@@ -116,6 +116,12 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [reservationReleaseBusy,setReservationReleaseBusy]=useState(false)
 
+  // Never carry unsaved dictionary form values across organizations or asset drafts.
+  useEffect(()=>{
+    setNewTypeName('');setNewTypeCode('');setNewTypeAliases('');setNewTypeGroup('')
+    setNewGroupName('');setNewGroupCode('')
+  },[organizationId,editing?.id])
+
   useEffect(() => {
     if (!supabase) return
     let active = true
@@ -425,17 +431,21 @@ export default function App() {
   },[equipmentCatalog])
 
   const saveCatalogSnapshot = async (snapshot: OrganizationEquipmentCatalogRecord['snapshot']) => {
-    if(!supabase||!organizationId||!organizationContexts.find(org=>org.id===organizationId)?.isAdmin) {
+    const targetOrganizationId=organizationId
+    const expectedUpdatedAt=equipmentCatalog?.updated_at||''
+    if(!supabase||!targetOrganizationId||!organizationContexts.find(org=>org.id===targetOrganizationId)?.isAdmin) {
       throw new Error('Chỉ Admin của tổ chức mới được quản lý từ điển thiết bị.')
     }
     setCatalogSaveBusy(true)
     try {
-      const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,organizationId,snapshot,equipmentCatalog?.updated_at||'')
-      setEquipmentCatalog(saved)
+      const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,targetOrganizationId,snapshot,expectedUpdatedAt)
+      if(organizationId===targetOrganizationId)setEquipmentCatalog(saved)
       return saved
     } catch(error) {
-      const refreshed=await loadOrganizationEquipmentCatalog(supabase,organizationId).catch(()=>null)
-      if(refreshed)setEquipmentCatalog(refreshed)
+      if(organizationId===targetOrganizationId){
+        const refreshed=await loadOrganizationEquipmentCatalog(supabase,targetOrganizationId).catch(()=>null)
+        if(refreshed&&organizationId===targetOrganizationId)setEquipmentCatalog(refreshed)
+      }
       throw error
     } finally {
       setCatalogSaveBusy(false)
