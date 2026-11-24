@@ -5,7 +5,7 @@ type DateInput = string | number | Date | null | undefined
 function asDate(value: DateInput): Date | null {
   if (value === null || value === undefined || value === '') return null
   // HTML date inputs and SQL DATE values are calendar dates, not UTC instants.
-  const date = typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)
+  const date = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
     ? new Date(value + 'T00:00:00+07:00')
     : value instanceof Date ? new Date(value.getTime()) : new Date(value)
   return Number.isNaN(date.getTime()) ? null : date
