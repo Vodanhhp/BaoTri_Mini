@@ -63,6 +63,10 @@ function validateScale(value: number, label: string, scale = 6): void {
   }
 }
 
+function roundInventoryQuantity(value: number): number {
+  return Number(value.toFixed(6))
+}
+
 function localDate(): string {
   const date = new Date()
   const pad = (value: number) => String(value).padStart(2, '0')
@@ -112,19 +116,20 @@ function movementRecord(
   linkedAssetId?: string
 ): InventoryMovement {
   const at = now()
-  const balanceBefore = item.quantity
-  const balanceAfter = balanceBefore + delta
+  const balanceBefore = roundInventoryQuantity(item.quantity)
+  const normalizedDelta = roundInventoryQuantity(delta)
+  const balanceAfter = roundInventoryQuantity(balanceBefore + normalizedDelta)
   return {
     id: uid(),
     organizationId: actor.organizationId,
     itemId: item.id,
     date: localDate(),
     type,
-    quantity: Math.abs(delta),
-    quantityDelta: delta,
+    quantity: Math.abs(normalizedDelta),
+    quantityDelta: normalizedDelta,
     balanceBefore,
     balanceAfter,
-    countedQuantity,
+    countedQuantity: countedQuantity === undefined ? undefined : roundInventoryQuantity(countedQuantity),
     reason: clean(reason),
     note: clean(reason),
     performedBy: clean(actor.label) || 'Tài khoản',
@@ -172,13 +177,16 @@ export async function createInventoryItem(
   const unit = clean(input.unit)
   if (!name) throw new Error('Tên vật tư không được để trống.')
   if (!unit) throw new Error('Đơn vị tính không được để trống.')
-  const openingQuantity = input.openingQuantity ?? 0
-  validateNonNegative(openingQuantity, 'Tồn đầu kỳ')
+  const openingQuantityInput = input.openingQuantity ?? 0
+  validateNonNegative(openingQuantityInput, 'Tồn đầu kỳ')
   validateNonNegative(input.minQuantity, 'Tồn tối thiểu')
   validateNonNegative(input.unitPrice, 'Đơn giá')
-  validateScale(openingQuantity, 'Tồn đầu kỳ')
+  validateScale(openingQuantityInput, 'Tồn đầu kỳ')
   validateScale(input.minQuantity, 'Tồn tối thiểu')
   validateScale(input.unitPrice, 'Đơn giá')
+  const openingQuantity = roundInventoryQuantity(openingQuantityInput)
+  const minQuantity = roundInventoryQuantity(input.minQuantity)
+  const unitPrice = roundInventoryQuantity(input.unitPrice)
   if (openingQuantity > 0) requirePermission(actor.canAdjust, 'ghi nhận tồn đầu kỳ')
 
   const at = now()
@@ -196,10 +204,10 @@ export async function createInventoryItem(
     partNumber: clean(input.partNumber) || undefined,
     size: clean(input.size) || undefined,
     quantity: openingQuantity,
-    minQuantity: input.minQuantity,
+    minQuantity,
     location: clean(input.location),
     supplier: clean(input.supplier),
-    unitPrice: input.unitPrice,
+    unitPrice,
     createdByUserId: actor.userId,
     createdByLabel: clean(actor.label) || 'Tài khoản',
     createdAt: at,
@@ -255,6 +263,8 @@ export async function updateInventoryItemMetadata(
   validateNonNegative(input.unitPrice, 'Đơn giá')
   validateScale(input.minQuantity, 'Tồn tối thiểu')
   validateScale(input.unitPrice, 'Đơn giá')
+  const minQuantity = roundInventoryQuantity(input.minQuantity)
+  const unitPrice = roundInventoryQuantity(input.unitPrice)
 
   const updated = await db.transaction('rw', [db.inventoryItems, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
@@ -272,10 +282,10 @@ export async function updateInventoryItemMetadata(
       unit,
       partNumber: clean(input.partNumber) || undefined,
       size: clean(input.size) || undefined,
-      minQuantity: input.minQuantity,
+      minQuantity,
       location: clean(input.location),
       supplier: clean(input.supplier),
-      unitPrice: input.unitPrice,
+      unitPrice,
       updatedAt: at
     }
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
@@ -308,8 +318,10 @@ export async function postInventoryMovement(
   const posted = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
     if (!current || current.organizationId !== actor.organizationId) throw new Error('Vật tư không tồn tại trong tổ chức hiện tại.')
-    const delta = type === 'Nhập' ? quantity : -quantity
-    if (current.quantity + delta < 0) throw new Error('Số lượng xuất vượt tồn kho hiện tại.')
+    const currentQuantity = roundInventoryQuantity(current.quantity)
+    const normalizedQuantity = roundInventoryQuantity(quantity)
+    const delta = type === 'Nhập' ? normalizedQuantity : -normalizedQuantity
+    if (currentQuantity + delta < 0) throw new Error('Số lượng xuất vượt tồn kho hiện tại.')
     const at = now()
     const link = await db.inventoryCloudLinks.get(actor.organizationId + ':' + itemId)
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
@@ -350,7 +362,7 @@ export async function adjustInventoryCount(
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
     const mutation = makeMutation(actor, itemId, 'adjust_count', {}, at, localSequence, link?.cloudUpdatedAt)
     const movement = movementRecord(actor, current, 'Điều chỉnh', delta, cleanReason, mutation.mutationId, countedQuantity)
-    const next = { ...current, quantity: countedQuantity, updatedAt: at }
+    const next = { ...current, quantity: normalizedCounted, updatedAt: at }
     mutation.payload = { movement: movementPayload(movement), item_quantity: next.quantity }
     await db.inventoryItems.put(next)
     await db.inventoryMovements.add(movement)
