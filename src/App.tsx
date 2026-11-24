@@ -408,7 +408,9 @@ export default function App() {
       ? dictionary.filter(entry=>entry.shortCode.replace(/[^A-Za-z0-9]/g,'').toUpperCase()===smartEquipmentChoice.replace(/[^A-Za-z0-9]/g,'').toUpperCase())
       : dictionary
     return analyzeEquipmentName({
-      name:editing.name,
+      // An explicit catalog selection is authoritative even when the user's
+      // free-text name does not match the dictionary's standard name.
+      name:selectedDictionary.length===1?selectedDictionary[0].standardName:editing.name,
       plan:equipmentCatalog.plan_code,
       catalog:{...equipmentCatalog.snapshot,equipmentDictionary:selectedDictionary},
       selectedGroupCode:smartGroupChoice||undefined,
@@ -1185,6 +1187,7 @@ export default function App() {
             <div className="field full-field"><span>Smart Equipment ID · Plan {equipmentCatalog.plan_code}</span><small>Hệ thống phân tích tên theo Snapshot riêng của tổ chức. Số thứ tự chỉ được giữ khi bạn lưu hồ sơ.</small></div>
             {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>{const value=event.target.value;void updateSmartDraft({},()=>setSmartEquipmentChoice(value))}}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
             {smartAnalysis?.status==='matched'&&<div className="field full-field"><span>Loại chuẩn đề xuất</span><b>{smartAnalysis.normalizedName} · {smartAnalysis.equipmentCode}</b></div>}
+            {smartAnalysis?.status==='not-found'&&<label className="field full-field">Không tìm thấy tự động — chọn loại có sẵn *<select required value={smartEquipmentChoice} onChange={event=>{const value=event.target.value;void updateSmartDraft({},()=>setSmartEquipmentChoice(value))}}><option value="">-- Chọn loại trong từ điển tổ chức --</option>{equipmentCatalog.snapshot.equipmentDictionary.map(entry=><option key={entry.shortCode} value={entry.shortCode}>{entry.standardName} · {entry.shortCode}</option>)}</select><small>Chọn thủ công không tạo mục mới và không thay đổi tên hồ sơ bạn đã nhập.</small></label>}
             {smartAnalysis?.status==='not-found'&&currentOrganization?.isAdmin&&<div className="field full-field">
               <div><b>Chưa có loại phù hợp? Admin có thể bổ sung vào từ điển riêng</b><small>Loại mới chỉ áp dụng trong tổ chức này. KTV không được tự thêm mục từ điển.</small></div>
               <label className="field">Tên loại chuẩn *<input value={newTypeName} onChange={event=>setNewTypeName(event.target.value)} placeholder="Ví dụ: Máy kiểm thử đồng bộ"/></label>
