@@ -182,7 +182,7 @@ test('Superadmin must provide a non-empty rejection reason in UI, Edge Function 
 
 
 test('approved reset completely deletes Cloud inventory catalog, movements, mutation receipts and sync events', async () => {
- const sql = await read('../supabase/migrations/20261124170000_reset_equipment_and_inventory.sql')
+ const sql = await read('../docs/pending-migrations/20261124170000_reset_equipment_and_inventory.sql')
  assert.match(sql,/delete from public\.inventory_movements[\s\S]*?delete from public\.inventory_items/)
  assert.match(sql,/delete from private\.inventory_mutation_receipts/)
  assert.match(sql,/delete from private\.inventory_sync_events/)
