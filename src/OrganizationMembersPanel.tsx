@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useState,type FormEvent} from 'react'
-import {Activity,Mail,RefreshCw,RotateCcw,Search,Shield,Trash2,UserCog,UserPlus,UserRound,X} from 'lucide-react'
+import {MoreHorizontal,RefreshCw,Search,UserPlus,UserRound,X} from 'lucide-react'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
 
@@ -110,8 +110,15 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
        <div className="member-identity"><span className="member-avatar"><UserRound size={17}/></span><div><b>{member.displayName||member.email}</b><small>{member.email}</small><small>Tham gia: {dateLabel(member.createdAt)}</small></div></div>
        <div className="member-meta"><span className="member-role">{roleLabel(member.roleCode)}</span><span className={'status '+(member.status==='active'?'green':member.status==='suspended'?'red':'orange')}>{statusLabel(member.status)}</span><small className="member-confirm">{member.emailConfirmed?'Email đã xác nhận':'Email chưa xác nhận'}</small></div>
        <div className="member-actions">
-        {!protectedMember&&<><button className="member-action" disabled={busy} onClick={()=>void act(member,'change_role',member.roleCode==='technician'?'viewer':'technician')}><UserCog size={14}/> Đổi vai trò</button><button className="member-action" disabled={busy||!member.emailConfirmed} title={member.emailConfirmed?'Gửi email đặt lại mật khẩu':'Cần xác nhận email trước khi reset'} onClick={()=>void act(member,'reset_password')}><Mail size={14}/> Reset mật khẩu</button>{member.status==='suspended'?<button className="member-action" disabled={busy} onClick={()=>void act(member,'reactivate')}><RotateCcw size={14}/> Mở khóa</button>:<button className="member-action warning" disabled={busy} onClick={()=>void act(member,'suspend')}><Shield size={14}/> Tạm khóa</button>}<button className="member-action danger" disabled={busy} onClick={()=>void act(member,'remove')}><Trash2 size={14}/> Xóa khỏi tổ chức</button></>}
-        {protectedMember&&<small className="member-protected">Được bảo vệ</small>}
+        {!protectedMember?<details className="member-action-menu">
+         <summary aria-label="Thao tác thành viên"><MoreHorizontal size={17}/><span>Thao tác</span></summary>
+         <div className="member-action-menu-list">
+          <button type="button" disabled={busy} onClick={()=>void act(member,'change_role',member.roleCode==='technician'?'viewer':'technician')}>Đổi vai trò</button>
+          <button type="button" disabled={busy||!member.emailConfirmed} title={member.emailConfirmed?'Gửi email đặt lại mật khẩu':'Cần xác nhận email trước khi reset'} onClick={()=>void act(member,'reset_password')}>Reset mật khẩu</button>
+          {member.status==='suspended'?<button type="button" disabled={busy} onClick={()=>void act(member,'reactivate')}>Mở khóa</button>:<button type="button" className="warning" disabled={busy} onClick={()=>void act(member,'suspend')}>Tạm khóa</button>}
+          <button type="button" className="danger" disabled={busy} onClick={()=>void act(member,'remove')}>Xóa khỏi tổ chức</button>
+         </div>
+        </details>:<small className="member-protected">Được bảo vệ</small>}
        </div>
       </article>
      })}
