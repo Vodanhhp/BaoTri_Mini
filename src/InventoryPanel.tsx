@@ -233,8 +233,8 @@ export default function InventoryPanel(props: Props) {
         <label className="field"><span>Tình trạng tồn</span><select value={stockFilter} onChange={event=>setStockFilter(event.target.value as 'all'|'low')}><option value="all">Tất cả</option><option value="low">Sắp hết hàng</option></select></label>
       </div>
       <div className="asset-result-count">Hiển thị {visibleItems.length}/{items.length} vật tư</div>
-      <div className="table-wrap table-standard-wrap inventory-desktop-table">
-        <table className="table-standard"><thead><tr><th>Mã / Tên vật tư</th><th>Nhóm</th><th>Tồn kho</th><th>Tồn tối thiểu</th><th>Vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <div className="table-wrap table-standard-wrap inventory-desktop-table inventory-catalog-wrap">
+        <table className="table-standard inventory-catalog-table"><colgroup><col className="col-material"/><col className="col-group"/><col className="col-stock"/><col className="col-min-stock"/><col className="col-location"/><col className="col-status"/><col className="col-actions"/></colgroup><thead><tr><th>Mã / Tên vật tư</th><th>Nhóm</th><th>Tồn kho</th><th>Tồn tối thiểu</th><th>Vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
           <tbody>
             {visibleItems.map(item=><tr key={item.id} className={item.archivedAt?'inventory-archived-row':''}>
               <td><button type="button" className="inventory-name-link" onClick={()=>setSelected(item)}><b>{item.code}</b><small>{item.name}</small></button></td>
