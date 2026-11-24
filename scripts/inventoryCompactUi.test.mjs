@@ -29,12 +29,14 @@ test('inventory styles define compact responsive hierarchy and action menu', () 
   assert.match(css, /@media\(max-width:680px\)[\s\S]*\.inventory-page-heading/)
 })
 
-test('inventory action menu is not clipped by its table frame', () => {
-  assert.match(css, /\.inventory-desktop-table\{[\s\S]*?overflow:visible/)
-  assert.match(css, /\.inventory-desktop-table tbody tr:has\(\.inventory-action-menu\[open\]\)/)
-  assert.match(css, /\.inventory-action-menu>div\{[\s\S]*?z-index:30/)
+test('inventory action menu layering is scoped to the material list table only', () => {
+  assert.match(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)[\s\S]*?\.inventory-desktop-table:has\(\.inventory-action-menu\[open\]\)\{[\s\S]*?overflow:visible/)
+  assert.match(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)[\s\S]*?\.inventory-action-menu>div\{[\s\S]*?z-index:3/)
+  assert.doesNotMatch(css, /\.inventory-desktop-table tbody tr:has\(\.inventory-action-menu\[open\]\)/)
+  assert.doesNotMatch(css, /#root \.app-shell \.inventory-desktop-table\{[\s\S]*?overflow:visible/)
 })
 
-test('modal and action-dialog close buttons share one consistent size', () => {
-  assert.match(css, /\.modal-head>\.icon-btn,[\s\S]*?\.platform-action-head>\.icon-btn\{[\s\S]*?width:36px;[\s\S]*?height:36px;[\s\S]*?min-height:36px/)
+test('modal and action-dialog close buttons share one consistent frame and glyph size', () => {
+  assert.match(css, /\.modal-head>\.icon-btn,[\s\S]*?\.platform-action-head>\.icon-btn\{[\s\S]*?width:36px;[\s\S]*?height:36px;[\s\S]*?font-size:22px/)
+  assert.match(css, /\.modal-head>\.icon-btn svg,[\s\S]*?\.platform-action-head>\.icon-btn svg\{[\s\S]*?width:18px!important;[\s\S]*?height:18px!important/)
 })

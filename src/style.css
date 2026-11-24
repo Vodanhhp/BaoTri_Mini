@@ -2562,28 +2562,24 @@ html,body,#root,.app-shell{
   #root .plan-request-modal .reset-history-table{min-width:0!important}
 }
 
-/* 24/11/2026 — inventory action menu escapes the table frame; normalize modal close controls */
-#root .app-shell .inventory-desktop-table{
+/* 24/11/2026 — scope inventory menu layering and normalize close glyphs */
+#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
+.inventory-desktop-table:has(.inventory-action-menu[open]){
   position:relative;
   overflow:visible;
 }
-#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table table{
-  min-width:0!important;
-}
-#root .app-shell .inventory-desktop-table tbody tr:has(.inventory-action-menu[open]){
-  position:relative;
-  z-index:20;
-}
-#root .app-shell .inventory-desktop-table td.inventory-actions-cell{
-  position:relative;
-  z-index:21;
+#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
+.inventory-desktop-table .inventory-actions-cell{
   overflow:visible;
 }
-#root .app-shell .inventory-action-menu[open]{
-  z-index:22;
+#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
+.inventory-desktop-table .inventory-action-menu[open]{
+  position:relative;
+  z-index:2;
 }
-#root .app-shell .inventory-action-menu>div{
-  z-index:30;
+#root .app-shell .inventory-workspace > .panel:has(.inventory-desktop-table)
+.inventory-desktop-table .inventory-action-menu>div{
+  z-index:3;
 }
 #root .app-shell .modal-head>.icon-btn,
 #root .app-shell .platform-action-head>.icon-btn{
@@ -2597,5 +2593,13 @@ html,body,#root,.app-shell{
   min-height:36px;
   padding:0;
   border-radius:9px;
+  font-size:22px;
+  font-weight:400;
   line-height:1;
+}
+#root .app-shell .modal-head>.icon-btn svg,
+#root .app-shell .platform-action-head>.icon-btn svg{
+  width:18px!important;
+  height:18px!important;
+  flex:0 0 18px;
 }

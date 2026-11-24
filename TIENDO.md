@@ -1906,3 +1906,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Đồng bộ nút X của các modal và hộp thoại thao tác về 36×36px, căn giữa và giữ kích thước ổn định trên PC/mobile. Nút đóng lightbox ảnh toàn màn hình giữ kiểu riêng.
 - Bổ sung regression tests kiểm tra menu không bị khung bảng che và kích thước nút đóng.
 - Chỉ sửa CSS, test và tài liệu; không thay đổi nghiệp vụ, phân quyền, dữ liệu, Auth, Supabase, Cloud sync hoặc Production. Chưa có kiểm tra trực quan trên trình duyệt/thiết bị thật.
+
+
+#### Điều chỉnh phạm vi menu Kho vật tư và kích thước ký tự X — 24/11/2026
+- Đối chiếu repo cũ `Vodanhhp/DuAn_BaoTRi`: bảng Kho vật tư trước đây dùng các nút Nhập/Xuất/Sửa trong từng dòng, không có menu xổ nổi; đây là căn cứ để giữ hiệu ứng menu mới trong đúng khu vực danh mục vật tư.
+- Thu hẹp `overflow: visible` vào đúng khung danh mục vật tư và chỉ khi menu đang mở; bỏ nâng z-index toàn bộ dòng/cell để không đè các bảng khác.
+- Chuẩn hóa cả khung nút đóng 36×36px, ký tự `×` 22px và biểu tượng SVG 18×18px; không áp dụng lên nút icon ở khu vực khác.
+- Cập nhật regression tests để khóa phạm vi CSS và kiểm tra đồng nhất kích thước phần hiển thị X.
+- Chỉ thay đổi CSS, test và tài liệu; không thay đổi nghiệp vụ, phân quyền, dữ liệu, Auth, Supabase, Cloud sync hoặc Production. CI cần chạy lại; chưa có kiểm tra trực quan trên trình duyệt/thiết bị thật.
