@@ -276,13 +276,14 @@ begin
 
   v_code := btrim(p_item->>'code');
   v_code_normalized := upper(regexp_replace(v_code,'[[:space:]]+',' ','g'));
-  if v_code = '' or v_code_normalized = ''
+  if v_code is null or v_code = '' or v_code_normalized is null or v_code_normalized = ''
      or nullif(btrim(p_item->>'name'),'') is null
      or nullif(btrim(p_item->>'item_group'),'') is null
      or nullif(btrim(p_item->>'unit'),'') is null then
     raise exception 'Inventory code, name, group and unit are required' using errcode='22023';
   end if;
-  if (p_item->>'min_quantity')::numeric < 0 or (p_item->>'unit_price')::numeric < 0
+  if p_item->>'min_quantity' is null or p_item->>'unit_price' is null
+     or (p_item->>'min_quantity')::numeric < 0 or (p_item->>'unit_price')::numeric < 0
      or scale((p_item->>'min_quantity')::numeric) > 6
      or scale((p_item->>'unit_price')::numeric) > 6 then
     raise exception 'Minimum quantity and unit price must be non-negative with at most 6 decimal places' using errcode='22023';
@@ -413,12 +414,14 @@ begin
 
   v_code := btrim(p_payload->>'code');
   v_code_normalized := upper(regexp_replace(v_code,'[[:space:]]+',' ','g'));
-  if v_code = '' or nullif(btrim(p_payload->>'name'),'') is null
+  if v_code is null or v_code = '' or v_code_normalized is null
+     or nullif(btrim(p_payload->>'name'),'') is null
      or nullif(btrim(p_payload->>'item_group'),'') is null
      or nullif(btrim(p_payload->>'unit'),'') is null then
     raise exception 'Inventory code, name, group and unit are required' using errcode='22023';
   end if;
-  if (p_payload->>'min_quantity')::numeric < 0 or (p_payload->>'unit_price')::numeric < 0
+  if p_payload->>'min_quantity' is null or p_payload->>'unit_price' is null
+     or (p_payload->>'min_quantity')::numeric < 0 or (p_payload->>'unit_price')::numeric < 0
      or scale((p_payload->>'min_quantity')::numeric) > 6
      or scale((p_payload->>'unit_price')::numeric) > 6 then
     raise exception 'Minimum quantity and unit price must be non-negative with at most 6 decimal places' using errcode='22023';
@@ -542,21 +545,21 @@ begin
   if v_reason = '' then raise exception 'Movement reason is required' using errcode='22023'; end if;
   if v_type = 'Nhập' then
     v_movement_type := 'in';
-    if (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
+    if p_movement->>'quantity' is null or (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
       raise exception 'Stock-in quantity must be positive with at most 6 decimal places' using errcode='22023';
     end if;
     v_quantity := (p_movement->>'quantity')::numeric;
     v_delta := v_quantity;
   elsif v_type = 'Xuất' then
     v_movement_type := 'out';
-    if (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
+    if p_movement->>'quantity' is null or (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
       raise exception 'Stock-out quantity must be positive with at most 6 decimal places' using errcode='22023';
     end if;
     v_quantity := (p_movement->>'quantity')::numeric;
     v_delta := -v_quantity;
   elsif v_type = 'Điều chỉnh' then
     v_movement_type := 'adjustment';
-    if (p_movement->>'counted_quantity')::numeric < 0
+    if p_movement->>'counted_quantity' is null or (p_movement->>'counted_quantity')::numeric < 0
        or scale((p_movement->>'counted_quantity')::numeric) > 6 then
       raise exception 'Counted quantity must be non-negative with at most 6 decimal places' using errcode='22023';
     end if;
