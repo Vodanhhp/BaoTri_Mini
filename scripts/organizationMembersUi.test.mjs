@@ -31,7 +31,7 @@ test('organization member controls and invite form use the shared sizing rules',
 
 test('member list markup fixes the escaped newline and groups member actions', async () => {
   const source = await read('../src/OrganizationMembersPanel.tsx')
-  assert.doesNotMatch(source, /\\\\n\s*<div className="member-list-wrap"/)
+  assert.equal(source.includes('\\n    <div className="member-list-wrap">'), false)
   assert.match(source, /<details className="member-action-menu">/)
   assert.match(source, /member-action-menu-list/)
 })
