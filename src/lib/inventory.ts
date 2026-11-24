@@ -199,14 +199,15 @@ export async function createInventoryItem(
   const created = await db.transaction('rw', [db.inventoryItems, db.inventoryMovements, db.inventoryMutations], async () => {
     await assertCodeAvailable(actor.organizationId, code)
     const localSequence = await nextLocalMutationSequence(actor.organizationId, itemId)
-    const mutation = makeMutation(actor, itemId, 'create', { item: metadataSnapshot(item), opening_quantity: openingQuantity }, at, localSequence)
+    const createItemPayload = { ...metadataSnapshot(item), created_by_label: item.createdByLabel ?? null }
+    const mutation = makeMutation(actor, itemId, 'create', { item: createItemPayload, opening_quantity: openingQuantity }, at, localSequence)
     const movement = openingQuantity > 0
       ? movementRecord(actor, item, 'Nhập', openingQuantity, 'Tồn đầu kỳ', mutation.mutationId)
       : undefined
     await db.inventoryItems.add(item)
     if (movement) await db.inventoryMovements.add(movement)
     mutation.payload = {
-      item: metadataSnapshot(item),
+      item: createItemPayload,
       opening_quantity: openingQuantity,
       opening_movement: movement ? {
         id: movement.id,
