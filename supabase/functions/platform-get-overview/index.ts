@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 
-const OWNER_EMAIL='tuanluongpham1980@gmail.com'
+const platformOwnerEmail=()=>Deno.env.get('PLATFORM_OWNER_EMAIL')?.trim().toLowerCase()??''
 const ORIGIN='https://baotri.vieclamhp247.com'
 const PREVIEW_ORIGIN=/^https:\/\/baotri-mini-new-preview-[a-z0-9-]+-tuanluongpham-8256\.vercel\.app$/
 const cors=(origin:string|null)=>({'Access-Control-Allow-Origin':origin===ORIGIN||origin==='https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app'||Boolean(origin&&PREVIEW_ORIGIN.test(origin))||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173'?origin:ORIGIN,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'})
@@ -11,6 +11,8 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return response({error:'Method not allowed'},405,origin)
  try{
+  const ownerEmail=platformOwnerEmail()
+  if(!ownerEmail)return response({error:'Server configuration missing'},500,origin)
   const token=req.headers.get('Authorization')?.replace(/^Bearer\s+/i,'')
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
@@ -18,7 +20,7 @@ Deno.serve(async(req)=>{
   if(!url||!key)return response({error:'Server configuration missing'},500,origin)
   const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:auth,error:authError}=await admin.auth.getUser(token)
-  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==OWNER_EMAIL)return response({error:'Only the verified platform owner can view platform statistics.'},403,origin)
+  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==ownerEmail)return response({error:'Only the verified platform owner can view platform statistics.'},403,origin)
 
   const [{data:organizations,error:orgError},{data:members,error:memberError},{data:catalogs,error:catalogError}]=await Promise.all([
    admin.from('organizations').select('id,name,status,created_at').order('created_at',{ascending:false}),

@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 
-const OWNER_EMAIL='tuanluongpham1980@gmail.com'
 const ORIGIN='https://baotri.vieclamhp247.com'
 const allowedOrigins=[ORIGIN,'http://localhost:5173','http://127.0.0.1:5173']
 const cors=(origin:string|null)=>({

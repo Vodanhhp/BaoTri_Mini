@@ -132,10 +132,10 @@ Permission catalog hiện có 27 code:
 
 ## Khởi tạo tài khoản thật đầu tiên (21/11/2026)
 - Người dùng đã tạo và xác nhận email thành công trong Auth của **BAOTRI-Mini-New**:
-  - `tuanluongpham1980@gmail.com`
+  - `[email Super Admin đã xác thực]`
   - `tuanluongpham@gmail.com`
 - Đã tạo tổ chức `BAOTRI Mini` và gán thành viên:
-  - `tuanluongpham1980@gmail.com`: membership `admin`, RBAC role `admin`, trạng thái active, 27 permissions.
+  - `[email Super Admin đã xác thực]`: membership `admin`, RBAC role `admin`, trạng thái active, 27 permissions.
   - `tuanluongpham@gmail.com`: membership legacy `user`, RBAC role `viewer`, trạng thái active, 10 read-only permissions.
 - Xác minh SQL JOIN trực tiếp Auth users → organization_members → member_roles → roles → role_permissions; kết quả đúng như phân quyền dự kiến.
 - Lưu ý schema: `organization_members.role` hiện chỉ chấp nhận `admin` hoặc `user`; phân biệt Technician/Viewer phải dựa vào `member_roles` + `roles.code`. Không ghi `viewer` vào cột legacy role.
@@ -146,7 +146,7 @@ Permission catalog hiện có 27 code:
 
 ## Super Admin tạo khách hàng (21/11/2026)
 - Đã tạo nhánh `feature/super-admin-customer-provisioning` để triển khai module chủ nền tảng, chưa nhập vào main.
-- Thêm `PlatformAdminPanel` và nút Quản trị nền tảng chỉ hiển thị cho email chủ sở hữu đã xác thực `tuanluongpham1980@gmail.com`.
+- Thêm `PlatformAdminPanel` và nút Quản trị nền tảng chỉ hiển thị cho email chủ sở hữu đã xác thực `[email Super Admin đã xác thực]`.
 - Edge Function `platform-create-customer` đã deploy lên BAOTRI-Mini-New, ACTIVE version 1, verify_jwt=true. Backend xác minh JWT bằng Auth Admin API và kiểm tra email chủ sở hữu ở server; không dùng metadata do người dùng tự sửa để cấp quyền.
 - Luồng tạo khách hàng: nhập tên tổ chức + email Admin đầu tiên; hệ thống tìm Auth user (nếu đã có) hoặc gửi invitation; tổ chức mới được trigger tạo 3 built-in roles/permission grants; gán Admin vào tổ chức; rollback dữ liệu tổ chức/role/member nếu gán membership thất bại.
 - User mới nhận email mời và tự đặt mật khẩu; user Auth hiện hữu đã xác nhận được thêm vào tổ chức trực tiếp; user hiện hữu chưa xác nhận có membership trạng thái invited chờ xác nhận.
@@ -157,14 +157,14 @@ Permission catalog hiện có 27 code:
 
 ## Hoàn tất module tạo khách hàng từ Super Admin (21/11/2026)
 - PR #2 đã merge vào `main`, merge commit `7f1bbbb268691594418433702e79738933d39ca1`.
-- Thành phần giao diện: `src/PlatformAdminPanel.tsx`; App hiển thị nút **Quản trị nền tảng** chỉ cho email owner `tuanluongpham1980@gmail.com`.
+- Thành phần giao diện: `src/PlatformAdminPanel.tsx`; App hiển thị nút **Quản trị nền tảng** chỉ cho email owner `[email Super Admin đã xác thực]`.
 - Backend: Edge Function `platform-create-customer`, ACTIVE version 2, verify_jwt=true. Server kiểm tra token thật qua Auth Admin API và so email đã xác thực với owner allowlist.
 - Quy trình: nhập tên tổ chức + email Admin + tên hiển thị; tìm Auth user hiện có hoặc gửi invite; trigger tạo roles/permissions; gán Admin đầu tiên. Tổ chức mới tách tenant bằng organization_id; không tự động thêm user owner vào tổ chức khách hàng.
 - Nếu email Admin đã tồn tại và xác nhận, gắn tài khoản đó vào tổ chức mới; nếu là user mới thì gửi invite để tự đặt mật khẩu; nếu Auth user chưa xác nhận thì membership chờ invited→active theo trigger migration 009.
 - Test SQL transaction rollback trên database thật: tạo organization test rồi xác minh 3 system roles và grants Admin=27, Technician=17, Viewer=10; ROLLBACK toàn bộ fixture, không để lại dữ liệu thử.
 - CI Build and test trên PR #2 đã success (run `44859135520`); Pages build artifact trên main đã success ở run `44859195690`, deployment đang hoàn tất tại thời điểm ghi log.
 - Chưa thực hiện end-to-end qua giao diện bằng session owner thật, chưa gửi invite email thử và chưa xác minh khách hàng mới đăng nhập. Chỉ test thành công code build + role-seed database rollback.
-- Chủ sở hữu hiện cố định theo email `tuanluongpham1980@gmail.com` ở cả UI và Edge Function. Nếu đổi tài khoản chủ nền tảng, phải thay allowlist ở cả hai nơi; về lâu dài nên chuyển sang bảng platform_owners/role claim do backend quản lý.
+- Chủ sở hữu hiện cố định theo email `[email Super Admin đã xác thực]` ở cả UI và Edge Function. Nếu đổi tài khoản chủ nền tảng, phải thay allowlist ở cả hai nơi; về lâu dài nên chuyển sang bảng platform_owners/role claim do backend quản lý.
 - Security Advisor vẫn còn cảnh báo Auth Leaked Password Protection disabled. Tính năng này chỉ có trên Supabase Pro trở lên; nếu giữ Free plan, áp dụng password length/complexity controls sẵn có và không dùng mật khẩu đã chia sẻ qua chat.
 
 
@@ -172,7 +172,7 @@ Permission catalog hiện có 27 code:
 - Mở rộng `src/PlatformAdminPanel.tsx`: cùng màn hình Quản trị nền tảng hiện có dashboard tổng quan và bảng theo từng doanh nghiệp; vẫn giữ form tạo khách hàng.
 - Dashboard hiển thị tổng doanh nghiệp (active/suspended), tổng Auth accounts duy nhất (confirmed/unconfirmed), tổng memberships và memberships theo trạng thái.
 - Bảng doanh nghiệp hiển thị số user duy nhất trong từng tổ chức, active/invited memberships và ngày tạo. Một Auth user tham gia nhiều tổ chức chỉ tính một lần ở tổng Auth, nhưng tính một user ở mỗi tổ chức.
-- Tạo Edge Function `platform-get-overview` trên BAOTRI-Mini-New, ACTIVE version 1, `verify_jwt=true`. Function kiểm tra JWT thật qua Auth Admin API và chỉ owner email `tuanluongpham1980@gmail.com` được xem thống kê; service-role chỉ dùng server-side.
+- Tạo Edge Function `platform-get-overview` trên BAOTRI-Mini-New, ACTIVE version 1, `verify_jwt=true`. Function kiểm tra JWT thật qua Auth Admin API và chỉ owner email `[email Super Admin đã xác thực]` được xem thống kê; service-role chỉ dùng server-side.
 - Endpoint đọc organizations + memberships và phân trang Auth users để đếm chính xác tổng tài khoản, không đưa email người dùng ra dashboard.
 - Kiểm tra dữ liệu hiện tại trước khi triển khai: 2 tổ chức active, 2 Auth accounts, 3 memberships (3 active); BAOTRI Mini có 2 thành viên, BAOTRI Mini Test 02 có 1 thành viên.
 - Đang chờ CI build/PR và kiểm thử giao diện với owner session. Chưa đánh dấu hoàn tất E2E cho đến khi dashboard tải số liệu thật trên website.
@@ -297,7 +297,7 @@ Permission catalog hiện có 27 code:
 
 
 ## Quản trị vòng đời tổ chức – Super Admin (21/11/2026)
-- Chỉ owner email đã xác thực `tuanluongpham1980@gmail.com` được mở và thao tác Quản trị nền tảng; UI và Edge Function đều kiểm tra allowlist server-side, không dựa vào user metadata.
+- Chỉ owner email đã xác thực `[email Super Admin đã xác thực]` được mở và thao tác Quản trị nền tảng; UI và Edge Function đều kiểm tra allowlist server-side, không dựa vào user metadata.
 - Bổ sung thao tác Tạm ngưng / Kích hoạt lại / Xóa vĩnh viễn theo từng tổ chức trong bảng quản trị nền tảng.
 - Mỗi thao tác bắt buộc xác thực lại mật khẩu bằng Supabase Auth `signInWithPassword`, đối chiếu đúng Auth user ID của access token; backend bắt buộc xác nhận `Có`. Không lưu mật khẩu, không trả session/token xác thực phụ về trình duyệt.
 - Xóa vĩnh viễn yêu cầu nhập đúng tên tổ chức. Edge Function `platform-manage-organization` ACTIVE v1, verify_jwt=true; service-role chỉ dùng phía server.
@@ -989,7 +989,7 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Tạo migration source supabase/migrations/20261122170000_cloud_asset_sync_pagination_and_platform_read.sql:
   - Thêm RPC public.list_cloud_assets_page dùng keyset cursor theo mã thiết bị code, page size server-side tối đa 100, trả items, has_more, next_cursor.
   - Thành viên thường phải có private.has_org_permission(organization_id,'assets.view').
-  - Super Admin dùng cờ platform_admin riêng; backend xác minh auth.uid(), email allowlist tuanluongpham1980@gmail.com và email_confirmed_at trong auth.users. Chỉ đọc tổ chức đang active, không bypass theo client-provided role.
+  - Super Admin dùng cờ platform_admin riêng; backend xác minh auth.uid(), email allowlist [email Super Admin đã xác thực] và email_confirmed_at trong auth.users. Chỉ đọc tổ chức đang active, không bypass theo client-provided role.
   - Siết cả RPC legacy public.list_cloud_assets để yêu cầu assets.view.
   - EXECUTE page RPC chỉ cấp authenticated; revoke public/anon.
 - src/lib/cloudAssets.ts:
@@ -1949,3 +1949,35 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rủi ro cần xử lý riêng trước khi mở rộng quản trị nền tảng: email định danh Super Admin đang hard-code trong frontend và Edge Functions trong repo công khai. Các Edge Functions hiện cũng tự xác thực email đã xác minh và một luồng quản trị yêu cầu xác thực lại mật khẩu; tuy vậy email vẫn bị lộ trong mã nguồn. Đề xuất chuyển định danh này sang Supabase Function Secret/config, sau đó deploy và kiểm tra quyền lại. Chưa thay đổi vì đây là thay đổi backend/secret cần phê duyệt riêng.
 - Chưa thực hiện kiểm thử trình duyệt end-to-end, thiết bị thật, invitation email hoặc thao tác trên Supabase Production; CI xanh không thay thế các kiểm thử này.
 - Ghi chú cấu hình: workflow Pages hiện hành là `.github/workflows/pages.yml`; các ghi chú cũ trong phần TIENDO có nhắc `deploy-pages.yml` là lịch sử, không phải workflow đang chạy.
+
+
+## 24/11/2026 — Chuyển định danh Super Admin sang Supabase Function Secret
+
+- Người dùng đã đồng ý thực hiện chuyển định danh và rà soát.
+- Rà soát toàn bộ 10 Edge Function trong repo: tìm thấy email hard-code trong 5 endpoint quản trị nền tảng; thêm một hằng số email không còn được sử dụng trong `manage-organization-members`. Không phát hiện thêm endpoint khác dùng email đó để cấp quyền.
+- Rà soát thêm các vị trí frontend, test và tài liệu liên quan; đã loại email cụ thể khỏi cây mã hiện tại và các ghi chú TIENDO cũ. Các commit lịch sử trước đó vẫn có thể chứa email; chưa viết lại Git history để tránh ảnh hưởng các nhánh/PR đang mở.
+- Frontend `src/App.tsx` trước đây tự so sánh email công khai để mở màn hình Super Admin. Thay bằng lời gọi endpoint `platform-check-access`; endpoint xác minh JWT và email đã xác nhận ở phía máy chủ.
+- Năm Edge Functions quản trị đọc `PLATFORM_OWNER_EMAIL` từ môi trường máy chủ, chuẩn hóa chữ thường và từ chối đóng nếu secret chưa được cấu hình. Luồng xác thực lại mật khẩu của các thao tác nhạy cảm được giữ nguyên.
+- Xóa hằng số email không dùng trong `manage-organization-members`; không thay đổi quyền thành viên tổ chức.
+- Bổ sung regression test để khóa việc không hard-code email, xác thực token/email xác nhận và giữ xác thực lại mật khẩu cho các thao tác phá hủy/duyệt.
+- Phạm vi thay đổi chỉ gồm frontend access gate, Edge Function source, regression test và tài liệu. Không sửa schema, migration, RLS, Auth user, dữ liệu, Storage hoặc bật Cloud sync.
+- Nhánh thực hiện: `security/superadmin-secret-identity`. Chưa merge, chưa deploy frontend hoặc Edge Functions.
+- Chưa thể cấu hình secret từ công cụ kết nối hiện có. Bước cần hoàn tất trên Supabase Dashboard: thêm Edge Function Secret `PLATFORM_OWNER_EMAIL` với email tài khoản Super Admin hiện tại. Không gửi giá trị secret trong chat hoặc commit vào repo.
+- Sau khi secret được lưu, cần deploy các Edge Functions đã thay đổi (`platform-check-access`, `platform-get-overview`, `platform-create-customer`, `platform-manage-organization`, `platform-manage-plan-requests`, `platform-manage-asset-reset-requests`) và chạy kiểm thử quyền Super Admin/tài khoản thường. Chỉ hoàn tất triển khai sau khi secret đã được xác nhận.
+
+
+### Bổ sung sau khi người dùng xác nhận đã lưu Secret — triển khai Production
+
+- Người dùng xác nhận đã lưu `PLATFORM_OWNER_EMAIL` trong Edge Function Secrets của dự án BAOTRI Mini New. Giá trị Secret không được đọc hoặc hiển thị qua công cụ; không yêu cầu người dùng gửi lại.
+- Theo tài liệu Supabase, secret mới có hiệu lực ngay; đã triển khai các function dùng biến môi trường đó.
+- Deploy thành công trên project `dskeaiyvldiwlsfqkboq`, tất cả giữ `verify_jwt=true`:
+  - `platform-check-access` v1 (mới)
+  - `platform-get-overview` v6
+  - `platform-create-customer` v5
+  - `platform-manage-organization` v4
+  - `platform-manage-plan-requests` v7
+  - `platform-manage-asset-reset-requests` v5
+  - `manage-organization-members` v8 (chỉ loại bỏ hằng số email cũ không dùng)
+- Danh sách Edge Functions xác nhận các function trên đang ACTIVE sau deploy.
+- Build & Test và Validate BAOTRI Mini trên commit trước lần cập nhật TIENDO này đều SUCCESS. Cần chạy lại CI cho commit tài liệu cuối cùng trước khi merge PR.
+- Chưa thực hiện đăng nhập thực tế bằng trình duyệt; chưa xác minh endpoint bằng JWT người dùng Super Admin và tài khoản thường. Đây là bước kiểm thử sau khi frontend được deploy.

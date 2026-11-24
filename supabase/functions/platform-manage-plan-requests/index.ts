@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 
-const OWNER_EMAIL='tuanluongpham1980@gmail.com'
+const platformOwnerEmail=()=>Deno.env.get('PLATFORM_OWNER_EMAIL')?.trim().toLowerCase()??''
 const ORIGIN='https://baotri.vieclamhp247.com'
 const ALLOWED_ORIGINS=new Set([ORIGIN,'https://baotri-mini-new-preview-eazlswbhd-tuanluongpham-8256.vercel.app','https://baotri-mini-new-preview-mutqeu613-tuanluongpham-8256.vercel.app','https://baotri-mini-new-preview-l8hhedfwf-tuanluongpham-8256.vercel.app','http://localhost:5173','http://127.0.0.1:5173'])
 const PREVIEW_ORIGIN=/^https:\/\/baotri-mini-new-preview-[a-z0-9-]+-tuanluongpham-8256\.vercel\.app$/
@@ -19,6 +19,8 @@ Deno.serve(async(req)=>{
  if(req.method==='OPTIONS')return new Response('ok',{headers:cors(origin)})
  if(req.method!=='POST')return response({error:'Method not allowed'},405,origin)
  try{
+  const ownerEmail=platformOwnerEmail()
+  if(!ownerEmail)return response({error:'Server configuration missing'},500,origin)
   const token=req.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
@@ -27,7 +29,7 @@ Deno.serve(async(req)=>{
   if(!url||!serviceKey||!publicKey)return response({error:'Server configuration missing'},500,origin)
   const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
   const {data:auth,error:authError}=await admin.auth.getUser(token)
-  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==OWNER_EMAIL)
+  if(authError||!auth.user||!auth.user.email_confirmed_at||auth.user.email?.toLowerCase()!==ownerEmail)
    return response({error:'Chỉ Super Admin đã xác thực email mới được quản lý yêu cầu Plan.'},403,origin)
 
   const body=await req.json()
@@ -48,7 +50,7 @@ Deno.serve(async(req)=>{
   if(confirmation!=='yes')return response({error:'Cần xác nhận đã kiểm tra điều kiện thương mại/thanh toán.'},400,origin)
 
   const verifier=createClient(url,publicKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
-  const {data:verified,error:passwordError}=await verifier.auth.signInWithPassword({email:OWNER_EMAIL,password})
+  const {data:verified,error:passwordError}=await verifier.auth.signInWithPassword({email:ownerEmail,password})
   if(passwordError||verified.user?.id!==auth.user.id||!verified.user.email_confirmed_at)
    return response({error:'Mật khẩu Super Admin không chính xác hoặc không thể xác thực.'},401,origin)
 
