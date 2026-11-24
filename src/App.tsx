@@ -17,7 +17,7 @@ import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
 import { startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
-import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
+import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, saveOrganizationEquipmentCatalogSnapshot, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý', 'Lưu kho']
 
@@ -74,6 +74,13 @@ export default function App() {
   const [smartEquipmentChoice,setSmartEquipmentChoice]=useState('')
   const [smartGroupChoice,setSmartGroupChoice]=useState('')
   const [smartSiteCode,setSmartSiteCode]=useState('00')
+  const [catalogSaveBusy,setCatalogSaveBusy]=useState(false)
+  const [newTypeName,setNewTypeName]=useState('')
+  const [newTypeCode,setNewTypeCode]=useState('')
+  const [newTypeAliases,setNewTypeAliases]=useState('')
+  const [newTypeGroup,setNewTypeGroup]=useState('')
+  const [newGroupName,setNewGroupName]=useState('')
+  const [newGroupCode,setNewGroupCode]=useState('')
   const [cloudPanel,setCloudPanel]=useState(false)
   const [membersPanel,setMembersPanel]=useState(false)
   const [profilePanel,setProfilePanel]=useState(false)
@@ -414,6 +421,58 @@ export default function App() {
     const rank={A:1,B:2,C:3,D:4}
     return equipmentCatalog.snapshot.equipmentGroups.filter(group=>rank[group.availableFromPlan??'B']<=rank[equipmentCatalog.plan_code])
   },[equipmentCatalog])
+
+  const saveCatalogSnapshot = async (snapshot: OrganizationEquipmentCatalogRecord['snapshot']) => {
+    if(!supabase||!organizationId||!organizationContexts.find(org=>org.id===organizationId)?.isAdmin) {
+      throw new Error('Chỉ Admin của tổ chức mới được quản lý từ điển thiết bị.')
+    }
+    setCatalogSaveBusy(true)
+    try {
+      const saved=await saveOrganizationEquipmentCatalogSnapshot(supabase,organizationId,snapshot)
+      setEquipmentCatalog(saved)
+      return saved
+    } finally {
+      setCatalogSaveBusy(false)
+    }
+  }
+
+  const addOrganizationEquipmentType = async () => {
+    if(!equipmentCatalog)return
+    const name=newTypeName.trim()
+    const code=newTypeCode.trim().toUpperCase().replace(/[^A-Z0-9]/g,'')
+    const aliases=newTypeAliases.split(',').map(value=>value.trim()).filter(Boolean)
+    if(!name||code.length<2||code.length>4){setError('Tên loại thiết bị và mã viết tắt 2–4 ký tự là bắt buộc.');return}
+    if(equipmentCatalog.snapshot.equipmentDictionary.some(item=>item.shortCode.toUpperCase()===code)){
+      setError('Mã loại thiết bị đã tồn tại trong Snapshot của tổ chức.');return
+    }
+    if(newTypeGroup&&!equipmentCatalog.snapshot.equipmentGroups.some(group=>group.code===newTypeGroup)){
+      setError('Nhóm gợi ý không tồn tại trong Snapshot.');return
+    }
+    try{
+      setError('')
+      await saveCatalogSnapshot({...equipmentCatalog.snapshot,equipmentDictionary:[...equipmentCatalog.snapshot.equipmentDictionary,{standardName:name,shortCode:code,aliases,suggestedGroup:newTypeGroup||undefined}]})
+      setNewTypeName('');setNewTypeCode('');setNewTypeAliases('');setNewTypeGroup('')
+      setSmartEquipmentChoice(code)
+      notify('Đã bổ sung loại thiết bị vào từ điển riêng của tổ chức.')
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }
+
+  const addOrganizationEquipmentGroup = async () => {
+    if(!equipmentCatalog)return
+    const name=newGroupName.trim()
+    const code=newGroupCode.trim().toUpperCase().replace(/[^A-Z0-9]/g,'')
+    if(!name||code.length<2||code.length>4){setError('Tên nhóm và mã nhóm 2–4 ký tự là bắt buộc.');return}
+    if(equipmentCatalog.snapshot.equipmentGroups.some(group=>group.code.toUpperCase()===code)){
+      setError('Mã nhóm thiết bị đã tồn tại trong Snapshot của tổ chức.');return
+    }
+    try{
+      setError('')
+      await saveCatalogSnapshot({...equipmentCatalog.snapshot,equipmentGroups:[...equipmentCatalog.snapshot.equipmentGroups,{name,code,availableFromPlan:'B'}]})
+      setNewGroupName('');setNewGroupCode('')
+      setSmartGroupChoice(code)
+      notify('Đã bổ sung nhóm thiết bị vào từ điển riêng của tổ chức.')
+    }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }
   const smartSelectedGroup=smartAvailableGroups.find(group=>group.code===smartGroupChoice)
     ?? smartAnalysis?.group
   const currentViewAssets = useMemo(() => assets.filter(a => Boolean(a.deletedAt) === showDeleted && (showDeleted || Boolean(a.archivedAt) === showArchived) && (!a.deletedAt || organizationContexts.find(o=>o.id===organizationId)?.isAdmin)), [assets, showDeleted, showArchived, organizationContexts, organizationId])
@@ -1126,11 +1185,28 @@ export default function App() {
             <div className="field full-field"><span>Smart Equipment ID · Plan {equipmentCatalog.plan_code}</span><small>Hệ thống phân tích tên theo Snapshot riêng của tổ chức. Số thứ tự chỉ được giữ khi bạn lưu hồ sơ.</small></div>
             {smartAnalysis?.status==='ambiguous'&&<label className="field full-field">Chọn loại thiết bị *<select required value={smartEquipmentChoice} onChange={event=>{const value=event.target.value;void updateSmartDraft({},()=>setSmartEquipmentChoice(value))}}><option value="">-- Chọn loại phù hợp --</option>{smartAnalysis.matches.map(match=><option key={match.shortCode} value={match.shortCode}>{match.standardName} · {match.shortCode}</option>)}</select></label>}
             {smartAnalysis?.status==='matched'&&<div className="field full-field"><span>Loại chuẩn đề xuất</span><b>{smartAnalysis.normalizedName} · {smartAnalysis.equipmentCode}</b></div>}
-            {smartAnalysis&&smartAnalysis.status!=='matched'&&smartAnalysis.status!=='ambiguous'&&<div className="auth-error full-field">{smartAnalysis.message}</div>}
+            {smartAnalysis?.status==='not-found'&&currentOrganization?.isAdmin&&<div className="field full-field">
+              <div><b>Chưa có loại phù hợp? Admin có thể bổ sung vào từ điển riêng</b><small>Loại mới chỉ áp dụng trong tổ chức này. KTV không được tự thêm mục từ điển.</small></div>
+              <label className="field">Tên loại chuẩn *<input value={newTypeName} onChange={event=>setNewTypeName(event.target.value)} placeholder="Ví dụ: Máy kiểm thử đồng bộ"/></label>
+              <label className="field">Mã loại 2–4 ký tự *<input value={newTypeCode} maxLength={4} onChange={event=>setNewTypeCode(event.target.value.toUpperCase())} placeholder="Ví dụ: MKT"/></label>
+              <label className="field full-field">Tên gọi khác, phân cách bằng dấu phẩy<input value={newTypeAliases} onChange={event=>setNewTypeAliases(event.target.value)} placeholder="Tên thường gọi, tên viết tắt…"/></label>
+              {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm gợi ý<select value={newTypeGroup} onChange={event=>setNewTypeGroup(event.target.value)}><option value="">-- Chưa gán nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select></label>}
+              <button type="button" className="soft-btn" disabled={catalogSaveBusy} onClick={()=>void addOrganizationEquipmentType()}>{catalogSaveBusy?'Đang lưu…':'Bổ sung loại thiết bị'}</button>
+            </div>}
+            {smartAnalysis&&smartAnalysis.status!=='matched'&&smartAnalysis.status!=='ambiguous'&&smartAnalysis.status!=='not-found'&&<div className="auth-error full-field">{smartAnalysis.message}</div>}
             {equipmentCatalog.plan_code!=='A'&&<label className="field">Nhóm thiết bị *<select required disabled={reservationReleaseBusy} value={smartGroupChoice} onChange={event=>{
               const value=event.target.value
               void updateSmartDraft({},()=>setSmartGroupChoice(value))
             }}><option value="">-- Chọn / xác nhận nhóm --</option>{smartAvailableGroups.map(group=><option key={group.code} value={group.code}>{group.name} · {group.code}</option>)}</select>{smartAnalysis?.group&&<small>Gợi ý từ điển: {smartAnalysis.group.name}. Hãy chọn nhóm trong danh sách để xác nhận.</small>}</label>}
+            {equipmentCatalog.plan_code!=='A'&&currentOrganization?.isAdmin&&<div className="field full-field">
+              <b>Bổ sung nhóm thiết bị riêng</b>
+              <div className="form-grid">
+                <label className="field">Tên nhóm *<input value={newGroupName} onChange={event=>setNewGroupName(event.target.value)} placeholder="Ví dụ: Thiết bị kiểm thử"/></label>
+                <label className="field">Mã nhóm 2–4 ký tự *<input value={newGroupCode} maxLength={4} onChange={event=>setNewGroupCode(event.target.value.toUpperCase())} placeholder="Ví dụ: TKT"/></label>
+              </div>
+              <button type="button" className="soft-btn" disabled={catalogSaveBusy} onClick={()=>void addOrganizationEquipmentGroup()}>{catalogSaveBusy?'Đang lưu…':'Bổ sung nhóm'}</button>
+              <small>Chỉ Admin được bổ sung; KTV chỉ chọn nhóm đã có trong Snapshot.</small>
+            </div>}
             {equipmentCatalog.plan_code==='A'&&<div className="field"><span>Nhóm thiết bị</span><b>Không áp dụng trong Plan A</b></div>}
             {(equipmentCatalog.plan_code==='C'||equipmentCatalog.plan_code==='D')&&<label className="field">Mã cơ sở (2 chữ số) *<input required inputMode="numeric" maxLength={2} pattern="[0-9]{2}" value={smartSiteCode} disabled={reservationReleaseBusy} onChange={event=>{
               const value=event.target.value
