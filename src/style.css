@@ -1681,8 +1681,8 @@ html,body,#root,.app-shell{
 }
 
 #root .app-shell .searchbar input{
-  height:38px;
-  min-height:38px;
+  height:40px;
+  min-height:40px;
   padding:0;
   border:0;
   border-radius:0;
@@ -1979,8 +1979,8 @@ html,body,#root,.app-shell{
   min-height:40px;
 }
 #root .auth-input input{
-  height:38px;
-  min-height:38px;
+  height:40px;
+  min-height:40px;
   font-size:16px;
 }
 #root .auth-page .auth-submit{
@@ -1995,4 +1995,14 @@ html,body,#root,.app-shell{
   #root .auth-page .auth-input input{
     font-size:16px;
   }
+}
+
+
+#root .platform-admin-modal :is(.field input,.field select,.platform-action-form input:not([type="radio"]),.platform-action-form select){
+  width:100%;
+  height:40px;
+  min-height:40px;
+  padding:0 10px;
+  border-radius:8px;
+  font-size:13px;
 }
