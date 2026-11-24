@@ -101,7 +101,8 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
    <div className="member-toolbar"><div className="member-search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm email, tên hoặc vai trò..."/></div><button className="soft-btn" onClick={()=>void load()} disabled={loading||busy}><RefreshCw size={14}/> Làm mới</button></div>
    {error&&<div className="auth-error member-feedback">{error}</div>}
    {message&&<div className="cloud-message member-feedback">{message}</div>}
-   <section className="member-list-section" aria-label="Danh sách thành viên">\n    <div className="member-list-heading"><b>Danh sách thành viên</b><span>{query.trim()?`${filtered.length}/${members.length} tài khoản`:`${members.length} tài khoản`}</span></div>\n    <div className="member-list-wrap">
+   <section className="member-list-section" aria-label="Danh sách thành viên">
+    <div className="member-list-heading"><b>Danh sách thành viên</b><span>{query.trim()?`${filtered.length}/${members.length} tài khoản`:`${members.length} tài khoản`}</span></div>\n    <div className="member-list-wrap">
     {loading?<div className="member-empty">Đang tải danh sách tài khoản…</div>:filtered.length===0?<div className="member-empty">Chưa có tài khoản phù hợp.</div>:<div className="member-list">
      {filtered.map(member=>{
       const protectedMember=member.roleCode==='admin'||member.roleCode==='unknown'||member.userId===actorId
@@ -115,7 +116,8 @@ export default function OrganizationMembersPanel({client,organizationId,onClose}
       </article>
      })}
     </div>}
-   </div>
+    </div>
+   </section>
    <div className="member-invite-section">
     <div className="member-section-title"><div><b><UserPlus size={16}/> Mời tài khoản mới</b><small>Người được mời xác nhận email và tự đặt mật khẩu.</small></div></div>
     <form className="form-grid" onSubmit={invite}>
