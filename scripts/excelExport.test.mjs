@@ -8,6 +8,13 @@ test('Excel workbook retains the legacy BAOTRI formatted report layout', async (
  assert.match(source,/worksheet\.autoFilter/);assert.match(source,/state: 'frozen', ySplit: 6/)
  assert.match(source,/orientation/);assert.match(source,/oddFooter = 'Trang &P \/ &N'/)
 })
+test('Excel headings are centered and column widths are more compact', async () => {
+ const source=await read('../src/lib/excelExport.ts')
+ assert.match(source,/horizontal: 'center', wrapText: true/)
+ assert.match(source,/horizontal: 'center', wrapText: true/)
+ assert.match(source,/orientation === 'portrait' \? 20 : 28/)
+ assert.match(source,/Math\.max\(9, maxLength \+ 1\)/)
+})
 test('inventory export follows filtered items and includes quantity and stock value', async () => {
  const source=await read('../src/InventoryPanel.tsx')
  assert.match(source,/canExport&&<button[^]*?Xuất Excel/s);assert.match(source,/visibleItems\.map\(item=>/)
