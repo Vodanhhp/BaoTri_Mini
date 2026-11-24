@@ -1842,3 +1842,19 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Phạm vi chỉ là trình bày giao diện; không thay đổi nghiệp vụ, phân quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
 - Các thay đổi đang nằm trên nhánh `feat/inventory-mobile-cards` / PR #45; chưa merge, chưa deploy.
 - Cần chạy CI/build/unit test và kiểm tra trực quan trên desktop/tablet/mobile trước khi kết luận đạt. Chưa có xác nhận kiểm thử trên thiết bị thật.
+
+
+## 24/11/2026 — Tinh gọn Quản trị tổ chức / Quản lý tài khoản
+
+- Người dùng phản ánh khu vực quản lý thành viên có khoảng trắng lớn, danh sách tài khoản khó nhìn/không hiển thị hết rõ ràng.
+- Nguyên nhân trong CSS cũ: `.member-list-wrap` có `max-height` 230–350px và `overflow:auto`, tạo vùng cuộn lồng bên trong modal; nhiều breakpoint ghi đè chiều cao danh sách, kích thước nút và form.
+- Đã chỉnh `src/OrganizationMembersPanel.tsx`: thêm tiêu đề “Danh sách thành viên” và bộ đếm tổng số/đang lọc để nhìn rõ danh sách đã được nạp.
+- Đã bổ sung lớp CSS cuối file để:
+  - Bỏ giới hạn chiều cao và cuộn lồng của danh sách; modal là vùng cuộn chính, hiển thị đầy đủ các thành viên.
+  - Thu gọn sáu thẻ thống kê thành lưới 3 cột trên PC, 2 cột trên mobile; cân bằng kích thước và khoảng cách.
+  - Cân lại cột thông tin tài khoản, vai trò/trạng thái và nhóm nút; nút thao tác cao 40px đồng bộ.
+  - Form mời tài khoản dùng các cột rõ ràng trên PC và một cột trên mobile; input/select cao 40px.
+  - Giảm padding/khoảng trống dư ở header, toolbar, danh sách, phần mời và ghi chú.
+- Thêm `scripts/organizationMembersUi.test.mjs` để kiểm tra không tái xuất hiện cuộn lồng/giới hạn chiều cao và kích thước không đồng bộ.
+- Chỉ thay đổi trình bày; không thay đổi Edge Functions, Auth, quyền, dữ liệu thành viên hoặc Supabase.
+- Đang nằm trên PR #45, chưa merge và chưa deploy. Cần CI và kiểm tra trực quan sau khi cập nhật.
