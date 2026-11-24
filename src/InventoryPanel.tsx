@@ -11,8 +11,10 @@ import {
 
 type Props = {
   organizationId: string
+  organizationName: string
   userId?: string
   userLabel: string
+  userRoleLabel: string
   canView: boolean
   canCreate: boolean
   canUpdate: boolean
@@ -394,7 +396,7 @@ export default function InventoryPanel(props: Props) {
 
     {printItem&&<section className="inventory-print-sheet" aria-label="Phiếu thông tin vật tư">
       <header className="inventory-print-header">
-        <div><strong>BAOTRI MINI</strong><span>PHIẾU THÔNG TIN VẬT TƯ</span></div>
+        <div className="inventory-print-brand"><strong>{organizationName||'ĐƠN VỊ / DOANH NGHIỆP'}</strong><span>BAOTRI MINI · PHIẾU THÔNG TIN VẬT TƯ</span></div>
         <small>Ngày in: {new Date().toLocaleString('vi-VN')}</small>
       </header>
       <h1>{printItem.name}</h1>
@@ -426,7 +428,7 @@ export default function InventoryPanel(props: Props) {
           {movements.every(movement=>movement.itemId!==printItem.id)&&!printItem.archivedAt&&<tr><td colSpan={8}>Chưa có giao dịch kho.</td></tr>}
         </tbody>
       </table>
-      <footer className="inventory-print-footer">Phiếu được trích xuất từ dữ liệu kho vật tư BAOTRI MINI.</footer>
+      <footer className="inventory-print-footer"><span>Phiếu được trích xuất từ dữ liệu kho vật tư BAOTRI MINI.</span><strong>Người yêu cầu in: {userRoleLabel} — {userLabel}</strong></footer>
     </section>}
 
     {movementMode&&selected&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setMovementMode(null)}}>
