@@ -1898,3 +1898,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bảng Reset ưu tiên cột Lý do/phản hồi; cột số Cloud/Local căn giữa và gọn hơn. Màn hình nhỏ vẫn giữ đủ cột trong vùng hiển thị.
 - Bổ sung regression tests cho CSS bố cục và xác nhận các hành động submit/cảnh báo vẫn hiện diện.
 - Chỉ thay đổi React markup class, CSS, test và tài liệu; không thay đổi API, luồng duyệt Plan/Reset, dữ liệu, Auth, quyền, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.
+
+
+### 24/11/2026 — Sửa lớp hiển thị menu Kho vật tư và chuẩn hóa nút đóng
+- Khung bảng vật tư không còn cắt menu Thao tác; dòng đang mở menu được nâng lớp hiển thị, menu nổi phía trên nội dung bảng.
+- Bỏ min-width cưỡng ép 850px của bảng vật tư để khung không bị kéo rộng chỉ vì cột thao tác; giữ nguyên dữ liệu và các hành động theo quyền.
+- Đồng bộ nút X của các modal và hộp thoại thao tác về 36×36px, căn giữa và giữ kích thước ổn định trên PC/mobile. Nút đóng lightbox ảnh toàn màn hình giữ kiểu riêng.
+- Bổ sung regression tests kiểm tra menu không bị khung bảng che và kích thước nút đóng.
+- Chỉ sửa CSS, test và tài liệu; không thay đổi nghiệp vụ, phân quyền, dữ liệu, Auth, Supabase, Cloud sync hoặc Production. Chưa có kiểm tra trực quan trên trình duyệt/thiết bị thật.
