@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises'
 const read=path=>readFile(new URL(path,import.meta.url),'utf8')
 
 test('organization name change workflow keeps tenant requests pending until verified Super Admin review',async()=>{
- const migration=await read('../supabase/migrations/20261124165000_organization_name_change_requests.sql')
+ const migration=await read('../supabase/migrations/20261124153541_organization_name_change_requests.sql')
  const tenant=await read('../supabase/functions/organization-name-change-requests/index.ts')
  const platform=await read('../supabase/functions/platform-manage-organization-name-requests/index.ts')
  assert.match(migration,/organization_name_change_one_pending_per_org/)
@@ -23,7 +23,7 @@ test('organization name change workflow keeps tenant requests pending until veri
 })
 
 test('name change approval preserves organization identity and existing business data',async()=>{
- const migration=await read('../supabase/migrations/20261124165000_organization_name_change_requests.sql')
+ const migration=await read('../supabase/migrations/20261124153541_organization_name_change_requests.sql')
  assert.match(migration,/previous_name text not null/)
  assert.match(migration,/new_name text not null/)
  assert.match(migration,/organization_id uuid not null references public\.organizations\(id\) on delete cascade/)
