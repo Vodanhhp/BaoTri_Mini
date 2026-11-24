@@ -58,6 +58,7 @@ export default function InventoryPanel(props: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [printItem, setPrintItem] = useState<InventoryItem | null>(null)
 
   const refresh = useCallback(async () => {
     if (!organizationId || !canView) return
@@ -92,6 +93,17 @@ export default function InventoryPanel(props: Props) {
     })
     return () => { active = false }
   }, [organizationId, canView])
+
+  useEffect(() => {
+    if (!printItem) return
+    const timer = window.setTimeout(() => window.print(), 120)
+    const onAfterPrint = () => setPrintItem(null)
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('afterprint', onAfterPrint)
+    }
+  }, [printItem])
 
   const visibleItems = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('vi')
@@ -280,6 +292,7 @@ export default function InventoryPanel(props: Props) {
                 <details className="inventory-action-menu">
                   <summary>Thao tác <span aria-hidden="true">⌄</span></summary>
                   <div>
+                    <button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setPrintItem(item)}}>In phiếu</button>
                     {canAdjust&&!item.archivedAt&&<><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Nhập')}}>Nhập kho</button><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Xuất')}}>Xuất kho</button><button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openMovement(item,'Điều chỉnh')}}>Kiểm kê / điều chỉnh</button></>}
                     {canUpdate&&!item.archivedAt&&<button type="button" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');openEdit(item)}}>Sửa thông tin</button>}
                     {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="danger" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');void archiveItem(item)}}>Lưu trữ vật tư</button>}
@@ -303,11 +316,12 @@ export default function InventoryPanel(props: Props) {
             <div><small>Tồn kho</small><strong>{numberText(item.quantity)} {item.unit}</strong></div>
             <div><small>Tồn tối thiểu</small><strong>{numberText(item.minQuantity)} {item.unit}</strong></div>
           </div>
+          <div className="inventory-mobile-actions"><button type="button" className="soft-btn" onClick={()=>setPrintItem(item)}>In phiếu</button>
           {(canAdjust&&!item.archivedAt||canUpdate&&!item.archivedAt||canDelete&&isAdmin&&!item.archivedAt)&&<div className="inventory-mobile-actions">
             {canAdjust&&!item.archivedAt&&<><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Nhập')}>Nhập</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Xuất')}>Xuất</button><button type="button" className="soft-btn" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê</button></>}
             {canUpdate&&!item.archivedAt&&<button type="button" className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button>}
             {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="soft-btn danger" onClick={()=>void archiveItem(item)}>Lưu trữ</button>}
-          </div>}
+          </div>
         </article>)}
         {visibleItems.length===0&&<div className="table-empty-state">Chưa có vật tư phù hợp. {canCreate?'Bạn có thể thêm vật tư mới.':''}</div>}
       </div>
@@ -377,6 +391,43 @@ export default function InventoryPanel(props: Props) {
         </form>
       </section>
     </div>}
+
+    {printItem&&<section className="inventory-print-sheet" aria-label="Phiếu thông tin vật tư">
+      <header className="inventory-print-header">
+        <div><strong>BAOTRI MINI</strong><span>PHIẾU THÔNG TIN VẬT TƯ</span></div>
+        <small>Ngày in: {new Date().toLocaleString('vi-VN')}</small>
+      </header>
+      <h1>{printItem.name}</h1>
+      <p className="inventory-print-code">Mã vật tư: <b>{printItem.code}</b></p>
+      <h2>1. Thông tin vật tư</h2>
+      <table className="inventory-print-info"><tbody>
+        <tr><th>Tên vật tư</th><td>{printItem.name}</td><th>Mã vật tư</th><td>{printItem.code}</td></tr>
+        <tr><th>Nhóm vật tư</th><td>{printItem.group||'—'}</td><th>Đơn vị tính</th><td>{printItem.unit||'—'}</td></tr>
+        <tr><th>Mã phụ tùng</th><td>{printItem.partNumber||'—'}</td><th>Kích cỡ / quy cách</th><td>{printItem.size||'—'}</td></tr>
+        <tr><th>Số lượng tồn</th><td><b>{numberText(printItem.quantity)} {printItem.unit}</b></td><th>Tồn tối thiểu</th><td>{numberText(printItem.minQuantity)} {printItem.unit}</td></tr>
+        <tr><th>Đơn giá</th><td>{moneyText(printItem.unitPrice)}</td><th>Giá trị tồn</th><td>{moneyText(printItem.quantity*printItem.unitPrice)}</td></tr>
+        <tr><th>Vị trí lưu kho</th><td>{printItem.location||'—'}</td><th>Nhà cung cấp</th><td>{printItem.supplier||'—'}</td></tr>
+        <tr><th>Trạng thái</th><td>{printItem.archivedAt?'Đã lưu trữ':'Đang hoạt động'}</td><th>Ngày tạo</th><td>{new Date(printItem.createdAt).toLocaleString('vi-VN')}</td></tr>
+        <tr><th>Người tạo</th><td>{printItem.createdByLabel||'—'}</td><th>Cập nhật lần cuối</th><td>{new Date(printItem.updatedAt).toLocaleString('vi-VN')}</td></tr>
+        {printItem.archivedAt&&<tr><th>Thời điểm lưu trữ</th><td colSpan={3}>{new Date(printItem.archivedAt).toLocaleString('vi-VN')}</td></tr>}
+      </tbody></table>
+      <h2>2. Lịch sử nhập – xuất – điều chỉnh</h2>
+      <table className="inventory-print-history">
+        <thead><tr><th>STT</th><th>Ngày giờ</th><th>Nghiệp vụ</th><th>Số lượng</th><th>Tồn trước</th><th>Tồn sau</th><th>Lý do / ghi chú</th><th>Người thực hiện</th></tr></thead>
+        <tbody>
+          {movements.filter(movement=>movement.itemId===printItem.id).slice().sort((a,b)=>a.createdAt.localeCompare(b.createdAt)).map((movement,index)=><tr key={movement.id}>
+            <td>{index+1}</td><td>{new Date(movement.createdAt).toLocaleString('vi-VN')}</td>
+            <td>{movement.type==='Điều chỉnh'?'Kiểm kê / điều chỉnh':movement.type==='Nhập'?'Nhập kho':'Xuất kho'}</td>
+            <td>{movement.type==='Điều chỉnh'?numberText(movement.countedQuantity??movement.balanceAfter)+' '+printItem.unit:numberText(movement.quantity)+' '+printItem.unit}</td>
+            <td>{numberText(movement.balanceBefore)}</td><td>{numberText(movement.balanceAfter)}</td>
+            <td>{movement.reason||movement.note||'—'}</td><td>{movement.performedBy||'—'}</td>
+          </tr>)}
+          {printItem.archivedAt&&<tr><td>{movements.filter(movement=>movement.itemId===printItem.id).length+1}</td><td>{new Date(printItem.archivedAt).toLocaleString('vi-VN')}</td><td>Lưu trữ vật tư</td><td>—</td><td>{numberText(printItem.quantity)}</td><td>{numberText(printItem.quantity)}</td><td>Đưa vật tư vào trạng thái lưu trữ</td><td>—</td></tr>}
+          {movements.every(movement=>movement.itemId!==printItem.id)&&!printItem.archivedAt&&<tr><td colSpan={8}>Chưa có giao dịch kho.</td></tr>}
+        </tbody>
+      </table>
+      <footer className="inventory-print-footer">Phiếu được trích xuất từ dữ liệu kho vật tư BAOTRI MINI.</footer>
+    </section>}
 
     {movementMode&&selected&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setMovementMode(null)}}>
       <section className="modal inventory-modal">
