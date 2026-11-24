@@ -56,6 +56,13 @@ function validatePositive(value: number, label: string): void {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} phải lớn hơn 0.`)
 }
 
+function validateScale(value: number, label: string, scale = 6): void {
+  const factor = 10 ** scale
+  if (!Number.isFinite(value) || Math.abs(value * factor - Math.round(value * factor)) > 1e-6) {
+    throw new Error(`${label} không được có quá ${scale} chữ số thập phân.`)
+  }
+}
+
 function localDate(): string {
   const date = new Date()
   const pad = (value: number) => String(value).padStart(2, '0')
@@ -169,6 +176,9 @@ export async function createInventoryItem(
   validateNonNegative(openingQuantity, 'Tồn đầu kỳ')
   validateNonNegative(input.minQuantity, 'Tồn tối thiểu')
   validateNonNegative(input.unitPrice, 'Đơn giá')
+  validateScale(openingQuantity, 'Tồn đầu kỳ')
+  validateScale(input.minQuantity, 'Tồn tối thiểu')
+  validateScale(input.unitPrice, 'Đơn giá')
   if (openingQuantity > 0) requirePermission(actor.canAdjust, 'ghi nhận tồn đầu kỳ')
 
   const at = now()
@@ -243,6 +253,8 @@ export async function updateInventoryItemMetadata(
   if (!name || !unit) throw new Error('Tên vật tư và đơn vị tính là bắt buộc.')
   validateNonNegative(input.minQuantity, 'Tồn tối thiểu')
   validateNonNegative(input.unitPrice, 'Đơn giá')
+  validateScale(input.minQuantity, 'Tồn tối thiểu')
+  validateScale(input.unitPrice, 'Đơn giá')
 
   const updated = await db.transaction('rw', [db.inventoryItems, db.inventoryMutations, db.inventoryCloudLinks], async () => {
     const current = await db.inventoryItems.get(itemId)
@@ -289,6 +301,7 @@ export async function postInventoryMovement(
   requireOrganization(actor)
   requirePermission(actor.canAdjust, 'nhập hoặc xuất kho')
   validatePositive(quantity, 'Số lượng')
+  validateScale(quantity, 'Số lượng')
   const cleanReason = clean(reason)
   if (!cleanReason) throw new Error('Lý do giao dịch không được để trống.')
 
@@ -323,6 +336,7 @@ export async function adjustInventoryCount(
   requireOrganization(actor)
   requirePermission(actor.canAdjust, 'điều chỉnh tồn kho')
   validateNonNegative(countedQuantity, 'Số lượng kiểm kê')
+  validateScale(countedQuantity, 'Số lượng kiểm kê')
   const cleanReason = clean(reason)
   if (!cleanReason) throw new Error('Lý do kiểm kê không được để trống.')
 
