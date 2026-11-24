@@ -4,12 +4,13 @@ import { readFile } from 'node:fs/promises'
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
-test('Dexie v10 adds organization-scoped inventory stores without replacing the Asset database', async () => {
+test('Dexie v11 adds organization-scoped custom inventory groups without replacing existing Asset and inventory data', async () => {
   const db = await read('../src/db.ts')
   assert.match(db, /super\('baotri-mini-device-only'\)/)
   assert.match(db, /this\.version\(9\)\.stores/)
   assert.match(db, /this\.version\(10\)\.stores/)
-  for (const table of ['inventoryItems','inventoryMovements','inventoryMutations','inventoryCloudLinks','inventorySyncCursors']) {
+  assert.match(db, /this\.version\(11\)\.stores/)
+  for (const table of ['inventoryGroups','inventoryItems','inventoryMovements','inventoryMutations','inventoryCloudLinks','inventorySyncCursors']) {
     assert.match(db, new RegExp(table + ':'))
   }
   assert.match(db, /\[organizationId\+codeNormalized\]/)
@@ -30,6 +31,25 @@ test('inventory code is normalized and duplicate checking is tenant-scoped', asy
   assert.match(source, /toLocaleUpperCase\('vi-VN'\)/)
   assert.match(source, /where\('\[organizationId\+codeNormalized\]'\)/)
   assert.match(source, /Mã vật tư .* đã tồn tại trong tổ chức/)
+})
+
+test('new material codes are generated sequentially and remain immutable during metadata edits', async () => {
+  const source = await read('../src/lib/inventory.ts')
+  const create = source.slice(source.indexOf('export async function createInventoryItem'), source.indexOf('/** Metadata editing intentionally'))
+  const update = source.slice(source.indexOf('export async function updateInventoryItemMetadata'), source.indexOf('export async function postInventoryMovement'))
+  assert.match(create, /const code = await nextInventoryCode\(actor\.organizationId\)/)
+  assert.match(source, /const match = \/\^VT-\-?\(\\d\+\)\$\/i\.exec\(item\.code\.trim\(\)\)/)
+  assert.match(source, /String\(next\)\.padStart\(3, '0'\)/)
+  assert.doesNotMatch(update, /codeNormalized:|\n\s*code,/)
+})
+
+test('custom inventory groups are organization-scoped and duplicate names are normalized', async () => {
+  const db = await read('../src/db.ts')
+  const source = await read('../src/lib/inventory.ts')
+  assert.match(db, /inventoryGroups: 'id, organizationId, \[organizationId\+nameNormalized\]/)
+  assert.match(source, /export async function createInventoryGroup/)
+  assert.match(source, /where\('\[organizationId\+nameNormalized\]'\)/)
+  assert.match(source, /requirePermission\(actor\.canCreate, 'thêm nhóm vật tư'\)/)
 })
 
 test('creating an item with opening stock records item, opening movement and mutation in one transaction', async () => {
