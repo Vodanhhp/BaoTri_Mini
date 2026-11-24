@@ -19,7 +19,8 @@ test('Inventory Cloud writes are routed through the reviewed RPC contract only',
 })
 
 test('Cloud mutation ordering uses the latest link version, not stale queued timestamps', () => {
-  assert.match(cloud, /candidates\.sort\(\(a, b\) => a\.createdAt\.localeCompare\(b\.createdAt\)\)/)
+  assert.match(cloud, /candidates\.sort\(\(a, b\) => \(a\.localSequence \?\? 0\) - \(b\.localSequence \?\? 0\)/)
+  assert.match(local, /async function nextLocalMutationSequence/)
   assert.match(cloud, /const expectedCloudUpdatedAt = link\?\.cloudUpdatedAt/)
   assert.match(cloud, /if \(link\?\.status === CONFLICT \|\| mutation\.status === 'conflict'\)/)
 })
