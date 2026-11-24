@@ -30,7 +30,15 @@ jobs:
         run: npm run build
         env:
           VITE_SUPABASE_URL: 'https://dskeaiyvldiwlsfqkboq.supabase.co'
-          VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_zJr8Ni71uMzTloJzXmpmUg_KftkR0EY'
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRza2VhaXl2bGRpd2xzZnFrYm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMTAyNDIsImV4cCI6MjExMDc4NjI0Mn0.-P7U_dmIhEgzELouhmIyPmkHT6qhOGdQGvFJeiIYhe4'
+      - name: Verify Supabase client configuration is embedded
+        run: |
+          test -s dist/index.html
+          grep -R -F -q "$VITE_SUPABASE_URL" dist/assets
+          grep -R -F -q "$VITE_SUPABASE_PUBLISHABLE_KEY" dist/assets
+        env:
+          VITE_SUPABASE_URL: 'https://dskeaiyvldiwlsfqkboq.supabase.co'
+          VITE_SUPABASE_PUBLISHABLE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRza2VhaXl2bGRpd2xzZnFrYm9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMTAyNDIsImV4cCI6MjExMDc4NjI0Mn0.-P7U_dmIhEgzELouhmIyPmkHT6qhOGdQGvFJeiIYhe4'
       - name: Preserve custom domain
         run: cp CNAME dist/CNAME
       - name: Upload Pages artifact
