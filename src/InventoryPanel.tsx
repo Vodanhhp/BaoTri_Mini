@@ -3,7 +3,7 @@ import { type InventoryItem, type InventoryMovement } from './db'
 import {
   archiveInventoryItem, createInventoryItem, listInventoryItems, listInventoryMovements,
   postInventoryMovement, adjustInventoryCount, updateInventoryItemMetadata,
-  type InventoryActor, type InventoryItemInput
+  type InventoryActor, type InventoryItemInput, listInventoryGroups, createInventoryGroup
 } from './lib/inventory'
 
 type Props = {
@@ -26,7 +26,7 @@ const emptyForm = (): InventoryItemInput => ({
   openingQuantity: 0, minQuantity: 0, location: '', supplier: '', unitPrice: 0
 })
 const units = ['Cái','Con','Bộ','Chiếc','Mét','m','mm','Kg','g','Lít','ml','Cuộn','Chai','Hộp','Túi','Thùng','Tấm','Ống','Viên','Đôi','Bao','Thanh','Can']
-const groups = ['Vật tư điện','Linh kiện điện tử','Cơ khí','Khí nén','Điện lạnh','Dầu mỡ bôi trơn','Vòng bi - bạc đạn','Phớt - gioăng','Vật tư đường ống','Vật tư tiêu hao','Vật tư hàn cắt','Dây cáp điện','Khác']
+const defaultGroups = ['Vật tư điện','Linh kiện điện tử','Cơ khí','Khí nén','Điện lạnh','Dầu mỡ bôi trơn','Vòng bi - bạc đạn','Phớt - gioăng','Vật tư đường ống','Vật tư tiêu hao','Vật tư hàn cắt','Dây cáp điện','Khác']
 const numberText = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 })
 const moneyText = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' đ'
 
@@ -34,6 +34,9 @@ export default function InventoryPanel(props: Props) {
   const { organizationId, userId, userLabel, canView, canCreate, canUpdate, canAdjust, canDelete, isAdmin } = props
   const actor: InventoryActor = { organizationId, userId, label: userLabel, canCreate, canUpdate, canAdjust, canDelete, isAdmin }
   const [items, setItems] = useState<InventoryItem[]>([])
+  const [customGroups, setCustomGroups] = useState<string[]>([])
+  const [groupCreateOpen, setGroupCreateOpen] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
   const [movements, setMovements] = useState<InventoryMovement[]>([])
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -71,6 +74,17 @@ export default function InventoryPanel(props: Props) {
     }
   }, [refresh])
 
+  useEffect(() => {
+    let active = true
+    if (!organizationId || !canView) { setCustomGroups([]); return }
+    void listInventoryGroups(organizationId).then(rows => {
+      if (active) setCustomGroups(rows.map(row => row.name))
+    }).catch(cause => {
+      if (active) setError(cause instanceof Error ? cause.message : 'Không tải được danh mục nhóm vật tư.')
+    })
+    return () => { active = false }
+  }, [organizationId, canView])
+
   const visibleItems = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('vi')
     return items.filter(item => {
@@ -82,6 +96,8 @@ export default function InventoryPanel(props: Props) {
     })
   }, [items, query, groupFilter, stockFilter])
 
+  const availableGroups = useMemo(() => [...new Set([...defaultGroups, ...customGroups, ...items.map(item => item.group)])].sort((a,b)=>a.localeCompare(b,'vi')), [customGroups, items])
+
   const lowStockCount = items.filter(item => item.quantity <= item.minQuantity).length
   const stockValue = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const selectedMovements = selected
@@ -89,12 +105,12 @@ export default function InventoryPanel(props: Props) {
     : movements.slice(0, 20)
 
   const openCreate = () => {
-    setError('')
+    setError(''); setGroupCreateOpen(false); setNewGroupName('')
     setForm(emptyForm())
     setFormMode('create')
   }
   const openEdit = (item: InventoryItem) => {
-    setError('')
+    setError(''); setGroupCreateOpen(false); setNewGroupName('')
     setSelected(item)
     setForm({
       code: item.code, name: item.name, group: item.group, unit: item.unit,
@@ -109,6 +125,21 @@ export default function InventoryPanel(props: Props) {
     setMovementQuantity(mode === 'Điều chỉnh' ? String(item.quantity) : '1')
     setMovementReason('')
     setError('')
+  }
+
+  const saveNewGroup = async () => {
+    if (busy || !canCreate) return
+    setBusy(true); setError('')
+    try {
+      const created = await createInventoryGroup(actor, newGroupName)
+      setCustomGroups(current => [...new Set([...current, created.name])].sort((a,b)=>a.localeCompare(b,'vi')))
+      setForm(current => ({ ...current, group: created.name }))
+      setNewGroupName('')
+      setGroupCreateOpen(false)
+      setNotice('Đã thêm nhóm vật tư mới trên thiết bị này.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không thể thêm nhóm vật tư.')
+    } finally { setBusy(false) }
   }
 
   const saveItem = async (event: FormEvent<HTMLFormElement>) => {
@@ -244,18 +275,20 @@ export default function InventoryPanel(props: Props) {
       <section className="modal inventory-modal">
         <div className="modal-head"><div><div className="eyebrow">KHO VẬT TƯ</div><h2>{formMode==='create'?'Thêm vật tư':'Sửa thông tin vật tư'}</h2></div><button type="button" className="icon-btn" onClick={()=>setFormMode(null)}>×</button></div>
         <form className="form-grid" onSubmit={saveItem}>
-          <div className="form-hint full-field">Số lượng tồn không chỉnh sửa trong biểu mẫu này. Muốn thay đổi tồn kho, dùng Nhập, Xuất hoặc Kiểm kê.</div>
-          <label className="field">Mã vật tư *<input required value={form.code} onChange={event=>setForm(value=>({...value,code:event.target.value}))}/></label>
-          <label className="field">Mã phụ tùng<input value={form.partNumber??''} onChange={event=>setForm(value=>({...value,partNumber:event.target.value}))}/></label>
-          <label className="field full-field">Tên vật tư *<input required value={form.name} onChange={event=>setForm(value=>({...value,name:event.target.value}))}/></label>
-          <label className="field">Nhóm<select value={form.group} onChange={event=>setForm(value=>({...value,group:event.target.value}))}>{groups.map(group=><option key={group}>{group}</option>)}</select></label>
+          <div className="form-hint full-field">Số lượng tồn được quản lý riêng qua Nhập, Xuất hoặc Kiểm kê; biểu mẫu này chỉ lưu thông tin vật tư.</div>
+          <div className="form-hint full-field">{formMode==='create'?'Mã vật tư sẽ được hệ thống tự cấp theo thứ tự VT-001, VT-002…':'Mã vật tư: '+form.code+' · Mã quản lý tự động, không chỉnh sửa.'}</div>
+          <label className="field full-field">Tên vật tư *<input required autoFocus value={form.name} onChange={event=>setForm(value=>({...value,name:event.target.value}))} placeholder="Ví dụ: Cảm biến tiệm cận, vòng bi 6204…"/></label>
+          <label className="field">Nhóm vật tư<select value={form.group} onChange={event=>{if(event.target.value==='__add_group__'){setGroupCreateOpen(true);setNewGroupName('')}else setForm(value=>({...value,group:event.target.value}))}}>{availableGroups.map(group=><option key={group}>{group}</option>)}{canCreate&&<option value="__add_group__">＋ Thêm nhóm mới…</option>}</select></label>
           <label className="field">Đơn vị tính<select value={form.unit} onChange={event=>setForm(value=>({...value,unit:event.target.value}))}>{units.map(unit=><option key={unit}>{unit}</option>)}</select></label>
-          <label className="field">Kích cỡ / quy cách<input value={form.size??''} onChange={event=>setForm(value=>({...value,size:event.target.value}))}/></label>
-          <label className="field">Tồn tối thiểu<input type="number" min="0" step="any" required disabled={!isAdmin} value={form.minQuantity} onChange={event=>setForm(value=>({...value,minQuantity:Number(event.target.value)}))}/>{!isAdmin&&<small>Chỉ Admin được thay đổi mức tồn tối thiểu.</small>}</label>
-          <label className="field">Vị trí lưu kho<input value={form.location??''} onChange={event=>setForm(value=>({...value,location:event.target.value}))}/></label>
-          <label className="field">Nhà cung cấp<input value={form.supplier??''} onChange={event=>setForm(value=>({...value,supplier:event.target.value}))}/></label>
-          <label className="field">Đơn giá<input type="number" min="0" step="any" required value={form.unitPrice} onChange={event=>setForm(value=>({...value,unitPrice:Number(event.target.value)}))}/></label>
-          {formMode==='create'&&<label className="field">Tồn đầu kỳ<input type="number" min="0" step="any" disabled={!canAdjust} value={form.openingQuantity??0} onChange={event=>setForm(value=>({...value,openingQuantity:Number(event.target.value)}))}/>{!canAdjust&&<small>Tài khoản không có quyền ghi nhận tồn đầu kỳ.</small>}</label>}
+          {groupCreateOpen&&<div className="field full-field inventory-add-group"><span>Nhóm mới</span><div className="top-actions"><input value={newGroupName} maxLength={60} onChange={event=>setNewGroupName(event.target.value)} placeholder="Nhập tên nhóm vật tư"/><button type="button" className="soft-btn" disabled={busy||!newGroupName.trim()} onClick={()=>void saveNewGroup()}>Lưu nhóm</button><button type="button" className="text-btn" onClick={()=>{setGroupCreateOpen(false);setNewGroupName('')}}>Hủy</button></div></div>}
+          <label className="field">Mã phụ tùng<input value={form.partNumber??''} onChange={event=>setForm(value=>({...value,partNumber:event.target.value}))} placeholder="Mã hãng / mã tương đương"/></label>
+          <label className="field">Kích cỡ / thông số<input value={form.size??''} onChange={event=>setForm(value=>({...value,size:event.target.value}))} placeholder="Quy cách, kích thước…"/></label>
+          <label className="field">Tồn tối thiểu<input type="number" min="0" step="any" disabled={!isAdmin} value={form.minQuantity} onChange={event=>setForm(value=>({...value,minQuantity:Number(event.target.value)}))}/>{!isAdmin&&<small>Chỉ Admin được thay đổi mức tồn tối thiểu.</small>}</label>
+          <details className="inventory-extra-fields full-field"><summary>Thông tin bổ sung (không bắt buộc)</summary><div className="form-grid">
+            <label className="field">Vị trí lưu kho<input value={form.location??''} onChange={event=>setForm(value=>({...value,location:event.target.value}))}/></label>
+            <label className="field">Nhà cung cấp<input value={form.supplier??''} onChange={event=>setForm(value=>({...value,supplier:event.target.value}))}/></label>
+            <label className="field">Đơn giá<input type="number" min="0" step="any" value={form.unitPrice} onChange={event=>setForm(value=>({...value,unitPrice:Number(event.target.value)}))}/></label>
+          </div></details>
           {error&&<div className="auth-error full-field">{error}</div>}
           <div className="modal-actions"><button type="button" className="soft-btn" disabled={busy} onClick={()=>setFormMode(null)}>Hủy</button><button type="submit" className="primary-btn" disabled={busy}>{busy?'Đang lưu…':'Lưu vật tư'}</button></div>
         </form>
