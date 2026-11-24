@@ -1858,3 +1858,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm `scripts/organizationMembersUi.test.mjs` để kiểm tra không tái xuất hiện cuộn lồng/giới hạn chiều cao và kích thước không đồng bộ.
 - Chỉ thay đổi trình bày; không thay đổi Edge Functions, Auth, quyền, dữ liệu thành viên hoặc Supabase.
 - Đang nằm trên PR #45, chưa merge và chưa deploy. Cần CI và kiểm tra trực quan sau khi cập nhật.
+
+
+## 24/11/2026 — Tinh chỉnh tổng thể giao diện Kho vật tư (nhánh review)
+
+- Nhánh: `feat/inventory-compact-layout`, tách từ `main` sau commit merge PR #45.
+- Thay phần banner lớn bằng tiêu đề trang gọn, mô tả ngắn và nhãn trạng thái lưu Local / Cloud chưa bật.
+- Thu gọn ba thẻ thống kê, đưa về cùng một hàng trên desktop và bố cục 2 + 1 trên mobile.
+- Tinh chỉnh khu vực Danh mục vật tư: giảm khoảng cách/padding, gom bộ lọc vào một dải nền nhẹ, làm rõ số lượng kết quả.
+- Gom các thao tác Nhập, Xuất, Kiểm kê/Điều chỉnh, Sửa và Lưu trữ vào menu theo từng dòng để bảng không bị dính chữ/nút.
+- Giữ các thẻ thao tác trên mobile; lịch sử giao dịch và nội dung nghiệp vụ không đổi.
+- Thêm `scripts/inventoryCompactUi.test.mjs` để khóa các hợp đồng giao diện mới.
+- Chỉ thay đổi React presentation/CSS/test và tài liệu tiến độ. Không đổi logic tồn kho, quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
+- Chưa merge/deploy; cần CI Build & Test và kiểm tra trực quan desktop/mobile. Chưa có xác nhận kiểm tra trên thiết bị thật.
