@@ -2752,20 +2752,22 @@ html,body,#root,.app-shell{
   .inventory-print-info td{width:33%}
   .inventory-print-history th{background:#eaeaea;font-weight:700}
   .inventory-print-history th:nth-child(1){width:5%}
-  .inventory-print-history th:nth-child(2){width:21%}
-  .inventory-print-history th:nth-child(3){width:12%}
+  .inventory-print-history th:nth-child(2){width:14%}
+  .inventory-print-history th:nth-child(3){width:16%}
   .inventory-print-history th:nth-child(4){width:10%}
-  .inventory-print-history th:nth-child(5),.inventory-print-history th:nth-child(6){width:7%}
+  .inventory-print-history th:nth-child(5),.inventory-print-history th:nth-child(6){width:9%}
   .inventory-print-history th:nth-child(7){width:21%}
-  .inventory-print-history th:nth-child(8){width:17%}
-  .inventory-print-history td:nth-child(2){white-space:nowrap;font-size:7.5pt}
+  .inventory-print-history th:nth-child(8){width:16%}
+  .inventory-print-history td:nth-child(2){white-space:normal;font-size:7.2pt;word-break:normal}
+  .inventory-print-history td:nth-child(3){font-weight:600}
+  .inventory-print-history td:nth-child(5),.inventory-print-history td:nth-child(6){text-align:center}
   .inventory-print-header .inventory-print-brand{display:flex;flex-direction:column;gap:2px;min-width:0}
   .inventory-print-header .inventory-print-brand strong{font-size:13pt;line-height:1.25;overflow-wrap:anywhere}
   .inventory-print-header .inventory-print-brand span{font-size:8pt;color:#444}
-  .inventory-print-footer{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
-  .inventory-print-footer strong{font-size:9pt;color:#111}
+  .inventory-print-footer{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-top:26px;padding-top:9px;border-top:1px solid #aaa;font-size:8pt;color:#444}
+  .inventory-print-footer>span{align-self:flex-start}
+  .inventory-print-footer strong{align-self:flex-end;max-width:75%;margin-top:8px;text-align:right;font-size:9pt;line-height:1.5;color:#111}
   .inventory-print-history thead{display:table-header-group}
   .inventory-print-history tr{break-inside:avoid;page-break-inside:avoid}
-  .inventory-print-footer{margin-top:14px;padding-top:6px;border-top:1px solid #aaa;font-size:8pt;color:#444}
   button,.modal-backdrop,.inventory-workspace{visibility:hidden!important}
 }
