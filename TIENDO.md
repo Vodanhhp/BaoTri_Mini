@@ -2020,3 +2020,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Sau merge, workflow Build and test thành công; GitHub Pages build xác minh Supabase client configuration và CNAME thành công; job Deploy to GitHub Pages thành công (run `45400460174`).
 - Đồng bộ vật tư đã được đưa lên frontend tại `https://baotri.vieclamhp247.com/`. Đây là triển khai bản phát triển; chưa xác nhận luồng đồng bộ thực tế bằng JWT người dùng hoặc hai trình duyệt/thiết bị.
 - Chưa thay đổi dữ liệu kho Local hiện có; các bảng Cloud mới được tạo đang rỗng tại thời điểm kiểm tra migration. Tiếp theo cần kiểm thử tạo vật tư trên máy A, nhận trên máy B, nhập/xuất/điều chỉnh, lưu trữ, offline/retry và xử lý xung đột.
+
+
+### Kiểm thử thực tế đồng bộ Kho vật tư Local ↔ Cloud ↔ Local — 24/11/2026
+
+- Người dùng đã trực tiếp kiểm thử trên PC và Mobile, báo cáo cả 4 bước kiểm thử đều đạt.
+- Xác nhận theo tình huống được mô tả cụ thể: tắt mạng Mobile; sửa thông tin vật tư trên PC; bật lại mạng Mobile; sau một lúc Mobile tự nhận được thay đổi và đồng bộ.
+- Kết quả này xác nhận luồng Cloud pull và tiếp tục đồng bộ sau khi thiết bị Mobile kết nối lại mạng trong tình huống PC là máy phát sinh thay đổi.
+- Đây là kết quả kiểm thử thực tế do người dùng thực hiện và báo cáo; không phải phép thử do CI hoặc trợ lý tự thực hiện.
+- Chưa kết luận toàn bộ cơ chế retry/idempotency và xử lý xung đột đã được kiểm thử thực tế. Các tình huống còn cần kiểm tra: Mobile phát sinh thay đổi khi đang offline rồi reconnect để push; retry cùng mutation không tạo giao dịch trùng; hai máy cùng sửa một vật tư và xác minh xử lý conflict.
+- Đề xuất UI được ghi nhận: trong danh sách/chọn vật tư, hiển thị **Tên vật tư ở dòng trên, nổi bật**; **Mã vật tư ở dòng dưới, cỡ chữ nhỏ hơn**. Chỉ thay đổi thứ bậc hiển thị, không thay đổi mã định danh, tìm kiếm, dữ liệu hay logic đồng bộ. Chưa triển khai UI ở checkpoint này.
