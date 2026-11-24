@@ -81,6 +81,10 @@ create table public.inventory_movements (
     or (movement_type = 'out' and quantity_delta < 0)
     or (movement_type = 'adjustment')
   ),
+  check (movement_type <> 'opening' or balance_before = 0),
+  check (movement_type <> 'adjustment' or counted_quantity is not null),
+  check (movement_type = 'adjustment' or counted_quantity is null),
+  check (movement_type <> 'adjustment' or counted_quantity = balance_after),
   check (counted_quantity is null or counted_quantity >= 0),
   check (char_length(btrim(reason)) > 0),
   check (char_length(btrim(performed_by)) > 0)
