@@ -132,7 +132,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
       <textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Nêu nhu cầu thay đổi gói dịch vụ…"/>
      </label>
      <div className="auth-note full-field">Gửi yêu cầu không làm thay đổi Plan ngay. Super Admin sẽ xem xét điều kiện thương mại/thanh toán và quyết định duyệt hoặc từ chối. Khi đổi Plan, mã quản lý và hồ sơ thiết bị đã cấp vẫn được giữ nguyên.</div>
-     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose} disabled={busy}>Đóng</button><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
+     <div className="modal-actions full-field"><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
     </form>}
     <OrganizationNameChangeRequestPanel client={client} organizationId={organizationId}/>
     <OrganizationAssetResetRequestPanel client={client} organizationId={organizationId}/>
