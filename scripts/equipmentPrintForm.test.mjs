@@ -36,10 +36,11 @@ test('equipment print follows the inventory A4 portrait and multipage table conv
   assert.equal(widths.reduce((sum,value)=>sum+value,0),100)
 })
 
-test('equipment QR sticker keeps the QR and prints device ID and name to its right', () => {
+test('equipment QR sticker keeps the QR and prints only the device ID and name to its right', () => {
   assert.match(app, /className="asset-sticker-info"/)
-  assert.match(app, /<small>MÃ ID<\/small>\{detailAsset\.code\}/)
-  assert.match(app, /<small>TÊN THIẾT BỊ<\/small>\{displayAssetName\(detailAsset\)\}/)
-  assert.match(css, /\.asset-sticker-info\s*\{[^}]*width:27mm/s)
-  assert.match(css, /\.asset-sticker-info strong\s*\{[^}]*overflow-wrap:anywhere/s)
+  assert.match(app, /<strong>\\{detailAsset\\.code\\}<\\/strong>/)
+  assert.match(app, /<strong>\\{displayAssetName\\(detailAsset\\)\\}<\\/strong>/)
+  assert.doesNotMatch(app, /<small>(?:MÃ ID|TÊN THIẾT BỊ)<\\/small>/)
+  assert.match(css, /\\.asset-sticker-info\\s*\\{[^}]*width:27mm/s)
+  assert.match(css, /\\.asset-sticker-info strong\\s*\\{[^}]*overflow-wrap:anywhere/s)
 })

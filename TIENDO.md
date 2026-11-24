@@ -2089,3 +2089,10 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thu gọn cỡ chữ, cho phép tự xuống dòng để tên/mã dài không tràn khỏi tem.
 - Chỉ thay đổi giao diện tem in, CSS và regression test; không thay đổi dữ liệu, mã QR được mã hóa, quyền, Supabase hoặc đồng bộ Local ↔ Cloud.
 - Nhánh `feat/equipment-qr-sticker-id-name`; chờ CI và chưa triển khai lên app chính thức.
+
+
+### Tinh giản chữ trên tem QR thiết bị — 24/11/2026
+
+- Theo yêu cầu, bỏ hai nhãn **MÃ ID** và **TÊN THIẾT BỊ**; bên phải QR chỉ còn giá trị mã quản lý và tên thiết bị.
+- Giữ nguyên nội dung được mã hóa trong QR, kích thước tem 50 × 30 mm và bố cục QR bên trái, thông tin bên phải.
+- Chỉ chỉnh giao diện tem, CSS và regression test; không thay đổi dữ liệu, quyền, Supabase hoặc đồng bộ Local ↔ Cloud.
