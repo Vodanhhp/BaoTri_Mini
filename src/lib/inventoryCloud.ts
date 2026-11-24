@@ -386,7 +386,7 @@ async function pushOneInventoryMutation(
         id, organizationId, itemId: current.itemId,
         cloudUpdatedAt: cloudItem.updatedAt,
         lastSyncedLocalUpdatedAt: latestMutation.localUpdatedAt,
-        status: LINKED,
+        status: laterPending.some(row => row.status === 'conflict') ? CONFLICT : LINKED,
         lastVerifiedAt: now(),
         ...(previous?.conflictSnapshot ? { conflictSnapshot: previous.conflictSnapshot } : {})
       }
@@ -404,16 +404,16 @@ async function pushPendingInventoryMutations(
   permissions: InventoryCloudPermissions,
   shouldContinue: () => boolean
 ): Promise<{ pushed: number; pushFailed: number; conflicts: number }> {
-  const pending = await db.inventoryMutations.where('organizationId').equals(organizationId)
-    .filter(pendingOrProcessing).toArray()
-  pending.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  const candidates = await db.inventoryMutations.where('organizationId').equals(organizationId)
+    .filter(mutation => mutation.status === 'conflict' || pendingOrProcessing(mutation)).toArray()
+  candidates.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
   const byItem = new Map<string, InventoryMutation[]>()
-  for (const mutation of pending) {
+  for (const mutation of candidates) {
     const rows = byItem.get(mutation.itemId) ?? []
     rows.push(mutation)
     byItem.set(mutation.itemId, rows)
   }
-  let pushed = 0, failed = 0, conflicts = 0
+  let pushed = 0, failed = 0, conflicts = candidates.filter(row => row.status === 'conflict').length
   for (const rows of byItem.values()) {
     if (!shouldContinue()) break
     for (const mutation of rows) {
@@ -421,9 +421,10 @@ async function pushPendingInventoryMutations(
       if (!canPush(mutation, permissions)) continue
       const link = await db.inventoryCloudLinks.get(linkId(organizationId, mutation.itemId))
       if (link?.status === CONFLICT || mutation.status === 'conflict') {
-        conflicts++
+        if (mutation.status !== 'conflict') conflicts++
         break
       }
+      if (!pendingOrProcessing(mutation)) continue
       try {
         await pushOneInventoryMutation(client, organizationId, mutation)
         pushed++
@@ -473,7 +474,9 @@ async function applyInventoryEvent(organizationId: string, event: InventorySyncE
         id, organizationId, itemId: event.itemId,
         cloudUpdatedAt: cloudItem.updatedAt,
         lastSyncedLocalUpdatedAt: localMutation.localUpdatedAt,
-        status: LINKED, lastVerifiedAt: now()
+        status: laterPending.some(row => row.status === 'conflict') ? CONFLICT : LINKED,
+        lastVerifiedAt: now(),
+        ...(existingLink?.conflictSnapshot ? { conflictSnapshot: existingLink.conflictSnapshot } : {})
       })
       return
     }
