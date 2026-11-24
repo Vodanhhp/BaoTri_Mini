@@ -2147,4 +2147,5 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Dữ liệu thời điểm trên Local/Cloud tiếp tục lưu dưới dạng ISO timestamp/UTC để giữ đúng một thời điểm tuyệt đối; chỉ quy đổi sang giờ Việt Nam ở lớp hiển thị. Không cộng/trừ 7 giờ thủ công.
 - Giá trị ngày thuần (SQL DATE/HTML date input) được xử lý như ngày lịch Việt Nam, tránh lệch ngày do parse UTC. Giới hạn ngày sinh cũng lấy ngày hiện tại theo UTC+7.
 - Thêm regression test cho helper, xử lý ngày thuần, giới hạn ngày và các màn hình sử dụng định dạng ngày giờ. Chưa thay đổi schema, dữ liệu, RLS, Auth, migration hay logic đồng bộ.
-- Cần xác nhận CI/build và deploy; chưa thực hiện kiểm thử trực quan trên mọi thiết bị/múi giờ hệ điều hành.
+- PR #55 đã merge vào `main` tại commit `b9cf8b09f25bb685b9167e392e3ad3e0c00f338f`; CI Build/Test và Validate đều thành công. Chưa xác nhận deploy production và chưa kiểm thử trực quan trên mọi thiết bị/múi giờ hệ điều hành.
+- Quy ước chính thức được ghi riêng tại `docs/DATETIME_STANDARD.md` để áp dụng cho mọi thay đổi và phân hệ mới.
