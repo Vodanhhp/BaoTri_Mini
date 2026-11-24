@@ -1871,3 +1871,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm `scripts/inventoryCompactUi.test.mjs` để khóa các hợp đồng giao diện mới.
 - Chỉ thay đổi React presentation/CSS/test và tài liệu tiến độ. Không đổi logic tồn kho, quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
 - Chưa merge/deploy; cần CI Build & Test và kiểm tra trực quan desktop/mobile. Chưa có xác nhận kiểm tra trên thiết bị thật.
+
+## 24/11/2026 — Rà soát giao diện Kho vật tư và Quản trị thành viên (nhánh review)
+- Nhánh feat/full-ui-polish-inventory-members kế thừa phần tinh chỉnh Kho vật tư ở PR #46; không ghi trực tiếp lên main.
+- Quản trị thành viên: loại bỏ chuỗi backslash-n bị chèn giữa tiêu đề danh sách và vùng danh sách; gom thao tác từng thành viên vào menu để tránh dồn nút; điều chỉnh bố cục PC/tablet/mobile.
+- Giữ nguyên giới hạn nền tảng PC của màn hình quản trị thành viên; không đổi endpoint, Auth, quyền, dữ liệu hoặc quy tắc bảo vệ Admin/tài khoản đang đăng nhập.
+- Kho vật tư: kế thừa tiêu đề gọn, thẻ thống kê, bộ lọc và menu thao tác theo PR #46; giữ nguyên nghiệp vụ nhập/xuất/điều chỉnh, lịch sử append-only, nhóm vật tư và Local-first.
+- Bổ sung regression tests cho markup danh sách thành viên và menu thao tác responsive.
+- Chỉ thay đổi giao diện, CSS, test và tài liệu. Không thay đổi Supabase, migrations, Edge Functions, dữ liệu Local/Cloud hoặc Production.
+- Chưa merge/deploy; cần CI và kiểm tra trực quan ở PC/tablet/mobile. Chưa có browser/device visual test trong phiên này.
