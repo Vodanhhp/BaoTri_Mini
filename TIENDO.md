@@ -2070,3 +2070,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Căn giữa số liệu Tồn trước/Tồn sau; nhấn nhẹ nội dung cột Nghiệp vụ để dễ phân biệt.
 - Chuyển dòng Người yêu cầu in xuống góc phải cuối phiếu; tăng khoảng cách với phần ghi chú và tạo khoảng đệm/đường phân cách để tách thành khối chữ ký riêng.
 - Chỉ thay đổi CSS in và regression test; không đổi dữ liệu, nghiệp vụ, quyền, Supabase hoặc đồng bộ. Chưa kiểm tra trực quan bản in trên trình duyệt/máy in thật.
+
+
+### Chuẩn hóa Bảng in chi tiết thiết bị theo phiếu in vật tư — 24/11/2026
+
+- Thiết kế lại mục **In chi tiết** trong hồ sơ thiết bị theo cùng quy chuẩn trình bày đã chốt cho phiếu vật tư: A4 dọc, lề 14 mm, tên đơn vị ở đầu trang, dòng nhận diện BAOTRI MINI và tiêu đề biểu mẫu rõ ràng.
+- Phần đầu phiếu có tên thiết bị, mã quản lý và QR để tra cứu nhanh. Mục I trình bày thông tin hồ sơ thiết bị: mã/tên, nhóm, người thêm, vị trí, hãng, model, serial, công suất/thông số, ngày đưa vào sử dụng, chu kỳ bảo trì, trạng thái, ngày lưu kho, thiết bị chuyển từ cơ sở khác, ngày tạo và cập nhật cuối; ghi chú được tách thành khu vực riêng.
+- Mục II in lịch sử thiết bị theo thời gian tăng dần, gồm ngày giờ, sự kiện, nội dung tóm tắt, từng trường trước/sau thay đổi và người thực hiện. Bảng lịch sử lặp tiêu đề khi sang trang, không ngắt một dòng sự kiện giữa hai trang; tỷ lệ cột 5% / 15% / 17% / 43% / 20% (tổng 100%).
+- Cuối phiếu có đường phân cách và dòng **Người yêu cầu in: [vai trò] — [tên tài khoản]** căn phải, lấy từ phiên đăng nhập hiện hành.
+- Chỉ thay đổi giao diện in thiết bị, CSS và regression test. Không sửa dữ liệu, lịch sử, quyền, schema, Supabase, Cloud hoặc đồng bộ. Lịch sử hiển thị đúng những sự kiện đang được lưu; không tự tạo lịch sử cho các thay đổi cũ chưa từng được ghi nhận.
+- Nhánh feat/equipment-print-form-standard; chưa merge và chưa deploy. Chưa kiểm tra trực quan trên trình duyệt hoặc máy in vật lý. Chờ CI Build/Test và TypeScript/Vite build.

@@ -1435,7 +1435,40 @@ export default function App() {
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
       {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><strong>{detailAsset.code}</strong></div>}
-      {printAssetMode==='detail'&&<div className="asset-print-report"><h1 className="asset-print-form-title">BẢNG CHI TIẾT THIẾT BỊ</h1><div className="asset-print-header"><div className="company-logo-placeholder"><span className="company-logo-mark">BT</span><span className="company-logo-wording"><strong>BAOTRI</strong><small>LOGO THỬ NGHIỆM</small></span></div><QRCodeSVG className="asset-print-header-qr" value={detailAsset.code} size={104} level="M"/></div><h2 className="asset-print-device-name">{displayAssetName(detailAsset)}</h2><table><tbody>{[['Mã quản lý',detailAsset.code],['Tên thiết bị',displayAssetName(detailAsset)],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.archivedAt?'Đã lưu kho':detailAsset.status],['Ghi chú',detailAsset.notes]].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table></div>}
+      {printAssetMode==='detail'&&<div className="asset-print-report equipment-print-report">
+        <header className="equipment-print-org">
+          <div className="equipment-print-org-name">{currentOrganization?.name||'Đơn vị sử dụng'}</div>
+          <div className="equipment-print-brand">BAOTRI MINI · BẢNG IN CHI TIẾT THIẾT BỊ</div>
+        </header>
+        <div className="equipment-print-title-row">
+          <div><h1 className="asset-print-form-title">BẢNG IN CHI TIẾT THIẾT BỊ</h1><h2 className="asset-print-device-name">{displayAssetName(detailAsset)}</h2><p className="equipment-print-code">Mã quản lý: <strong>{detailAsset.code||'—'}</strong></p></div>
+          {detailAsset.code&&<QRCodeSVG className="equipment-print-qr" value={detailAsset.code} size={82} level="M" includeMargin/>}
+        </div>
+        <h3 className="equipment-print-section">I. THÔNG TIN THIẾT BỊ</h3>
+        <table className="equipment-print-info"><tbody>{[
+          ['Mã quản lý',detailAsset.code],['Tên thiết bị',displayAssetName(detailAsset)],
+          ['Nhóm thiết bị',detailAsset.category],['Người thêm',detailAsset.createdByLabel],
+          ['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],
+          ['Model',detailAsset.model],['Số serial',detailAsset.serial],
+          ['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],
+          ['Chu kỳ bảo trì',detailAsset.cycle],['Trạng thái',detailAsset.deletedAt?'Đã xóa mềm':detailAsset.archivedAt?'Lưu kho':detailAsset.status],
+          ['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt.slice(0,10)):'—'],
+          ['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],
+          ['Ngày tạo hồ sơ',dateText(detailAsset.createdAt.slice(0,10))],['Cập nhật lần cuối',dateText(detailAsset.updatedAt.slice(0,10))]
+        ].map(([label,value])=><tr key={label}><th>{label}</th><td>{value||'—'}</td></tr>)}</tbody></table>
+        <div className="equipment-print-notes"><strong>Ghi chú</strong><p>{detailAsset.notes||'Không có ghi chú.'}</p></div>
+        <h3 className="equipment-print-section">II. LỊCH SỬ THAY ĐỔI THIẾT BỊ</h3>
+        <table className="equipment-print-history"><thead><tr><th>STT</th><th>Ngày giờ</th><th>Sự kiện</th><th>Nội dung thay đổi</th><th>Người thực hiện</th></tr></thead><tbody>
+          {assetHistory.slice().sort((a,b)=>a.occurredAt.localeCompare(b.occurredAt)).map((entry,index)=><tr key={entry.id}>
+            <td>{index+1}</td><td>{entry.occurredAt?new Date(entry.occurredAt).toLocaleString('vi-VN'):'—'}</td>
+            <td>{({created:'Tạo thiết bị',updated:'Cập nhật hồ sơ',status_changed:'Thay đổi trạng thái',archived:'Đưa vào lưu kho',restored:'Khôi phục khỏi lưu kho',deleted:'Xóa mềm'} as Record<string,string>)[entry.eventType]||entry.eventType}</td>
+            <td><strong>{entry.summary||'—'}</strong>{entry.changes?.length>0&&<ul>{entry.changes.map((change,changeIndex)=><li key={changeIndex}>{change.label}: {change.before||'—'} → {change.after||'—'}</li>)}</ul>}</td>
+            <td>{entry.actorLabel||'—'}</td>
+          </tr>)}
+          {assetHistory.length===0&&<tr><td colSpan={5}>Chưa có dữ liệu lịch sử thiết bị.</td></tr>}
+        </tbody></table>
+        <footer className="equipment-print-footer"><span>Phiếu được tạo từ dữ liệu hồ sơ thiết bị và lịch sử hiện có trên BAOTRI MINI.</span><strong>Người yêu cầu in: {localPreview?'Local Preview':currentOrganization?.roleCodes.some(code=>['admin','administrator'].includes(code.toLowerCase()))?'Admin':currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase()))?'KTV':'Viewer'} — {profileDisplayName||session?.user.email||'Người dùng'}</strong></footer>
+      </div>}
     </div>}
     {imageViewer&&<ImageLightbox images={imageViewer.images} initialIndex={imageViewer.index} onClose={()=>setImageViewer(null)} title="Ảnh thiết bị"/>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}

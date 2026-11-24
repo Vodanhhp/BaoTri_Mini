@@ -2771,3 +2771,55 @@ html,body,#root,.app-shell{
   .inventory-print-history tr{break-inside:avoid;page-break-inside:avoid}
   button,.modal-backdrop,.inventory-workspace{visibility:hidden!important}
 }
+
+
+/* Phiếu in chi tiết thiết bị — đồng bộ quy chuẩn với phiếu in vật tư */
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  .asset-print-sheet.print-detail {
+    display:block!important;position:absolute!important;inset:auto!important;top:0!important;left:0!important;
+    width:100%!important;height:auto!important;min-height:0!important;overflow:visible!important;
+    margin:0!important;padding:0!important;background:#fff!important;color:#111!important;
+  }
+  .asset-print-sheet.print-detail .equipment-print-report {
+    width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;
+    box-sizing:border-box!important;font-family:Tahoma,sans-serif!important;font-size:8.5pt!important;color:#111!important;
+  }
+  .equipment-print-org {display:flex;flex-direction:column;gap:2px;border-bottom:2px solid #222;padding-bottom:7px;margin-bottom:12px;}
+  .equipment-print-org-name {font-size:13pt;font-weight:700;line-height:1.25;overflow-wrap:anywhere;}
+  .equipment-print-brand {font-size:8pt;font-weight:700;letter-spacing:.25px;color:#444;}
+  .equipment-print-title-row {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .equipment-print-title-row>div {min-width:0;flex:1;}
+  .equipment-print-title-row .asset-print-form-title {text-align:left;border:0;padding:0;margin:0 0 5px;font-size:15pt!important;line-height:1.25;}
+  .equipment-print-title-row .asset-print-device-name {font-size:11pt!important;margin:0 0 4px;line-height:1.35;overflow-wrap:anywhere;}
+  .equipment-print-code {font-size:8.5pt;margin:0;}
+  .equipment-print-qr {width:22mm!important;height:22mm!important;flex:0 0 22mm;}
+  .equipment-print-section {font-size:9.5pt;margin:13px 0 6px;padding-bottom:4px;border-bottom:1px solid #777;break-after:avoid;}
+  .equipment-print-report table {width:100%!important;border-collapse:collapse!important;table-layout:fixed!important;white-space:normal!important;font-size:8pt!important;}
+  .equipment-print-report .equipment-print-info th,.equipment-print-report .equipment-print-info td,
+  .equipment-print-report .equipment-print-history th,.equipment-print-report .equipment-print-history td {
+    border:1px solid #777!important;padding:5px 6px!important;text-align:left!important;vertical-align:top!important;
+    font-family:Tahoma,sans-serif!important;font-size:8pt!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;
+  }
+  .equipment-print-info th {width:27%;background:#f0f0f0!important;font-weight:700;}
+  .equipment-print-info td {width:73%;}
+  .equipment-print-history th {background:#eaeaea!important;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .equipment-print-history th:nth-child(1){width:5%;text-align:center!important;}
+  .equipment-print-history th:nth-child(2){width:15%;}
+  .equipment-print-history th:nth-child(3){width:17%;}
+  .equipment-print-history th:nth-child(4){width:43%;}
+  .equipment-print-history th:nth-child(5){width:20%;}
+  .equipment-print-history td:nth-child(1){text-align:center!important;}
+  .equipment-print-history td:nth-child(2){font-size:7.2pt!important;}
+  .equipment-print-history td:nth-child(3){font-weight:600;}
+  .equipment-print-history td ul {margin:4px 0 0;padding-left:15px;}
+  .equipment-print-history td li {margin:2px 0;}
+  .equipment-print-history thead {display:table-header-group;}
+  .equipment-print-history tr {break-inside:avoid;page-break-inside:avoid;}
+  .equipment-print-notes {margin-top:9px;padding:7px 8px;border:1px solid #aaa;break-inside:avoid;}
+  .equipment-print-notes strong {font-size:8pt;}
+  .equipment-print-notes p {margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:8pt;}
+  .equipment-print-footer {display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-top:26px;padding-top:9px;border-top:1px solid #aaa;font-size:8pt;color:#444;}
+  .equipment-print-footer>span {align-self:flex-start;}
+  .equipment-print-footer strong {align-self:flex-end;max-width:75%;margin-top:8px;text-align:right;font-size:9pt;line-height:1.5;color:#111;}
+}
