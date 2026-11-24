@@ -232,6 +232,7 @@ export type InventoryMutation = {
   organizationId: string
   itemId: string
   operation: InventoryMutationOperation
+  localSequence: number
   payload: Record<string, unknown>
   expectedCloudUpdatedAt?: string
   localUpdatedAt: string
