@@ -1981,3 +1981,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Danh sách Edge Functions xác nhận các function trên đang ACTIVE sau deploy.
 - Build & Test và Validate BAOTRI Mini trên commit trước lần cập nhật TIENDO này đều SUCCESS. Cần chạy lại CI cho commit tài liệu cuối cùng trước khi merge PR.
 - Chưa thực hiện đăng nhập thực tế bằng trình duyệt; chưa xác minh endpoint bằng JWT người dùng Super Admin và tài khoản thường. Đây là bước kiểm thử sau khi frontend được deploy.
+
+## 24/11/2026 — Đồng bộ thông tin Plan và banner Thiết bị / Kho vật tư (đang review)
+
+- Trang Tổng quan hiển thị Plan hiện tại ngay dưới tên tổ chức; lấy từ Catalog Snapshot của tổ chức, không hardcode Plan A/B.
+- Tách phần trình bày Plan/Catalog thành component dùng chung; trang Quản lý thiết bị tiếp tục giữ khung xanh hiện tại và dùng component chung.
+- Trang Kho vật tư được bổ sung khung nền xanh cùng phong cách với trang Quản lý thiết bị, gồm tên phân hệ, mô tả, Plan/tên gói, hạn mức thiết bị, số nhóm/loại chuẩn và phiên bản Catalog; giữ nhãn trạng thái lưu Local / Cloud chưa bật.
+- Cả hai trang dùng chung trạng thái tải/lỗi/chưa có Catalog, tránh hiển thị nhầm Plan mặc định. Dữ liệu được truyền từ Catalog Snapshot đã tải ở App; không phát sinh truy vấn mới.
+- Chỉ thay đổi React presentation, CSS và regression test. Không thay đổi nghiệp vụ kho/thiết bị, quyền, dữ liệu Local/Cloud, Supabase, schema, migration hoặc cấu hình Cloud sync.
+- Nhánh `feat/shared-organization-plan-banner`; chưa merge và chưa deploy. Cần chạy CI Build/Test và kiểm tra trực quan desktop/mobile trước khi kết luận hoàn tất.

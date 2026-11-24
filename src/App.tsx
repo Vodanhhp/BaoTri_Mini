@@ -9,6 +9,7 @@ import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
 import PlatformAdminPanel from './PlatformAdminPanel'
 import { OrganizationPlanPanel } from './PlanChangePanels'
+import OrganizationPlanSummary from './OrganizationPlanSummary'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory, type InventoryItem } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
@@ -1288,10 +1289,10 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='inventory'
-          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
+          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)} equipmentCatalog={equipmentCatalog} equipmentCatalogLoading={equipmentCatalogLoading} equipmentCatalogError={equipmentCatalogError}/>
           : activeModule==='dashboard'
             ? <div className="overview-workspace">
-                <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · TỔNG QUAN</div><h2>{currentOrganization?.name||'Không gian bảo trì'}</h2><p>Tổng hợp tình hình thiết bị và vật tư trong cùng một màn hình.</p></div><div className="welcome-icon"><LayoutDashboard size={42}/></div></section>
+                <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · TỔNG QUAN</div><h2>{currentOrganization?.name||'Không gian bảo trì'}</h2><p>Tổng hợp tình hình thiết bị và vật tư trong cùng một màn hình.</p>{session&&organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}</div><div className="welcome-icon"><LayoutDashboard size={42}/></div></section>
                 <section className="overview-section"><div className="overview-section-head"><div><h2>Thiết bị</h2><p>Tình trạng tài sản, máy móc đang quản lý</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('assets')}>Mở danh mục thiết bị →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Building2 size={20}/></div><div><small>Đang quản lý</small><strong>{activeAssets.length}</strong><span>Thiết bị chưa lưu kho / thanh lý</span></div></div>
@@ -1311,7 +1312,7 @@ export default function App() {
                 <section className="overview-section overview-future"><div><div className="eyebrow">MỞ RỘNG THEO LỘ TRÌNH</div><h2>Checklist & công việc bảo trì</h2><p>Khu vực tổng quan dành cho thống kê Checklist, kiểm tra định kỳ, công việc và kế hoạch bảo trì khi các phân hệ này được tích hợp vào BAOTRI Mini.</p></div><span className="status gray">Sẽ bổ sung</span></section>
               </div>
             : <>
-        <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
+        <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
           <div className="asset-toolbar">{canMutate&&recoverableDrafts.map(draft=><div className="draft-recovery-row" key={draft.id}>

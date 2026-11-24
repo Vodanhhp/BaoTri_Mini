@@ -2700,3 +2700,20 @@ html,body,#root,.app-shell{
 @media(min-width:681px){
   #root .app-shell .topbar>.mobile-menu-toggle{display:none!important}
 }
+
+/* 24/11/2026 — Đồng bộ banner Plan/Catalog cho Thiết bị và Kho vật tư */
+#root .app-shell .welcome .plan-context-strip{color:#d3e8e1}
+#root .app-shell .welcome .plan-context-strip b{color:#fff}
+#root .app-shell .welcome .plan-context-strip span{border-color:#ffffff35;background:#ffffff12;color:#e4f2ed}
+#root .app-shell .inventory-welcome{margin-bottom:0;gap:18px}
+#root .app-shell .inventory-welcome-side{display:grid;justify-items:center;gap:9px;flex:0 0 auto}
+#root .app-shell .inventory-welcome .inventory-storage-pill{border-color:#ffffff35;background:#ffffff12;color:#e4f2ed;padding:6px 9px;font-size:10px}
+#root .app-shell .inventory-welcome .inventory-storage-pill span{color:#a9e2c4}
+#root .app-shell .inventory-welcome .inventory-storage-pill i{color:#ffffff70}
+@media(max-width:680px){
+ #root .app-shell .inventory-welcome{align-items:flex-start;padding:18px 16px;gap:10px}
+ #root .app-shell .inventory-welcome .welcome-icon{width:48px;height:48px;flex:0 0 48px}
+ #root .app-shell .inventory-welcome .welcome-icon svg{width:24px;height:24px}
+ #root .app-shell .inventory-welcome-side{justify-items:end;gap:7px}
+ #root .app-shell .inventory-welcome .inventory-storage-pill{white-space:normal;text-align:center;max-width:130px;line-height:1.35}
+}

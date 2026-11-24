@@ -6,10 +6,10 @@ const panel = readFileSync(new URL('../src/InventoryPanel.tsx', import.meta.url)
 const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8')
 
 test('inventory workspace uses compact page hierarchy and Local storage context', () => {
-  assert.match(panel, /className="inventory-page-heading"/)
+  assert.match(panel, /className="welcome inventory-welcome"/)
   assert.match(panel, /className="inventory-storage-pill"/)
   assert.match(panel, /Lưu tại thiết bị Local/)
-  assert.doesNotMatch(panel, /className="welcome inventory-welcome"/)
+  assert.doesNotMatch(panel, /className="inventory-page-heading"/)
 })
 
 test('inventory row actions are grouped in a single accessible disclosure menu', () => {
