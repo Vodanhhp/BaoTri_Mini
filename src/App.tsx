@@ -23,6 +23,9 @@ import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmart
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý', 'Lưu kho']
 
+// Keep Inventory Cloud disabled until its reviewed SQL migration is approved and verified.
+const INVENTORY_CLOUD_SYNC_ENABLED = false
+
 const ASSET_CATEGORY_GROUPS = [
  {label:'Điện – điện tử – tự động hóa',items:['Thiết bị điện','Tủ điện','Tủ điện tổng','Tủ điện phân phối','Tủ điều khiển','Biến tần','UPS','Máy biến áp','Thiết bị đo lường','Động cơ điện','Bộ chuyển nguồn ATS','Tủ tụ bù','PLC','HMI','Cảm biến','Bộ nguồn điện','Thiết bị điện tử','Bo mạch điện tử','Rơ le – contactor']},
  {label:'Cơ khí – máy móc – truyền động',items:['Máy bơm','Thiết bị xưởng','Thang máy','Hộp giảm tốc','Băng tải','Máy tiện','Máy phay','Máy khoan bàn','Máy cưa','Máy ép','Máy dập','Máy CNC','Máy nén thủy lực','Hệ thống thủy lực','Thiết bị nâng hạ','Pa lăng – tời','Cầu trục','Xe nâng']},
@@ -365,7 +368,7 @@ export default function App() {
         }
 
         let inventoryMessage=''
-        if(canViewInventory){
+        if(canViewInventory&&INVENTORY_CLOUD_SYNC_ENABLED){
           const inventorySummary=await syncInventoryCloud(client,organizationId,{
             view:context.permissions.includes('inventory.view'),
             create:context.permissions.includes('inventory.create'),
@@ -376,6 +379,8 @@ export default function App() {
           },{shouldContinue:()=>active&&navigator.onLine})
           if(!active)return
           inventoryMessage='Kho vật tư — đẩy '+inventorySummary.pushed+', lỗi '+inventorySummary.pushFailed+', xung đột '+inventorySummary.conflicts+', nhận '+inventorySummary.pulled+' sự kiện ('+inventorySummary.pages+' trang).'
+        }else if(canViewInventory){
+          inventoryMessage='Kho vật tư hiện chỉ lưu tại Local; đồng bộ Cloud chưa bật.'
         }
         if(active)setCloudSyncMessage([assetMessage,inventoryMessage].filter(Boolean).join(' | '))
       }catch(cause){
