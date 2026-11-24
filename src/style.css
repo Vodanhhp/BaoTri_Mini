@@ -1451,3 +1451,25 @@ html,body,#root,.app-shell{
     margin:4px 0 0!important;
   }
 }
+
+
+/* Inventory workspace — Local-first foundation */
+.inventory-workspace{display:grid;gap:16px}
+.inventory-welcome{margin-bottom:0}
+.inventory-welcome .welcome-icon{font-size:34px;display:grid;place-items:center}
+.inventory-stats .stat-card strong{font-size:24px}
+.inventory-filters{display:grid;grid-template-columns:minmax(240px,2fr) minmax(160px,1fr) minmax(150px,1fr);gap:12px;align-items:end;margin:0 0 14px}
+.inventory-filters .field{margin:0}
+.inventory-filters .field select{width:100%;min-height:42px;border:1px solid var(--border);border-radius:8px;padding:0 10px;background:var(--panel);color:var(--text);font:inherit}
+.inventory-filters .searchbar{min-height:42px;margin:0}
+.inventory-name-link{display:grid;text-align:left;border:0;background:transparent;padding:0;color:var(--text);cursor:pointer}
+.inventory-name-link b{font-size:12px}
+.inventory-name-link small{color:var(--muted);margin-top:3px}
+.inventory-archived-row td{background:rgba(120,130,140,.06)}
+.inventory-notice{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.inventory-error{margin:0}
+.inventory-modal{width:min(760px,94vw);max-height:90vh;overflow:auto}
+.inventory-modal .modal-head{position:sticky;top:0;background:var(--surface);z-index:1}
+.inventory-modal .form-grid{padding-bottom:4px}
+@media(max-width:820px){.inventory-filters{grid-template-columns:1fr 1fr}.inventory-filters .searchbar{grid-column:1/-1}}
+@media(max-width:600px){.inventory-filters{grid-template-columns:1fr}.inventory-filters .searchbar{grid-column:auto}.inventory-modal{width:96vw;max-height:94vh;padding:14px}}
