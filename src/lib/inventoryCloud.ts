@@ -251,7 +251,7 @@ function rpcErrorMessage(error: unknown): string {
 }
 
 function isConflictError(error: unknown): boolean {
-  return ['40001', '23505', '42501', '55000', 'P0002'].includes(rpcErrorCode(error))
+  return ['22023', '23502', '23503', '23505', '23514', '40001', '42501', '55000', 'P0002'].includes(rpcErrorCode(error))
 }
 
 function linkId(organizationId: string, itemId: string): string {
