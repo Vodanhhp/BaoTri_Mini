@@ -1780,3 +1780,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Validate run `45352426021`: PASS.
 - Chưa validate SQL draft trên PostgreSQL, chưa browser runtime/E2E.
 - Feature gate Cloud vẫn OFF; không thay đổi Supabase, không apply migration, không merge/deploy.
+
+
+
+### CI checkpoint mới nhất (24/11/2026)
+- Branch head: `e12dbc70f668a32e80a0a3bb93212855c1cc7307`.
+- Build & Test run `45352665344`: 132/132 test PASS, 0 fail; TypeScript/Vite build PASS.
+- Validate run `45352665333`: PASS.
+- Test SQL draft kiểm tra khai báo RPC, RLS, SECURITY INVOKER, idempotency, precision 6 số và constraint ledger. Đây là test contract/static, không chứng minh SQL syntax/runtime.
+- SQL vẫn cần được validate bằng PostgreSQL 17 local trước khi chuyển thành migration.
