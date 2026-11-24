@@ -1650,3 +1650,142 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm bước kiểm tra build: xác nhận URL và key Supabase thực sự được nhúng trong các asset đã build; không in giá trị key ra log.
 - Chưa thay đổi database, migration, RLS, Auth users, dữ liệu tổ chức, Storage hoặc project Supabase.
 - Thay đổi đang nằm trên nhánh `fix/supabase-api-key-compatibility`; cần CI PASS và review trước khi merge/deploy. Chưa khẳng định lỗi runtime đã hết cho đến khi bản sửa được phát hành và đăng nhập/tải membership được kiểm tra thực tế.
+
+
+
+## Tích hợp phân hệ Kho vật tư từ dự án cũ (24/11/2026)
+
+### Đối chiếu repository
+- Repo tham khảo chỉ đọc: `Vodanhhp/DuAn_BaoTRi`.
+- Repo triển khai: `Vodanhhp/BaoTri_Mini`.
+- Tạo branch `feat/inventory-management-foundation` từ `main` tại commit `5446a4bce29614940d3921be2783cd7139b46849`.
+- Không sửa repo cũ; không trộn source, migration hoặc Supabase project giữa hai dự án.
+
+### Kết quả đọc nghiệp vụ cũ
+- Đã đọc README, `src/db.ts`, các handler kho trong `src/App.tsx`, tài liệu `BAOTRI_TIENDO_VA_QUYETDINH.md` và các tài liệu thiết kế Inventory RPC.
+- Chốt kế thừa các trường vật tư: mã người dùng nhập, tên, nhóm, đơn vị, mã phụ tùng, kích cỡ, số lượng tồn, tồn tối thiểu, vị trí, nhà cung cấp, đơn giá.
+- Nhập/Xuất phải cập nhật số dư và movement lịch sử cùng transaction; không cho xuất vượt tồn.
+- Tồn đầu kỳ > 0 tạo movement Nhập/Tồn đầu kỳ cùng transaction tạo vật tư; tồn đầu kỳ = 0 không tạo movement.
+- Điều chỉnh là nhập số lượng thực tế sau kiểm kê; server tự tính delta; delta = 0 trả no_change và không tạo movement.
+- Admin/Technician có quyền tạo/sửa và thao tác kho; Viewer chỉ xem; xóa vật tư Admin-only.
+- Movement là lịch sử append-only; có thể liên kết Asset; không hard-delete lịch sử.
+- Mã vật tư không dùng Smart Equipment ID; không tự cấp lại hoặc đổi mã vật tư cũ.
+
+### Đối chiếu dự án mới
+- `src/db.ts` hiện chỉ có Asset và các bảng liên quan; chưa có InventoryItem/InventoryMovement.
+- `src/App.tsx` hiện chưa có mục điều hướng hoặc UI Kho vật tư.
+- Permission catalog của dự án mới đã có `inventory.view/create/update/adjust/delete`; không cần tạo permission trùng. Cần tiếp tục xác minh role seed và server enforcement trong Phase 0.
+- Supabase project đích vẫn là `BAOTRI Mini New` (`dskeaiyvldiwlsfqkboq`). Không dùng Supabase Test/cũ làm đích cho repo mới.
+
+### Tài liệu và giới hạn hiện tại
+- Đã tạo `docs/INVENTORY_MODULE_DESIGN.md` trên branch này, commit `d7d7c7dffae7938557c8afe3ece2241eb86f599c`.
+- Tài liệu xác định kiến trúc Local-first, Local domain model, Cloud RPC/receipt/change-feed, UI, phân quyền và các phase kiểm thử.
+- Thiết kế RPC trong repo cũ là tài liệu/draft, không phải migration đã triển khai; tuyệt đối không copy/chạy trực tiếp trên project New.
+- Chưa sửa source code UI/DB, chưa tạo migration, chưa chạy test, chưa ghi dữ liệu Supabase Test/New, chưa thay đổi Auth/RLS/Storage/Edge Functions hoặc production.
+- Bước tiếp theo: hoàn tất Phase 0 read-only trên schema/migration/source hiện hành của project New; sau đó mới triển khai Local domain + UI và Cloud vertical slice theo contract riêng của project New.
+- Việc merge PR, apply migration lên Supabase hoặc phát hành production vẫn là các cổng riêng cần phê duyệt.
+
+### Xác nhận sửa lỗi đăng nhập Production (24/11/2026)
+- PR #42 đã được người dùng phê duyệt, squash-merge vào `main`, merge commit `5446a4bce29614940d3921be2783cd7139b46849`.
+- GitHub Pages deployment và Build/Unit Test đều PASS.
+- Người dùng đã xác nhận trực tiếp: đăng nhập Production hoạt động trở lại sau triển khai.
+
+
+
+## Kho vật tư — Phase 0 và Local foundation (24/11/2026)
+
+### Phase 0 read-only trên Supabase New
+- Đã xác minh project ref `dskeaiyvldiwlsfqkboq`, ACTIVE_HEALTHY, PostgreSQL 17.12.
+- Migration history trong DB khớp source đến `20261124042230_move_import_receipt_verifier_private`.
+- 5 permission `inventory.*` đã tồn tại. Trên 4 organization hiện có: Admin đủ quyền; Technician view/create/update/adjust; Viewer chỉ view. Không thêm permission trùng.
+- Database chưa có Inventory tables hoặc Inventory RPC. Asset Change Feed chỉ dành cho Asset; không tái sử dụng trực tiếp.
+- Chỉ truy vấn đọc; không thay đổi DB, RLS, Auth, Storage hoặc dữ liệu.
+
+### Local foundation đã code trên branch `feat/inventory-management-foundation`
+- Dexie v10 thêm stores: `inventoryItems`, `inventoryMovements`, `inventoryMutations`, `inventoryCloudLinks`, `inventorySyncCursors`; giữ nguyên database name và các store/version Asset hiện có.
+- Thêm `src/lib/inventory.ts`: tạo vật tư + tồn đầu kỳ nguyên tử, cập nhật metadata, nhập, xuất, điều chỉnh theo số kiểm kê, lưu trữ Admin.
+- Mã vật tư chuẩn hóa và kiểm tra trùng theo organization; metadata form/service không cho sửa quantity.
+- Movement lưu số lượng, delta có dấu, tồn trước/sau, lý do, người thực hiện, mutation ID; không cho xuất âm; kiểm kê không chênh lệch không tạo movement.
+- Thêm `src/InventoryPanel.tsx` và điều hướng Kho vật tư theo `inventory.view`; Admin/KTV/Viewer được giới hạn theo các permission hiện có.
+- UI ghi rõ kho mới chỉ lưu Local; chưa bật Cloud sync. Chưa có migration Cloud.
+
+### Files
+- `src/db.ts`, `src/lib/inventory.ts`, `src/InventoryPanel.tsx`, `src/App.tsx`, `src/style.css`, `scripts/inventoryLocalDomain.test.mjs`.
+- Cập nhật `docs/INVENTORY_MODULE_DESIGN.md`.
+
+### Chưa hoàn tất
+- Chưa chạy GitHub CI trên branch; cần Draft PR để workflow Build/Unit Test chạy.
+- Chưa test giao diện thực tế trên trình duyệt.
+- Chưa xây Cloud SQL/RPC/change feed/worker.
+- Không apply migration, không sửa Supabase New/Test, không merge hoặc deploy.
+
+### Tiếp theo
+- Mở Draft PR để CI chạy; xử lý lỗi build/test nếu có.
+- Hoàn tất kiểm tra Local UI và permission.
+- Sau đó thiết kế Cloud inventory schema/RPC/feed riêng cho project New, xin phê duyệt trước mọi thao tác apply migration.
+
+
+
+### Cập nhật CI Kho vật tư (24/11/2026)
+- Draft PR #43: https://github.com/Vodanhhp/BaoTri_Mini/pull/43.
+- Build and test run #717 trên commit `4d956af20f0740a1aed2446cbd49bf2943aa6d62`: 123/123 test PASS, 0 fail; Vite production build PASS.
+- Validate BAOTRI Mini run #374 cùng commit: `npm ci` và `npm run build` PASS.
+- Bổ sung điều kiện an toàn: chỉ được lưu trữ vật tư khi tồn Local bằng 0; phải xử lý số tồn bằng giao dịch kho trước.
+- Run #715 trước đó có một assertion test false-positive vì regex khớp `min_quantity`; đã thu hẹp regex và chạy lại thành công. Không phải lỗi sản phẩm.
+- Chỉ xác nhận CI/build; chưa xác nhận browser runtime/E2E.
+
+
+
+## Kho vật tư — Cloud client foundation (24/11/2026)
+
+- Thêm `src/lib/inventoryCloud.ts`: client RPC create/update/movement/archive và Incremental Pull.
+- Queue mutation theo từng vật tư, thứ tự Local tạo; mỗi RPC dùng timestamp mới nhất từ `InventoryCloudLink.cloudUpdatedAt`, không dùng timestamp cũ được lưu cùng mutation khi offline.
+- Mutation conflict chặn các mutation sau của cùng vật tư; pull kiểm tra organization, event type, sequence, page cursor; không ghi đè Local còn pending và lưu `conflictSnapshot`.
+- Movement đồng bộ theo ID ổn định, append-only; mutation UUID giữ nguyên khi retry timeout.
+- Local inventory writes gọi `requestSync()`; App dùng chung scheduler hiện tại, hỗ trợ quyền `inventory.view` độc lập với `assets.view`; InventoryPanel refresh khi có event pull.
+- Đã thêm `InventoryCloudLink.conflictSnapshot` và test contract `scripts/inventoryCloudContract.test.mjs`.
+- **Feature gate `INVENTORY_CLOUD_SYNC_ENABLED = false`**: client Cloud chưa được phép chạy vì chưa có SQL migration được review/apply. Giao diện vẫn ghi rõ kho chỉ lưu Local.
+- Chưa tạo migration file: workspace hiện không có checkout repo/Supabase CLI executable; không tự đặt tên migration. Cần tạo bằng `supabase migration new` trong checkout đúng repo rồi mới đưa SQL vào.
+- Không chạy SQL, không apply migration, không sửa dữ liệu Supabase New/Test/Production.
+- CI trên commit `5f0605e6a1285cba75d55236f90e838d1ac50aef`: 129/129 tests PASS, Vite build PASS, Validate PASS. Commit mới hơn có feature gate đang chờ CI xác nhận.
+- Chưa có browser runtime/E2E PC-Mobile.
+
+
+
+### Queue order hardening
+- Thêm `InventoryMutation.localSequence`, tăng tuần tự theo từng vật tư trong Dexie transaction.
+- Cloud worker sort theo `localSequence` trước, `createdAt` chỉ làm fallback; tránh sai thứ tự khi nhiều giao dịch cùng millisecond.
+- Đây là sequence Local; sequence feed Cloud vẫn do server quản lý.
+
+
+
+### Cloud SQL draft (24/11/2026)
+- Tạo bản nháp SQL tại `docs/drafts/INVENTORY_CLOUD_MIGRATION_DRAFT.sql`, ngoài `supabase/migrations`.
+- Có bảng item/movement, mutation receipt, audit append-only, feed sequence/event, RLS, revoke quyền truy cập bảng trực tiếp; private SECURITY DEFINER implementations và public SECURITY INVOKER wrappers.
+- RPC contract khớp `src/lib/inventoryCloud.ts`; server tự chuẩn hóa mã, xác định actor, tính tồn và sequence.
+- Local + Cloud thống nhất tối đa 6 chữ số thập phân; Local từ chối giá trị sẽ bị Cloud làm tròn.
+- Đã đọc định nghĩa helper `private.has_org_permission` và `private.has_org_role` trên Supabase New bằng truy vấn read-only. Quyền role xác nhận: Admin đủ 5 quyền, Technician view/create/update/adjust, Viewer chỉ view.
+- SQL hiện chỉ là draft; chưa được PostgreSQL 17 validate, chưa đưa vào `supabase/migrations`, chưa chạy hoặc apply lên bất kỳ Supabase project nào.
+- Trước khi thành migration: review SQL, kiểm tra cú pháp bằng PostgreSQL 17 local, tạo tên migration bằng `supabase migration new` trong checkout đúng repo.
+
+
+
+### Latest verification — Local + dormant Cloud client (24/11/2026)
+- Sửa đúng giao dịch Tồn đầu kỳ: tồn trước = 0, tồn sau = số tồn đầu kỳ.
+- Bổ sung `InventoryMutation.localSequence` theo từng vật tư, bảo đảm đúng thứ tự kể cả khi nhiều thao tác cùng millisecond.
+- Giới hạn số lượng/tồn tối thiểu/đơn giá tối đa 6 chữ số thập phân; chuẩn hóa phép cộng/trừ để tránh lỗi floating-point tạo giao dịch kiểm kê giả.
+- SQL draft cũng từ chối giá trị quá 6 chữ số; server vẫn là nguồn xác thực cuối cùng.
+- Source commit đã xác minh: `8db7a157876952fea9da066b22684be3e3abbba6`.
+- Build & Test run `45352426608`: 132/132 test PASS, 0 fail; TypeScript/Vite build PASS.
+- Validate run `45352426021`: PASS.
+- Chưa validate SQL draft trên PostgreSQL, chưa browser runtime/E2E.
+- Feature gate Cloud vẫn OFF; không thay đổi Supabase, không apply migration, không merge/deploy.
+
+
+
+### CI checkpoint mới nhất (24/11/2026)
+- Branch head: `e12dbc70f668a32e80a0a3bb93212855c1cc7307`.
+- Build & Test run `45352665344`: 132/132 test PASS, 0 fail; TypeScript/Vite build PASS.
+- Validate run `45352665333`: PASS.
+- Test SQL draft kiểm tra khai báo RPC, RLS, SECURITY INVOKER, idempotency, precision 6 số và constraint ledger. Đây là test contract/static, không chứng minh SQL syntax/runtime.
+- SQL vẫn cần được validate bằng PostgreSQL 17 local trước khi chuyển thành migration.

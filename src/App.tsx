@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2 } from 'lucide-react'
+import { Activity, Archive, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
+import InventoryPanel from './InventoryPanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -14,12 +15,16 @@ import { loadOrganizationContext, type OrganizationContext } from './lib/organiz
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
 import { ensureOrganizationAssetResetApplied } from './lib/assetReset'
+import { syncInventoryCloud } from './lib/inventoryCloud'
 import { requestSync, startSyncEngine } from './lib/syncEngine'
 import { QRCodeSVG } from 'qrcode.react'
 import { analyzeEquipmentName } from './lib/smartEquipmentId'
 import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmartEquipmentIdReservation, releaseSmartEquipmentIdReservation, saveOrganizationEquipmentCatalogSnapshot, type OrganizationEquipmentCatalogRecord, type SmartEquipmentIssuance } from './lib/smartEquipmentIdClient'
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý', 'Lưu kho']
+
+// Keep Inventory Cloud disabled until its reviewed SQL migration is approved and verified.
+const INVENTORY_CLOUD_SYNC_ENABLED = false
 
 const ASSET_CATEGORY_GROUPS = [
  {label:'Điện – điện tử – tự động hóa',items:['Thiết bị điện','Tủ điện','Tủ điện tổng','Tủ điện phân phối','Tủ điều khiển','Biến tần','UPS','Máy biến áp','Thiết bị đo lường','Động cơ điện','Bộ chuyển nguồn ATS','Tủ tụ bù','PLC','HMI','Cảm biến','Bộ nguồn điện','Thiết bị điện tử','Bo mạch điện tử','Rơ le – contactor']},
@@ -67,6 +72,7 @@ export default function App() {
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
+  const [activeModule,setActiveModule]=useState<'assets'|'inventory'>('assets')
   const [organizationReady,setOrganizationReady]=useState(false)
   const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
   const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
@@ -289,70 +295,98 @@ export default function App() {
     }
     const client=supabase!
     const context=organizationContexts.find(item=>item.id===organizationId)
-    if(!context?.permissions.includes('assets.view')){setCloudSyncMessage('Tài khoản không có quyền xem thiết bị của tổ chức; bỏ qua đồng bộ Cloud.');return}
+    const canViewAssets=Boolean(context?.permissions.includes('assets.view'))
+    const canViewInventory=Boolean(context?.permissions.includes('inventory.view'))
+    if(!context||(!canViewAssets&&!canViewInventory)){
+      setCloudSyncMessage('Tài khoản không có quyền xem thiết bị hoặc kho vật tư của tổ chức; bỏ qua đồng bộ Cloud.')
+      return
+    }
+    if(!canViewAssets&&(!canViewInventory||!INVENTORY_CLOUD_SYNC_ENABLED)){
+      setCloudSyncMessage('Kho vật tư hiện chỉ lưu tại Local; đồng bộ Cloud chưa bật.')
+      return
+    }
     let active=true
     let running=false
     const runSync=async()=>{
       if(!active||running||!navigator.onLine)return
       running=true
-      setCloudSyncMessage('Đang tự động tải và đối chiếu thiết bị từ Cloud…')
+      setCloudSyncMessage('Đang tự động đồng bộ thiết bị và kho vật tư từ Cloud…')
       try{
-        await ensureOrganizationAssetResetApplied(client,organizationId)
-        const contextCanCreate=context.permissions.includes('assets.create')
-        const contextCanImportLegacy=context.permissions.includes('assets.import')
-        const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
-          canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
-        })
-        if(!active)return
-        const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
-        if(!active)return
-        let retried=0
-        let retryFailed=0
-        const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
-        if(contextCanMutate&&context.permissions.includes('assets.update')){
-          const pending=await db.assetMutations.where('organizationId').equals(organizationId)
-            .filter(m=>(m.status==='pending'&&m.failureKind!=='permanent'&&(!m.nextAttemptAt||Date.parse(m.nextAttemptAt)<=Date.now()))||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
-          for(const mutation of pending){
-            if(!active||!navigator.onLine)break
-            try{
-              await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
-              retried++
-            }catch{
-              retryFailed++
-            }
-          }
-          // A failed first attempt records its Local audit event as pending.
-          // Mirror it only after the corresponding Cloud mutation is confirmed.
-          const pendingHistory=await db.assetHistory.where('organizationId').equals(organizationId)
-            .filter(entry=>entry.syncStatus==='pending').toArray()
-          for(const entry of pendingHistory){
-            if(!active||!navigator.onLine)break
-            try{
-              const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
-              const currentEntry=await db.assetHistory.get(entry.id)
-              if(!currentEntry||currentEntry.syncStatus!=='pending')continue
-              const currentAsset=await db.assets.get(currentEntry.assetId)
-              if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
-                await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
-                continue
+        let assetMessage=''
+        if(canViewAssets){
+          await ensureOrganizationAssetResetApplied(client,organizationId)
+          const contextCanCreate=context.permissions.includes('assets.create')
+          const contextCanImportLegacy=context.permissions.includes('assets.import')
+          const importSummary=await syncPendingLocalAssetImports(client,organizationId,{
+            canCreate:contextCanCreate,canImportLegacy:contextCanImportLegacy,shouldContinue:()=>active
+          })
+          if(!active)return
+          const summary=await syncCloudAssetsIncrementally(client,organizationId,{shouldContinue:()=>active})
+          if(!active)return
+          let retried=0
+          let retryFailed=0
+          const contextCanMutate=Boolean(context.isAdmin||context.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase())))
+          if(contextCanMutate&&context.permissions.includes('assets.update')){
+            const pending=await db.assetMutations.where('organizationId').equals(organizationId)
+              .filter(m=>(m.status==='pending'&&m.failureKind!=='permanent'&&(!m.nextAttemptAt||Date.parse(m.nextAttemptAt)<=Date.now()))||(m.status==='processing'&&Date.now()-new Date(m.updatedAt).getTime()>60000)).toArray()
+            for(const mutation of pending){
+              if(!active||!navigator.onLine)break
+              try{
+                await retryCloudAssetMutation(client,organizationId,mutation.mutationId)
+                retried++
+              }catch{
+                retryFailed++
               }
-              const mutation=await db.assetMutations.get(currentEntry.id)
-              if(mutation&&mutation.status!=='applied')continue
-              const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
-                p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
-                p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
-                p_reset_generation:resetGeneration
-              })
-              if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
-            }catch{
-              // Keep the audit event pending; the next online sync retries it.
+            }
+            // Mirror Local audit entries only after their matching mutation is confirmed.
+            const pendingHistory=await db.assetHistory.where('organizationId').equals(organizationId)
+              .filter(entry=>entry.syncStatus==='pending').toArray()
+            for(const entry of pendingHistory){
+              if(!active||!navigator.onLine)break
+              try{
+                const resetGeneration=await ensureOrganizationAssetResetApplied(client,organizationId)
+                const currentEntry=await db.assetHistory.get(entry.id)
+                if(!currentEntry||currentEntry.syncStatus!=='pending')continue
+                const currentAsset=await db.assets.get(currentEntry.assetId)
+                if(!currentAsset||currentAsset.localScope!==organizationId||currentAsset.code!==currentEntry.assetCode){
+                  await db.assetHistory.update(currentEntry.id,{syncStatus:'local_only'})
+                  continue
+                }
+                const mutation=await db.assetMutations.get(currentEntry.id)
+                if(mutation&&mutation.status!=='applied')continue
+                const {error:historyError}=await client.rpc('record_cloud_asset_history_event_v2',{
+                  p_organization_id:organizationId,p_event_id:currentEntry.id,p_asset_code:currentEntry.assetCode,p_event_type:currentEntry.eventType,
+                  p_summary:currentEntry.summary,p_changes:currentEntry.changes,p_actor_label:currentEntry.actorLabel,p_occurred_at:currentEntry.occurredAt,
+                  p_reset_generation:resetGeneration
+                })
+                if(!historyError)await db.assetHistory.update(currentEntry.id,{syncStatus:'synced'})
+              }catch{
+                // Keep the audit event pending; the next online/focus sync retries it.
+              }
             }
           }
+          if(!active)return
+          await loadAssets(organizationId)
+          if(!active)return
+          assetMessage='Thiết bị — Local → Cloud: '+importSummary.imported+' mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' xung đột. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.'
         }
-        if(!active)return
-        await loadAssets(organizationId)
-        if(!active)return
-        setCloudSyncMessage('Local → Cloud: '+importSummary.imported+' thiết bị mới, '+importSummary.failed+' chờ retry, '+importSummary.conflicts+' cần đối chiếu. Cloud → Local: '+summary.downloaded+' mới, '+summary.updated+' cập nhật, '+summary.unchanged+' đã khớp, '+summary.protectedLocal+' được bảo vệ, '+summary.conflicts+' xung đột. Mutation retry: '+retried+' thành công, '+retryFailed+' chưa xác nhận.')
+
+        let inventoryMessage=''
+        if(canViewInventory&&INVENTORY_CLOUD_SYNC_ENABLED){
+          const inventorySummary=await syncInventoryCloud(client,organizationId,{
+            view:context.permissions.includes('inventory.view'),
+            create:context.permissions.includes('inventory.create'),
+            update:context.permissions.includes('inventory.update'),
+            adjust:context.permissions.includes('inventory.adjust'),
+            delete:context.permissions.includes('inventory.delete'),
+            isAdmin:context.isAdmin
+          },{shouldContinue:()=>active&&navigator.onLine})
+          if(!active)return
+          inventoryMessage='Kho vật tư — đẩy '+inventorySummary.pushed+', lỗi '+inventorySummary.pushFailed+', xung đột '+inventorySummary.conflicts+', nhận '+inventorySummary.pulled+' sự kiện ('+inventorySummary.pages+' trang).'
+        }else if(canViewInventory){
+          inventoryMessage='Kho vật tư hiện chỉ lưu tại Local; đồng bộ Cloud chưa bật.'
+        }
+        if(active)setCloudSyncMessage([assetMessage,inventoryMessage].filter(Boolean).join(' | '))
       }catch(cause){
         if(active)setCloudSyncMessage('Đồng bộ Cloud chưa hoàn tất: '+(cause instanceof Error?cause.message:String(cause)))
       }finally{
@@ -1158,6 +1192,11 @@ export default function App() {
   const canCreate=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.create'))
   const canDelete=Boolean(currentOrganization?.isAdmin)
   const canChangeStatus=Boolean(localPreview||(canMutate&&currentOrganization?.permissions.includes('assets.update')))
+  const canInventoryView=Boolean(currentOrganization?.permissions.includes('inventory.view'))
+  const canInventoryCreate=Boolean(currentOrganization?.permissions.includes('inventory.create'))
+  const canInventoryUpdate=Boolean(currentOrganization?.permissions.includes('inventory.update'))
+  const canInventoryAdjust=Boolean(currentOrganization?.permissions.includes('inventory.adjust'))
+  const canInventoryDelete=Boolean(currentOrganization?.isAdmin&&currentOrganization?.permissions.includes('inventory.delete'))
   const activeAssets = assets.filter(item => !item.archivedAt && !item.deletedAt && item.status !== 'Thanh lý')
   const stoppedCount = assets.filter(item => item.status === 'Ngừng sử dụng' && !item.archivedAt && !item.deletedAt).length
   const repairingCount = assets.filter(item => item.status === 'Đang sửa chữa' && !item.archivedAt && !item.deletedAt).length
@@ -1168,8 +1207,9 @@ export default function App() {
       <button type="button" className="mobile-menu-close" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}><X size={18}/><span>Đóng menu</span></button>
       <div className="brand"><span className="brand-icon"><Wrench size={21}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div>
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
-      <button className="nav-item active"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
-      <button className="nav-item"><Building2 size={17}/><span>Danh mục thiết bị</span></button>
+      <button className="nav-item"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
+      <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
+      {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
@@ -1184,10 +1224,13 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">QUẢN LÝ TÀI SẢN & THIẾT BỊ</div><h1>Danh mục thiết bị</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
-        <div className="top-actions">{session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
+        <div className="page-heading"><div className="eyebrow">{activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='inventory'?'Kho vật tư':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
+        {activeModule==='inventory'
+          ? <InventoryPanel organizationId={organizationId} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} isAdmin={Boolean(currentOrganization?.isAdmin)}/>
+          : <>
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<div className="plan-context-strip">{equipmentCatalogLoading?'Đang tải gói sử dụng…':equipmentCatalog?<><b>Plan {equipmentCatalog.plan_code} · {equipmentCatalog.snapshot.plan?.name||'Gói sử dụng'}</b><span>{equipmentCatalog.snapshot.plan?.maxDevices===null?'Không giới hạn thiết bị':equipmentCatalog.snapshot.plan?.maxDevices?`Tối đa ${equipmentCatalog.snapshot.plan.maxDevices.toLocaleString('vi-VN')} thiết bị`:'Hạn mức theo cấu hình Plan'}</span><span>{equipmentCatalog.snapshot.equipmentGroups.length} nhóm · {equipmentCatalog.snapshot.equipmentDictionary.length} loại chuẩn</span><span>Catalog v{equipmentCatalog.source_data_version}</span></>:equipmentCatalogError?<span>Không tải được Plan: {equipmentCatalogError}</span>:<span>Doanh nghiệp chưa có Plan / Catalog Snapshot. Liên hệ Super Admin để khởi tạo.</span>}</div>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
         {!showForm&&!localPreview&&canCreate&&recoverableDrafts.length>0&&<div className="panel">
           <div className="panel-head"><div><h2>Thao tác cấp mã chưa hoàn tất</h2><p>Draft được lưu trên thiết bị này để có thể tiếp tục sau khi đóng hoặc tải lại trình duyệt.</p></div></div>
@@ -1225,6 +1268,7 @@ export default function App() {
           </tbody></table></div>
         </div>
         <div className="footnote"><ShieldCheck size={15}/> Thiết bị Local thuộc phạm vi tổ chức hiện chọn. Dùng Local ↔ Cloud để nhập hoặc tải hồ sơ có kiểm soát. Ảnh chưa đồng bộ Cloud.</div>
+          </>}
       </div>
     </main>
     {showForm&&editing&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy&&!reservationReleaseBusy)closeEditor()}}><section className="modal"><div className="modal-head"><div><h2>{assets.some(item=>item.id===editing.id)?'Cập nhật thiết bị':'Thêm thiết bị mới'}</h2><p>Nhập thông tin hồ sơ thiết bị.</p></div><button className="icon-btn" onClick={closeEditor} disabled={busy||reservationReleaseBusy}><X size={17}/></button></div>
