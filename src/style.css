@@ -2561,3 +2561,41 @@ html,body,#root,.app-shell{
   #root .plan-request-modal .reset-history-table td{padding:6px 5px;font-size:9px}
   #root .plan-request-modal .reset-history-table{min-width:0!important}
 }
+
+/* 24/11/2026 — inventory action menu escapes the table frame; normalize modal close controls */
+#root .app-shell .inventory-desktop-table{
+  position:relative;
+  overflow:visible;
+}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table table{
+  min-width:0!important;
+}
+#root .app-shell .inventory-desktop-table tbody tr:has(.inventory-action-menu[open]){
+  position:relative;
+  z-index:20;
+}
+#root .app-shell .inventory-desktop-table td.inventory-actions-cell{
+  position:relative;
+  z-index:21;
+  overflow:visible;
+}
+#root .app-shell .inventory-action-menu[open]{
+  z-index:22;
+}
+#root .app-shell .inventory-action-menu>div{
+  z-index:30;
+}
+#root .app-shell .modal-head>.icon-btn,
+#root .app-shell .platform-action-head>.icon-btn{
+  box-sizing:border-box;
+  display:inline-grid;
+  place-items:center;
+  flex:0 0 36px;
+  width:36px;
+  min-width:36px;
+  height:36px;
+  min-height:36px;
+  padding:0;
+  border-radius:9px;
+  line-height:1;
+}
