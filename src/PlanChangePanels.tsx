@@ -134,8 +134,8 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
      <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose} disabled={busy}>Đóng</button><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
     </form>}
     <OrganizationAssetResetRequestPanel client={client} organizationId={organizationId}/>
-    <div className="divider" style={{margin:'18px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
-    <h3 style={{fontSize:15}}>Lịch sử yêu cầu</h3>
+    <div className="divider plan-section-divider"/>
+    <h3 className="plan-history-heading">Lịch sử yêu cầu</h3>
     {requests.length===0?<div className="table-empty-state">Doanh nghiệp chưa gửi yêu cầu đổi Plan.</div>:<div className="table-wrap table-standard-wrap plan-history-table-wrap"><table className="table-standard plan-history-table"><thead><tr><th>Nội dung thay đổi</th><th>Ngày gửi</th><th>Ghi chú / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
       <td><b>{planLabel(request.current_plan_code,plans)} → {planLabel(request.requested_plan_code,plans)}</b></td>
       <td className="table-date-cell">{dateTime(request.requested_at)}</td>
@@ -266,8 +266,8 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setBusy(false)}
  }
- return <section style={{marginTop:20,paddingTop:16,borderTop:'1px solid var(--border,#e5e7eb)'}}>
-  <div className="panel-head"><div><h3>Yêu cầu Reset toàn bộ thiết bị</h3><p>Gửi yêu cầu để Superadmin xem xét. Không có dữ liệu nào bị xóa khi gửi yêu cầu.</p></div><button type="button" className="soft-btn" onClick={()=>void load()} disabled={loading||busy}>{loading?'Đang tải…':'Làm mới'}</button></div>
+ return <section className="organization-reset-request-section">
+  <div className="panel-head reset-request-head"><div><h3>Yêu cầu Reset toàn bộ thiết bị</h3><p>Gửi yêu cầu để Superadmin xem xét. Không có dữ liệu nào bị xóa khi gửi yêu cầu.</p></div><button type="button" className="soft-btn" onClick={()=>void load()} disabled={loading||busy}>{loading?'Đang tải…':'Làm mới'}</button></div>
   {error&&<div className="auth-error">{error}</div>}
   {message&&<div className="cloud-message">{message}</div>}
   {openRequest&&<div className="auth-note"><b>Đang có yêu cầu Reset chờ xử lý.</b> Bạn chưa thể gửi yêu cầu mới cho đến khi Superadmin duyệt hoặc từ chối.</div>}
@@ -277,8 +277,8 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
    <label className="full-field" style={{display:'flex',alignItems:'flex-start',gap:8,fontSize:12,lineHeight:1.45}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Tôi hiểu Reset là thao tác không thể hoàn tác và xác nhận gửi yêu cầu để Superadmin xem xét.</span></label>
    <div className="modal-actions full-field"><button type="submit" className="danger-btn" disabled={busy||!confirmed}>{busy?'Đang gửi…':'Gửi yêu cầu Reset'}</button></div>
   </form>}
-  <h3 style={{fontSize:15,marginTop:16}}>Lịch sử yêu cầu Reset</h3>
-  {loading?<div className="auth-note">Đang tải lịch sử yêu cầu…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset.</div>:<div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Ngày gửi</th><th>Số thiết bị Cloud</th><th>Local đã đăng ký</th><th>Lý do / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+  <h3 className="reset-history-heading">Lịch sử yêu cầu Reset</h3>
+  {loading?<div className="auth-note">Đang tải lịch sử yêu cầu…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset.</div>:<div className="table-wrap table-standard-wrap reset-history-table-wrap"><table className="table-standard reset-history-table"><thead><tr><th>Ngày gửi</th><th>Cloud</th><th>Local</th><th>Lý do / phản hồi</th><th>Trạng thái</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
    <td>{dateTime(request.requested_at)}</td><td>{number(request.cloud_assets_at_request)}</td><td>{number(request.registered_devices_at_request)}</td>
    <td className="table-note-cell">{request.requester_note&&<small>Lý do: {request.requester_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{request.execution_error&&<small style={{color:'var(--danger,#b91c1c)'}}>Lỗi: {request.execution_error}</small>}{!request.requester_note&&!request.review_note&&!request.execution_error?'—':null}</td>
    <td><span className={'status '+resetStatusClass(request.status)}>{resetStatusLabel(request.status)}</span>{request.reset_generation!==undefined&&<small className="table-subtext">Generation {request.reset_generation}</small>}</td>

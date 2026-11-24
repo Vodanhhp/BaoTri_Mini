@@ -201,15 +201,19 @@ export default function InventoryPanel(props: Props) {
   if (!canView) return <section className="panel"><div className="panel-head"><div><h2>Kho vật tư</h2><p>Tài khoản chưa được cấp quyền inventory.view.</p></div></div></section>
 
   return <div className="inventory-workspace">
-    <section className="welcome inventory-welcome">
-      <div><div className="eyebrow">BAOTRI MINI · KHO VẬT TƯ</div><h2>Quản lý vật tư bảo trì</h2><p>Theo dõi nhập – xuất – tồn, lịch sử giao dịch và cảnh báo tồn tối thiểu.</p></div>
-      <div className="welcome-icon">▦</div>
+    <section className="inventory-page-heading">
+      <div>
+        <div className="eyebrow">BAOTRI MINI · KHO VẬT TƯ</div>
+        <h2>Kho vật tư</h2>
+        <p>Quản lý danh mục, nhập – xuất – kiểm kê và theo dõi tồn tối thiểu.</p>
+      </div>
+      <div className="inventory-storage-pill"><span aria-hidden="true">●</span> Lưu tại thiết bị Local <i>·</i> Cloud chưa bật</div>
     </section>
 
     <div className="stat-grid inventory-stats">
-      <div className="stat-card"><div><small>Danh mục vật tư</small><strong>{items.length}</strong><span>Vật tư đang theo dõi tại Local</span></div></div>
-      <div className="stat-card"><div><small>Sắp hết hàng</small><strong>{lowStockCount}</strong><span>Số tồn không vượt mức tối thiểu</span></div></div>
-      <div className="stat-card"><div><small>Giá trị tồn ước tính</small><strong>{moneyText(stockValue)}</strong><span>Tính theo đơn giá đang khai báo</span></div></div>
+      <div className="stat-card inventory-stat-card"><div><small>Tổng vật tư</small><strong>{items.length}</strong><span>Đang theo dõi</span></div></div>
+      <div className="stat-card inventory-stat-card"><div><small>Sắp hết hàng</small><strong>{lowStockCount}</strong><span>Đạt hoặc dưới mức tối thiểu</span></div></div>
+      <div className="stat-card inventory-stat-card"><div><small>Giá trị tồn ước tính</small><strong>{moneyText(stockValue)}</strong><span>Theo đơn giá đã khai báo</span></div></div>
     </div>
 
     {notice && <div className="auth-note inventory-notice">{notice}<button type="button" className="text-btn" onClick={()=>setNotice('')}>Đóng</button></div>}
@@ -217,7 +221,7 @@ export default function InventoryPanel(props: Props) {
 
     <section className="panel">
       <div className="panel-head">
-        <div><h2>Danh mục vật tư</h2><p>Thông tin vật tư và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p><small className="muted">Bản hiện tại lưu tại thiết bị Local; đồng bộ Cloud cho kho vật tư chưa được bật.</small></div>
+        <div><h2>Danh mục vật tư</h2><p>Thông tin và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p></div>
         <div className="top-actions">
           <button type="button" className={includeArchived?'soft-btn active':'soft-btn'} onClick={()=>setIncludeArchived(value=>!value)}>{includeArchived?'Ẩn vật tư lưu trữ':'Xem vật tư lưu trữ'}</button>
           {canCreate && <button type="button" className="primary-btn" onClick={openCreate}>+ Thêm vật tư</button>}
@@ -239,10 +243,16 @@ export default function InventoryPanel(props: Props) {
               <td>{numberText(item.minQuantity)} {item.unit}</td>
               <td>{item.location||'—'}</td>
               <td><span className={'status '+(item.archivedAt?'gray':item.quantity<=item.minQuantity?'red':'green')}>{item.archivedAt?'Đã lưu trữ':item.quantity<=item.minQuantity?'Sắp hết':'Đủ tồn'}</span></td>
-              <td className="actions">
-                {canAdjust&&!item.archivedAt&&<><button type="button" className="text-btn" onClick={()=>openMovement(item,'Nhập')}>Nhập</button><button type="button" className="text-btn" onClick={()=>openMovement(item,'Xuất')}>Xuất</button><button type="button" className="text-btn" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê</button></>}
-                {canUpdate&&!item.archivedAt&&<button type="button" className="text-btn" onClick={()=>openEdit(item)}>Sửa</button>}
-                {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="text-btn danger" onClick={()=>void archiveItem(item)}>Lưu trữ</button>}
+              <td className="inventory-actions-cell">
+                <details className="inventory-action-menu">
+                  <summary>Thao tác <span aria-hidden="true">⌄</span></summary>
+                  <div>
+                    {canAdjust&&!item.archivedAt&&<><button type="button" onClick={()=>openMovement(item,'Nhập')}>Nhập kho</button><button type="button" onClick={()=>openMovement(item,'Xuất')}>Xuất kho</button><button type="button" onClick={()=>openMovement(item,'Điều chỉnh')}>Kiểm kê / điều chỉnh</button></>}
+                    {canUpdate&&!item.archivedAt&&<button type="button" onClick={()=>openEdit(item)}>Sửa thông tin</button>}
+                    {canDelete&&isAdmin&&!item.archivedAt&&<button type="button" className="danger" onClick={()=>void archiveItem(item)}>Lưu trữ vật tư</button>}
+                    {item.archivedAt&&<span className="inventory-action-muted">Vật tư đã lưu trữ</span>}
+                  </div>
+                </details>
               </td>
             </tr>)}
             {visibleItems.length===0&&<tr><td colSpan={7}><div className="table-empty-state">Chưa có vật tư phù hợp. {canCreate?'Bạn có thể thêm vật tư mới.':''}</div></td></tr>}

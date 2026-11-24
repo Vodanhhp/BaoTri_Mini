@@ -1858,3 +1858,43 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Thêm `scripts/organizationMembersUi.test.mjs` để kiểm tra không tái xuất hiện cuộn lồng/giới hạn chiều cao và kích thước không đồng bộ.
 - Chỉ thay đổi trình bày; không thay đổi Edge Functions, Auth, quyền, dữ liệu thành viên hoặc Supabase.
 - Đang nằm trên PR #45, chưa merge và chưa deploy. Cần CI và kiểm tra trực quan sau khi cập nhật.
+
+
+## 24/11/2026 — Tinh chỉnh tổng thể giao diện Kho vật tư (nhánh review)
+
+- Nhánh: `feat/inventory-compact-layout`, tách từ `main` sau commit merge PR #45.
+- Thay phần banner lớn bằng tiêu đề trang gọn, mô tả ngắn và nhãn trạng thái lưu Local / Cloud chưa bật.
+- Thu gọn ba thẻ thống kê, đưa về cùng một hàng trên desktop và bố cục 2 + 1 trên mobile.
+- Tinh chỉnh khu vực Danh mục vật tư: giảm khoảng cách/padding, gom bộ lọc vào một dải nền nhẹ, làm rõ số lượng kết quả.
+- Gom các thao tác Nhập, Xuất, Kiểm kê/Điều chỉnh, Sửa và Lưu trữ vào menu theo từng dòng để bảng không bị dính chữ/nút.
+- Giữ các thẻ thao tác trên mobile; lịch sử giao dịch và nội dung nghiệp vụ không đổi.
+- Thêm `scripts/inventoryCompactUi.test.mjs` để khóa các hợp đồng giao diện mới.
+- Chỉ thay đổi React presentation/CSS/test và tài liệu tiến độ. Không đổi logic tồn kho, quyền, Local data, Cloud sync, Supabase, migrations hoặc Production.
+- Chưa merge/deploy; cần CI Build & Test và kiểm tra trực quan desktop/mobile. Chưa có xác nhận kiểm tra trên thiết bị thật.
+
+## 24/11/2026 — Rà soát giao diện Kho vật tư và Quản trị thành viên (nhánh review)
+- Nhánh feat/full-ui-polish-inventory-members kế thừa phần tinh chỉnh Kho vật tư ở PR #46; không ghi trực tiếp lên main.
+- Quản trị thành viên: loại bỏ chuỗi backslash-n bị chèn giữa tiêu đề danh sách và vùng danh sách; gom thao tác từng thành viên vào menu để tránh dồn nút; điều chỉnh bố cục PC/tablet/mobile.
+- Giữ nguyên giới hạn nền tảng PC của màn hình quản trị thành viên; không đổi endpoint, Auth, quyền, dữ liệu hoặc quy tắc bảo vệ Admin/tài khoản đang đăng nhập.
+- Kho vật tư: kế thừa tiêu đề gọn, thẻ thống kê, bộ lọc và menu thao tác theo PR #46; giữ nguyên nghiệp vụ nhập/xuất/điều chỉnh, lịch sử append-only, nhóm vật tư và Local-first.
+- Bổ sung regression tests cho markup danh sách thành viên và menu thao tác responsive.
+- Chỉ thay đổi giao diện, CSS, test và tài liệu. Không thay đổi Supabase, migrations, Edge Functions, dữ liệu Local/Cloud hoặc Production.
+- Chưa merge/deploy; cần CI và kiểm tra trực quan ở PC/tablet/mobile. Chưa có browser/device visual test trong phiên này.
+
+
+### 24/11/2026 — Thu gọn danh sách quản trị thành viên (PR #46)
+- Thu hẹp cột danh tính, vai trò/trạng thái và cột thao tác; giảm chiều cao từng dòng, padding và khoảng cách.
+- Avatar, tên/email/ngày tham gia và nhãn vai trò/trạng thái giảm nhẹ kích thước nhưng vẫn giữ đủ thông tin.
+- Nút thao tác chuyển thành nút biểu tượng ba chấm nhỏ, có nhãn hỗ trợ truy cập; các lựa chọn vẫn nằm trong menu, không đổi chức năng.
+- Màn hình hẹp tiếp tục xếp thông tin theo hai hàng; menu thao tác vẫn mở được mà không làm tràn dòng.
+- Bổ sung regression test cho tỷ lệ cột, nút ba chấm và bố cục mobile.
+- Chỉ thay đổi CSS/test/tài liệu; không đổi logic, Auth, phân quyền, dữ liệu, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.
+
+
+### 24/11/2026 — Thu gọn giao diện Thuê bao doanh nghiệp (PR #46)
+- Thu gọn modal Gói dịch vụ: giảm chiều rộng tối đa, padding, khoảng cách giữa các khối và chiều cao vùng nhập ghi chú.
+- Thu gọn khu vực yêu cầu Reset: giảm khoảng cách đầu mục, tiêu đề và phần mô tả; giữ nguyên cảnh báo, checkbox xác nhận và nút gửi.
+- Hai bảng Lịch sử yêu cầu Plan và Lịch sử yêu cầu Reset chuyển sang bố cục fixed theo chiều rộng modal, giảm padding ô và cỡ chữ phụ; bỏ min-width lớn gây cuộn ngang không cần thiết.
+- Bảng Reset ưu tiên cột Lý do/phản hồi; cột số Cloud/Local căn giữa và gọn hơn. Màn hình nhỏ vẫn giữ đủ cột trong vùng hiển thị.
+- Bổ sung regression tests cho CSS bố cục và xác nhận các hành động submit/cảnh báo vẫn hiện diện.
+- Chỉ thay đổi React markup class, CSS, test và tài liệu; không thay đổi API, luồng duyệt Plan/Reset, dữ liệu, Auth, quyền, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.

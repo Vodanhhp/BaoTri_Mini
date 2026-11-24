@@ -2272,3 +2272,292 @@ html,body,#root,.app-shell{
     padding:8px 9px;
   }
 }
+
+
+/* 2026-11-24: compact, task-first inventory workspace */
+#root .app-shell .inventory-workspace{
+  gap:12px;
+}
+#root .app-shell .inventory-page-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:2px 2px 4px;min-width:0;
+}
+#root .app-shell .inventory-page-heading>div:first-child{min-width:0}
+#root .app-shell .inventory-page-heading .eyebrow{
+  padding:0 0 4px;color:var(--muted);font-size:10px;letter-spacing:1.1px;
+}
+#root .app-shell .inventory-page-heading h2{
+  margin:0;font-size:21px;line-height:1.25;font-weight:750;color:var(--text);
+}
+#root .app-shell .inventory-page-heading p{
+  margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.45;
+}
+#root .app-shell .inventory-storage-pill{
+  display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;
+  border:1px solid var(--border);border-radius:999px;background:var(--panel);
+  color:var(--muted);padding:7px 11px;font-size:11px;white-space:nowrap;
+}
+#root .app-shell .inventory-storage-pill span{font-size:8px;color:var(--success-text)}
+#root .app-shell .inventory-storage-pill i{font-style:normal;color:var(--border)}
+#root .app-shell .inventory-stats{
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0;
+}
+#root .app-shell .inventory-stat-card{
+  min-height:76px;padding:11px 14px;box-shadow:none;
+  border-radius:10px;align-items:center;
+}
+#root .app-shell .inventory-stat-card>div{min-width:0}
+#root .app-shell .inventory-stat-card small{
+  font-size:11px!important;font-weight:600;color:var(--muted);
+}
+#root .app-shell .inventory-stat-card strong{
+  margin:2px 0 0;font-size:21px;line-height:1.25;letter-spacing:-.3px;
+}
+#root .app-shell .inventory-stat-card span{
+  margin-top:2px;font-size:10px!important;color:var(--muted);
+}
+#root .app-shell .inventory-workspace>.panel{
+  padding:16px 18px;border-radius:11px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head{
+  align-items:center;margin-bottom:12px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head h2{
+  margin:0 0 3px;font-size:15px;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head p{
+  font-size:11px;line-height:1.45;
+}
+#root .app-shell .inventory-workspace>.panel>.panel-head .top-actions{
+  gap:7px;flex:0 0 auto;
+}
+#root .app-shell .inventory-filters{
+  grid-template-columns:minmax(220px,1.8fr) minmax(150px,.8fr) minmax(145px,.75fr);
+  gap:9px;margin:0 0 9px;padding:10px;
+  border:1px solid var(--border);border-radius:9px;background:var(--panel-alt);
+}
+#root .app-shell .inventory-filters .searchbar{
+  height:40px;min-height:40px;margin:0;background:var(--panel);
+}
+#root .app-shell .inventory-filters .field{gap:4px;font-size:10px}
+#root .app-shell .inventory-filters .field select{
+  height:40px;min-height:40px;background:var(--panel);
+}
+#root .app-shell .inventory-workspace .asset-result-count{
+  margin:0 0 8px;color:var(--muted);font-size:10px;line-height:1.4;
+}
+#root .app-shell .inventory-desktop-table{
+  border:1px solid var(--border);border-radius:9px;
+}
+#root .app-shell .inventory-desktop-table table{
+  table-layout:fixed;white-space:normal;
+}
+#root .app-shell .inventory-desktop-table th{
+  padding:9px 10px;font-size:10px;
+}
+#root .app-shell .inventory-desktop-table td{
+  padding:9px 10px;font-size:11px;vertical-align:middle;overflow-wrap:anywhere;
+}
+#root .app-shell .inventory-desktop-table th:nth-child(1){width:23%}
+#root .app-shell .inventory-desktop-table th:nth-child(2){width:15%}
+#root .app-shell .inventory-desktop-table th:nth-child(3){width:11%}
+#root .app-shell .inventory-desktop-table th:nth-child(4){width:12%}
+#root .app-shell .inventory-desktop-table th:nth-child(5){width:10%}
+#root .app-shell .inventory-desktop-table th:nth-child(6){width:12%}
+#root .app-shell .inventory-desktop-table th:nth-child(7){width:17%}
+#root .app-shell .inventory-desktop-table .inventory-name-link{gap:2px}
+#root .app-shell .inventory-desktop-table .inventory-name-link b{font-size:11px}
+#root .app-shell .inventory-desktop-table .inventory-name-link small{font-size:11px;line-height:1.35}
+#root .app-shell .inventory-actions-cell{overflow:visible}
+#root .app-shell .inventory-action-menu{position:relative;display:inline-block}
+#root .app-shell .inventory-action-menu summary{
+  display:inline-flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
+  height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;
+  background:var(--panel);color:var(--text);font-size:11px;font-weight:650;
+  white-space:nowrap;
+}
+#root .app-shell .inventory-action-menu summary::-webkit-details-marker{display:none}
+#root .app-shell .inventory-action-menu summary span{color:var(--muted);font-size:12px}
+#root .app-shell .inventory-action-menu>div{
+  position:absolute;right:0;top:calc(100% + 5px);z-index:12;min-width:174px;
+  display:grid;gap:2px;padding:5px;border:1px solid var(--border);
+  border-radius:9px;background:var(--panel);box-shadow:0 10px 28px #142e271f;
+}
+#root .app-shell .inventory-action-menu>div button{
+  min-height:34px;padding:6px 9px;border:0;border-radius:6px;background:transparent;
+  color:var(--text);text-align:left;font-size:11px;font-weight:550;cursor:pointer;
+}
+#root .app-shell .inventory-action-menu>div button:hover{background:var(--panel-alt)}
+#root .app-shell .inventory-action-menu>div button.danger{color:var(--danger-text)}
+#root .app-shell .inventory-action-muted{padding:8px;color:var(--muted);font-size:11px}
+#root .app-shell .inventory-workspace>.panel:last-of-type{margin-top:0}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table table{min-width:850px}
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table th,
+#root .app-shell .inventory-workspace>.panel:last-of-type .inventory-desktop-table td{padding:8px 9px}
+@media(max-width:900px){
+  #root .app-shell .inventory-page-heading{align-items:flex-start;flex-direction:column;gap:8px}
+  #root .app-shell .inventory-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #root .app-shell .inventory-filters .searchbar{grid-column:1/-1}
+}
+@media(max-width:680px){
+  #root .app-shell .inventory-workspace{gap:10px}
+  #root .app-shell .inventory-page-heading{gap:7px;padding:0}
+  #root .app-shell .inventory-page-heading h2{font-size:19px}
+  #root .app-shell .inventory-page-heading p{font-size:11px}
+  #root .app-shell .inventory-storage-pill{padding:6px 9px;font-size:10px;white-space:normal}
+  #root .app-shell .inventory-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  #root .app-shell .inventory-stat-card{min-height:68px;padding:9px 10px}
+  #root .app-shell .inventory-stat-card:nth-child(3){grid-column:1/-1}
+  #root .app-shell .inventory-stat-card strong{font-size:19px}
+  #root .app-shell .inventory-workspace>.panel{padding:12px}
+  #root .app-shell .inventory-workspace>.panel>.panel-head{display:flex;align-items:flex-start;flex-direction:column;gap:9px;margin-bottom:10px}
+  #root .app-shell .inventory-workspace>.panel>.panel-head .top-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  #root .app-shell .inventory-workspace>.panel>.panel-head .top-actions button{width:100%;height:40px;min-height:40px;font-size:11px!important}
+  #root .app-shell .inventory-filters{grid-template-columns:minmax(0,1fr);gap:7px;padding:8px}
+  #root .app-shell .inventory-filters .searchbar{grid-column:auto}
+  #root .app-shell .inventory-filters .field select{height:40px;min-height:40px;font-size:16px}
+  #root .app-shell .inventory-mobile-list{gap:8px}
+  #root .app-shell .inventory-mobile-card{padding:10px;border-radius:9px}
+  #root .app-shell .inventory-mobile-quantities>div{padding:8px}
+  #root .app-shell .inventory-mobile-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  #root .app-shell .inventory-mobile-actions .soft-btn{height:38px;min-height:38px}
+}
+
+/* 24/11/2026 — member list action menu and tighter responsive hierarchy */
+#root .member-management-modal .member-list-heading{padding:2px 2px 7px;border-bottom:1px solid var(--border)}
+#root .member-management-modal .member-row{min-height:76px;grid-template-columns:minmax(0,1.15fr) minmax(165px,.8fr) minmax(104px,.35fr);gap:12px}
+#root .member-management-modal .member-identity{display:flex;align-items:center;gap:10px;min-width:0}
+#root .member-management-modal .member-identity>div{display:grid;gap:2px;min-width:0}
+#root .member-management-modal .member-identity b,#root .member-management-modal .member-identity small{overflow-wrap:anywhere}
+#root .member-management-modal .member-meta{display:flex;align-items:flex-start;flex-direction:column;gap:5px}
+#root .member-management-modal .member-actions{display:flex;justify-content:flex-end;align-items:center}
+#root .member-management-modal .member-action-menu{position:relative;display:inline-block}
+#root .member-management-modal .member-action-menu summary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text);font-size:11px;font-weight:650;cursor:pointer;list-style:none;white-space:nowrap}
+#root .member-management-modal .member-action-menu summary::-webkit-details-marker{display:none}
+#root .member-management-modal .member-action-menu[open] summary{border-color:var(--primary);background:var(--panel-alt)}
+#root .member-management-modal .member-action-menu-list{position:absolute;right:0;top:calc(100% + 5px);z-index:30;display:grid;gap:3px;min-width:190px;padding:6px;border:1px solid var(--border);border-radius:9px;background:var(--panel);box-shadow:0 12px 28px #142e2724}
+#root .member-management-modal .member-action-menu-list button{min-height:36px;height:auto;justify-content:flex-start;padding:7px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font-size:11px!important;text-align:left;white-space:normal}
+#root .member-management-modal .member-action-menu-list button:hover{background:var(--panel-alt)}
+#root .member-management-modal .member-action-menu-list button:disabled{opacity:.45;cursor:not-allowed}
+#root .member-management-modal .member-action-menu-list button.warning{color:var(--warning-text,var(--text))}
+#root .member-management-modal .member-action-menu-list button.danger{color:var(--danger-text)}
+#root .member-management-modal .member-invite-section{border-top:1px solid var(--border)}
+#root .member-management-modal .member-invite-section .member-section-title b{display:flex;align-items:center;gap:7px;font-size:13px}
+#root .member-management-modal .member-invite-section .member-section-title small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+#root .member-management-modal .member-note{border-radius:8px}
+#root .member-management-modal .member-empty{padding:24px 14px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:900px){
+ #root .member-management-modal .member-row{grid-template-columns:minmax(0,1fr) minmax(130px,.75fr) minmax(90px,.3fr);gap:9px}
+}
+@media(max-width:680px){
+ #root .member-management-modal .member-row{grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;padding:11px}
+ #root .member-management-modal .member-identity{grid-column:1;grid-row:1}
+ #root .member-management-modal .member-actions{grid-column:2;grid-row:1;align-self:start}
+ #root .member-management-modal .member-meta{grid-column:1/-1;grid-row:2;flex-direction:row;align-items:center;flex-wrap:wrap;gap:7px}
+ #root .member-management-modal .member-action-menu-list{right:0;left:auto;min-width:184px}
+ #root .member-management-modal .member-toolbar .soft-btn{white-space:nowrap}
+}
+
+
+/* 24/11/2026 — compact member rows and low-footprint action trigger */
+#root .member-management-modal .member-row{
+  min-height:64px;
+  grid-template-columns:minmax(0,1.15fr) minmax(135px,.8fr) 38px;
+  gap:8px;
+  padding:8px 10px;
+}
+#root .member-management-modal .member-identity{gap:7px}
+#root .member-management-modal .member-avatar{width:29px;height:29px;flex-basis:29px}
+#root .member-management-modal .member-identity b{font-size:11px;line-height:1.3}
+#root .member-management-modal .member-identity small,
+#root .member-management-modal .member-confirm{font-size:9px;line-height:1.3}
+#root .member-management-modal .member-meta{gap:3px}
+#root .member-management-modal .member-role{font-size:10px}
+#root .member-management-modal .member-meta .status{font-size:9px;padding:3px 6px}
+#root .member-management-modal .member-actions{justify-content:flex-end}
+#root .member-management-modal .member-action-menu summary{
+  width:32px;min-width:32px;height:30px;min-height:30px;padding:0;gap:0;border-radius:7px;
+}
+#root .member-management-modal .member-action-menu summary span{display:none}
+#root .member-management-modal .member-action-menu summary svg{width:16px;height:16px}
+#root .member-management-modal .member-action-menu-list{min-width:174px;padding:5px;gap:2px}
+#root .member-management-modal .member-action-menu-list button{min-height:31px;padding:5px 8px;font-size:10px!important}
+@media(max-width:900px){
+  #root .member-management-modal .member-row{grid-template-columns:minmax(0,1fr) minmax(120px,.8fr) 36px;gap:7px}
+}
+@media(max-width:680px){
+  #root .member-management-modal .member-row{grid-template-columns:minmax(0,1fr) 34px;gap:6px;padding:8px}
+  #root .member-management-modal .member-meta{grid-column:1/-1;grid-row:2;gap:6px}
+  #root .member-management-modal .member-actions{grid-column:2;grid-row:1}
+  #root .member-management-modal .member-action-menu summary{width:30px;min-width:30px;height:29px;min-height:29px}
+}
+
+
+/* 24/11/2026 — compact organization subscription and request history */
+#root .plan-request-modal{
+  width:min(940px,96vw)!important;
+  max-width:940px!important;
+  padding:16px!important;
+  gap:10px;
+}
+#root .plan-request-modal .modal-head{padding-bottom:8px;margin-bottom:0}
+#root .plan-request-modal .modal-head h2{font-size:18px}
+#root .plan-request-modal .modal-head p{font-size:11px;margin-top:3px}
+#root .plan-request-modal .platform-plan-summary{padding:10px 12px;margin-bottom:8px!important}
+#root .plan-request-modal .form-grid{gap:9px}
+#root .plan-request-modal .field{gap:5px}
+#root .plan-request-modal .field textarea{min-height:64px}
+#root .plan-request-modal .auth-note{padding:9px 11px;font-size:10px;line-height:1.45}
+#root .plan-request-modal .modal-actions{gap:7px;margin-top:2px}
+#root .plan-request-modal .plan-section-divider{margin:7px 0!important}
+#root .plan-request-modal .plan-history-heading,
+#root .plan-request-modal .reset-history-heading{font-size:13px;margin:3px 0 6px}
+#root .plan-request-modal .organization-reset-request-section{
+  margin-top:8px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb)
+}
+#root .plan-request-modal .reset-request-head{margin-bottom:8px;gap:8px}
+#root .plan-request-modal .reset-request-head h3{font-size:13px;margin:0 0 3px}
+#root .plan-request-modal .reset-request-head p{font-size:10px;line-height:1.4}
+#root .plan-request-modal .plan-history-table-wrap,
+#root .plan-request-modal .reset-history-table-wrap{
+  max-height:none;width:100%;overflow-x:auto;border-radius:8px
+}
+#root .plan-request-modal .plan-history-table,
+#root .plan-request-modal .reset-history-table{
+  width:100%!important;min-width:0!important;table-layout:fixed!important;font-size:10px
+}
+#root .plan-request-modal .plan-history-table th,
+#root .plan-request-modal .reset-history-table th{
+  padding:7px 8px;font-size:9px;white-space:normal
+}
+#root .plan-request-modal .plan-history-table td,
+#root .plan-request-modal .reset-history-table td{
+  padding:7px 8px;font-size:10px;vertical-align:top;white-space:normal;overflow-wrap:anywhere
+}
+#root .plan-request-modal .plan-history-table th:nth-child(1),
+#root .plan-request-modal .plan-history-table td:nth-child(1){width:27%}
+#root .plan-request-modal .plan-history-table th:nth-child(2),
+#root .plan-request-modal .plan-history-table td:nth-child(2){width:18%}
+#root .plan-request-modal .plan-history-table th:nth-child(3),
+#root .plan-request-modal .plan-history-table td:nth-child(3){width:37%}
+#root .plan-request-modal .plan-history-table th:nth-child(4),
+#root .plan-request-modal .plan-history-table td:nth-child(4){width:18%}
+#root .plan-request-modal .reset-history-table th:nth-child(1),
+#root .plan-request-modal .reset-history-table td:nth-child(1){width:18%}
+#root .plan-request-modal .reset-history-table th:nth-child(2),
+#root .plan-request-modal .reset-history-table td:nth-child(2),
+#root .plan-request-modal .reset-history-table th:nth-child(3),
+#root .plan-request-modal .reset-history-table td:nth-child(3){width:10%;text-align:center}
+#root .plan-request-modal .reset-history-table th:nth-child(4),
+#root .plan-request-modal .reset-history-table td:nth-child(4){width:44%}
+#root .plan-request-modal .reset-history-table th:nth-child(5),
+#root .plan-request-modal .reset-history-table td:nth-child(5){width:18%}
+#root .plan-request-modal .table-note-cell small{margin:1px 0;font-size:9px;line-height:1.35}
+@media(max-width:680px){
+  #root .plan-request-modal{padding:12px!important;gap:8px}
+  #root .plan-request-modal .plan-history-table th,
+  #root .plan-request-modal .reset-history-table th,
+  #root .plan-request-modal .plan-history-table td,
+  #root .plan-request-modal .reset-history-table td{padding:6px 5px;font-size:9px}
+  #root .plan-request-modal .reset-history-table{min-width:0!important}
+}
