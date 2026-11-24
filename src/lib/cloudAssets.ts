@@ -422,11 +422,19 @@ async function recoverCommittedImportWithChangedLocalSnapshot(
   if(!current||current.localScope!==organizationId||current.code!==attempted.code||current.deletedAt)return false
   if(current.updatedAt===attempted.updatedAt)return false
 
-  const cloudRows=await listCloudAssets(client,organizationId)
-  const cloud=cloudRows.find(row=>row.code===attempted.code&&row.id===attempted.id)
-  if(!cloud)return false
+  // The public Cloud list intentionally hides internal UUIDs. Verify the
+  // immutable import receipt through a narrowly scoped RPC before linking by code.
+  await ensureOrganizationAssetResetApplied(client,organizationId)
+  const {data:verificationData,error:verificationError}=await client.rpc('verify_cloud_asset_import_receipt',{
+    p_organization_id:organizationId,p_asset_id:attempted.id,p_mutation_id:attempted.id
+  })
+  if(verificationError)throw new Error('Chưa xác minh được biên nhận import Cloud: '+verificationError.message)
+  const verification=verificationData as {verified?:boolean;asset?:Record<string,unknown>|null}|null
+  if(verification?.verified!==true||!verification.asset)return false
+  if(verification.asset.asset_key!==attempted.code||verification.asset.code!==attempted.code)return false
+  const cloud=cloudAssetFromRow(verification.asset)
 
-  // The user may have edited or reset the Local row while the Cloud read ran.
+  // The user may have edited or reset the Local row while receipt verification ran.
   await ensureOrganizationAssetResetApplied(client,organizationId)
   const at=now()
   const samePayload=JSON.stringify(toImportPayload(current))===JSON.stringify(toImportPayload(cloud))
