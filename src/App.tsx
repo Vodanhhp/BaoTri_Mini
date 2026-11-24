@@ -675,7 +675,7 @@ export default function App() {
           return
         }
         setError(persistedAsset?.idReservationStatus==='confirmed'||currentEditing.idReservationStatus==='confirmed'
-          ?'Số thứ tự đã được Cloud xác nhận. Có thể sửa riêng ngày đưa vào sử dụng; không được thay đổi tên/loại/nhóm/mã cơ sở hoặc thông tin cấu thành mã đã cấp.'
+          ?'Số thứ tự đã được Cloud xác nhận và không thể giải phóng hoặc tái sử dụng. Có thể sửa riêng ngày đưa vào sử dụng; không được thay đổi tên/loại/nhóm/mã cơ sở hoặc thông tin cấu thành mã đã cấp.'
           :'Thiết bị đã được lưu tại Local nhưng số thứ tự chưa xác nhận hoàn tất. Hãy lưu lại để thử xác nhận; chưa thể sửa thông tin cấu thành mã.')
         return
       }
