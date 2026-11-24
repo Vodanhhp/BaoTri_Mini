@@ -17,14 +17,11 @@ Deno.serve(async(req)=>{
   const token=req.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
-  const publicKey=Deno.env.get('SUPABASE_ANON_KEY')||Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
+  const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const ownerEmail=Deno.env.get('PLATFORM_OWNER_EMAIL')?.trim().toLowerCase()
-  if(!url||!publicKey||!ownerEmail)return response({error:'Server configuration missing'},500,origin)
-  const authClient=createClient(url,publicKey,{
-   global:{headers:{Authorization:`Bearer ${token}`}},
-   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
-  })
-  const {data:auth,error:authError}=await authClient.auth.getUser(token)
+  if(!url||!serviceKey||!ownerEmail)return response({error:'Server configuration missing'},500,origin)
+  const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})
+  const {data:auth,error:authError}=await admin.auth.getUser(token)
   if(authError||!auth.user||!auth.user.email_confirmed_at)return response({allowed:false},200,origin)
   return response({allowed:auth.user.email?.trim().toLowerCase()===ownerEmail},200,origin)
  }catch(error){
