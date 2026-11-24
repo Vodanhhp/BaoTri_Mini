@@ -2130,3 +2130,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Tem QR và phiếu chi tiết thiết bị là hai biểu mẫu khác nhau nhưng phải thống nhất về nhận diện, độ rõ ràng và tính gọn gàng.
 - Mọi thay đổi giao diện in cần có regression test tương ứng; không coi test mã nguồn là bằng chứng đã kiểm tra bản in thực tế.
 - Sau thay đổi, ghi rõ trạng thái CI/build/deploy. Chỉ xác nhận hình thức in đạt sau khi có kiểm tra trực quan bằng trình duyệt hoặc bản in/lưu PDF; không mặc định đã kiểm tra máy in vật lý.
+
+
+### Gọn thao tác danh sách thiết bị — bỏ nút Lưu kho trùng chức năng — 24/11/2026
+
+- Bỏ nút **Lưu kho** riêng ở cột Thao tác của danh sách Quản lý thiết bị. Việc chuyển thiết bị sang trạng thái **Lưu kho** được thực hiện thống nhất trong Hồ sơ thiết bị / Cập nhật thiết bị qua thanh chọn trạng thái đã có.
+- Giữ nguyên thao tác **Sửa**, **Xóa mềm** và **Khôi phục** trong danh sách Lưu kho; không thay đổi quyền Admin/KTV, lịch sử thiết bị, trường trạng thái, dữ liệu Local/Cloud hay logic đồng bộ.
+- Gỡ hàm xử lý lưu kho trực tiếp chỉ phục vụ nút đã bỏ; luồng cập nhật trạng thái trong hồ sơ và form cập nhật vẫn giữ nguyên, bao gồm ghi nhận trạng thái/lịch sử theo cơ chế hiện hành.
+- Bổ sung regression test xác nhận danh sách không còn nút Lưu kho riêng và bộ chọn trạng thái trong hồ sơ/form vẫn tồn tại.
+- Thay đổi nằm trên nhánh `ui/remove-duplicate-archive-action`; cần CI/build kiểm tra trước khi merge. Chưa kiểm tra trực quan trên trình duyệt.

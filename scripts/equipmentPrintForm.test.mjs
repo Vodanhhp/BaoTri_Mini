@@ -37,10 +37,19 @@ test('equipment print follows the inventory A4 portrait and multipage table conv
 })
 
 test('equipment QR sticker keeps the QR and prints only the device ID and name to its right', () => {
-  assert.match(app, /className="asset-sticker-info"/)
-  assert.match(app, /<strong>\\{detailAsset\\.code\\}<\\/strong>/)
-  assert.match(app, /<strong>\\{displayAssetName\\(detailAsset\\)\\}<\\/strong>/)
-  assert.doesNotMatch(app, /<small>(?:MÃ ID|TÊN THIẾT BỊ)<\\/small>/)
-  assert.match(css, /\\.asset-sticker-info\\s*\\{[^}]*width:27mm/s)
-  assert.match(css, /\\.asset-sticker-info strong\\s*\\{[^}]*overflow-wrap:anywhere/s)
+  assert.ok(app.includes('className="asset-sticker-info"'))
+  assert.ok(app.includes('<strong>{detailAsset.code}</strong>'))
+  assert.ok(app.includes('<strong>{displayAssetName(detailAsset)}</strong>'))
+  assert.ok(!app.includes('<small>MÃ ID</small>'))
+  assert.ok(!app.includes('<small>TÊN THIẾT BỊ</small>'))
+  assert.ok(css.includes('.asset-sticker-info{width:27mm'))
+  assert.ok(css.includes('.asset-sticker-info strong{') && css.includes('overflow-wrap:anywhere'))
+})
+
+test('equipment list does not show a duplicate archive action; status remains managed in the equipment detail/editor', () => {
+  assert.ok(!app.includes('onClick={()=>void archiveAsset(asset)}'))
+  assert.ok(!app.includes('const archiveAsset = async (asset: Asset) =>'))
+  assert.ok(app.includes('Thay đổi trạng thái'))
+  assert.ok(app.includes("value={editing.archivedAt?'Lưu kho':editing.status}"))
+  assert.ok(app.includes('const restoreAsset = async (asset: Asset) =>'))
 })
