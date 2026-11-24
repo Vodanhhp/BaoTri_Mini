@@ -14,7 +14,7 @@ Deno.serve(async(req)=>{
  try{
   const ownerEmail=platformOwnerEmail()
   if(!ownerEmail)return response({error:'Server configuration missing'},500,origin)
-  const token=req.headers.get('Authorization')?.match(/^Bearer\\s+(.+)$/i)?.[1]?.trim()
+  const token=req.headers.get('Authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim()
   if(!token)return response({error:'Missing access token'},401,origin)
   const url=Deno.env.get('SUPABASE_URL')
   const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
