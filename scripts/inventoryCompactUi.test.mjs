@@ -78,3 +78,20 @@ test('inventory catalog prioritizes material name and shows code as secondary te
   assert.match(css, /inventory-mobile-card-head \.inventory-name-link b\{font-size:13px/)
   assert.match(css, /inventory-mobile-card-head \.inventory-name-link small\{font-size:10px/)
 })
+
+
+test('inventory action menu and mobile actions expose a printable A4 material sheet with complete movement history', () => {
+  assert.match(panel, /setPrintItem\(item\)/)
+  assert.match(panel, /PHIẾU THÔNG TIN VẬT TƯ/)
+  assert.match(panel, /printItem\.partNumber/)
+  assert.match(panel, /printItem\.size/)
+  assert.match(panel, /printItem\.supplier/)
+  assert.match(panel, /printItem\.archivedAt/)
+  assert.match(panel, /movement\.balanceBefore/)
+  assert.match(panel, /movement\.balanceAfter/)
+  assert.match(panel, /movement\.performedBy/)
+  assert.match(panel, /Kiểm kê \/ điều chỉnh/)
+  assert.match(css, /@page\{size:A4 portrait/)
+  assert.match(css, /inventory-print-history thead\{display:table-header-group\}/)
+  assert.match(css, /inventory-print-history tr\{break-inside:avoid/)
+})
