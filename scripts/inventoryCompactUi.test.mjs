@@ -51,3 +51,17 @@ test('inventory catalog table has explicit column proportions and isolated menu 
   assert.match(css, /\.inventory-catalog-panel > \.inventory-catalog-wrap:has\(\.inventory-action-menu\[open\]\)/)
   assert.doesNotMatch(css, /\.inventory-workspace > \.panel:has\(\.inventory-desktop-table\)/)
 })
+
+
+test('inventory movement history uses compact fixed columns instead of the wide table minimum', () => {
+  assert.match(panel, /inventory-history-wrap/)
+  assert.match(panel, /inventory-history-table/)
+  assert.match(panel, /history-date[\s\S]*history-user/)
+  assert.match(css, /\.inventory-history-table\{[\s\S]*?min-width:0!important;[\s\S]*?table-layout:fixed/)
+  assert.match(css, /\.inventory-history-table \.history-reason\{width:17%\}/)
+  assert.match(css, /\.inventory-history-table :is\(th,td\)[\s\S]*?padding:7px 8px/)
+})
+
+test('mobile hamburger toggle is hidden on desktop despite generic icon button styles', () => {
+  assert.match(css, /@media\(min-width:681px\)[\s\S]*?\.topbar>\.mobile-menu-toggle\{display:none!important\}/)
+})
