@@ -2011,3 +2011,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung migration hardening `20261124130401_inventory_cloud_sync_hardening.sql` (đã áp dụng trực tiếp, version `20261124130401`): khóa mã vật tư khi sửa metadata, kiểm tra số kiểm kê khớp tồn sau điều chỉnh, và thu hồi quyền gọi trực tiếp helper ghi change-feed.
 
 - Kiểm tra tĩnh hợp đồng mã nguồn/migration: 8/8 điều kiện đạt. GitHub Actions chưa trả workflow run/status cho head commit; do đó chưa xác nhận `npm test` hoặc `npm run build` đã chạy. Không có kiểm thử RPC bằng JWT, browser hoặc thiết bị thật trong bước này.
+
+## Cập nhật sau merge đồng bộ Kho vật tư Local ↔ Cloud — 24/11/2026
+
+- PR #50 `feat: sync inventory Local ↔ Cloud ↔ Local` đã merge vào `main` bằng commit `78ea37777b133a1396a8ff370a2fc0e9d44742af`.
+- Trước merge, đã sửa hai regression test cũ: cập nhật kỳ vọng feature flag sang `true`, bổ sung hai migration kho vật tư vào danh sách migration đã áp dụng.
+- CI trên head cuối của PR: Unit tests 166/166 đạt; `npm run build` thành công; workflow Validate BAOTRI Mini thành công.
+- Sau merge, workflow Build and test thành công; GitHub Pages build xác minh Supabase client configuration và CNAME thành công; job Deploy to GitHub Pages thành công (run `45400460174`).
+- Đồng bộ vật tư đã được đưa lên frontend tại `https://baotri.vieclamhp247.com/`. Đây là triển khai bản phát triển; chưa xác nhận luồng đồng bộ thực tế bằng JWT người dùng hoặc hai trình duyệt/thiết bị.
+- Chưa thay đổi dữ liệu kho Local hiện có; các bảng Cloud mới được tạo đang rỗng tại thời điểm kiểm tra migration. Tiếp theo cần kiểm thử tạo vật tư trên máy A, nhận trên máy B, nhập/xuất/điều chỉnh, lưu trữ, offline/retry và xử lý xung đột.
