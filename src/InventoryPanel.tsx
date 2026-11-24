@@ -181,7 +181,7 @@ export default function InventoryPanel(props: Props) {
 
     <section className="panel">
       <div className="panel-head">
-        <div><h2>Danh mục vật tư</h2><p>Thông tin vật tư và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p></div>
+        <div><h2>Danh mục vật tư</h2><p>Thông tin vật tư và số lượng tồn hiện tại. Số tồn chỉ thay đổi qua giao dịch kho.</p><small className="muted">Bản hiện tại lưu tại thiết bị Local; đồng bộ Cloud cho kho vật tư chưa được bật.</small></div>
         <div className="top-actions">
           <button type="button" className={includeArchived?'soft-btn active':'soft-btn'} onClick={()=>setIncludeArchived(value=>!value)}>{includeArchived?'Ẩn vật tư lưu trữ':'Xem vật tư lưu trữ'}</button>
           {canCreate && <button type="button" className="primary-btn" onClick={openCreate}>+ Thêm vật tư</button>}
