@@ -183,9 +183,9 @@ test('Superadmin must provide a non-empty rejection reason in UI, Edge Function 
 
 test('approved reset completely deletes Cloud inventory catalog, movements, mutation receipts and sync events', async () => {
  const sql = await read('../supabase/migrations/20261124170000_reset_equipment_and_inventory.sql')
- assert.match(sql,/delete from public\\.inventory_movements[\\s\\S]*?delete from public\\.inventory_items/)
- assert.match(sql,/delete from private\\.inventory_mutation_receipts/)
- assert.match(sql,/delete from private\\.inventory_sync_events/)
+ assert.match(sql,/delete from public\.inventory_movements[\s\S]*?delete from public\.inventory_items/)
+ assert.match(sql,/delete from private\.inventory_mutation_receipts/)
+ assert.match(sql,/delete from private\.inventory_sync_events/)
  assert.match(sql,/inventory_items_deleted/)
  assert.match(sql,/inventory_movements_deleted/)
  assert.match(sql,/inventory_mutation_receipts_deleted/)
@@ -199,20 +199,20 @@ test('approved reset completely deletes Cloud inventory catalog, movements, muta
 test('Local approved reset atomically removes every organization-scoped inventory store and cursor', async () => {
  const source = await read('../src/lib/assetReset.ts')
  for (const store of ['inventoryGroups','inventoryItems','inventoryMovements','inventoryMutations','inventoryCloudLinks','inventorySyncCursors']) {
-  assert.match(source,new RegExp('db\\\\.'+store+'\\\\.where\\\\(\\\\'organizationId\\\\'\\\\)\\\\.equals\\\\(organizationId\\\\)\\\\.delete\\\\(\\\\)'))
+  assert.match(source,new RegExp('db\\.'+store+'\\.where\\(\\'organizationId\\'\\)\\.equals\\(organizationId\\)\\.delete\\(\\)'))
  }
- assert.match(source,/db\\.transaction\\('rw'[\\s\\S]*?db\\.inventorySyncCursors/)
+ assert.match(source,/db\.transaction\('rw'[\s\S]*?db\.inventorySyncCursors/)
 })
 
 test('reset barrier runs before both equipment and inventory sync, including inventory-only accounts', async () => {
  const app = await read('../src/App.tsx')
- assert.match(app,/await ensureOrganizationAssetResetApplied\\(client,organizationId\\)[\\s\\S]*?let assetMessage=''/)
- assert.doesNotMatch(app,/if\\(canViewAssets\\)\\{\\s*await ensureOrganizationAssetResetApplied/)
+ assert.match(app,/await ensureOrganizationAssetResetApplied\(client,organizationId\)[\s\S]*?let assetMessage=''/)
+ assert.doesNotMatch(app,/if\(canViewAssets\)\{\s*await ensureOrganizationAssetResetApplied/)
 })
 
 test('reset request and Superadmin confirmation explicitly describe full inventory deletion', async () => {
  const ui = await read('../src/PlanChangePanels.tsx')
  assert.match(ui,/Yêu cầu Reset thiết bị và vật tư/)
- assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\\/xuất\\/điều chỉnh/)
- assert.match(ui,/xóa sạch toàn bộ thiết bị và vật tư Cloud\\/Local/)
+ assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\/xuất\/điều chỉnh/)
+ assert.match(ui,/xóa sạch toàn bộ thiết bị và vật tư Cloud\/Local/)
 })
