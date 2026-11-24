@@ -1880,3 +1880,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Bổ sung regression tests cho markup danh sách thành viên và menu thao tác responsive.
 - Chỉ thay đổi giao diện, CSS, test và tài liệu. Không thay đổi Supabase, migrations, Edge Functions, dữ liệu Local/Cloud hoặc Production.
 - Chưa merge/deploy; cần CI và kiểm tra trực quan ở PC/tablet/mobile. Chưa có browser/device visual test trong phiên này.
+
+
+### 24/11/2026 — Thu gọn danh sách quản trị thành viên (PR #46)
+- Thu hẹp cột danh tính, vai trò/trạng thái và cột thao tác; giảm chiều cao từng dòng, padding và khoảng cách.
+- Avatar, tên/email/ngày tham gia và nhãn vai trò/trạng thái giảm nhẹ kích thước nhưng vẫn giữ đủ thông tin.
+- Nút thao tác chuyển thành nút biểu tượng ba chấm nhỏ, có nhãn hỗ trợ truy cập; các lựa chọn vẫn nằm trong menu, không đổi chức năng.
+- Màn hình hẹp tiếp tục xếp thông tin theo hai hàng; menu thao tác vẫn mở được mà không làm tràn dòng.
+- Bổ sung regression test cho tỷ lệ cột, nút ba chấm và bố cục mobile.
+- Chỉ thay đổi CSS/test/tài liệu; không đổi logic, Auth, phân quyền, dữ liệu, Supabase hoặc Production. Chưa kiểm tra trực quan trên trình duyệt.
