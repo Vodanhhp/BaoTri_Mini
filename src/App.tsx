@@ -24,8 +24,8 @@ import { loadOrganizationEquipmentCatalog, reserveSmartEquipmentId, confirmSmart
 
 const STATUSES: AssetStatus[] = ['Đang hoạt động', 'Đang sửa chữa', 'Ngừng sử dụng', 'Thanh lý', 'Lưu kho']
 
-// Keep Inventory Cloud disabled until its reviewed SQL migration is approved and verified.
-const INVENTORY_CLOUD_SYNC_ENABLED = false
+// Inventory Cloud sync is enabled after the RPC, RLS and change-feed migration was applied to the official project.
+const INVENTORY_CLOUD_SYNC_ENABLED = true
 
 const ASSET_CATEGORY_GROUPS = [
  {label:'Điện – điện tử – tự động hóa',items:['Thiết bị điện','Tủ điện','Tủ điện tổng','Tủ điện phân phối','Tủ điều khiển','Biến tần','UPS','Máy biến áp','Thiết bị đo lường','Động cơ điện','Bộ chuyển nguồn ATS','Tủ tụ bù','PLC','HMI','Cảm biến','Bộ nguồn điện','Thiết bị điện tử','Bo mạch điện tử','Rơ le – contactor']},
