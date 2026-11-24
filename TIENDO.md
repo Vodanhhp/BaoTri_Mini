@@ -1939,3 +1939,13 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nút xuất chỉ dành cho Admin/KTV hoặc Local Preview; Viewer không có nút xuất theo quy tắc dự án cũ. Chỉ đọc dữ liệu Local; không đổi dữ liệu, Supabase hay Cloud sync.
 - Thêm ExcelJS 4.4.0 và dependency graph từ lockfile dự án cũ; có regression tests.
 - Chờ CI/build và kiểm tra thực tế tệp Excel sau triển khai.
+
+
+## Rà soát phát hành + favicon (24/11/2026)
+- Đối chiếu dự án cũ `Vodanhhp/DuAn_BaoTRi`: sao chép nguyên bản `public/icon-247.svg` sang repo mới `public/icon-247.svg`; thêm `rel="icon"` trong `index.html`. Không chỉnh sửa repo cũ.
+- Commit favicon: `7e67ed9efaa1bda9499012101ad9d14a458997ab`; commit gắn favicon: `d9ba64a154cb9648bc0783792f5a02b293f72e6e`.
+- CI run #823: Unit tests và TypeScript/Vite build đều SUCCESS. GitHub Pages deploy run #330: build, xác minh cấu hình Supabase, giữ CNAME và deploy đều SUCCESS tại commit `d9ba64a154cb9648bc0783792f5a02b293f72e6e`.
+- Rà soát tĩnh: xác nhận role Viewer không được cấp quyền mutation thiết bị; Admin-only soft delete; trạng thái thiết bị có quyền Admin/KTV; kho vật tư Cloud vẫn bị khóa bằng `INVENTORY_CLOUD_SYNC_ENABLED=false`; các workflow CI và Pages tách biệt, CI chạy unit tests trước build.
+- Rủi ro cần xử lý riêng trước khi mở rộng quản trị nền tảng: email định danh Super Admin đang hard-code trong frontend và Edge Functions trong repo công khai. Các Edge Functions hiện cũng tự xác thực email đã xác minh và một luồng quản trị yêu cầu xác thực lại mật khẩu; tuy vậy email vẫn bị lộ trong mã nguồn. Đề xuất chuyển định danh này sang Supabase Function Secret/config, sau đó deploy và kiểm tra quyền lại. Chưa thay đổi vì đây là thay đổi backend/secret cần phê duyệt riêng.
+- Chưa thực hiện kiểm thử trình duyệt end-to-end, thiết bị thật, invitation email hoặc thao tác trên Supabase Production; CI xanh không thay thế các kiểm thử này.
+- Ghi chú cấu hình: workflow Pages hiện hành là `.github/workflows/pages.yml`; các ghi chú cũ trong phần TIENDO có nhắc `deploy-pages.yml` là lịch sử, không phải workflow đang chạy.
