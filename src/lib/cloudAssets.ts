@@ -532,6 +532,24 @@ export async function syncPendingLocalAssetImports(
       result.imported++
     }catch(error){
       const message=error instanceof Error?error.message:String(error)
+      if(message.includes('Import mutation ID reused with different request')){
+        try{
+          if(await recoverCommittedImportWithChangedLocalSnapshot(client,organizationId,asset,message)){
+            result.conflicts++
+            continue
+          }
+        }catch(recoveryError){
+          const attempts=item.attempts+1
+          const delay=Math.min(15*60_000,30_000*Math.pow(2,Math.min(attempts-1,5)))*(0.8+Math.random()*0.4)
+          await db.assetImportQueue.update(item.id,{
+            status:'pending',failureKind:'transient',
+            lastError:'Cloud có thể đã nhận snapshot cũ; chưa xác minh được để tạo liên kết an toàn. '+(recoveryError instanceof Error?recoveryError.message:String(recoveryError)),
+            nextAttemptAt:new Date(Date.now()+delay).toISOString(),updatedAt:now()
+          })
+          result.failed++
+          continue
+        }
+      }
       // During a staged rollout, the old RPC may still return the former
       // assets.import-only error. Keep a verified Smart ID import retryable so
       // applying the matching migration later does not strand the Local record.
