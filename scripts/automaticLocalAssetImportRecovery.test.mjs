@@ -34,8 +34,17 @@ test('unverified receipt recovery remains retryable and does not link by managem
 })
 
 test('receipt verification RPC is scoped to authenticated actor, organization permission, and exact asset UUID', async () => {
-  const migration = await read('../supabase/migrations/20261124042230_move_import_receipt_verifier_private.sql')
-  assert.match(migration, /create or replace function private\\.verify_cloud_asset_import_receipt/i)
+  const migrations = await Promise.all([
+    read('../supabase/migrations/20261124042123_verify_cloud_asset_import_receipt.sql'),
+    read('../supabase/migrations/20261124042150_verify_cloud_asset_import_receipt_timestamp.sql'),
+    read('../supabase/migrations/20261124042230_move_import_receipt_verifier_private.sql')
+  ])
+  for(const migration of migrations){
+    assert.match(migration, /create or replace function private\\.verify_cloud_asset_import_receipt/i)
+    assert.match(migration, /create or replace function public\\.verify_cloud_asset_import_receipt[\\s\\S]*?security invoker/i)
+    assert.doesNotMatch(migration, /create or replace function public\\.verify_cloud_asset_import_receipt[\\s\\S]*?security definer/i)
+  }
+  const migration = migrations[2]
   assert.match(migration, /security definer/i)
   assert.match(migration, /set search_path = ''/i)
   assert.match(migration, /set row_security = off/i)
