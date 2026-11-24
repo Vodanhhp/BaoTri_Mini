@@ -239,7 +239,7 @@ export default function InventoryPanel(props: Props) {
         <p>Quản lý danh mục, nhập – xuất – kiểm kê và theo dõi tồn tối thiểu.</p>
         {organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}
       </div>
-      <div className="inventory-welcome-side"><div className="welcome-icon"><Package size={38}/></div><div className="inventory-storage-pill"><span aria-hidden="true">●</span> Lưu tại thiết bị Local <i>·</i> Cloud chưa bật</div></div>
+      <div className="inventory-welcome-side"><div className="welcome-icon"><Package size={38}/></div><div className="inventory-storage-pill"><span aria-hidden="true">●</span> Lưu tại thiết bị Local <i>·</i> Tự đồng bộ Cloud khi có mạng</div></div>
     </section>
 
     <div className="stat-grid inventory-stats">
