@@ -72,6 +72,8 @@ test('Cloud SQL remains a draft and matches the client RPC and precision contrac
   assert.match(sqlDraft, /security invoker/)
   assert.match(sqlDraft, /private\.has_org_permission/)
   assert.match(sqlDraft, /unique \(organization_id, mutation_id\)/)
+  assert.match(sqlDraft, /balance_before = 0/)
+  assert.match(sqlDraft, /counted_quantity = balance_after/)
   assert.match(sqlDraft, /scale\(\(p_movement->>'quantity'\)::numeric\) > 6/)
   assert.match(local, /function validateScale/)
 })
