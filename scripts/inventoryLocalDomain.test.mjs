@@ -38,7 +38,7 @@ test('new material codes are generated sequentially and remain immutable during 
   const create = source.slice(source.indexOf('export async function createInventoryItem'), source.indexOf('/** Metadata editing intentionally'))
   const update = source.slice(source.indexOf('export async function updateInventoryItemMetadata'), source.indexOf('export async function postInventoryMovement'))
   assert.match(create, /const code = await nextInventoryCode\(actor\.organizationId\)/)
-  assert.match(source, /const match = \/\^VT-\-?\(\\d\+\)\$\/i\.exec\(item\.code\.trim\(\)\)/)
+  assert.ok(source.includes("const match = /^VT-(\\d+)$/i.exec(item.code.trim())"))
   assert.match(source, /String\(next\)\.padStart\(3, '0'\)/)
   assert.doesNotMatch(update, /codeNormalized:|\n\s*code,/)
 })
