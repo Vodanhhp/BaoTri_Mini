@@ -1514,3 +1514,16 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Trigger `organization_equipment_catalog_audit_snapshot` đã tồn tại, gọi hàm SECURITY DEFINER trong schema private với `search_path=''` và `row_security=off`.
 - Security Advisor sau migration không báo finding mới liên quan bảng history/trigger; còn các cảnh báo tồn tại từ trước trong private tables, SECURITY DEFINER RPC public và leaked-password protection. Không thay đổi các mục ngoài phạm vi PR.
 - Chưa thực hiện UPDATE Snapshot thử nghiệm, chưa phát sinh audit row giả; cần kiểm thử bằng phiên Admin/KTV thực tế để xác nhận actor_user_id và before/after.
+
+
+## 24/11/2026 – PR #35: Tự động đồng bộ thiết bị Local → Cloud
+
+- Người dùng xác nhận yêu cầu: hồ sơ thiết bị mới tạo trên PC phải tự đồng bộ lên Cloud; Mobile tự Pull về Local, không phụ thuộc nút “Nhập lên Cloud”.
+- Tạo branch mới từ main SHA `0aefbdc6203c7b17e6d099c10c326b00af7666fd`: `feature/automatic-local-cloud-asset-sync`.
+- Mở PR nháp #35: https://github.com/Vodanhhp/BaoTri_Mini/pull/35. Chưa merge, chưa deploy.
+- Frontend: Dexie version 9 bổ sung `assetImportQueue` bền vững, lưu trạng thái/attempt/backoff/lỗi; scheduler tự phát hiện hồ sơ Local chưa liên kết, retry tự động và phục hồi queue processing bị gián đoạn; gọi sync ngay sau khi lưu thiết bị; reset generation xóa queue tương ứng.
+- Quyền: Technician hiện có `assets.create` nhưng không có `assets.import`. Không mở rộng quyền import hàng loạt cho KTV. Migration mới chỉ cho phép `assets.create` import hồ sơ có reservation Smart ID đã confirmed, khớp tổ chức + asset UUID + mã quản lý + actor (hoặc Admin có settings.manage). Hồ sơ Local cũ không có Smart ID reservation chỉ tự import khi tài khoản có `assets.import` (Admin); Local Preview và hồ sơ đã xóa mềm bị loại khỏi tự động sync.
+- Giữ nguyên UUID/mã quản lý, import idempotent, không ghi đè Cloud; trùng mã/UUID chuyển conflict; ảnh vẫn chỉ Local.
+- Migration source `20261124020000_auto_local_asset_sync_permission.sql` được dựng từ function hiện hành trên Supabase Test, giữ hỗ trợ trạng thái Lưu kho. Chưa apply migration lên Test; chưa có thay đổi DB nào.
+- CI trên head đầu tiên `6010a44af724e4c86f405a1386e99824fc7b0e3f`: Build and test + Validate BAOTRI Mini đều SUCCESS. Sau đó bổ sung xử lý retry khi frontend/backend triển khai lệch phiên bản; head mới `559a67c52c4a9cc4e54b61ee2a49e2e9855090bb` đang chờ CI.
+- Còn phải: chờ CI head mới; review toàn bộ diff; kiểm tra migration grants/function trên Test; rollback-only test với tài khoản Technician + reservation fixture; kiểm tra queue reset/retry/conflict; kiểm thử PC → Cloud → Mobile thực tế. Không chạm Production và không merge nếu chưa có phê duyệt riêng.
