@@ -2029,4 +2029,12 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Kết quả này xác nhận luồng Cloud pull và tiếp tục đồng bộ sau khi thiết bị Mobile kết nối lại mạng trong tình huống PC là máy phát sinh thay đổi.
 - Đây là kết quả kiểm thử thực tế do người dùng thực hiện và báo cáo; không phải phép thử do CI hoặc trợ lý tự thực hiện.
 - Chưa kết luận toàn bộ cơ chế retry/idempotency và xử lý xung đột đã được kiểm thử thực tế. Các tình huống còn cần kiểm tra: Mobile phát sinh thay đổi khi đang offline rồi reconnect để push; retry cùng mutation không tạo giao dịch trùng; hai máy cùng sửa một vật tư và xác minh xử lý conflict.
-- Đề xuất UI được ghi nhận: trong danh sách/chọn vật tư, hiển thị **Tên vật tư ở dòng trên, nổi bật**; **Mã vật tư ở dòng dưới, cỡ chữ nhỏ hơn**. Chỉ thay đổi thứ bậc hiển thị, không thay đổi mã định danh, tìm kiếm, dữ liệu hay logic đồng bộ. Chưa triển khai UI ở checkpoint này.
+- Đề xuất UI đã được triển khai ngay trên main: danh sách desktop và thẻ mobile hiển thị **Tên vật tư ở dòng trên, nổi bật**; **Mã vật tư ở dòng dưới, nhỏ hơn**. Chỉ đổi thứ bậc hiển thị, giữ nguyên dữ liệu, mã, chức năng tìm kiếm và logic đồng bộ.
+
+
+### Cập nhật thứ bậc Tên / Mã vật tư — 24/11/2026
+
+- Điều chỉnh danh sách vật tư ở cả bảng desktop và thẻ mobile: tên vật tư là dòng chính, cỡ chữ nổi bật; mã vật tư chuyển xuống dòng phụ, cỡ chữ nhỏ hơn.
+- Không thay đổi nội dung/cấu trúc dữ liệu, mã định danh, tìm kiếm theo mã hoặc tên, thao tác chọn hồ sơ, nghiệp vụ kho hay đồng bộ Local ↔ Cloud.
+- Bổ sung regression test kiểm tra đúng thứ tự và kiểu hiển thị ở cả desktop/mobile.
+- Đã commit trực tiếp trên main: 3fff1a5 (markup), 1ff34ff (CSS), b0cd36c (test). Chờ CI và triển khai Pages; chưa kiểm tra trực quan sau deploy.
