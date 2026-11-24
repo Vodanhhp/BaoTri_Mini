@@ -1922,3 +1922,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Nút mở menu Thao tác chiếm hết bề rộng cột và có chiều cao thống nhất; bảng có chiều rộng tối thiểu riêng để tránh ép méo cột ở viewport hẹp.
 - Thêm regression test cho colgroup, tỷ lệ cột và phạm vi menu.
 - Chỉ thay đổi JSX trình bày, CSS, test và tài liệu; không thay đổi logic kho, quyền, dữ liệu Local/Cloud, Supabase hoặc cấu hình đồng bộ. Chưa kiểm tra trực quan trên trình duyệt/thiết bị thật.
+
+
+### 24/11/2026 — Thu gọn lịch sử giao dịch và sửa nút menu PC
+- Bảng Lịch sử giao dịch kho có colgroup 8 cột, tỷ lệ riêng, table-layout cố định, bỏ min-width 850px kế thừa từ bảng rộng và giảm padding/line-height theo phong cách bảng gọn của dự án cũ.
+- Nút hamburger trên header chỉ hiện ở mobile; thêm quy tắc desktop có độ ưu tiên đủ cao để không bị CSS icon-button chung ghi đè.
+- Thêm regression tests cho bảng lịch sử và nút hamburger desktop.
+- Chỉ thay đổi trình bày; giữ nguyên dữ liệu và nguyên tắc append-only, không sửa/xóa giao dịch; không thay đổi Supabase, Auth, RLS, Cloud sync hay nghiệp vụ kho.
+- Chưa thực hiện visual QA trên trình duyệt/thiết bị thật.
