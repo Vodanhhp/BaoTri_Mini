@@ -214,3 +214,9 @@ Verification:
 - Validate workflow on the same commit passed.
 - A newer commit adds the explicit Cloud feature gate and is currently being rechecked; do not treat the earlier run as proof of that newer commit.
 - Browser PC/mobile runtime tests are still pending.
+
+
+Queue-order hardening:
+- Each Local inventory mutation now receives a per-item `localSequence` inside the same Dexie transaction that records it.
+- The Cloud worker orders mutations by `localSequence` first and uses `createdAt` only as a fallback. This avoids ambiguous ordering when multiple stock operations occur within the same millisecond.
+- This sequence is Local queue metadata only; Cloud sequence remains the server-owned feed cursor.
