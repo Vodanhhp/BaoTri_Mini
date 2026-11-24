@@ -3,6 +3,7 @@ import { formatDateVN } from './lib/dateTime'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import { isPcPlatform } from './lib/platform'
 import { PlatformPlanRequestsPanel, PlatformAssetResetRequestsPanel } from './PlanChangePanels'
+import { PlatformOrganizationNameRequestsPanel } from './OrganizationNameChangePanels'
 
 type Props={client:SupabaseClient;onClose:()=>void;fullPage?:boolean}
 type PlanCode='A'|'B'|'C'|'D'
@@ -254,7 +255,7 @@ export default function PlatformAdminPanel({client,onClose,fullPage=false}:Props
   </div>}
   </>}
 
-  {(!fullPage||activeSection==='platform-requests')&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/><PlatformAssetResetRequestsPanel client={client}/></div>}
+  {(!fullPage||activeSection==='platform-requests')&&<div id="platform-requests"><PlatformPlanRequestsPanel client={client}/><PlatformOrganizationNameRequestsPanel client={client}/><PlatformAssetResetRequestsPanel client={client}/></div>}
   {(!fullPage||activeSection==='platform-provision')&&<>
   <div className="divider" style={{margin:'22px 0',borderTop:'1px solid var(--border,#e5e7eb)'}}/>
   <div className="panel-head"><div><h3>Tạo khách hàng mới</h3><p>Tạo tổ chức riêng và cấp quyền Admin đầu tiên cho khách hàng.</p></div></div>

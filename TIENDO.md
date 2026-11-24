@@ -2168,3 +2168,17 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Giữ nguyên cơ chế reset generation, phê duyệt, xác thực lại mật khẩu Superadmin, nhật ký kiểm toán thiết bị, danh mục thiết bị dùng chung, tài khoản, phân quyền, Plan và lịch sử/sequence đặt mã thiết bị.
 - Migration chính thức: `supabase/migrations/20261124150248_reset_equipment_and_inventory.sql`, khớp version `20261124150248` đã được ghi nhận trên Supabase chính thức `BAOTRI-Mini-New`. Migration đã áp dụng thành công; chỉ thay đổi schema/RPC/trigger, **không chạy Reset và không xóa dữ liệu hiện có**.
 - Bổ sung regression tests cho Cloud purge, Local purge, reset barrier và nội dung xác nhận UI. CI trước khi áp dụng migration đã đạt 183/183 tests và build thành công; cần chạy lại sau khi đồng bộ migration vào thư mục chính thức. Chưa kiểm thử browser/device thực tế.
+
+
+### Bổ sung yêu cầu đổi tên doanh nghiệp và thu gọn Thuê bao doanh nghiệp — 24/11/2026
+
+- Bổ sung luồng **Yêu cầu đổi tên doanh nghiệp** trong cửa sổ Thuê bao doanh nghiệp. Admin đang hoạt động nhập tên mới và ghi chú; khi gửi chỉ tạo yêu cầu chờ duyệt, không đổi tên tổ chức ngay.
+- Super Admin có danh sách riêng để đối chiếu tên hiện tại/tên đề nghị, người gửi và lý do; duyệt/từ chối yêu cầu bằng xác thực lại mật khẩu. Khi từ chối bắt buộc có lý do. Khi duyệt, transaction kiểm tra tên hiện tại chưa bị thay đổi rồi mới cập nhật organizations.name.
+- Lưu lịch sử tên cũ/tên mới, người yêu cầu, người duyệt và ghi chú. Không đổi organization_id, thành viên, tài khoản, Plan, thiết bị, vật tư hoặc lịch sử nghiệp vụ.
+- Mỗi doanh nghiệp chỉ có một yêu cầu đổi tên đang chờ. Tên mới phải có 2–160 ký tự và khác tên hiện tại.
+- Thu gọn cửa sổ Thuê bao: Plan và đổi tên đặt cạnh nhau trên PC, xếp dọc trên điện thoại; trường nhập/ghi chú ngắn hơn; Reset và lịch sử tiếp tục là các khu vực riêng.
+- Migration chính thức: `supabase/migrations/20261124153541_organization_name_change_requests.sql`, khớp version `20261124153541` đã áp dụng trên Supabase Production `BAOTRI-Mini-New`. Migration chỉ tạo bảng/RPC/index/quyền; không đổi tên doanh nghiệp hiện tại và không sửa dữ liệu nghiệp vụ.
+- Hai Edge Functions `organization-name-change-requests` và `platform-manage-organization-name-requests` đã deploy ACTIVE version 1, `verify_jwt=true`. RPC public wrappers là `SECURITY INVOKER`, chỉ `service_role` được EXECUTE; hai bảng lịch sử private không cấp quyền truy cập trực tiếp cho client.
+- Đã xác minh read-only: 2 bảng private, 3 private functions, 3 public wrappers; `authenticated` không có EXECUTE trên wrappers, `service_role` có. Không có dữ liệu tên doanh nghiệp nào được thay đổi.
+- PR #59 đang OPEN, chưa merge. Sau khi đồng bộ migration source và inventory baseline, CI trên commit `5e255dc56cddcc3e8e9d1479f4e9e3cf1d2a2cda` đã SUCCESS: Build and test run `45427489523`; Validate run `45427489608`. Chưa kiểm tra trực quan UI trên trình duyệt PC/mobile; chờ phê duyệt merge để Pages triển khai giao diện.
+- PR #59 đang OPEN, chưa merge. Build/Test SUCCESS (run 45424755831: 185 tests pass và Vite/TypeScript build thành công); Validate SUCCESS (run 45424755901). Chưa áp dụng migration/deploy Edge Functions lên Production và chưa kiểm tra trực quan trên trình duyệt PC/mobile.

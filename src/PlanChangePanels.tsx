@@ -2,6 +2,7 @@ import {useCallback,useEffect,useState,type FormEvent} from 'react'
 import { formatDateTimeVN } from './lib/dateTime'
 import type {SupabaseClient} from '@supabase/supabase-js'
 import {loadOrganizationEquipmentCatalog,type OrganizationEquipmentCatalogRecord} from './lib/smartEquipmentIdClient'
+import {OrganizationNameChangePanel} from './OrganizationNameChangePanels'
 
 type PlanCode='A'|'B'|'C'|'D'
 type PlanOption={id:PlanCode;name:string;maxDevices:number|null;features:{equipmentGroups:boolean;multipleSites:boolean};idRule:string}
@@ -99,7 +100,7 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
  }
  return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
   <section className="modal member-modal plan-request-modal" style={{maxHeight:'92vh',overflowY:'auto'}}>
-   <div className="modal-head"><div><div className="eyebrow">THUÊ BAO DOANH NGHIỆP</div><h2>Gói dịch vụ</h2><p>Xem Plan hiện tại và gửi yêu cầu thay đổi gói sử dụng.</p></div><button className="icon-btn" onClick={onClose} disabled={busy}>×</button></div>
+   <div className="modal-head"><div><div className="eyebrow">THUÊ BAO DOANH NGHIỆP</div><h2>Thuê bao doanh nghiệp</h2><p>Quản lý Plan, tên doanh nghiệp và các yêu cầu thay đổi.</p></div><button className="icon-btn" onClick={onClose} disabled={busy}>×</button></div>
    {error&&<div className="auth-error">{error}</div>}
    {message&&<div className="cloud-message">{message}</div>}
    {loading?<div className="auth-note">Đang tải thông tin Plan và thiết bị Cloud…</div>:<>
@@ -111,29 +112,34 @@ export function OrganizationPlanPanel({client,organizationId,onClose,onCatalogLo
       <p>{limit===null?'Không giới hạn thiết bị':typeof limit==='number'?'Hạn mức '+number(limit)+' thiết bị':'Chưa xác định hạn mức'} · {number(deviceCount)} thiết bị/lượt giữ mã đang được tính vào hạn mức</p>
      </div>
     })():<div className="auth-note">Tổ chức chưa có Plan hoặc Catalog Snapshot. Vui lòng liên hệ Super Admin.</div>}
-    {pending&&<div className="auth-note" style={{marginBottom:14}}>
-     <b>Đang có yêu cầu chờ duyệt</b><p>{planLabel(pending.current_plan_code,plans)} → {planLabel(pending.requested_plan_code,plans)} · gửi lúc {dateTime(pending.requested_at)}</p>
-     {pending.request_note&&<p>Lý do: {pending.request_note}</p>}
-     Chưa thể gửi yêu cầu mới cho đến khi yêu cầu này được xử lý.
-    </div>}
-    {!pending&&currentPlan&&<form className="form-grid" onSubmit={submit}>
-     <label className="field full-field">Plan muốn chuyển tới
-      <select required value={targetPlan} onChange={e=>setTargetPlan(e.target.value as PlanCode|'')}>
-       <option value="">Chọn Plan A, B, C hoặc D</option>
-       {plans.filter(plan=>plan.id!==currentPlan).map(plan=><option key={plan.id} value={plan.id}>Plan {plan.id} — {plan.name} · {plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)+' thiết bị'}</option>)}
-      </select>
-     </label>
-     {selected&&<div className="platform-plan-summary full-field">
-      <b>{planLabel(selected.id,plans)}</b>
-      <p>{selected.maxDevices===null?'Không giới hạn thiết bị':number(selected.maxDevices)+' thiết bị tối đa'} · {selected.features.equipmentGroups?'Có phân nhóm':'Không phân nhóm'} · {selected.features.multipleSites?'Nhiều cơ sở':'Một cơ sở'}</p>
-      {overLimit&&<p style={{color:'var(--danger,#b91c1c)'}}>Hiện có {number(deviceCount)} thiết bị, vượt hạn mức mới {number(selected.maxDevices!)} thiết bị. Nếu được duyệt, thiết bị cũ vẫn được giữ nguyên; hệ thống sẽ chặn cấp mã cho thiết bị mới cho đến khi số lượng nằm trong hạn mức.</p>}
+    <div className="organization-change-grid">
+     {currentPlan&&<div className="organization-change-card organization-plan-change-card">
+      <div className="organization-change-card-head"><div><span className="organization-change-kicker">GÓI DỊCH VỤ</span><h3>Thay đổi Plan</h3></div></div>
+      {pending?<div className="auth-note organization-pending-name">
+       <b>Đang có yêu cầu chờ duyệt</b><span>{planLabel(pending.current_plan_code,plans)} → {planLabel(pending.requested_plan_code,plans)} · {dateTime(pending.requested_at)}</span>
+       {pending.request_note&&<small>Lý do: {pending.request_note}</small>}
+       Chưa thể gửi yêu cầu mới cho đến khi yêu cầu này được xử lý.
+      </div>:<form className="organization-name-form" onSubmit={submit}>
+       <label className="field">Plan muốn chuyển tới
+        <select required value={targetPlan} onChange={e=>setTargetPlan(e.target.value as PlanCode|'')}>
+         <option value="">Chọn Plan A, B, C hoặc D</option>
+         {plans.filter(plan=>plan.id!==currentPlan).map(plan=><option key={plan.id} value={plan.id}>Plan {plan.id} — {plan.name} · {plan.maxDevices===null?'Không giới hạn':number(plan.maxDevices)+' thiết bị'}</option>)}
+        </select>
+       </label>
+       {selected&&<div className="platform-plan-summary">
+        <b>{planLabel(selected.id,plans)}</b>
+        <p>{selected.maxDevices===null?'Không giới hạn thiết bị':number(selected.maxDevices)+' thiết bị tối đa'} · {selected.features.equipmentGroups?'Có phân nhóm':'Không phân nhóm'} · {selected.features.multipleSites?'Nhiều cơ sở':'Một cơ sở'}</p>
+        {overLimit&&<p className="organization-plan-over-limit">Hiện có {number(deviceCount)} thiết bị, vượt hạn mức mới {number(selected.maxDevices!)} thiết bị. Thiết bị và mã đã cấp vẫn được giữ; hệ thống sẽ chặn cấp mã mới đến khi số lượng phù hợp.</p>}
+       </div>}
+       <label className="field">Ghi chú / lý do (không bắt buộc)
+        <textarea rows={2} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Nêu nhu cầu thay đổi gói dịch vụ…"/>
+       </label>
+       <p className="organization-name-hint">Plan chỉ thay đổi sau khi Super Admin kiểm tra điều kiện thương mại/thanh toán và duyệt. Mã quản lý, hồ sơ thiết bị đã cấp được giữ nguyên.</p>
+       <button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button>
+      </form>}
      </div>}
-     <label className="field full-field">Ghi chú / lý do (không bắt buộc)
-      <textarea rows={3} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="Nêu nhu cầu thay đổi gói dịch vụ…"/>
-     </label>
-     <div className="auth-note full-field">Gửi yêu cầu không làm thay đổi Plan ngay. Super Admin sẽ xem xét điều kiện thương mại/thanh toán và quyết định duyệt hoặc từ chối. Khi đổi Plan, mã quản lý và hồ sơ thiết bị đã cấp vẫn được giữ nguyên.</div>
-     <div className="modal-actions full-field"><button type="button" className="soft-btn" onClick={onClose} disabled={busy}>Đóng</button><button type="submit" className="primary-btn" disabled={busy||!selected}>{busy?'Đang gửi…':'Gửi yêu cầu đổi Plan'}</button></div>
-    </form>}
+     <OrganizationNameChangePanel client={client} organizationId={organizationId}/>
+    </div>
     <OrganizationAssetResetRequestPanel client={client} organizationId={organizationId}/>
     <div className="divider plan-section-divider"/>
     <h3 className="plan-history-heading">Lịch sử yêu cầu</h3>
