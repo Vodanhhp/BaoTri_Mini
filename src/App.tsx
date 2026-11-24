@@ -1168,7 +1168,7 @@ export default function App() {
       <button type="button" className="mobile-menu-close" aria-label="Đóng menu" onClick={()=>setMobileMenuOpen(false)}><X size={18}/><span>Đóng menu</span></button>
       <div className="brand"><span className="brand-icon"><Wrench size={21}/></span><div><b>BAOTRI</b><small>QUẢN LÝ BẢO TRÌ</small></div></div>
       <div className="nav-label">KHÔNG GIAN LÀM VIỆC</div>
-      <button className="nav-item active"><LayoutDashboard size={17}/><span>Tổng quan thiết bị</span></button>
+      <button className="nav-item active"><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
       <button className="nav-item"><Building2 size={17}/><span>Danh mục thiết bị</span></button>
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
