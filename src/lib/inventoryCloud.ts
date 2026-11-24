@@ -46,6 +46,7 @@ const LINKED = 'linked' as const
 const CONFLICT = 'conflict' as const
 const CURSOR_PAGE_SIZE = 200
 const STALE_PROCESSING_MS = 60_000
+const INVENTORY_UPDATED_EVENT = 'baotri:inventory-updated'
 
 function record(value: unknown, label: string): JsonRecord {
   const row = Array.isArray(value) ? value[0] : value
@@ -539,6 +540,7 @@ async function pullInventoryChanges(
       })
     })
     pulled += page.items.length
+    if (page.items.length > 0) window.dispatchEvent(new Event(INVENTORY_UPDATED_EVENT))
     const previousCursor = cursor.lastSequence
     cursor = { ...cursor, lastSequence: page.nextCursor, bootstrapComplete: true, updatedAt: now() }
     if (!page.hasMore) break
