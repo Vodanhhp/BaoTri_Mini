@@ -28,3 +28,13 @@ test('inventory styles define compact responsive hierarchy and action menu', () 
   assert.match(css, /\.inventory-action-menu/)
   assert.match(css, /@media\(max-width:680px\)[\s\S]*\.inventory-page-heading/)
 })
+
+test('inventory action menu is not clipped by its table frame', () => {
+  assert.match(css, /\.inventory-desktop-table\{[\s\S]*?overflow:visible/)
+  assert.match(css, /\.inventory-desktop-table tbody tr:has\(\.inventory-action-menu\[open\]\)/)
+  assert.match(css, /\.inventory-action-menu>div\{[\s\S]*?z-index:30/)
+})
+
+test('modal and action-dialog close buttons share one consistent size', () => {
+  assert.match(css, /\.modal-head>\.icon-btn,[\s\S]*?\.platform-action-head>\.icon-btn\{[\s\S]*?width:36px;[\s\S]*?height:36px;[\s\S]*?min-height:36px/)
+})
