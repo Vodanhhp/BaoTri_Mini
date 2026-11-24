@@ -9,6 +9,7 @@ export type OrganizationEquipmentCatalogRecord = {
   plan_code: PlanCode
   source_data_version: string
   snapshot: EquipmentCatalog
+  updated_at: string
 }
 
 export type SmartSequenceReservation = {
@@ -36,7 +37,7 @@ export async function loadOrganizationEquipmentCatalog(
 ): Promise<OrganizationEquipmentCatalogRecord | null> {
   const { data, error } = await client
     .from('organization_equipment_catalog')
-    .select('plan_code,source_data_version,snapshot')
+    .select('plan_code,source_data_version,snapshot,updated_at')
     .eq('organization_id', organizationId)
     .maybeSingle()
 
@@ -185,16 +186,18 @@ export async function releaseSmartEquipmentIdReservation(
 export async function saveOrganizationEquipmentCatalogSnapshot(
   client: SupabaseClient,
   organizationId: string,
-  snapshot: EquipmentCatalog
+  snapshot: EquipmentCatalog,
+  expectedUpdatedAt: string
 ): Promise<OrganizationEquipmentCatalogRecord> {
   const { data, error } = await client
     .from('organization_equipment_catalog')
     .update({ snapshot, updated_at: new Date().toISOString() })
     .eq('organization_id', organizationId)
-    .select('plan_code,source_data_version,snapshot')
+    .eq('updated_at', expectedUpdatedAt)
+    .select('plan_code,source_data_version,snapshot,updated_at')
     .single()
 
   if (error) throw new Error('Không lưu được từ điển thiết bị của tổ chức: ' + error.message)
-  if (!data) throw new Error('Không nhận được Catalog Snapshot sau khi lưu.')
+  if (!data) throw new Error('Catalog Snapshot đã được Admin khác cập nhật. Hãy tải lại danh mục rồi thực hiện lại để tránh ghi đè thay đổi.')
   return data as OrganizationEquipmentCatalogRecord
 }
