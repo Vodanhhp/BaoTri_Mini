@@ -255,8 +255,8 @@ begin
   if not private.has_org_permission(p_organization_id,'inventory.create') then
     raise exception 'Missing inventory.create permission' using errcode='42501';
   end if;
-  if p_opening_quantity is null or p_opening_quantity < 0 then
-    raise exception 'Opening quantity must be non-negative' using errcode='22023';
+  if p_opening_quantity is null or p_opening_quantity < 0 or scale(p_opening_quantity) > 6 then
+    raise exception 'Opening quantity must be non-negative with at most 6 decimal places' using errcode='22023';
   end if;
   if p_opening_quantity > 0 and not private.has_org_permission(p_organization_id,'inventory.adjust') then
     raise exception 'Missing inventory.adjust permission for opening balance' using errcode='42501';
@@ -282,8 +282,10 @@ begin
      or nullif(btrim(p_item->>'unit'),'') is null then
     raise exception 'Inventory code, name, group and unit are required' using errcode='22023';
   end if;
-  if (p_item->>'min_quantity')::numeric < 0 or (p_item->>'unit_price')::numeric < 0 then
-    raise exception 'Minimum quantity and unit price must be non-negative' using errcode='22023';
+  if (p_item->>'min_quantity')::numeric < 0 or (p_item->>'unit_price')::numeric < 0
+     or scale((p_item->>'min_quantity')::numeric) > 6
+     or scale((p_item->>'unit_price')::numeric) > 6 then
+    raise exception 'Minimum quantity and unit price must be non-negative with at most 6 decimal places' using errcode='22023';
   end if;
   if not exists(select 1 from public.organizations where id=p_organization_id and status='active') then
     raise exception 'Active organization not found' using errcode='P0002';
@@ -411,8 +413,10 @@ begin
      or nullif(btrim(p_payload->>'unit'),'') is null then
     raise exception 'Inventory code, name, group and unit are required' using errcode='22023';
   end if;
-  if (p_payload->>'min_quantity')::numeric < 0 or (p_payload->>'unit_price')::numeric < 0 then
-    raise exception 'Minimum quantity and unit price must be non-negative' using errcode='22023';
+  if (p_payload->>'min_quantity')::numeric < 0 or (p_payload->>'unit_price')::numeric < 0
+     or scale((p_payload->>'min_quantity')::numeric) > 6
+     or scale((p_payload->>'unit_price')::numeric) > 6 then
+    raise exception 'Minimum quantity and unit price must be non-negative with at most 6 decimal places' using errcode='22023';
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_organization_id::text||':'||p_mutation_id::text,0));
@@ -530,18 +534,25 @@ begin
   if v_reason = '' then raise exception 'Movement reason is required' using errcode='22023'; end if;
   if v_type = 'Nhập' then
     v_movement_type := 'in';
+    if (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
+      raise exception 'Stock-in quantity must be positive with at most 6 decimal places' using errcode='22023';
+    end if;
     v_quantity := (p_movement->>'quantity')::numeric;
-    if v_quantity <= 0 then raise exception 'Stock-in quantity must be positive' using errcode='22023'; end if;
     v_delta := v_quantity;
   elsif v_type = 'Xuất' then
     v_movement_type := 'out';
+    if (p_movement->>'quantity')::numeric <= 0 or scale((p_movement->>'quantity')::numeric) > 6 then
+      raise exception 'Stock-out quantity must be positive with at most 6 decimal places' using errcode='22023';
+    end if;
     v_quantity := (p_movement->>'quantity')::numeric;
-    if v_quantity <= 0 then raise exception 'Stock-out quantity must be positive' using errcode='22023'; end if;
     v_delta := -v_quantity;
   elsif v_type = 'Điều chỉnh' then
     v_movement_type := 'adjustment';
+    if (p_movement->>'counted_quantity')::numeric < 0
+       or scale((p_movement->>'counted_quantity')::numeric) > 6 then
+      raise exception 'Counted quantity must be non-negative with at most 6 decimal places' using errcode='22023';
+    end if;
     v_counted := (p_movement->>'counted_quantity')::numeric;
-    if v_counted < 0 then raise exception 'Counted quantity must be non-negative' using errcode='22023'; end if;
   else
     raise exception 'Unsupported inventory movement type' using errcode='22023';
   end if;
