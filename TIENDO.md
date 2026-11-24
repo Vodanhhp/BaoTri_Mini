@@ -1914,3 +1914,11 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Chuẩn hóa cả khung nút đóng 36×36px, ký tự `×` 22px và biểu tượng SVG 18×18px; không áp dụng lên nút icon ở khu vực khác.
 - Cập nhật regression tests để khóa phạm vi CSS và kiểm tra đồng nhất kích thước phần hiển thị X.
 - Chỉ thay đổi CSS, test và tài liệu; không thay đổi nghiệp vụ, phân quyền, dữ liệu, Auth, Supabase, Cloud sync hoặc Production. CI cần chạy lại; chưa có kiểm tra trực quan trên trình duyệt/thiết bị thật.
+
+
+### 24/11/2026 — Cân chỉnh riêng bảng Danh mục vật tư
+- Gắn định danh riêng cho panel và wrapper của bảng Danh mục vật tư; phạm vi menu Thao tác chỉ áp dụng trong bảng này, không ảnh hưởng bảng Lịch sử giao dịch hoặc bảng ở phân hệ khác.
+- Khai báo tỷ lệ cố định cho đủ 7 cột; thống nhất padding, chiều cao hàng, căn giữa dọc và cách ngắt dòng ở mã/tên vật tư.
+- Nút mở menu Thao tác chiếm hết bề rộng cột và có chiều cao thống nhất; bảng có chiều rộng tối thiểu riêng để tránh ép méo cột ở viewport hẹp.
+- Thêm regression test cho colgroup, tỷ lệ cột và phạm vi menu.
+- Chỉ thay đổi JSX trình bày, CSS, test và tài liệu; không thay đổi logic kho, quyền, dữ liệu Local/Cloud, Supabase hoặc cấu hình đồng bộ. Chưa kiểm tra trực quan trên trình duyệt/thiết bị thật.
