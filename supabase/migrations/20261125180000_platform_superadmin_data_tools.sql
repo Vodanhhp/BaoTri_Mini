@@ -211,7 +211,12 @@ begin
     v_asset_codes:=v_asset_codes||jsonb_build_array(v_code);
   end loop;
 
-  select coalesce(max((regexp_match(i.code,'^VT-([0-9]+)
+  select coalesce(max((substring(i.code from '^VT-([0-9]+)$'))::bigint),0)+1
+    into v_inventory_sequence
+  from public.inventory_items i where i.organization_id=p_organization_id;
+
+  v_index:=0;
+  for v_item in select value from jsonb_array_elements(p_inventory_items) loop
     v_index:=v_index+1;
     if nullif(btrim(v_item->>'name'),'') is null or nullif(btrim(v_item->>'unit'),'') is null then
       raise exception 'Inventory name and unit are required at row %.',v_index using errcode='22023';
