@@ -3136,3 +3136,38 @@ html,body,#root,.app-shell{
   #root .app-shell .reports-table-wrap{border:1px solid var(--border);border-radius:9px}
   #root .app-shell .reports-table-wrap::after{content:"Vuốt ngang bảng để xem các cột còn lại";display:block;padding:7px 9px;color:var(--muted);font-size:10px;text-align:center;background:var(--panel-alt);border-top:1px solid var(--border)}
 }
+
+
+/* Quy chuẩn in dùng chung: phiếu vật tư, phiếu bảo trì và hồ sơ thiết bị */
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  .inventory-print-sheet,.maintenance-print-sheet,.equipment-print-report {
+    box-sizing: border-box !important; color: #111 !important;
+    font-family: Arial, Tahoma, sans-serif !important; line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .inventory-print-header,.maintenance-print-header,.equipment-print-org {
+    border-bottom: 2px solid #222 !important; padding-bottom: 8px !important;
+    margin-bottom: 14px !important; color: #111 !important;
+  }
+  .inventory-print-header strong,.maintenance-print-header strong,.equipment-print-org-name {
+    font-size: 13pt !important; font-weight: 700 !important; line-height: 1.25 !important; overflow-wrap: anywhere;
+  }
+  .inventory-print-header span,.maintenance-print-header span,.equipment-print-brand {
+    font-size: 8pt !important; font-weight: 700 !important; letter-spacing: .2px; color: #444 !important;
+  }
+  .inventory-print-header small,.maintenance-print-header small { font-size: 8pt !important; color: #444 !important; }
+  .inventory-print-sheet table,.maintenance-print-sheet table,.equipment-print-report table { border-collapse: collapse !important; }
+  .inventory-print-sheet th,.inventory-print-sheet td,.maintenance-print-sheet th,.maintenance-print-sheet td,
+  .equipment-print-report th,.equipment-print-report td { overflow-wrap: anywhere; vertical-align: top; }
+  .inventory-print-history thead,.maintenance-print-sheet thead,.equipment-print-report thead { display: table-header-group; }
+  .inventory-print-history tr,.maintenance-print-sheet tr,.equipment-print-report tr,.maintenance-print-signatures {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .inventory-print-footer,.equipment-print-footer,.maintenance-print-sheet > footer {
+    border-top: 1px solid #aaa !important; margin-top: 20px !important; padding-top: 8px !important;
+    color: #444 !important; font-size: 8pt !important;
+  }
+  .maintenance-print-sheet h1,.maintenance-print-sheet h2,.inventory-print-sheet h1,.inventory-print-sheet h2,
+  .equipment-print-report h1,.equipment-print-report h2,.equipment-print-report h3 { color: #111 !important; break-after: avoid; }
+}
