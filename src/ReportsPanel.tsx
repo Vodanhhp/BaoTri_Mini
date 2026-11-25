@@ -3,7 +3,7 @@ import { BarChart3, Download, FileSpreadsheet, ShieldAlert } from 'lucide-react'
 import { db, type Asset, type InventoryItem, type InventoryMovement, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
 import { downloadExcelReport } from './lib/excelExport'
 
-type Period = 'Tuần' | 'Tháng' | 'Quý' | 'Năm'
+type Period = 'Ngày' | 'Tuần' | 'Tháng' | 'Quý' | 'Năm'
 type Props = {
   organizationId: string
   assets: Asset[]
@@ -18,7 +18,8 @@ function periodRange(period: Period, anchor: string) {
   const month = date.getUTCMonth()
   let start: Date
   let end: Date
-  if (period === 'Tuần') {
+  if (period === 'Ngày') { start = new Date(date); end = new Date(date) }
+  else if (period === 'Tuần') {
     start = new Date(date)
     start.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7))
     end = new Date(start)
@@ -39,6 +40,7 @@ function periodRange(period: Period, anchor: string) {
 
 function rangeLabel(period: Period, range: { startDate: string; endDate: string }) {
   const format = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('vi-VN')
+  if (period === 'Ngày') return 'Ngày ' + format(range.startDate)
   if (period === 'Tuần') return 'Tuần ' + format(range.startDate) + ' – ' + format(range.endDate)
   if (period === 'Tháng') return 'Tháng ' + range.startDate.slice(5, 7) + '/' + range.startDate.slice(0, 4)
   if (period === 'Quý') return 'Quý ' + (Math.floor((Number(range.startDate.slice(5, 7)) - 1) / 3) + 1) + '/' + range.startDate.slice(0, 4)
@@ -154,7 +156,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
       return {
         id: 'task-' + row.id, occurredAt, assetCode: asset?.code || '—',
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
-        activityType: 'Checklist bảo dưỡng định kỳ', description: row.title || '—',
+        activityType: 'Bảo dưỡng định kỳ', description: row.title || '—',
         detail: [row.checklist && 'Các bước: ' + row.checklist, row.readings && 'Thông số: ' + row.readings, row.notes && 'Ghi chú: ' + row.notes].filter(Boolean).join(' · '),
         performer: completionEvent?.actorLabel || '—', result: 'Hoàn thành'
       }
@@ -213,10 +215,11 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
     <section className="panel report-period-panel">
       <div className="panel-head"><div><h2>Báo cáo hoạt động thực tế</h2><p>Thống kê phiếu đã hoàn thành và vật tư đã xuất kho; không tính kế hoạch dự kiến.</p></div><BarChart3/></div>
       <div className="report-period-tabs" role="tablist" aria-label="Kỳ báo cáo">
-        {(['Tuần','Tháng','Quý','Năm'] as Period[]).map(value => <button type="button" role="tab" aria-selected={period === value} key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}
+        {(['Ngày','Tuần','Tháng','Quý','Năm'] as Period[]).map(value => <button type="button" role="tab" aria-selected={period === value} key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}
       </div>
       <div className="report-period-toolbar">
         <div className="plan-period-picker">
+          {period === 'Ngày' && <label className="plan-period-control"><span>Chọn ngày</span><input type="date" value={anchorDate} onChange={event => event.target.value && setAnchorDate(event.target.value)}/></label>}
           {period === 'Tuần' && <label className="plan-period-control"><span>Chọn ngày trong tuần</span><input type="date" value={anchorDate} onChange={event => event.target.value && setAnchorDate(event.target.value)}/></label>}
           {period === 'Tháng' && <label className="plan-period-control"><span>Chọn tháng</span><input type="month" value={anchorDate.slice(0, 7)} onChange={event => event.target.value && setAnchorDate(event.target.value + '-01')}/></label>}
           {period === 'Quý' && <><label className="plan-period-control"><span>Năm</span><select value={anchorDate.slice(0, 4)} onChange={event => setAnchorDate(event.target.value + '-' + anchorDate.slice(5, 7) + '-01')}>{Array.from({length: 101}, (_, index) => String(2000 + index)).map(year => <option key={year}>{year}</option>)}</select></label><label className="plan-period-control"><span>Quý</span><select value={Math.floor((Number(anchorDate.slice(5, 7)) - 1) / 3) + 1} onChange={event => setAnchorDate(anchorDate.slice(0, 4) + '-' + String((Number(event.target.value) - 1) * 3 + 1).padStart(2, '0') + '-01')}>{[1,2,3,4].map(value => <option key={value} value={value}>Quý {value}</option>)}</select></label></>}
@@ -231,7 +234,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
 
     {canViewAssets && <section className="panel report-data-panel">
       <div className="panel-head"><div><h2>Tình trạng thiết bị</h2><p>{rangeLabel(period, range)} · chỉ hiển thị thiết bị có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ</p></div>{canExport && <button type="button" className="soft-btn" onClick={() => void exportDeviceActivities()}><Download size={16}/> Xuất Excel</button>}</div>
-      <div className="report-summary"><span><b>{new Set(deviceActivities.map(row => row.assetCode)).size}</b> thiết bị có hoạt động</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng').length}</b> lượt bảo dưỡng</span><span><b>{deviceActivities.filter(row => row.activityType === 'Sửa chữa').length}</b> lượt sửa chữa</span><span><b>{deviceActivities.filter(row => row.activityType === 'Checklist bảo dưỡng định kỳ').length}</b> lượt checklist định kỳ</span></div>
+      <div className="report-summary"><span><b>{new Set(deviceActivities.map(row => row.assetCode)).size}</b> thiết bị có hoạt động</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng').length}</b> lượt bảo dưỡng</span><span><b>{deviceActivities.filter(row => row.activityType === 'Sửa chữa').length}</b> lượt sửa chữa</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng định kỳ').length}</b> lượt công việc định kỳ</span></div>
       <div className="table-wrap reports-table-wrap"><table className="period-report-table"><thead><tr><th>Ngày giờ</th><th>Thiết bị</th><th>Hoạt động</th><th>Nội dung / chi tiết</th><th>Người thực hiện</th><th>Kết quả</th></tr></thead><tbody>
         {deviceActivities.map(row => <tr key={row.id}><td>{dateTimeLabel(row.occurredAt)}</td><td><b>{row.assetCode}</b><small>{row.assetName}</small></td><td>{row.activityType}</td><td>{row.description}{row.detail && <small>{row.detail}</small>}</td><td>{row.performer}</td><td>{row.result}</td></tr>)}
       </tbody></table>{deviceActivities.length === 0 && <div className="empty">Không có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ báo cáo này.</div>}</div>
