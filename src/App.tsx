@@ -5,7 +5,7 @@ import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, L
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
-import MaintenancePanel from './MaintenancePanel'
+import MaintenancePanel, { MaintenanceDashboardSummary } from './MaintenancePanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -1299,6 +1299,7 @@ export default function App() {
                     <div className="stat-card"><div className="stat-icon red"><Archive size={20}/></div><div><small>Ngừng sử dụng</small><strong>{stoppedCount}</strong><span>Không tính thiết bị đã lưu kho</span></div></div>
                   </div>
                 </section>
+                {(localPreview||canView)&&<MaintenanceDashboardSummary organizationId={localPreview?'local-preview':organizationId} assets={assets} onOpen={()=>setActiveModule('maintenance')}/>}
                 {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
