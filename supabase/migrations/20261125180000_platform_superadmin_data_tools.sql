@@ -10,6 +10,7 @@ create table if not exists private.platform_data_seed_runs (
   inventory_count integer not null default 0 check (inventory_count between 0 and 30),
   asset_ids jsonb not null default '[]'::jsonb check (jsonb_typeof(asset_ids)='array'),
   inventory_ids jsonb not null default '[]'::jsonb check (jsonb_typeof(inventory_ids)='array'),
+  result jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default clock_timestamp()
 );
 
@@ -58,6 +59,7 @@ declare
   v_index integer := 0;
   v_label text := 'Superadmin';
   v_run_exists boolean;
+  v_result jsonb;
 begin
   if coalesce(auth.role(),'') <> 'service_role' then
     raise exception 'This operation is restricted to the platform service.' using errcode='42501';
@@ -73,6 +75,14 @@ begin
      or jsonb_array_length(p_assets)>30 or jsonb_array_length(p_inventory_items)>30
      or (jsonb_array_length(p_assets)=0 and jsonb_array_length(p_inventory_items)=0) then
     raise exception 'Provide 1–30 assets and/or 1–30 inventory items.' using errcode='22023';
+  end if;
+
+  select exists(select 1 from private.platform_data_seed_runs r where r.id=p_run_id) into v_run_exists;
+  if v_run_exists then
+    select result into v_result from private.platform_data_seed_runs
+      where id=p_run_id and organization_id=p_organization_id and actor_user_id=p_actor_user_id;
+    if not found then raise exception 'Seed run ID is already used by a different organization or actor.' using errcode='23505'; end if;
+    return v_result;
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_organization_id::text, 0));
@@ -91,6 +101,13 @@ begin
   end if;
 
   select count(*) into v_current_count from public.assets a where a.organization_id=p_organization_id;
+  v_current_count:=v_current_count+(
+    select count(*) from private.asset_id_sequence_reservations r
+    where r.organization_id=p_organization_id and r.status in ('reserved','confirmed')
+      and (r.asset_id is null or not exists(
+        select 1 from public.assets a where a.organization_id=r.organization_id and a.id=r.asset_id
+      ))
+  );
   if v_max_devices is not null and v_current_count+jsonb_array_length(p_assets)>v_max_devices then
     raise exception 'Plan % capacity exceeded: % existing + % requested > %.',v_plan,v_current_count,jsonb_array_length(p_assets),v_max_devices using errcode='22023';
   end if;
@@ -218,20 +235,23 @@ begin
     v_inventory_codes:=v_inventory_codes||jsonb_build_array(v_code);
   end loop;
 
+  v_result:=jsonb_build_object('runId',p_run_id,'organizationId',p_organization_id,'planCode',v_plan,
+    'assetsCreated',jsonb_array_length(p_assets),'inventoryCreated',jsonb_array_length(p_inventory_items),
+    'assetCodes',v_asset_codes,'inventoryCodes',v_inventory_codes,'createdBy',v_label);
+
   insert into private.platform_data_seed_runs(
-    id,organization_id,actor_user_id,actor_label,plan_code,asset_count,inventory_count,asset_ids,inventory_ids
+    id,organization_id,actor_user_id,actor_label,plan_code,asset_count,inventory_count,asset_ids,inventory_ids,result
   ) values (
     p_run_id,p_organization_id,p_actor_user_id,v_label,v_plan,jsonb_array_length(p_assets),
     jsonb_array_length(p_inventory_items),
     (select jsonb_agg(jsonb_build_object('id',v_asset_ids->i,'code',v_asset_codes->i))
       from generate_series(0,jsonb_array_length(v_asset_ids)-1) i),
     (select jsonb_agg(jsonb_build_object('id',v_inventory_ids->i,'code',v_inventory_codes->i))
-      from generate_series(0,jsonb_array_length(v_inventory_ids)-1) i)
+      from generate_series(0,jsonb_array_length(v_inventory_ids)-1) i),
+    v_result
   );
 
-  return jsonb_build_object('runId',p_run_id,'organizationId',p_organization_id,'planCode',v_plan,
-    'assetsCreated',jsonb_array_length(p_assets),'inventoryCreated',jsonb_array_length(p_inventory_items),
-    'assetCodes',v_asset_codes,'inventoryCodes',v_inventory_codes,'createdBy',v_label);
+  return v_result;
 end;
 $function$;
 
