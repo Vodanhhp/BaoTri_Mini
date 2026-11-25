@@ -114,12 +114,39 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
     })
     .sort((a, b) => (b.completedAt || b.updatedAt).localeCompare(a.completedAt || a.updatedAt)), [requests, range, query, assets])
   const materialUsage = useMemo(() => {
-    const grouped = new Map<string, { itemId: string; quantity: number; transactions: number }>()
+    const grouped = new Map<string, {
+      itemId: string
+      inboundQuantity: number
+      inboundTransactions: number
+      outboundQuantity: number
+      outboundTransactions: number
+      openingQuantity: number
+      openingTransactions: number
+      adjustmentQuantity: number
+      adjustmentTransactions: number
+    }>()
     for (const movement of movements) {
-      if (movement.type !== 'Xuất' || movement.date < range.startDate || movement.date > range.endDate) continue
-      const row = grouped.get(movement.itemId) || { itemId: movement.itemId, quantity: 0, transactions: 0 }
-      row.quantity += movement.quantity
-      row.transactions += 1
+      if (movement.date < range.startDate || movement.date > range.endDate) continue
+      const row = grouped.get(movement.itemId) || {
+        itemId: movement.itemId,
+        inboundQuantity: 0, inboundTransactions: 0,
+        outboundQuantity: 0, outboundTransactions: 0,
+        openingQuantity: 0, openingTransactions: 0,
+        adjustmentQuantity: 0, adjustmentTransactions: 0
+      }
+      if (movement.type === 'Nhập' && movement.reason.trim().toLocaleLowerCase('vi') === 'tồn đầu kỳ') {
+        row.openingQuantity += movement.quantity
+        row.openingTransactions += 1
+      } else if (movement.type === 'Nhập') {
+        row.inboundQuantity += movement.quantity
+        row.inboundTransactions += 1
+      } else if (movement.type === 'Xuất') {
+        row.outboundQuantity += movement.quantity
+        row.outboundTransactions += 1
+      } else if (movement.type === 'Điều chỉnh') {
+        row.adjustmentQuantity += movement.quantityDelta
+        row.adjustmentTransactions += 1
+      }
       grouped.set(movement.itemId, row)
     }
     return [...grouped.values()].map(row => {
@@ -128,6 +155,19 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
     }).filter(row => ((row.item?.code || '') + ' ' + (row.item?.name || '') + ' ' + (row.item?.group || '')).toLocaleLowerCase('vi').includes(query))
       .sort((a, b) => (a.item?.name || a.itemId).localeCompare(b.item?.name || b.itemId, 'vi'))
   }, [movements, inventory, range, query])
+  const materialTotals = useMemo(() => materialUsage.reduce((totals, row) => ({
+    inboundQuantity: totals.inboundQuantity + row.inboundQuantity,
+    inboundTransactions: totals.inboundTransactions + row.inboundTransactions,
+    outboundQuantity: totals.outboundQuantity + row.outboundQuantity,
+    outboundTransactions: totals.outboundTransactions + row.outboundTransactions,
+    openingQuantity: totals.openingQuantity + row.openingQuantity,
+    adjustmentQuantity: totals.adjustmentQuantity + row.adjustmentQuantity,
+    adjustmentTransactions: totals.adjustmentTransactions + row.adjustmentTransactions
+  }), {
+    inboundQuantity: 0, inboundTransactions: 0,
+    outboundQuantity: 0, outboundTransactions: 0,
+    openingQuantity: 0, adjustmentQuantity: 0, adjustmentTransactions: 0
+  }), [materialUsage])
 
   const deviceActivities = useMemo(() => {
     const completedRequestRows = requests.filter(row => row.status === 'Hoàn thành').map(row => {
@@ -203,15 +243,20 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
     'Tên vật tư': row.item?.name || row.itemId,
     'Nhóm vật tư': row.item?.group || '',
     'ĐVT': row.item?.unit || '',
-    'Số lượng xuất trong kỳ': row.quantity,
-    'Số lượt xuất': row.transactions,
+    'Tồn đầu kỳ ghi nhận': row.openingQuantity,
+    'Số lượng nhập trong kỳ': row.inboundQuantity,
+    'Số lượt nhập': row.inboundTransactions,
+    'Số lượng xuất trong kỳ': row.outboundQuantity,
+    'Số lượt xuất': row.outboundTransactions,
+    'Điều chỉnh kiểm kê': row.adjustmentQuantity,
+    'Số lượt điều chỉnh': row.adjustmentTransactions,
     'Tồn kho hiện tại': row.item?.quantity ?? '—',
     'Vị trí lưu kho': row.item?.location || ''
-  })), 'bao-cao-vat-tu-' + range.startDate + '.xlsx', 'BÁO CÁO SỬ DỤNG VẬT TƯ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Vật tư sử dụng', ['Mã vật tư','Tên vật tư','Nhóm vật tư','ĐVT','Số lượng xuất trong kỳ','Số lượt xuất','Tồn kho hiện tại','Vị trí lưu kho'], 'landscape', organizationName)
+  })), 'bao-cao-nhap-xuat-vat-tu-' + range.startDate + '.xlsx', 'BÁO CÁO NHẬP – XUẤT VẬT TƯ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Nhập xuất vật tư', ['Mã vật tư','Tên vật tư','Nhóm vật tư','ĐVT','Tồn đầu kỳ ghi nhận','Số lượng nhập trong kỳ','Số lượt nhập','Số lượng xuất trong kỳ','Số lượt xuất','Điều chỉnh kiểm kê','Số lượt điều chỉnh','Tồn kho hiện tại','Vị trí lưu kho'], 'landscape', organizationName)
 
   return <div className="reports-dashboard">
     <section className="panel report-period-panel">
-      <div className="panel-head"><div><h2>Báo cáo hoạt động thực tế</h2><p>Thống kê phiếu đã hoàn thành và vật tư đã xuất kho; không tính kế hoạch dự kiến.</p></div><BarChart3/></div>
+      <div className="panel-head"><div><h2>Báo cáo hoạt động thực tế</h2><p>Thống kê công việc đã hoàn thành và giao dịch nhập – xuất vật tư theo kỳ.</p></div><BarChart3/></div>
       <div className="report-period-tabs" role="tablist" aria-label="Kỳ báo cáo">
         {(['Ngày','Tuần','Tháng','Quý','Năm'] as Period[]).map(value => <button type="button" role="tab" aria-selected={period === value} key={value} className={period === value ? 'active' : ''} onClick={() => setPeriod(value)}>{value}</button>)}
       </div>
@@ -230,6 +275,25 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
 
     {loadError && <section className="panel report-note"><ShieldAlert/><div><b>Không tải được dữ liệu báo cáo</b><p>{loadError}</p></div></section>}
 
+    {canViewInventory && <section className="panel report-data-panel">
+      <div className="panel-head"><div><h2>Báo cáo nhập – xuất vật tư</h2><p>{rangeLabel(period, range)} · tổng hợp theo giao dịch kho đã ghi nhận tại Local của tổ chức đang chọn</p></div>{canExport && <button type="button" className="soft-btn" onClick={() => void exportMaterials()}><Download size={16}/> Xuất Excel</button>}</div>
+      <div className="report-summary">
+        <span><b>{materialTotals.inboundQuantity.toLocaleString('vi-VN')}</b> tổng số lượng nhập · {materialTotals.inboundTransactions} lượt</span>
+        <span><b>{materialTotals.outboundQuantity.toLocaleString('vi-VN')}</b> tổng số lượng xuất · {materialTotals.outboundTransactions} lượt</span>
+        <span><b>{materialTotals.openingQuantity.toLocaleString('vi-VN')}</b> tồn đầu kỳ ghi nhận</span>
+        <span><b>{materialTotals.adjustmentQuantity.toLocaleString('vi-VN')}</b> chênh lệch điều chỉnh · {materialTotals.adjustmentTransactions} lượt</span>
+      </div>
+      <div className="table-wrap reports-table-wrap"><table className="period-report-table"><thead><tr>
+        <th>Mã vật tư</th><th>Tên vật tư</th><th>Nhóm</th><th>ĐVT</th><th>Tồn đầu kỳ ghi nhận</th><th>Nhập trong kỳ</th><th>Lượt nhập</th><th>Xuất trong kỳ</th><th>Lượt xuất</th><th>Điều chỉnh kiểm kê</th><th>Tồn hiện tại</th>
+      </tr></thead><tbody>
+        {materialUsage.map(row => <tr key={row.itemId}>
+          <td><b>{row.item?.code || '—'}</b></td><td>{row.item?.name || 'Vật tư không còn trong danh mục'}</td><td>{row.item?.group || '—'}</td><td>{row.item?.unit || '—'}</td>
+          <td>{row.openingQuantity.toLocaleString('vi-VN')}</td><td>{row.inboundQuantity.toLocaleString('vi-VN')}</td><td>{row.inboundTransactions}</td>
+          <td>{row.outboundQuantity.toLocaleString('vi-VN')}</td><td>{row.outboundTransactions}</td><td>{row.adjustmentQuantity.toLocaleString('vi-VN')}</td><td>{row.item?.quantity.toLocaleString('vi-VN') ?? '—'}</td>
+        </tr>)}
+      </tbody></table>{materialUsage.length === 0 && <div className="empty">Không có giao dịch nhập, xuất hoặc điều chỉnh vật tư trong kỳ báo cáo này.</div>}</div>
+    </section>}
+
     {canViewAssets && <section className="panel report-data-panel">
       <div className="panel-head"><div><h2>Tình trạng thiết bị</h2><p>{rangeLabel(period, range)} · chỉ hiển thị thiết bị có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ</p></div>{canExport && <button type="button" className="soft-btn" onClick={() => void exportDeviceActivities()}><Download size={16}/> Xuất Excel</button>}</div>
       <div className="report-summary"><span><b>{new Set(deviceActivities.map(row => row.assetId)).size}</b> thiết bị có hoạt động</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng').length}</b> lượt bảo dưỡng</span><span><b>{deviceActivities.filter(row => row.activityType === 'Sửa chữa').length}</b> lượt sửa chữa</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng định kỳ').length}</b> lượt công việc định kỳ</span></div>
@@ -238,7 +302,7 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
       </tbody></table>{deviceActivities.length === 0 && <div className="empty">Không có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ báo cáo này.</div>}</div>
     </section>}
 
-    <div className="panel report-note"><ShieldAlert/><div><b>Lưu ý nguồn dữ liệu</b><p>Báo cáo công việc lấy từ Phiếu YC đã hoàn thành. Báo cáo tình trạng thiết bị chỉ liệt kê Phiếu YC và công việc định kỳ đã hoàn thành trong kỳ; thời gian lấy từ thời điểm hoàn thành và người thực hiện từ lịch sử thao tác (hoặc trường người hoàn thành). Các bước công việc định kỳ hiện là nội dung checklist mô tả, chưa phải Checklist độc lập có kết quả từng hạng mục. Vật tư đã dùng được tính từ giao dịch Xuất kho; tồn kho là số hiện tại. Nội dung vật tư ghi tự do trong Phiếu YC không được cộng vào số lượng xuất kho. Báo cáo phản ánh dữ liệu Local của tổ chức đang chọn.</p></div></div>
+    <div className="panel report-note"><ShieldAlert/><div><b>Lưu ý nguồn dữ liệu</b><p>Báo cáo công việc lấy từ Phiếu YC đã hoàn thành. Báo cáo tình trạng thiết bị chỉ liệt kê Phiếu YC và công việc định kỳ đã hoàn thành trong kỳ; thời gian lấy từ thời điểm hoàn thành và người thực hiện từ lịch sử thao tác (hoặc trường người hoàn thành). Các bước công việc định kỳ hiện là nội dung checklist mô tả, chưa phải Checklist độc lập có kết quả từng hạng mục. Báo cáo vật tư phân biệt Nhập, Xuất, tồn đầu kỳ ghi nhận và điều chỉnh kiểm kê; điều chỉnh không cộng vào tổng nhập/xuất. Tồn kho là số hiện tại. Nội dung vật tư ghi tự do trong Phiếu YC không được cộng vào giao dịch kho. Báo cáo phản ánh dữ liệu Local của tổ chức đang chọn.</p></div></div>
     {!canExport && <div className="footnote"><FileSpreadsheet size={14}/> Tài khoản chỉ có quyền xem; chức năng xuất Excel không khả dụng.</div>}
   </div>
 }
