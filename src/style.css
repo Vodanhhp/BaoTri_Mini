@@ -3054,7 +3054,7 @@ html,body,#root,.app-shell{
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
 }
-#root .app-shell .asset-list-table{
+#root .app-shell .table-wrap > table.asset-list-table{
   min-width:790px;
   width:100%;
   table-layout:auto;
@@ -3100,5 +3100,5 @@ html,body,#root,.app-shell{
     border:1px solid var(--border);
     border-radius:9px;
   }
-  #root .app-shell .asset-list-table{min-width:790px}
+  #root .app-shell .table-wrap > table.asset-list-table{min-width:790px}
 }
