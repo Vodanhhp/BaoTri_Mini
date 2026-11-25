@@ -283,7 +283,7 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
         <span><b>{materialTotals.openingQuantity.toLocaleString('vi-VN')}</b> tồn đầu kỳ ghi nhận</span>
         <span><b>{materialTotals.adjustmentQuantity.toLocaleString('vi-VN')}</b> chênh lệch điều chỉnh · {materialTotals.adjustmentTransactions} lượt</span>
       </div>
-      <div className="table-wrap reports-table-wrap"><table className="period-report-table"><thead><tr>
+      <div className="table-wrap reports-table-wrap"><table className="period-report-table inventory-flow-report-table"><thead><tr>
         <th>Mã vật tư</th><th>Tên vật tư</th><th>Nhóm</th><th>ĐVT</th><th>Tồn đầu kỳ ghi nhận</th><th>Nhập trong kỳ</th><th>Lượt nhập</th><th>Xuất trong kỳ</th><th>Lượt xuất</th><th>Điều chỉnh kiểm kê</th><th>Tồn hiện tại</th>
       </tr></thead><tbody>
         {materialUsage.map(row => <tr key={row.itemId}>
