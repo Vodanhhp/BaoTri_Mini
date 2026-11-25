@@ -390,7 +390,7 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 ### Trạng thái còn cần xác minh
 - Chưa xác minh giao diện bằng phiên đăng nhập Superadmin thực tế trên trình duyệt.
 - Chưa chạy thao tác tạo dữ liệu thực tế trên một tenant được chỉ định; hiện không có seed run nào.
-- Chưa xác minh GitHub Pages deployment của merge commit #65. Cần kiểm tra workflow Deploy to GitHub Pages và giao diện production trước khi coi phần UI đã được người dùng nghiệm thu.
+- GitHub Pages deployment sau khi merge và đồng bộ tên migration: workflow run `45609846305` **PASS** (build artifact và Deploy to GitHub Pages). Không thể xác minh giao diện bằng phiên đăng nhập Superadmin thực tế trong phiên làm việc này.
 - Chưa triển khai công cụ tạo checklist hoặc các loại dữ liệu mở rộng.
 
 **Lưu ý:** Migration và Edge Function đã được phát hành nhưng chưa tạo bất kỳ dữ liệu mẫu nào. Chỉ thực hiện tạo dữ liệu khi người dùng chọn rõ doanh nghiệp đích và xác nhận thao tác trong giao diện Superadmin.
