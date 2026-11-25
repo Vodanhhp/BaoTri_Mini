@@ -308,3 +308,21 @@ Kiểm tra:
 - GitHub Actions Build and test run `45548710420`: SUCCESS; unit tests và build đều PASS.
 - GitHub Pages deploy run `45548710373`: đã qua các bước Build, xác minh cấu hình Supabase client, giữ CNAME và upload Pages artifact; đang chờ trạng thái kết thúc của workflow.
 - Chưa kiểm thử trực tiếp trên trình duyệt PC/mobile hoặc xác minh tương tác thực tế trên website trong lượt rà soát này.
+
+## 19. Cập nhật 25/11/2026 – xuất Excel đúng định dạng trong phân hệ Bảo dưỡng – Sửa chữa
+
+Theo xác nhận của người dùng, chức năng xuất dữ liệu của phân hệ Bảo dưỡng – Sửa chữa phải tạo tệp Excel thực sự (`.xlsx`), không dùng CSV rồi đặt nhãn gây nhầm lẫn.
+
+- `src/MaintenancePanel.tsx`: sử dụng dependency ExcelJS đã có trong dự án để tạo workbook `.xlsx` cho cả Phiếu YC và Lịch bảo dưỡng định kỳ.
+- Tệp có hàng tiêu đề được định dạng, bật bộ lọc và cố định hàng đầu; tên tệp lần lượt là `phieu-bao-duong-sua-chua.xlsx` và `lich-bao-duong-dinh-ky.xlsx`.
+- Đổi nhãn thao tác thành **Xuất Excel**; không còn xuất CSV trong hai chức năng này.
+- `scripts/maintenanceModule.test.mjs`: thêm kiểm tra xác nhận dùng ExcelJS, MIME type XLSX, phần mở rộng `.xlsx` và không còn đường xuất CSV.
+- Không thay đổi dữ liệu Local, schema IndexedDB, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+
+Commits:
+- `9502f9809fe2c21ff76a38462e03494ce3cddcc5` – xuất workbook Excel thật.
+- `dfb0b938cc81a3245cbbb1335ca56329c5fdfbf4` – bổ sung kiểm tra hồi quy cho định dạng XLSX.
+
+Kiểm tra:
+- Tại thời điểm ghi nhận, GitHub chưa trả về status check cho commit kiểm thử mới; chưa đánh dấu CI PASS.
+- Chưa kiểm tra thao tác tải và mở file trên trình duyệt/Excel thực tế.
