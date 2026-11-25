@@ -362,3 +362,29 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - CI trên PR head `491230baf144bb3bba79a7f4e72b71cc2499b064`: Build and test run `45594803640` SUCCESS (Unit tests PASS, Build PASS); Validate BAOTRI Mini run `45594803441` SUCCESS (npm ci và npm run build PASS).
 - Thay đổi CSS và test đã nằm trên `main`; không thay đổi dữ liệu Local, IndexedDB schema, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
 - Merge đã hoàn tất. Chưa có bằng chứng workflow deploy GitHub Pages sau merge đã chạy xong; cũng chưa kiểm tra browser thật hoặc giao diện trên điện thoại. Cần xác minh trạng thái deploy riêng, sau đó người dùng kiểm tra lại mobile thực tế.
+
+
+
+## 22. Cập nhật 25/11/2026 – Công cụ dữ liệu thử nghiệm trong Superadmin (PR #65)
+
+Đã tạo nhánh `feat/superadmin-data-tools` và mở PR #65:
+- https://github.com/Vodanhhp/BaoTri_Mini/pull/65
+
+### Phạm vi mã nguồn trên nhánh
+- Thêm mục điều hướng **Công cụ dữ liệu** trong workspace Superadmin.
+- Thêm `src/PlatformDataToolsPanel.tsx`: chọn doanh nghiệp đang hoạt động, xem Plan/Snapshot/hạn mức, chọn tạo 30 thiết bị và/hoặc 30 vật tư.
+- Thêm Edge Function `platform-data-tools`: xác thực email Superadmin đã xác nhận qua `PLATFORM_OWNER_EMAIL`; service-role key chỉ dùng phía server.
+- Thêm migration `20261125180000_platform_superadmin_data_tools.sql`: RPC chỉ cấp quyền EXECUTE cho service_role; kiểm tra tổ chức/Plan/hạn mức; cấp mã thiết bị theo Plan A/B/C/D và sequence; tạo vật tư với mã VT; ghi người tạo là **Superadmin**; phát asset/inventory sync events; ghi audit run.
+- Có run ID để retry không tạo trùng.
+- Thêm test tĩnh `scripts/platformDataTools.test.mjs`.
+
+### Giới hạn hiện tại
+- PR đang OPEN; chưa merge.
+- Chưa áp dụng migration vào Production hoặc Test.
+- Chưa deploy Edge Function.
+- Chưa deploy website.
+- Chưa tạo dữ liệu vào doanh nghiệp nào.
+- Chưa có checklist hoặc các loại dữ liệu mở rộng; mới có thiết bị và vật tư.
+- CI chưa trả về workflow run/status ở thời điểm cập nhật; chưa đánh dấu PASS.
+- Cần review kỹ migration/RPC và kiểm thử tích hợp trên môi trường Test trước khi áp dụng Production. Người dùng chưa phê duyệt merge PR hoặc áp dụng migration Production.
+
