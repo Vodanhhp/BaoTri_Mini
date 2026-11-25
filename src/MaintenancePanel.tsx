@@ -75,7 +75,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
         await db.maintenanceRequests.put(value)
         await addHistory('request',value.id,previous?(previous.status!==value.status?'status_changed':'updated'):'created',previous?'Cập nhật Phiếu YC Bảo dưỡng – Sửa chữa':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa',previous,value)
       })
-      setRequestEditor(null);await reload()
+      setRequestEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const saveTask = async (event:FormEvent<HTMLFormElement>) => {
@@ -90,7 +90,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
         await db.maintenanceTasks.put(value)
         await addHistory('task',value.id,previous?'updated':'created',previous?'Cập nhật lịch bảo dưỡng định kỳ':'Tạo lịch bảo dưỡng định kỳ',previous,value)
       })
-      setTaskEditor(null);await reload()
+      setTaskEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const completeRequest = async (row:MaintenanceRequest) => {
@@ -106,7 +106,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
       await db.maintenanceRequests.put(value)
       await addHistory('request',row.id,'completed','Xác nhận hoàn thành Phiếu YC',row,value)
     })
-    await reload()
+    await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
   }
   const updateTaskStatus = async (row:MaintenanceTask,status:MaintenanceTask['status']) => {
     if(!canManage)return
@@ -115,7 +115,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
       await db.maintenanceTasks.put(value)
       await addHistory('task',row.id,'status_changed','Cập nhật trạng thái công việc: '+status,row,value)
     })
-    await reload()
+    await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
   }
   const exportRequests = () => {
     const rows=[['Ngày yêu cầu','Hạn hoàn thành','Mã thiết bị','Tên thiết bị','Loại yêu cầu','Nội dung','Thông số / vật tư','Trạng thái','Kết quả','Người yêu cầu','Người hoàn thành']]
