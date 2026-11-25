@@ -288,3 +288,23 @@ Người dùng xác nhận dự án hiện vẫn trong giai đoạn xây dựng,
 - Không có migration hoặc thay đổi Supabase/Cloud trong PR; dữ liệu phân hệ hiện vẫn chỉ nằm trong IndexedDB trên trình duyệt đang sử dụng, chưa đồng bộ giữa thiết bị.
 - Chưa xác nhận website GitHub Pages đã hoàn tất cập nhật sau merge; cần theo dõi workflow deploy và kiểm tra URL thực tế.
 - Từ nay tiếp tục sửa lỗi trực tiếp theo phản hồi khi người dùng chạy ứng dụng; không tự ý thay đổi schema, dữ liệu, Auth, RLS, Storage hoặc bật đồng bộ Cloud nếu chưa được duyệt riêng.
+
+
+## 18. Cập nhật 25/11/2026 – rà soát và gia cố phân hệ Bảo dưỡng – Sửa chữa
+
+Sau khi người dùng xác nhận giao diện đã khá đồng bộ, rà soát mã nguồn trên `main` phát hiện một rủi ro bất đồng bộ ở `MaintenancePanel`: truy vấn IndexedDB của tổ chức cũ có thể hoàn tất sau khi người dùng chuyển tổ chức và ghi đè dữ liệu đang hiển thị.
+
+Đã sửa trực tiếp trên `main`:
+- `src/MaintenancePanel.tsx`: gắn hiệu lực của từng lượt tải với vòng đời tổ chức đang chọn; kết quả truy vấn cũ bị bỏ qua sau khi component đổi tổ chức hoặc unmount. Gộp listener cập nhật dữ liệu vào cùng effect để cùng được hủy khi đổi tổ chức.
+- `scripts/maintenanceModule.test.mjs`: bổ sung kiểm tra hồi quy cho guard chống kết quả IndexedDB cũ ghi đè dữ liệu của tổ chức mới.
+- Không thay đổi nghiệp vụ, schema IndexedDB, dữ liệu thiết bị/vật tư, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+
+Commits:
+- `0f58d3ed76848a3916cad97cf6de4192d4e4ceb6` – sửa stale reads khi chuyển tổ chức.
+- `a683b373938d73468db6fec56cfeba9ee334d86f` – bổ sung test hồi quy.
+- `01dc908e51e023bb43e9b0b03dac9f62c3974128` – chỉnh biểu thức test theo định dạng mã nguồn.
+
+Kiểm tra:
+- GitHub Actions Build and test run `45548710420`: SUCCESS; unit tests và build đều PASS.
+- GitHub Pages deploy run `45548710373`: đã qua các bước Build, xác minh cấu hình Supabase client, giữ CNAME và upload Pages artifact; đang chờ trạng thái kết thúc của workflow.
+- Chưa kiểm thử trực tiếp trên trình duyệt PC/mobile hoặc xác minh tương tác thực tế trên website trong lượt rà soát này.
