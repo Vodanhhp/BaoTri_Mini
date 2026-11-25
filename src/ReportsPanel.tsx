@@ -139,7 +139,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
         id: 'request-' + row.id, assetId: row.assetId, occurredAt, assetCode: asset?.code || '—',
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
         activityType: row.kind, description: row.description || '—',
-        detail: [row.readings && 'Thông số: ' + row.readings, row.parts && 'Vật tư: ' + row.parts].filter(Boolean).join(' · '),
+        detail: [row.readings && 'Thông số ban đầu: ' + row.readings, row.completionReadings && 'Thông số sau xử lý: ' + row.completionReadings, row.conditionAfterRepair && 'Tình trạng sau xử lý: ' + row.conditionAfterRepair, row.parts && 'Vật tư: ' + row.parts].filter(Boolean).join(' · '),
         performer: event?.actorLabel || row.performedBy || '—',
         result: row.result || 'Chưa ghi nhận'
       }

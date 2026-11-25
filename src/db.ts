@@ -111,6 +111,8 @@ export type AssetHistory = {
 export type MaintenanceRequest = {
   id: string; organizationId: string; assetId: string; requestDate: string; dueDate?: string
   kind: 'Bảo dưỡng' | 'Sửa chữa'; description: string; parts: string; readings: string
+  /** Parameters recorded after the maintenance/repair work is completed. */
+  completionReadings?: string; conditionAfterRepair?: string
   requestedBy: string; requestedByUserId?: string; status: 'Chưa hoàn thành' | 'Hoàn thành'
   result: 'Đạt' | 'Không đạt' | ''; performedBy: string; completedAt?: string; createdAt: string; updatedAt: string
 }
