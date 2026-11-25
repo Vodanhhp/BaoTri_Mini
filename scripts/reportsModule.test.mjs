@@ -35,7 +35,7 @@ test('inventory usage is derived from stock-out movements, not free-text parts o
 })
 
 test('reports preserve weekly, monthly, quarterly and yearly period controls', () => {
-  for (const period of ['Tuần', 'Tháng', 'Quý', 'Năm']) assert.ok(panel.includes("'" + period + "'"))
+  for (const period of ['Ngày', 'Tuần', 'Tháng', 'Quý', 'Năm']) assert.ok(panel.includes("'" + period + "'"))
   assert.match(panel, /function periodRange/)
 })
 
@@ -52,7 +52,7 @@ test('report tables remain horizontally scrollable on narrow screens', () => {
 
 
 test('equipment status report is a period activity report, not a snapshot of every asset', () => {
-  assert.match(panel, /<h2>Tình trạng thiết bị<\\/h2>/)
+  assert.ok(panel.includes('<h2>Tình trạng thiết bị</h2>'))
   assert.match(panel, /deviceActivities/)
   assert.match(panel, /Không có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành/)
   assert.doesNotMatch(panel, /Tình trạng thiết bị hiện tại/)
@@ -72,7 +72,7 @@ test('equipment activity report shows timestamp, performer and outcome in the UI
   for (const field of ['Ngày giờ thực hiện', 'Người thực hiện', 'Kết quả']) assert.ok(panel.includes(field))
   assert.match(panel, /dateTimeLabel\(row\.occurredAt\)/)
   assert.match(panel, /exportDeviceActivities/)
-  assert.match(panel, /Asia\\/Ho_Chi_Minh/)
+  assert.ok(panel.includes('Asia/Ho_Chi_Minh'))
 })
 
 test('equipment activity report filters by selected period and search query', () => {
