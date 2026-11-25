@@ -31,7 +31,7 @@ test('actual work report only counts completed maintenance requests in the selec
 test('inventory usage is derived from stock-out movements, not free-text parts on work orders', () => {
   assert.match(panel, /movement\.type !== 'Xuất'/)
   assert.match(panel, /row\.quantity \+= movement\.quantity/)
-  assert.match(panel, /Vật tư ghi tự do trong Phiếu YC không được cộng/)
+  assert.match(panel, /Nội dung vật tư ghi tự do trong Phiếu YC không được cộng/)
 })
 
 test('reports preserve weekly, monthly, quarterly and yearly period controls', () => {
