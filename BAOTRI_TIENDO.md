@@ -484,3 +484,15 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Cột nội dung được nới rộng hơn; hai cột tên người được đặt độ rộng tối thiểu 22 để hạn chế tiêu đề và họ tên bị ép hẹp.
 - Tăng chiều cao hàng tiêu đề để tiêu đề dài xuống dòng dễ đọc hơn; giữ nguyên dữ liệu, thứ tự cột, bộ lọc, cố định hàng và vùng in.
 - Thay đổi nằm trong nhánh sửa lỗi, chưa tạo PR/merge/deploy. Chưa kiểm tra file XLSX thực tế bằng Excel desktop.
+
+
+## 25/11/2026 – bổ sung báo cáo nhập – xuất vật tư theo kỳ
+
+- Bổ sung phân hệ báo cáo vật tư trong mục Báo cáo, hiển thị theo bộ lọc kỳ Ngày/Tuần/Tháng/Quý/Năm đang dùng chung với báo cáo.
+- Tổng hợp từ lịch sử giao dịch kho Local theo đúng organizationId: số lượng và số lượt Nhập; số lượng và số lượt Xuất; tồn kho hiện tại theo hồ sơ vật tư.
+- Tách riêng giao dịch khởi tạo có lý do “Tồn đầu kỳ”, không cộng nhầm vào nhập kho thông thường.
+- Tách riêng giao dịch “Điều chỉnh” kiểm kê; không cộng vào tổng Nhập/Xuất. Báo cáo có cột chênh lệch điều chỉnh để người xem đối chiếu.
+- Có tìm kiếm theo mã/tên/nhóm vật tư và xuất Excel gồm nhập, xuất, tồn đầu kỳ ghi nhận, điều chỉnh, tồn hiện tại và vị trí lưu kho.
+- Không tính nội dung vật tư ghi tự do trên Phiếu YC thành giao dịch xuất kho; không suy ngược nhập/xuất từ tồn hiện tại.
+- Chỉ đọc dữ liệu Local; không sửa IndexedDB schema, dữ liệu nghiệp vụ, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+- Đã bổ sung source tests cho tổng hợp Nhập/Xuất và nguyên tắc tách tồn đầu kỳ/điều chỉnh. Chờ CI xác nhận; chưa kiểm tra giao diện thực tế hoặc file XLSX bằng Excel desktop.
