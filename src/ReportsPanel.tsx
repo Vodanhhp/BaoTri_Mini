@@ -50,7 +50,7 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value) + 
 
 export default function ReportsPanel({ organizationId, assets, canViewAssets, canViewInventory, canExport }: Props) {
   const [period, setPeriod] = useState<Period>('Tháng')
-  const [anchorDate, setAnchorDate] = useState(new Date().toISOString().slice(0, 10))
+  const [anchorDate, setAnchorDate] = useState(() => { const date = new Date(); return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-') })
   const [search, setSearch] = useState('')
   const [inventory, setInventory] = useState<InventoryItem[]>([])
   const [movements, setMovements] = useState<InventoryMovement[]>([])
