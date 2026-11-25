@@ -422,3 +422,33 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Đã tạo nhánh và ghi các thay đổi lên GitHub.
 - CI Build/Test, TypeScript/Vite build, kiểm tra giao diện trên trình duyệt và kiểm tra file XLSX thực tế: **chưa xác nhận**.
 - Chưa tạo PR, chưa merge vào `main`, chưa deploy GitHub Pages.
+
+
+## 24. Cập nhật 25/11/2026 – chuyển báo cáo tình trạng thiết bị sang báo cáo hoạt động theo kỳ
+
+### Thay đổi trên nhánh `feat/reports-equipment-activity`
+- Thay báo cáo ảnh chụp trạng thái toàn bộ thiết bị bằng **Tình trạng thiết bị** theo hoạt động thực tế trong kỳ; thiết bị không có công việc hoàn thành trong kỳ không xuất hiện.
+- Bộ chọn kỳ có Ngày, Tuần, Tháng, Quý, Năm; lọc theo ngày giờ Việt Nam (Asia/Ho_Chi_Minh).
+- Nguồn hoạt động hiện có:
+  - Phiếu YC Bảo dưỡng/Sửa chữa có trạng thái Hoàn thành.
+  - Lịch bảo dưỡng định kỳ có trạng thái Hoàn thành.
+- Mỗi dòng thể hiện ngày giờ, mã/tên thiết bị, loại hoạt động, nội dung, chi tiết/thông số, người thao tác xác nhận hoàn thành và kết quả.
+- Người thực hiện được ưu tiên lấy từ lịch sử thao tác `maintenanceHistory.actorLabel`; Phiếu YC có thể dự phòng bằng `performedBy`. Lịch định kỳ lấy actor từ sự kiện lịch sử chuyển trạng thái sang Hoàn thành.
+- Xuất Excel dùng chung exporter, giữ đầy đủ thời gian, thiết bị, nội dung, người thực hiện và kết quả.
+- Hai báo cáo công việc bảo trì và vật tư vẫn được giữ nguyên; báo cáo thiết bị mới thay phần thống kê tổng số/trạng thái hiện tại.
+- Truy vấn chỉ lấy dữ liệu Local theo organizationId; không sửa IndexedDB schema, dữ liệu, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+
+### Giới hạn dữ liệu Checklist
+- Hiện BAOTRI Mini chưa có phân hệ Checklist độc lập hoặc dữ liệu kết quả kiểm tra từng hạng mục.
+- Báo cáo hiện chỉ hiển thị các bước công việc mô tả trong lịch bảo dưỡng định kỳ khi lịch được đánh dấu hoàn thành; không coi đó là kết quả Checklist từng mục và không tạo dữ liệu giả.
+- Khi phân hệ Checklist độc lập được triển khai, cần bổ sung nguồn kết quả checklist, thời điểm kiểm tra và người kiểm tra vào báo cáo này.
+
+### Kiểm tra
+- Đã bổ sung source tests cho báo cáo hoạt động theo kỳ, nguồn Phiếu YC/lịch định kỳ, thời gian/người thực hiện/kết quả, lọc ngày và nguyên tắc không giả lập Checklist.
+- PR #67: https://github.com/Vodanhhp/BaoTri_Mini/pull/67 (đang OPEN, chưa merge).
+- Head commit hiện tại: `970220489eaefbcf36164017e3f0bbaa8bd7c498`.
+- GitHub Actions Build and test run `45617994461`: SUCCESS; Unit tests PASS, TypeScript/Vite build PASS.
+- Validate BAOTRI Mini run `45617994449`: SUCCESS (`npm ci` và `npm run build` PASS).
+- GitHub Pages chưa deploy vì PR chưa merge.
+- Chưa kiểm tra trực tiếp giao diện, dữ liệu Local thật hoặc file XLSX tải về.
+- PR chưa merge; không thay đổi Supabase.
