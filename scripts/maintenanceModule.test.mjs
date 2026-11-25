@@ -76,3 +76,16 @@ test('maintenance tables and actions remain usable on narrow mobile screens', as
   assert.ok(styles.includes('grid-template-columns:repeat(2,minmax(0,1fr));'))
   assert.ok(styles.includes('Vuốt ngang bảng để xem các cột còn lại'))
 })
+
+
+test('a request cannot be completed without post-work readings and equipment condition', async () => {
+  const db = await read('../src/db.ts')
+  const panel = await read('../src/MaintenancePanel.tsx')
+  assert.match(db, /completionReadings\?: string; conditionAfterRepair\?: string/)
+  assert.match(panel, /const saveCompletion = async/)
+  assert.match(panel, /if\(!performedBy\|\|!completionReadings\|\|!conditionAfterRepair\|\|!completionEditor\.result\)/)
+  assert.match(panel, /Thông số sau sửa chữa \/ bảo dưỡng \*/)
+  assert.match(panel, /Tình trạng thiết bị sau sửa chữa \/ bảo dưỡng \*/)
+  assert.match(panel, /setCompletionEditor\(null\);await reload\(\)/)
+  assert.match(panel, /completionReadings,conditionAfterRepair,completedAt:now\(\)/)
+})
