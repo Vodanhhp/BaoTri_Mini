@@ -157,7 +157,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       const {downloadExcelReport}=await import('./lib/excelExport')
       const headers=['Ngày đến hạn','Mã thiết bị','Tên thiết bị','Công việc','Chu kỳ','Trạng thái','Các bước','Thông số','Ghi chú']
       const rows=tasks.map(row=>{const asset=assets.find(item=>item.id===row.assetId);return {'Ngày đến hạn':dateLabel(row.dueDate),'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Công việc':row.title,'Chu kỳ':row.frequency,'Trạng thái':row.status,'Các bước':row.checklist||'','Thông số':row.readings||'','Ghi chú':row.notes||''}})
-      await downloadExcelReport(rows,'lich-bao-duong-dinh-ky.xlsx','LỊCH BẢO DƯỠNG ĐỊNH KỲ','Lịch bảo dưỡng',headers,'landscape')
+      await downloadExcelReport(rows,'lich-bao-duong-dinh-ky.xlsx','LỊCH BẢO DƯỠNG ĐỊNH KỲ','Lịch bảo dưỡng',headers,'landscape',organizationName)
     }catch(cause){setError('Xuất Excel lịch bảo dưỡng thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
   const exportRequests = async () => {
@@ -167,7 +167,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       const {downloadExcelReport}=await import('./lib/excelExport')
       const headers=['Ngày yêu cầu','Hạn hoàn thành','Mã thiết bị','Tên thiết bị','Loại yêu cầu','Nội dung','Thông số ban đầu','Thông số sau xử lý','Tình trạng sau xử lý','Vật tư / phụ tùng','Trạng thái','Kết quả','Người yêu cầu','Người hoàn thành']
       const rows=visibleRequests.map(row=>{const asset=assets.find(item=>item.id===row.assetId);return {'Ngày yêu cầu':dateLabel(row.requestDate),'Hạn hoàn thành':dateLabel(row.dueDate),'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Loại yêu cầu':row.kind,'Nội dung':row.description,'Thông số ban đầu':row.readings||'','Thông số sau xử lý':row.completionReadings||'','Tình trạng sau xử lý':row.conditionAfterRepair||'','Vật tư / phụ tùng':row.parts||'','Trạng thái':row.status,'Kết quả':row.result||'','Người yêu cầu':row.requestedBy,'Người hoàn thành':row.performedBy||''}})
-      await downloadExcelReport(rows,'phieu-bao-duong-sua-chua.xlsx','PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA','Phiếu yêu cầu',headers,'landscape')
+      await downloadExcelReport(rows,'phieu-bao-duong-sua-chua.xlsx','PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA','Phiếu yêu cầu',headers,'landscape',organizationName)
     }catch(cause){setError('Xuất Excel Phiếu YC thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
 
