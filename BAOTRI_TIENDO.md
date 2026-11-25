@@ -362,3 +362,46 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - CI trên PR head `491230baf144bb3bba79a7f4e72b71cc2499b064`: Build and test run `45594803640` SUCCESS (Unit tests PASS, Build PASS); Validate BAOTRI Mini run `45594803441` SUCCESS (npm ci và npm run build PASS).
 - Thay đổi CSS và test đã nằm trên `main`; không thay đổi dữ liệu Local, IndexedDB schema, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
 - Merge đã hoàn tất. Chưa có bằng chứng workflow deploy GitHub Pages sau merge đã chạy xong; cũng chưa kiểm tra browser thật hoặc giao diện trên điện thoại. Cần xác minh trạng thái deploy riêng, sau đó người dùng kiểm tra lại mobile thực tế.
+
+
+
+## 22. Cập nhật 25/11/2026 – Công cụ dữ liệu thử nghiệm trong Superadmin (PR #65)
+
+Nhánh: `feat/superadmin-data-tools`
+PR: https://github.com/Vodanhhp/BaoTri_Mini/pull/65
+
+### Mã nguồn
+- Thêm mục **Công cụ dữ liệu** vào workspace Superadmin (khu vực quản trị nền tảng vốn chỉ hoạt động trên PC).
+- Thêm `src/PlatformDataToolsPanel.tsx`: chọn doanh nghiệp, xem Plan/Catalog Snapshot/hạn mức, chọn tạo 30 thiết bị và/hoặc 30 vật tư.
+- Thêm Edge Function `platform-data-tools`: xác thực email Superadmin đã xác nhận theo `PLATFORM_OWNER_EMAIL`; service-role key chỉ nằm ở server.
+- Migration đang để tại `supabase/pending_migrations/20261125180000_platform_superadmin_data_tools.sql`, chưa đưa vào `supabase/migrations` vì repo có kiểm thử yêu cầu thư mục migration phải khớp chính xác lịch sử đã áp dụng Production.
+- Cấp mã thiết bị theo Plan A/B/C/D, Catalog Snapshot và sequence server-side; tạo reservation đã xác nhận trước khi INSERT assets để đáp ứng BEFORE INSERT trigger hiện hữu.
+- Vật tư được cấp mã VT theo số lớn nhất hiện có; ghi mutation receipt và inventory sync event. Tồn đầu là 0, không tự tạo phiếu nhập kho.
+- Ghi người tạo là **Superadmin**, audit theo từng lượt; có run ID chống tạo trùng khi retry.
+- Không có chức năng bulk import vĩnh viễn cho Admin doanh nghiệp; công cụ chỉ nằm trong Superadmin.
+
+### Kiểm thử mã nguồn
+- Build/Test run `45608218441`: PASS (npm test và npm run build).
+- Validate run `45608218423`: PASS (npm ci và npm run build).
+- SQL integration trên Supabase Test: đã chạy transaction rollback thành công cho Plan A/B/C/D.
+  - Plan A: mã mẫu `PMP-001`; vật tư `VT-001`.
+  - Plan B: `PMP-DIEN-001`.
+  - Plan C: `PMP-DIEN-01-001-1126`.
+  - Plan D: `PMP-DIEN-02-001-1126`.
+  - Kiểm tra trong transaction xác nhận asset history, asset sync event, reservation snapshot, inventory receipt, inventory sync event và audit đều được tạo đúng; sau đó ROLLBACK.
+- Kiểm tra quyền trên Test: service_role EXECUTE = true; authenticated/anon EXECUTE = false.
+- Sau rollback, Test vẫn giữ nguyên 2 assets, 0 inventory items, 0 seed runs, không còn Catalog Snapshot tạm.
+
+### Thay đổi riêng trên Supabase Test
+Test project `BAOTRI-Mini-Test` (`oyzhxgzltpdebpymuicb`) ban đầu thiếu nhiều migration/schema so với Production. Để thử SQL, đã cập nhật bổ sung các thành phần schema cần thiết: private RBAC helpers, soft delete/history, asset reset/sync feed, inventory sync/hardening và các cột tương thích còn thiếu. Migration feature đã áp dụng trên Test với tên `platform_superadmin_data_tools_test`.
+Không reset dữ liệu Test và không tạo dữ liệu thử nghiệm tồn tại sau kiểm tra.
+
+### Chưa thực hiện
+- Chưa deploy Edge Function lên Test/Production (Test chưa có cấu hình secret `PLATFORM_OWNER_EMAIL`; công cụ hiện có không hỗ trợ đặt secret).
+- Chưa áp dụng migration lên Production.
+- Chưa merge PR, chưa deploy website.
+- Chưa tạo dữ liệu vào doanh nghiệp thật.
+- Chưa kiểm thử UI qua phiên đăng nhập Superadmin trên trình duyệt thật.
+- Chưa triển khai checklist hoặc loại dữ liệu mở rộng.
+
+**Nguyên tắc tiếp tục:** giữ migration ở pending; chỉ chuyển sang migrations và áp dụng Production sau khi người dùng phê duyệt riêng. Sau đó deploy Edge Function, merge PR theo phê duyệt và kiểm thử giao diện Superadmin trên web.
