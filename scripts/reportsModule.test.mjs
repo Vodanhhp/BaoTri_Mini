@@ -28,10 +28,24 @@ test('actual work report only counts completed maintenance requests in the selec
   assert.match(panel, /completedRequests/)
 })
 
-test('inventory usage is derived from stock-out movements, not free-text parts on work orders', () => {
-  assert.match(panel, /movement\.type !== 'Xuất'/)
-  assert.match(panel, /row\.quantity \+= movement\.quantity/)
+test('inventory report aggregates stock-in and stock-out movements separately by selected period', () => {
+  assert.match(panel, /movement\.type === 'Nhập'/)
+  assert.match(panel, /movement\.type === 'Xuất'/)
+  assert.match(panel, /inboundQuantity/)
+  assert.match(panel, /outboundQuantity/)
+  assert.match(panel, /inboundTransactions/)
+  assert.match(panel, /outboundTransactions/)
+  assert.match(panel, /Báo cáo nhập – xuất vật tư/)
+  assert.match(panel, /exportMaterials/)
   assert.match(panel, /Nội dung vật tư ghi tự do trong Phiếu YC không được cộng/)
+})
+
+test('inventory report keeps opening balance and stock-count adjustments separate from normal in/out', () => {
+  assert.match(panel, /movement\.reason\.trim\(\)\.toLocaleLowerCase\('vi'\) === 'tồn đầu kỳ'/)
+  assert.match(panel, /openingQuantity/)
+  assert.match(panel, /movement\.type === 'Điều chỉnh'/)
+  assert.match(panel, /adjustmentQuantity/)
+  assert.match(panel, /điều chỉnh không cộng vào tổng nhập\/xuất/)
 })
 
 test('reports preserve weekly, monthly, quarterly and yearly period controls', () => {
