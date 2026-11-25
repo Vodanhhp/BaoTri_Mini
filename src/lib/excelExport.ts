@@ -2,13 +2,25 @@ import { formatDateTimeVN } from './dateTime'
 
 export type ExcelOrientation = 'portrait' | 'landscape'
 
+function excelColumnName(column: number) {
+  let value = column
+  let name = ''
+  while (value > 0) {
+    const remainder = (value - 1) % 26
+    name = String.fromCharCode(65 + remainder) + name
+    value = Math.floor((value - 1) / 26)
+  }
+  return name
+}
+
 export async function downloadExcelReport(
   rows: Record<string, string | number>[],
   filename: string,
   title: string,
   sheetName: string,
   headers: string[],
-  orientation: ExcelOrientation = 'landscape'
+  orientation: ExcelOrientation = 'landscape',
+  organizationName?: string
 ) {
   const ExcelJS = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
@@ -35,7 +47,7 @@ export async function downloadExcelReport(
   }
 
   addBanner(title, 32, 'FF155B4B', 'FFFFFFFF', 16, true)
-  addBanner('BAOTRI · QUẢN LÝ BẢO TRÌ', 22, 'FFE6F2ED', 'FF155B4B', 10, true)
+  addBanner(organizationName?.trim() || 'BAOTRI · QUẢN LÝ BẢO TRÌ', 22, 'FFE6F2ED', 'FF155B4B', 10, true)
   addBanner(`Ngày xuất: ${formatDateTimeVN(new Date())}`, 20, 'FFF3F7F5', 'FF52645F', 10)
   addBanner(`Tổng số bản ghi: ${rows.length}`, 20, 'FFF3F7F5', 'FF52645F', 10)
   worksheet.addRow([])
@@ -81,13 +93,14 @@ export async function downloadExcelReport(
 
   worksheet.autoFilter = { from: { row: 6, column: 1 }, to: { row: Math.max(6, rows.length + 6), column: headerNames.length } }
   worksheet.views = [{ state: 'frozen', ySplit: 6 }]
+  worksheet.properties.defaultRowHeight = 18
   worksheet.pageSetup = {
     paperSize: 9,
     orientation,
     fitToPage: true,
     fitToWidth: 1,
     fitToHeight: 0,
-    printArea: `A1:${String.fromCharCode(64 + headerNames.length)}${rows.length + 6}`,
+    printArea: `A1:${excelColumnName(headerNames.length)}${rows.length + 6}`,
     horizontalCentered: true,
     margins: { left: 0.25, right: 0.25, top: 0.45, bottom: 0.45, header: 0.2, footer: 0.2 }
   }
