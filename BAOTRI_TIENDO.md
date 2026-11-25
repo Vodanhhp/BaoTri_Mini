@@ -517,3 +517,12 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Bổ sung source test xác nhận profile thu gọn chỉ áp dụng cho Phiếu YC.
 - Thay đổi ở nhánh `fix/excel-maintenance-request-compact`; chưa merge/deploy. Chưa kiểm tra file tải thực tế bằng Excel desktop/LibreOffice.
 - Không thay đổi dữ liệu Local, IndexedDB, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+
+
+## 25/11/2026 – bổ sung lịch sử bảo trì vào bản in chi tiết thiết bị
+
+- Bản in chi tiết thiết bị bổ sung mục III “Lịch sử bảo trì, bảo dưỡng – sửa chữa”, truy vấn đúng theo cặp organizationId + assetId trên Local IndexedDB.
+- In các Phiếu YC bảo dưỡng/sửa chữa đã tạo (bao gồm trạng thái đang xử lý và hoàn thành), cùng các công việc bảo dưỡng định kỳ đã hoàn thành; không đưa lịch bảo dưỡng tương lai/chưa thực hiện vào lịch sử.
+- Hiển thị ngày, loại công việc, nội dung, vật tư, thông số trước/sau xử lý, tình trạng sau xử lý, người thực hiện, kết quả và trạng thái. Nếu thiết bị chưa có lịch sử thì hiển thị một dòng thông báo, không để bảng rỗng.
+- Giữ nguyên mục thông tin thiết bị, lịch sử thay đổi hồ sơ, QR và dữ liệu nghiệp vụ. Không thay đổi schema, dữ liệu, phân quyền, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+- Bổ sung source test cho truy vấn đúng thiết bị/tổ chức, điều kiện công việc bảo dưỡng định kỳ đã hoàn thành và nội dung in. Chưa xác nhận bằng trình duyệt hoặc máy in thực tế; chờ CI.
