@@ -216,7 +216,7 @@ begin
     v_asset_codes:=v_asset_codes||jsonb_build_array(v_code);
   end loop;
 
-  select coalesce(max((substring(upper(i.code) from '^VT-([0-9]+))::bigint),0)+1
+  select coalesce(max(substring(upper(i.code) from 'VT-([0-9]+)')::bigint),0)+1
     into v_inventory_sequence
   from public.inventory_items i where i.organization_id=p_organization_id;
 
