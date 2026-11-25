@@ -369,7 +369,7 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 
 ### Đã phát hành
 - PR #65 đã squash-merge vào `main`, merge commit: `8e79f26e74ab19dd84716afa6decaed8a3c41af9`.
-- Migration `20261125180000_platform_superadmin_data_tools.sql` đã áp dụng Production; migration history ghi nhận `20261125115908_platform_superadmin_data_tools`.
+- Migration `20261125115908_platform_superadmin_data_tools.sql` đã áp dụng Production; migration history ghi nhận `20261125115908_platform_superadmin_data_tools`.
 - Edge Function `platform-data-tools` đã deploy Production, version 1, trạng thái ACTIVE, `verify_jwt=true`.
 - GitHub Actions trên PR head `a47405b0f769a5103e2a6e281bb5fd0b524e74f2`: Build/Test PASS, Validate PASS.
 - Test project đã chạy SQL integration rollback cho Plan A/B/C/D; xác nhận cấp mã, asset history/sync feed/reservation, inventory receipt/sync event và audit.
