@@ -5,7 +5,7 @@ import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, L
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
-import MaintenancePanel, { MaintenanceDashboardSummary } from './MaintenancePanel'
+import MaintenancePanel, { MaintenanceAssetHistory, MaintenanceDashboardSummary } from './MaintenancePanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -1427,6 +1427,7 @@ export default function App() {
       {statusPickerOpen&&detailAsset&&canChangeStatus&&<div className="asset-status-editor"><label className="field">Trạng thái mới<select value={selectedAssetStatus} onChange={event=>setSelectedAssetStatus(event.target.value as AssetStatus)}>{STATUSES.map(item=><option key={item} value={item}>{item}</option>)}</select></label><button type="button" className="primary-btn" onClick={async()=>{const selected=detailAsset;const next=selectedAssetStatus;const opened=await openAssetEditor(selected,next);if(opened){setDetailAsset(null);setStatusPickerOpen(false)}}}>Tiếp tục cập nhật</button><small>Hệ thống mở phiên chỉnh sửa có khóa để lưu trạng thái và ghi lịch sử.</small></div>}
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
+      <MaintenanceAssetHistory organizationId={localPreview?'local-preview':organizationId} assetId={detailAsset.id}/>
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><button type="button" className="detail-photo-open" key={index} title="Xem ảnh phóng to" onClick={()=>setImageViewer({images:detailAsset.images || [],index})}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></button>)}</div>:<p className="muted">{detailAsset.deletedAt?'Thiết bị đã xóa; không thể bổ sung ảnh.':'Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.'}</p>}</div>
       <div className="asset-qr-panel"><div><small>MÃ QR THIẾT BỊ</small><b>{detailAsset.code || 'Chưa có mã quản lý'}</b><span>QR hiện mã hóa trực tiếp mã quản lý thiết bị</span></div>{detailAsset.code&&<QRCodeSVG value={detailAsset.code} size={104} level="M" includeMargin/>}</div>
       <div className="asset-photo-actions"><button className="soft-btn" disabled={!detailAsset.code} onClick={()=>printAsset('sticker')}>In tem QR</button><button className="soft-btn" onClick={()=>printAsset('detail')}>In chi tiết</button></div>
