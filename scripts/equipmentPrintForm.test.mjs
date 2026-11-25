@@ -23,6 +23,17 @@ test('equipment print includes the full equipment profile and audit history', ()
   assert.match(app, /Người yêu cầu in:/)
 })
 
+test('equipment detail print includes maintenance, repair requests and completed periodic maintenance tasks for the selected asset', () => {
+  assert.match(app, /db\.maintenanceRequests\.where\('\[organizationId\+assetId\]'\)/)
+  assert.match(app, /db\.maintenanceTasks\.where\('\[organizationId\+assetId\]'\)/)
+  assert.match(app, /row\.status==='Hoàn thành'/)
+  assert.match(app, /III\. LỊCH SỬ BẢO TRÌ, BẢO DƯỠNG – SỬA CHỮA/)
+  assert.match(app, /row\.completionReadings/)
+  assert.match(app, /row\.conditionAfterRepair/)
+  assert.match(app, /Chưa có lịch sử bảo trì, bảo dưỡng hoặc sửa chữa/)
+  assert.match(css, /\.equipment-print-maintenance thead\s*\{\s*display:table-header-group;/)
+})
+
 test('equipment print follows the inventory A4 portrait and multipage table conventions', () => {
   assert.match(css, /@page\s*\{\s*size:\s*A4 portrait;\s*margin:\s*14mm;/)
   assert.match(css, /\.equipment-print-history thead\s*\{\s*display:\s*table-header-group;/)
