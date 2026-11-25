@@ -20,7 +20,7 @@ test('Superadmin data tools show tenant Plan and capacity before creation', () =
   assert.match(tool, /action: 'preview'/)
   assert.match(tool, /remainingDevices/)
   assert.match(tool, /Không đủ hạn mức thiết bị/)
-  assert.match(tool, /Plan \\{preview\\.planCode\\}/)
+  assert.match(tool, /Plan \{preview\.planCode\}/)
 })
 
 test('Superadmin seed backend verifies the platform owner and uses idempotent server-side RPC', () => {
