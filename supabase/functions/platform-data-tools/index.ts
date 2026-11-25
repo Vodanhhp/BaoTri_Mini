@@ -6,7 +6,7 @@ const cors=(origin:string|null)=>({'Access-Control-Allow-Origin':origin===ORIGIN
 const response=(body:unknown,status=200,origin:string|null=null)=>new Response(JSON.stringify(body),{status,headers:{...cors(origin),'Content-Type':'application/json'}})
 const uuid=(value:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 const today=()=>new Date(Date.now()+7*60*60*1000).toISOString().slice(0,10)
-const normalizeName=(value:string)=>value.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ')
+const normalizeName=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ')
 const planRank:Record<string,number>={A:1,B:2,C:3,D:4}
 
 const inventorySamples=[
