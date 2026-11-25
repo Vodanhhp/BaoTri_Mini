@@ -496,3 +496,13 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Không tính nội dung vật tư ghi tự do trên Phiếu YC thành giao dịch xuất kho; không suy ngược nhập/xuất từ tồn hiện tại.
 - Chỉ đọc dữ liệu Local; không sửa IndexedDB schema, dữ liệu nghiệp vụ, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
 - Đã bổ sung source tests cho tổng hợp Nhập/Xuất và nguyên tắc tách tồn đầu kỳ/điều chỉnh. Chờ CI xác nhận; chưa kiểm tra giao diện thực tế hoặc file XLSX bằng Excel desktop.
+
+
+## 25/11/2026 – rà soát độ tương phản tiêu đề trong toàn bộ file Excel
+
+- Rà soát tất cả điểm xuất XLSX trên ứng dụng: danh sách thiết bị; tồn kho vật tư; Phiếu YC; lịch bảo dưỡng định kỳ; báo cáo công việc; báo cáo tình trạng/hoạt động thiết bị; báo cáo nhập – xuất vật tư.
+- Xác nhận các điểm xuất này đều gọi chung `src/lib/excelExport.ts`; không phát hiện bộ tạo XLSX riêng khác trong các module nghiệp vụ đã rà soát.
+- Chuẩn hóa độ tương phản theo nguyên tắc: tiêu đề báo cáo nền xanh đậm dùng chữ trắng; tiêu đề cột nền xanh dùng chữ trắng. Áp dụng font và fill tường minh cho toàn bộ ô thuộc vùng tiêu đề đã gộp, tránh một số trình xem bảng tính lấy màu chữ mặc định/theme không đúng.
+- Bổ sung source tests khóa màu chữ trắng, màu nền tiêu đề và xác nhận các module xuất Excel đều dùng chung exporter.
+- Chỉ thay đổi định dạng file xuất; không thay đổi dữ liệu, công thức tổng hợp, phân quyền, IndexedDB, Supabase hoặc Cloud Sync.
+- Chưa kiểm tra file tải về bằng Excel desktop/LibreOffice hoặc trên mọi trình xem bảng tính; cần kiểm tra thực tế sau khi CI và deploy hoàn tất.
