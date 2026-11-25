@@ -464,3 +464,14 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Ghi nhận kết quả và lịch sử hoàn thành trong cùng transaction IndexedDB Local; không thay đổi Supabase, Auth, RLS, Storage hoặc Cloud Sync.
 - Viewer vẫn chỉ xem; thao tác hoàn thành chỉ dành cho Admin/KTV theo quyền hiện tại.
 - Đã bổ sung source test kiểm tra điều kiện bắt buộc; CI và kiểm thử giao diện thực tế cần được xác nhận riêng.
+
+
+## 25/11/2026 – chuẩn hóa biểu mẫu in và xuất Excel
+
+Đang triển khai trên nhánh `feat/standardize-print-excel-exports`, chưa merge và chưa triển khai website.
+
+- Dùng chung mẫu Excel của Kho vật tư cho toàn bộ các điểm xuất: thiết bị, kho vật tư, Phiếu YC, lịch bảo dưỡng và các báo cáo.
+- Bổ sung tên đơn vị vào phần đầu file Excel; sửa cách xác định chữ cột trong vùng in để hoạt động đúng cả khi bảng có trên 26 cột.
+- Báo cáo công việc và báo cáo hoạt động thiết bị bổ sung người yêu cầu/người hoàn thành khi dữ liệu có; báo cáo công việc bổ sung thông số trước/sau và tình trạng sau xử lý.
+- Đồng bộ các quy tắc in A4, font chữ, đầu trang, bảng, lặp tiêu đề bảng và chân trang cho phiếu vật tư, Phiếu YC và hồ sơ thiết bị. Tem QR vẫn giữ khổ tem riêng.
+- Chưa xác nhận build/CI hoặc kiểm tra thực tế bằng Excel, trình duyệt và máy in; cần chạy kiểm tra sau khi hoàn tất thay đổi.
