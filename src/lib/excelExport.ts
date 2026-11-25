@@ -29,10 +29,29 @@ export async function downloadExcelReport(
   const worksheet = workbook.addWorksheet(sheetName)
   const headerNames = ['STT', ...headers]
   const bodyRows = rows.map((row, index) => [index + 1, ...headers.map(header => row[header] ?? '')])
+  const preferredWidths: Record<string, number> = {
+    'Ngày yêu cầu': 14,
+    'Hạn hoàn thành': 14,
+    'Ngày đến hạn': 14,
+    'Mã thiết bị': 16,
+    'Tên thiết bị': 24,
+    'Loại yêu cầu': 16,
+    'Nội dung': 32,
+    'Thông số ban đầu': 25,
+    'Thông số sau xử lý': 25,
+    'Tình trạng sau xử lý': 28,
+    'Vật tư / phụ tùng': 26,
+    'Trạng thái': 16,
+    'Kết quả': 22,
+    'Người yêu cầu': 22,
+    'Người hoàn thành': 22
+  }
   const columnWidths = headerNames.map((header, column) => {
     const maxLength = Math.max(header.length, ...bodyRows.map(row => String(row[column] ?? '').split(/\r?\n/).reduce((max, line) => Math.max(max, line.length), 0)))
-    const maxWidth = orientation === 'portrait' ? 20 : 28
-    return column === 0 ? 6 : Math.min(maxWidth, Math.max(9, maxLength + 1))
+    const maxWidth = orientation === 'portrait' ? 20 : 34
+    const preferredWidth = preferredWidths[header]
+    const calculatedWidth = Math.max(9, maxLength + 2)
+    return column === 0 ? 6 : Math.min(maxWidth, preferredWidth ? Math.max(preferredWidth, Math.min(calculatedWidth, preferredWidth + 8)) : calculatedWidth)
   })
   worksheet.columns = columnWidths.map(width => ({ width }))
 
@@ -53,7 +72,7 @@ export async function downloadExcelReport(
   worksheet.addRow([])
 
   const headerRow = worksheet.addRow(headerNames)
-  headerRow.height = 32
+  headerRow.height = 42
   headerRow.eachCell({ includeEmpty: true }, cell => {
     cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF247763' } }
