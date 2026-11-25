@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, Check, ClipboardList, Download, History, Plus, Wrench, X } from 'lucide-react'
-import ExcelJS from 'exceljs'
+import { CalendarDays, Check, ClipboardList, Download, History, Plus, Printer, Wrench, X } from 'lucide-react'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
 
 type Props = {
   organizationId: string
+  organizationName: string
   assets: Asset[]
   userId?: string
   userLabel: string
@@ -19,39 +19,12 @@ const emptyRequest = (organizationId: string, userLabel: string): MaintenanceReq
   description: '', parts: '', readings: '', requestedBy: userLabel, status: 'Chưa hoàn thành',
   result: '', performedBy: '', createdAt: now(), updatedAt: now()
 })
-const downloadExcel = async (fileName: string, sheetName: string, headers: string[], rows: unknown[][]) => {
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'BAOTRI Mini'
-  workbook.created = new Date()
-  const sheet = workbook.addWorksheet(sheetName)
-  sheet.columns = headers.map(header => ({ header, key: header, width: Math.max(14, Math.min(32, header.length + 8)) }))
-  sheet.addRows(rows)
-  sheet.views = [{ state: 'frozen', ySplit: 1 }]
-  sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } }
-  const header = sheet.getRow(1)
-  header.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245B78' } }
-  header.alignment = { vertical: 'middle', wrapText: true }
-  header.height = 30
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber > 1) row.alignment = { vertical: 'top', wrapText: true }
-  })
-  const buffer = await workbook.xlsx.writeBuffer()
-  const blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
-
 const emptyTask = (organizationId: string): MaintenanceTask => ({
   id: uid(), organizationId, assetId: '', title: '', dueDate: today(), frequency: 'Một lần',
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
 })
 
-export default function MaintenancePanel({ organizationId, assets, userId, userLabel, canView, canManage }: Props) {
+export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canManage }: Props) {
   const [tab, setTab] = useState<'requests'|'schedule'>('requests')
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [tasks, setTasks] = useState<MaintenanceTask[]>([])
@@ -62,6 +35,15 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
   const [filter, setFilter] = useState<'all'|'open'|'done'>('all')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [printRequest, setPrintRequest] = useState<MaintenanceRequest|null>(null)
+
+  useEffect(()=>{
+    if(!printRequest)return
+    const timer=window.setTimeout(()=>window.print(),140)
+    const onAfterPrint=()=>setPrintRequest(null)
+    window.addEventListener('afterprint',onAfterPrint)
+    return()=>{window.clearTimeout(timer);window.removeEventListener('afterprint',onAfterPrint)}
+  },[printRequest])
 
   const reload = async (isCurrent: () => boolean = () => true) => {
     if (!organizationId) {
@@ -156,21 +138,25 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     })
     await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
   }
-  const exportTasks = () => {
-    const rows: unknown[][] = []
-    for (const row of tasks) {
-      const asset = assets.find(item => item.id === row.assetId)
-      rows.push([row.dueDate, asset?.code || '', asset?.name || '', row.title, row.frequency, row.status, row.checklist || '', row.readings || '', row.notes || ''])
-    }
-    void downloadExcel('lich-bao-duong-dinh-ky.xlsx', 'Lịch bảo dưỡng', ['Ngày đến hạn', 'Mã thiết bị', 'Tên thiết bị', 'Công việc', 'Chu kỳ', 'Trạng thái', 'Các bước', 'Thông số', 'Ghi chú'], rows)
+  const exportTasks = async () => {
+    if(!tasks.length){setError('Chưa có lịch bảo dưỡng để xuất Excel.');return}
+    try{
+      setError('')
+      const {downloadExcelReport}=await import('./lib/excelExport')
+      const headers=['Ngày đến hạn','Mã thiết bị','Tên thiết bị','Công việc','Chu kỳ','Trạng thái','Các bước','Thông số','Ghi chú']
+      const rows=tasks.map(row=>{const asset=assets.find(item=>item.id===row.assetId);return {'Ngày đến hạn':dateLabel(row.dueDate),'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Công việc':row.title,'Chu kỳ':row.frequency,'Trạng thái':row.status,'Các bước':row.checklist||'','Thông số':row.readings||'','Ghi chú':row.notes||''}})
+      await downloadExcelReport(rows,'lich-bao-duong-dinh-ky.xlsx','LỊCH BẢO DƯỠNG ĐỊNH KỲ','Lịch bảo dưỡng',headers,'landscape')
+    }catch(cause){setError('Xuất Excel lịch bảo dưỡng thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
-  const exportRequests = () => {
-    const rows: unknown[][] = []
-    for (const row of visibleRequests) {
-      const asset = assets.find(item => item.id === row.assetId)
-      rows.push([row.requestDate, row.dueDate || '', asset?.code || '', asset?.name || '', row.kind, row.description, [row.readings, row.parts].filter(Boolean).join(' / '), row.status, row.result || '', row.requestedBy, row.performedBy || ''])
-    }
-    void downloadExcel('phieu-bao-duong-sua-chua.xlsx', 'Phiếu yêu cầu', ['Ngày yêu cầu', 'Hạn hoàn thành', 'Mã thiết bị', 'Tên thiết bị', 'Loại yêu cầu', 'Nội dung', 'Thông số / vật tư', 'Trạng thái', 'Kết quả', 'Người yêu cầu', 'Người hoàn thành'], rows)
+  const exportRequests = async () => {
+    if(!visibleRequests.length){setError('Không có Phiếu YC trong danh sách hiện tại để xuất Excel.');return}
+    try{
+      setError('')
+      const {downloadExcelReport}=await import('./lib/excelExport')
+      const headers=['Ngày yêu cầu','Hạn hoàn thành','Mã thiết bị','Tên thiết bị','Loại yêu cầu','Nội dung','Thông số ghi nhận','Vật tư / phụ tùng','Trạng thái','Kết quả','Người yêu cầu','Người hoàn thành']
+      const rows=visibleRequests.map(row=>{const asset=assets.find(item=>item.id===row.assetId);return {'Ngày yêu cầu':dateLabel(row.requestDate),'Hạn hoàn thành':dateLabel(row.dueDate),'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Loại yêu cầu':row.kind,'Nội dung':row.description,'Thông số ghi nhận':row.readings||'','Vật tư / phụ tùng':row.parts||'','Trạng thái':row.status,'Kết quả':row.result||'','Người yêu cầu':row.requestedBy,'Người hoàn thành':row.performedBy||''}})
+      await downloadExcelReport(rows,'phieu-bao-duong-sua-chua.xlsx','PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA','Phiếu yêu cầu',headers,'landscape')
+    }catch(cause){setError('Xuất Excel Phiếu YC thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
@@ -183,14 +169,14 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     </div>
     <div className="panel maintenance-panel">
       <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
-        <button type="button" className="soft-btn" onClick={tab==='requests'?exportRequests:exportTasks}><Download size={15}/> Xuất Excel</button>
+        <button type="button" className="soft-btn" onClick={()=>void (tab==='requests'?exportRequests():exportTasks())}><Download size={15}/> Xuất Excel</button>
         {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
       <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
       {tab==='requests'?<>
         <div className="maintenance-toolbar"><label>Trạng thái <select value={filter} onChange={event=>setFilter(event.target.value as typeof filter)}><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="done">Hoàn thành</option></select></label></div>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày YC</th><th>Hạn hoàn thành</th><th>Thiết bị</th><th>Loại</th><th>Nội dung yêu cầu</th><th>Trạng thái</th><th>Kết quả</th><th>Người yêu cầu</th><th>Người hoàn thành</th><th>Thao tác</th></tr></thead><tbody>
-          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions">{canManage&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button>{row.status!=='Hoàn thành'&&<button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
+          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canManage&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button>{row.status!=='Hoàn thành'&&<button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {visibleRequests.length===0&&<tr><td colSpan={10}><div className="table-empty-state">Chưa có Phiếu YC phù hợp.</div></td></tr>}
         </tbody></table></div>
         {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
@@ -203,6 +189,19 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
       {error&&<div className="auth-error">{error}</div>}
       <div className="footnote"><History size={14}/> Mọi lần tạo, sửa và đổi trạng thái được ghi vào lịch sử riêng của phân hệ. Viewer chỉ được xem.</div>
     </div>
+    {printRequest&&<section className="maintenance-print-sheet" aria-label="Phiếu Bảo dưỡng – Sửa chữa">
+      <header className="maintenance-print-header"><div><strong>{organizationName||'ĐƠN VỊ / DOANH NGHIỆP'}</strong><span>BAOTRI MINI · PHIẾU BẢO DƯỠNG – SỬA CHỮA</span></div><small>Ngày in: {new Date().toLocaleString('vi-VN')}</small></header>
+      <h1>PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA</h1>
+      <p className="maintenance-print-number">Mã phiếu: <b>{printRequest.id.slice(0,8).toUpperCase()}</b> · Ngày yêu cầu: <b>{dateLabel(printRequest.requestDate)}</b></p>
+      <h2>1. Thông tin thiết bị và yêu cầu</h2>
+      <table><tbody><tr><th>Mã thiết bị</th><td>{assets.find(item=>item.id===printRequest.assetId)?.code||'—'}</td><th>Tên thiết bị</th><td>{assets.find(item=>item.id===printRequest.assetId)?.name||'—'}</td></tr><tr><th>Loại yêu cầu</th><td>{printRequest.kind}</td><th>Hạn hoàn thành</th><td>{dateLabel(printRequest.dueDate)}</td></tr><tr><th>Người yêu cầu</th><td>{printRequest.requestedBy||'—'}</td><th>Trạng thái</th><td>{printRequest.status}</td></tr></tbody></table>
+      <h2>2. Nội dung yêu cầu</h2><div className="maintenance-print-text">{printRequest.description||'—'}</div>
+      <h2>3. Thông số ghi nhận</h2><div className="maintenance-print-text">{printRequest.readings||'Chưa ghi nhận.'}</div>
+      <h2>4. Vật tư / phụ tùng đề xuất hoặc đã sử dụng</h2><div className="maintenance-print-text">{printRequest.parts||'Không ghi nhận.'}</div>
+      <h2>5. Kết quả thực hiện</h2><table><tbody><tr><th>Người thực hiện</th><td>{printRequest.performedBy||'—'}</td><th>Kết quả</th><td>{printRequest.result||'Chưa xác nhận'}</td></tr><tr><th>Thời điểm hoàn thành</th><td colSpan={3}>{printRequest.completedAt?new Date(printRequest.completedAt).toLocaleString('vi-VN'):'—'}</td></tr></tbody></table>
+      <div className="maintenance-print-signatures"><div><b>NGƯỜI YÊU CẦU</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>NGƯỜI TIẾP NHẬN</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>NGƯỜI THỰC HIỆN</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>XÁC NHẬN / NGHIỆM THU</b><span>(Ký, ghi rõ họ tên)</span></div></div>
+      <footer>Phiếu được trích xuất từ dữ liệu Bảo dưỡng – Sửa chữa BAOTRI MINI.</footer>
+    </section>}
     {requestEditor&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setRequestEditor(null)}}><section className="modal maintenance-modal"><div className="modal-head"><div><h2>{requests.some(row=>row.id===requestEditor.id)?'Cập nhật Phiếu YC':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa'}</h2><p>Phiếu được liên kết với lý lịch thiết bị khi lưu.</p></div><button className="icon-btn" onClick={()=>setRequestEditor(null)}><X size={17}/></button></div><form className="form-grid" onSubmit={saveRequest}>
       <label className="field full-field">Thiết bị *<select required value={requestEditor.assetId} onChange={event=>setRequestEditor({...requestEditor,assetId:event.target.value})}><option value="">-- Chọn thiết bị --</option>{assets.filter(asset=>!asset.deletedAt).map(asset=><option key={asset.id} value={asset.id}>{asset.code} · {asset.name}</option>)}</select></label>
       <label className="field">Ngày yêu cầu *<input required type="date" value={requestEditor.requestDate} onChange={event=>setRequestEditor({...requestEditor,requestDate:event.target.value})}/></label>

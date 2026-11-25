@@ -326,3 +326,13 @@ Commits:
 Kiểm tra:
 - Tại thời điểm ghi nhận, GitHub chưa trả về status check cho commit kiểm thử mới; chưa đánh dấu CI PASS.
 - Chưa kiểm tra thao tác tải và mở file trên trình duyệt/Excel thực tế.
+
+
+## 20. Cập nhật 25/11/2026 – Chuẩn hóa in phiếu và xuất Excel phân hệ Bảo dưỡng – Sửa chữa
+
+- Thêm nút **In phiếu** theo từng Phiếu YC; bản in riêng khổ A4 dọc, 14 mm lề, hiển thị tên doanh nghiệp, mã phiếu, ngày yêu cầu, thông tin thiết bị, nội dung, thông số, vật tư/phụ tùng, kết quả và bốn khu vực ký xác nhận.
+- Phiếu in chỉ xuất hiện trong chế độ in; không in giao diện danh sách hoặc các nút thao tác. Tên doanh nghiệp lấy từ tổ chức đang chọn.
+- Loại bỏ bộ tạo Excel riêng của phân hệ. Hai chức năng xuất lịch định kỳ và Phiếu YC dùng chung `src/lib/excelExport.ts` như tab Vật tư/Thiết bị: banner tiêu đề, ngày xuất, tổng bản ghi, STT, định dạng bảng, lọc, cố định tiêu đề, thiết lập giấy A4 ngang và chân trang số trang.
+- Xuất Phiếu YC theo bộ lọc trạng thái đang hiển thị; lịch định kỳ xuất toàn bộ lịch của tổ chức hiện tại.
+- Bổ sung source test cho nút in, bố cục chữ ký và việc tái sử dụng exporter chung. Chưa xác nhận tải file thực tế, xem trước/in A4 trên trình duyệt hoặc kiểm tra bản in vật lý.
+- Thay đổi đang ở nhánh `feat/maintenance-print-and-standard-excel`; chưa merge vào `main`, chưa thay đổi Supabase.

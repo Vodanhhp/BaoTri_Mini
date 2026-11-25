@@ -2921,3 +2921,21 @@ html,body,#root,.app-shell{
 #root .maintenance-asset-history-list article b{font-size:10px}
 #root .maintenance-asset-history-list article p{margin:0;font-size:10px;white-space:pre-wrap}
 #root .maintenance-asset-history-list article small{font-size:9px;color:var(--muted,#64748b)}
+
+
+/* Phiếu Bảo dưỡng – Sửa chữa: bản in A4 dọc, đồng bộ phiếu vật tư/thiết bị. */
+.maintenance-print-sheet{display:none}
+@media print{
+  @page{size:A4 portrait;margin:14mm}
+  body *{visibility:hidden!important}
+  .maintenance-print-sheet,.maintenance-print-sheet *{visibility:visible!important}
+  .maintenance-print-sheet{display:block!important;position:absolute!important;inset:0 auto auto 0!important;width:100%!important;background:#fff!important;color:#111!important;font:10pt/1.4 Arial,sans-serif!important}
+  .maintenance-print-header{display:flex;justify-content:space-between;gap:12px;border-bottom:2px solid #222;padding-bottom:8px;margin-bottom:15px}
+  .maintenance-print-header>div{display:grid;gap:3px}.maintenance-print-header strong{font-size:13pt}.maintenance-print-header span{font-size:8pt;font-weight:700}.maintenance-print-header small{font-size:8pt}
+  .maintenance-print-sheet h1{text-align:center;font-size:15pt;line-height:1.3;margin:12px 0 5px}.maintenance-print-number{text-align:center;font-size:9pt;margin:0 0 15px}
+  .maintenance-print-sheet h2{font-size:10.5pt;margin:13px 0 6px;padding-bottom:4px;border-bottom:1px solid #777;break-after:avoid}
+  .maintenance-print-sheet table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9pt}.maintenance-print-sheet th,.maintenance-print-sheet td{border:1px solid #777;padding:6px;vertical-align:top;overflow-wrap:anywhere;text-align:left}.maintenance-print-sheet th{width:19%;background:#f0f0f0;font-weight:700}.maintenance-print-sheet td{width:31%}
+  .maintenance-print-text{min-height:36px;border:1px solid #777;padding:8px;white-space:pre-wrap;overflow-wrap:anywhere}
+  .maintenance-print-signatures{display:grid;grid-template-columns:1fr 1fr;gap:28px 18px;margin-top:30px;text-align:center;break-inside:avoid}.maintenance-print-signatures>div{display:grid;gap:3px;min-height:82px}.maintenance-print-signatures b{font-size:9pt}.maintenance-print-signatures span{font-size:8pt;font-style:italic}
+  .maintenance-print-sheet footer{border-top:1px solid #aaa;margin-top:18px;padding-top:7px;font-size:8pt;color:#444}
+}
