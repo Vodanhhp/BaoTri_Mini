@@ -15,8 +15,8 @@ test('Excel headings are centered and column widths prioritize readable maintena
  assert.match(source,/preferredWidths: Record<string, number>/)
  assert.match(source,/'Người yêu cầu': 22/)
  assert.match(source,/'Người hoàn thành': 22/)
- assert.match(source,/orientation === 'portrait' \\? 20 : 34/)
- assert.match(source,/maxLength \\+ 2/)
+ assert.ok(source.includes("orientation === 'portrait' ? 20 : 34"))
+ assert.ok(source.includes('maxLength + 2'))
 })
 test('inventory export follows filtered items and includes quantity and stock value', async () => {
  const source=await read('../src/InventoryPanel.tsx')
