@@ -264,7 +264,7 @@ Người dùng yêu cầu tạm gác Checklist, ưu tiên khảo sát và chuy�
 - Chưa tạo migration, bảng, RPC, RLS, Auth, Storage hoặc thay đổi dữ liệu trên bất kỳ Supabase project nào.
 - Chưa thay đổi dữ liệu hay mã nguồn repository cũ.
 - Chưa merge PR và chưa deploy Production.
-- GitHub Actions trên PR #61: Build and test SUCCESS (run `45546798831`), Validate BAOTRI Mini SUCCESS (run `45546798877`); unit tests và TypeScript/Vite build đều PASS.
+- GitHub Actions trên PR #61: Build and test SUCCESS (run `45546990229`): 188/188 unit tests PASS, TypeScript (`tsc -b`) PASS, Vite production build PASS. Validate BAOTRI Mini SUCCESS (run `45546990449`).
 - Chưa kiểm thử trực tiếp trên trình duyệt PC/mobile; chưa xác nhận trải nghiệm thực tế hoặc dữ liệu trên nhiều thiết bị.
 - Cần kiểm thử riêng: phân quyền Viewer, tenant isolation, tạo/sửa/hoàn thành Phiếu YC, lịch định kỳ, lịch sử, cảnh báo dashboard, ngày quá hạn và xuất CSV.
 
