@@ -4,14 +4,14 @@ import { readFile } from 'node:fs/promises'
 
 const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
-test('overview combines equipment and inventory summaries and reserves a future checklist section', async () => {
+test('overview combines equipment and inventory summaries and links the maintenance module', async () => {
   const app = await read('../src/App.tsx')
   assert.match(app, /useState<'dashboard'\|'assets'\|'inventory'>\('dashboard'\)/)
   assert.match(app, /setActiveModule\('dashboard'\)/)
   assert.match(app, /Vật tư đang theo dõi/)
   assert.match(app, /Sắp hết hàng/)
   assert.match(app, /Đang sửa chữa/)
-  assert.match(app, /Checklist & công việc bảo trì/)
+  assert.match(app, /Bảo dưỡng – Sửa chữa/)\n  assert.match(app, /MaintenanceDashboardSummary/)
   assert.match(app, /baotri:inventory-updated/)
 })
 
