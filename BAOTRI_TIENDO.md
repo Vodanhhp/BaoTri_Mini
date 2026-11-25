@@ -452,3 +452,15 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - GitHub Pages chưa deploy vì PR chưa merge.
 - Chưa kiểm tra trực tiếp giao diện, dữ liệu Local thật hoặc file XLSX tải về.
 - PR chưa merge; không thay đổi Supabase.
+
+
+## 25. Cập nhật 25/11/2026 – bắt buộc ghi nhận kết quả trước khi hoàn thành Phiếu YC
+
+- Trong Phiếu YC, thao tác **Hoàn thành** không còn xác nhận ngay bằng hộp thoại prompt. Hệ thống mở biểu mẫu kết quả sau xử lý.
+- Người thực hiện bắt buộc nhập: người thực hiện; thông số sau sửa chữa/bảo dưỡng (có thể ghi nhiều thông số và đơn vị đo); tình trạng thiết bị sau sửa chữa/bảo dưỡng; kết quả Đạt/Không đạt.
+- Chỉ lưu biểu mẫu hợp lệ mới chuyển Phiếu YC sang **Hoàn thành**. Nếu thiếu thông tin hoặc hủy biểu mẫu, phiếu vẫn ở trạng thái chưa hoàn thành và tiếp tục xuất hiện trong danh sách/cảnh báo.
+- Giữ nguyên trường **Thông số ghi nhận** hiện có như thông tin ban đầu; bổ sung hai trường tùy chọn tương thích dữ liệu cũ: completionReadings và conditionAfterRepair. Không cần nâng phiên bản Dexie vì đây là thuộc tính của bản ghi, không phải index/store mới.
+- Bản in, xuất Excel Phiếu YC và báo cáo hoạt động thiết bị bổ sung thông số sau xử lý và tình trạng thiết bị sau xử lý.
+- Ghi nhận kết quả và lịch sử hoàn thành trong cùng transaction IndexedDB Local; không thay đổi Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+- Viewer vẫn chỉ xem; thao tác hoàn thành chỉ dành cho Admin/KTV theo quyền hiện tại.
+- Đã bổ sung source test kiểm tra điều kiện bắt buộc; CI và kiểm thử giao diện thực tế cần được xác nhận riêng.
