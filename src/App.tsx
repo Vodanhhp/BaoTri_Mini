@@ -14,7 +14,7 @@ import PlatformAdminPanel from './PlatformAdminPanel'
 import { OrganizationPlanPanel } from './PlanChangePanels'
 import OrganizationPlanSummary from './OrganizationPlanSummary'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
-import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory, type InventoryItem } from './db'
+import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory, type InventoryItem, type MaintenanceRequest, type MaintenanceTask } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
 import { supabase } from './lib/supabase'
@@ -122,6 +122,8 @@ export default function App() {
   const [showArchived, setShowArchived] = useState(false)
   const [showDeleted, setShowDeleted] = useState(false)
   const [assetHistory, setAssetHistory] = useState<AssetHistory[]>([])
+  const [printMaintenanceRequests, setPrintMaintenanceRequests] = useState<MaintenanceRequest[]>([])
+  const [printMaintenanceTasks, setPrintMaintenanceTasks] = useState<MaintenanceTask[]>([])
   const [statusPickerOpen, setStatusPickerOpen] = useState(false)
   const [selectedAssetStatus, setSelectedAssetStatus] = useState<AssetStatus>('Đang hoạt động')
   const [toast, setToast] = useState('')
@@ -1226,7 +1228,19 @@ export default function App() {
     finally{if(lease)await releaseCloudAssetLock(supabase,organizationId,asset.code,lease.token).catch(()=>false);await loadAssets()}
   }
   const signOut = async () => { if(cloudLease&&supabase&&!cloudLease.lost)await releaseCloudAssetLock(supabase,organizationId,cloudLease.assetId,cloudLease.token).catch(()=>false); await supabase?.auth.signOut(); setSession(null); setLocalPreview(false);setCloudLease(null);setOrganizationContexts([]);setOrganizationId('');setAssets([]);setLocalPreviewAssets([]);setDetailAsset(null);setImageViewer(null);setEditing(null);setShowForm(false);setCloudPanel(false);setProfilePanel(false);setMembersPanel(false);setOrganizationPlanPanel(false);setPlatformPanel(false);setShowDeleted(false);setShowArchived(false);setProfileDisplayName('') }
-  const printAsset = (mode: 'sticker' | 'detail') => { setPrintAssetMode(mode); window.setTimeout(() => window.print(), 180) }
+  const printAsset = async (mode: 'sticker' | 'detail') => {
+    if(mode==='detail'&&detailAsset){
+      const scope=localPreview?'local-preview':organizationId
+      const [requestRows,taskRows]=await Promise.all([
+        db.maintenanceRequests.where('[organizationId+assetId]').equals([scope,detailAsset.id]).toArray(),
+        db.maintenanceTasks.where('[organizationId+assetId]').equals([scope,detailAsset.id]).toArray()
+      ])
+      setPrintMaintenanceRequests(requestRows.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)||b.updatedAt.localeCompare(a.updatedAt)))
+      setPrintMaintenanceTasks(taskRows.filter(row=>row.status==='Hoàn thành').sort((a,b)=>(b.completedAt||b.dueDate).localeCompare(a.completedAt||a.dueDate)))
+    }
+    setPrintAssetMode(mode)
+    window.setTimeout(() => window.print(), 220)
+  }
 
   if (!sessionReady) return <div className="loading-screen">Đang kiểm tra phiên đăng nhập…</div>
   if(session&&supabase&&(passwordRecovery||session.user.user_metadata?.must_set_password===true))return <PasswordRecoveryScreen client={supabase} onDone={()=>{setPasswordRecovery(false);setSession(null)}}/>
@@ -1471,7 +1485,17 @@ export default function App() {
           </tr>)}
           {assetHistory.length===0&&<tr><td colSpan={5}>Chưa có dữ liệu lịch sử thiết bị.</td></tr>}
         </tbody></table>
-        <footer className="equipment-print-footer"><span>Phiếu được tạo từ dữ liệu hồ sơ thiết bị và lịch sử hiện có trên BAOTRI MINI.</span><strong>Người yêu cầu in: {localPreview?'Local Preview':currentOrganization?.roleCodes.some(code=>['admin','administrator'].includes(code.toLowerCase()))?'Admin':currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase()))?'KTV':'Viewer'} — {profileDisplayName||session?.user.email||'Người dùng'}</strong></footer>
+        <h3 className="equipment-print-section">III. LỊCH SỬ BẢO TRÌ, BẢO DƯỠNG – SỬA CHỮA</h3>
+        <table className="equipment-print-maintenance">
+          <thead><tr><th>STT</th><th>Ngày</th><th>Loại</th><th>Nội dung công việc</th><th>Thông số / kết quả</th><th>Người thực hiện</th><th>Trạng thái</th></tr></thead>
+          <tbody>
+            {[...printMaintenanceRequests.map(row=>({id:row.id,date:row.requestDate,kind:row.kind,description:row.description,readings:[row.readings,row.completionReadings,row.conditionAfterRepair].filter(Boolean).join(' · '),performedBy:row.performedBy,result:row.result,status:row.status,parts:row.parts})),...printMaintenanceTasks.map(row=>({id:row.id,date:row.completedAt||row.dueDate,kind:'Bảo dưỡng định kỳ',description:row.title,readings:[row.checklist,row.readings,row.notes].filter(Boolean).join(' · '),performedBy:'—',result:'',status:row.status,parts:''}))].sort((a,b)=>a.date.localeCompare(b.date)).map((row,index)=><tr key={row.id}>
+              <td>{index+1}</td><td>{dateText(row.date)}</td><td>{row.kind}</td><td>{row.description||'—'}{row.parts&&<div><b>Vật tư:</b> {row.parts}</div>}</td><td>{row.readings||'—'}{row.result&&<div><b>Kết quả:</b> {row.result}</div>}</td><td>{row.performedBy||'—'}</td><td>{row.status}</td>
+            </tr>)}
+            {printMaintenanceRequests.length===0&&printMaintenanceTasks.length===0&&<tr><td colSpan={7}>Chưa có lịch sử bảo trì, bảo dưỡng hoặc sửa chữa cho thiết bị này.</td></tr>}
+          </tbody>
+        </table>
+        <footer className="equipment-print-footer"><span>Phiếu được tạo từ hồ sơ thiết bị, lịch sử thay đổi và các Phiếu Bảo dưỡng – Sửa chữa đã ghi nhận trên BAOTRI MINI.</span><strong>Người yêu cầu in: {localPreview?'Local Preview':currentOrganization?.roleCodes.some(code=>['admin','administrator'].includes(code.toLowerCase()))?'Admin':currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase()))?'KTV':'Viewer'} — {profileDisplayName||session?.user.email||'Người dùng'}</strong></footer>
       </div>}
     </div>}
     {imageViewer&&<ImageLightbox images={imageViewer.images} initialIndex={imageViewer.index} onClose={()=>setImageViewer(null)} title="Ảnh thiết bị"/>}
