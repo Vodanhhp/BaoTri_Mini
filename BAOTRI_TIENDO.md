@@ -336,3 +336,20 @@ Kiểm tra:
 - Xuất Phiếu YC theo bộ lọc trạng thái đang hiển thị; lịch định kỳ xuất toàn bộ lịch của tổ chức hiện tại.
 - Bổ sung source test cho nút in, bố cục chữ ký và việc tái sử dụng exporter chung. Chưa xác nhận tải file thực tế, xem trước/in A4 trên trình duyệt hoặc kiểm tra bản in vật lý.
 - Thay đổi đang ở nhánh `feat/maintenance-print-and-standard-excel`; chưa merge vào `main`, chưa thay đổi Supabase.
+
+
+## 21. Cập nhật 25/11/2026 – sửa bố cục mobile phân hệ Bảo dưỡng – Sửa chữa
+
+Người dùng gửi ảnh chụp giao diện trên điện thoại và phản ánh bố cục bị lỗi nặng. Đã đối chiếu CSS thực tế và xác định nguyên nhân:
+- Bộ CSS dùng chung `#root .app-shell .table-wrap > table.table-standard` đặt `min-width:0` và `table-layout:fixed`, ghi đè quy tắc `.maintenance-table{min-width:1060px}` có độ ưu tiên thấp hơn.
+- Vì bảng Phiếu YC có 10 cột, trình duyệt ép các tiêu đề thành từng ký tự dọc, làm bảng gần như không thể đọc.
+- CSS mobile dùng chung ép `.top-actions .primary-btn` thành nút vuông 40px; quy tắc này làm chữ “Tạo Phiếu” tràn và chồng lên nút Xuất Excel.
+
+Đã sửa trên nhánh `fix/maintenance-mobile-layout`:
+- Khôi phục chiều rộng nội tại tối thiểu 1060px cho bảng bảo dưỡng, chuyển về `table-layout:auto`, giữ cuộn ngang trên mobile; tiêu đề không bị bẻ từng ký tự.
+- Thêm chỉ dẫn vuốt ngang để người dùng biết còn cột ở ngoài màn hình.
+- Riêng nhóm nút của phân hệ chuyển sang lưới hai cột, đủ chiều cao chạm, không bị rule nút vuông toàn cục ghi đè.
+- Hai tab Phiếu YC/Lịch định kỳ chia đều chiều rộng; bộ lọc trạng thái co giãn theo màn hình.
+- Bổ sung test hồi quy kiểm tra CSS responsive của bảng, tiêu đề, nhóm nút và tab.
+
+Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chưa chạy browser thật trên điện thoại. Không thay đổi dữ liệu Local, IndexedDB schema, Supabase hoặc Cloud Sync.
