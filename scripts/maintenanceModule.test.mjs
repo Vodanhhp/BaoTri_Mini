@@ -67,3 +67,12 @@ test('maintenance exports real XLSX workbooks instead of CSV files', async () =>
   assert.match(styles, /@page\s*\{size:A4 portrait/)
   assert.match(styles, /\.maintenance-print-sheet,\.maintenance-print-sheet \*\s*\{visibility:visible/)
 })
+
+
+test('maintenance tables and actions remain usable on narrow mobile screens', async () => {
+  const styles = await read('../src/style.css')
+  assert.ok(styles.includes('min-width:1060px!important;\n  table-layout:auto!important;'))
+  assert.ok(styles.includes('overflow-wrap:normal!important;\n  word-break:normal!important;'))
+  assert.ok(styles.includes('grid-template-columns:repeat(2,minmax(0,1fr));'))
+  assert.ok(styles.includes('Vuốt ngang bảng để xem các cột còn lại'))
+})
