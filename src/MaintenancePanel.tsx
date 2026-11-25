@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Check, ClipboardList, Download, History, Plus, Printer, Wrench, X } from 'lucide-react'
-import ExcelJS from 'exceljs'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
 
 type Props = {
@@ -20,33 +19,6 @@ const emptyRequest = (organizationId: string, userLabel: string): MaintenanceReq
   description: '', parts: '', readings: '', requestedBy: userLabel, status: 'Chưa hoàn thành',
   result: '', performedBy: '', createdAt: now(), updatedAt: now()
 })
-const downloadExcel = async (fileName: string, sheetName: string, headers: string[], rows: unknown[][]) => {
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'BAOTRI Mini'
-  workbook.created = new Date()
-  const sheet = workbook.addWorksheet(sheetName)
-  sheet.columns = headers.map(header => ({ header, key: header, width: Math.max(14, Math.min(32, header.length + 8)) }))
-  sheet.addRows(rows)
-  sheet.views = [{ state: 'frozen', ySplit: 1 }]
-  sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } }
-  const header = sheet.getRow(1)
-  header.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245B78' } }
-  header.alignment = { vertical: 'middle', wrapText: true }
-  header.height = 30
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber > 1) row.alignment = { vertical: 'top', wrapText: true }
-  })
-  const buffer = await workbook.xlsx.writeBuffer()
-  const blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
-
 const emptyTask = (organizationId: string): MaintenanceTask => ({
   id: uid(), organizationId, assetId: '', title: '', dueDate: today(), frequency: 'Một lần',
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
