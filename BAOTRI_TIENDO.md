@@ -394,3 +394,31 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Chưa triển khai công cụ tạo checklist hoặc các loại dữ liệu mở rộng.
 
 **Lưu ý:** Migration và Edge Function đã được phát hành nhưng chưa tạo bất kỳ dữ liệu mẫu nào. Chỉ thực hiện tạo dữ liệu khi người dùng chọn rõ doanh nghiệp đích và xác nhận thao tác trong giao diện Superadmin.
+
+
+## 23. Cập nhật 25/11/2026 – chuyển menu Báo cáo từ dự án tham chiếu
+
+### Khảo sát dự án cũ (chỉ đọc)
+- Đã đọc `Vodanhhp/DuAn_BaoTRi/src/App.tsx` và `src/style.css`; không sửa mã nguồn, dữ liệu, nhánh hoặc commit của repository cũ.
+- Menu Báo cáo cũ gồm bộ chọn kỳ Tuần/Tháng/Quý/Năm và ba nhóm báo cáo:
+  1. Công việc bảo trì/bảo dưỡng/sửa chữa đã hoàn thành trong kỳ.
+  2. Vật tư đã xuất trong kỳ, số lượt xuất và tồn kho hiện tại.
+  3. Tình trạng thiết bị hiện tại, nhấn mạnh thiết bị đang sửa chữa/hỏng.
+- Có xuất Excel riêng cho từng nhóm; Viewer chỉ xem, không xuất.
+- Quy tắc nguồn dữ liệu: vật tư sử dụng lấy từ giao dịch Xuất kho; không cộng ghi chú vật tư tự do trên Phiếu YC vào lượng xuất kho.
+- Dự án cũ lấy báo cáo công việc từ nhật ký hoàn thành; dự án mới dùng `MaintenanceRequest` Local-first, chỉ tính Phiếu YC có trạng thái Hoàn thành và lọc theo ngày hoàn thành.
+
+### Đã triển khai trên nhánh `feat/reports-menu`
+- Thêm `src/ReportsPanel.tsx`: bộ lọc kỳ, tìm kiếm nội dung, báo cáo công việc, vật tư và tình trạng thiết bị.
+- Dữ liệu truy vấn theo đúng `organizationId` từ IndexedDB Local; effect bỏ qua kết quả tải cũ khi chuyển tổ chức/unmount.
+- Báo cáo công việc dùng Phiếu YC đã hoàn thành; báo cáo vật tư chỉ dùng `InventoryMovement.type === 'Xuất'`; tồn kho lấy số lượng hiện tại từ danh mục vật tư.
+- Báo cáo thiết bị phản ánh các trạng thái hiện có của dự án mới, bao gồm Lưu kho; loại trừ hồ sơ lưu trữ/đã xóa mềm.
+- Tái sử dụng `src/lib/excelExport.ts` để xuất XLSX thật; ẩn nút xuất với Viewer.
+- Bổ sung menu Báo cáo cho tài khoản có quyền xem thiết bị hoặc kho; Viewer được xem nhưng không được xuất Excel.
+- Bổ sung CSS responsive, bảng cuộn ngang trên mobile và test hồi quy `scripts/reportsModule.test.mjs`.
+- Không thay đổi IndexedDB schema, dữ liệu Local, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+
+### Trạng thái kiểm tra
+- Đã tạo nhánh và ghi các thay đổi lên GitHub.
+- CI Build/Test, TypeScript/Vite build, kiểm tra giao diện trên trình duyệt và kiểm tra file XLSX thực tế: **chưa xác nhận**.
+- Chưa tạo PR, chưa merge vào `main`, chưa deploy GitHub Pages.

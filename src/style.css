@@ -3102,3 +3102,37 @@ html,body,#root,.app-shell{
   }
   #root .app-shell .table-wrap > table.asset-list-table{min-width:790px}
 }
+
+
+/* Reports workspace: scoped layout, period controls and horizontally scrollable tables. */
+#root .app-shell .reports-dashboard{display:grid;gap:15px;min-width:0}
+#root .app-shell .report-period-panel,
+#root .app-shell .report-data-panel{display:grid;gap:15px;min-width:0}
+#root .app-shell .report-period-tabs{display:flex;gap:7px;flex-wrap:wrap}
+#root .app-shell .report-period-tabs button{border:1px solid var(--border);background:var(--panel);color:var(--muted);border-radius:8px;padding:8px 15px;font-size:12px}
+#root .app-shell .report-period-tabs button.active{border-color:#68b99d;background:#e5f4ee;color:#145b48;font-weight:700}
+#root .app-shell .report-period-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;flex-wrap:wrap;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--panel-alt)}
+#root .app-shell .report-period-range{font-size:12px;color:var(--text)}
+#root .app-shell .report-search{display:grid;grid-template-columns:150px minmax(0,1fr);align-items:center;gap:10px;font-size:11px;color:var(--muted)}
+#root .app-shell .report-search input{min-width:0;width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--panel);color:var(--text)}
+#root .app-shell .report-summary{display:flex;gap:10px;flex-wrap:wrap}
+#root .app-shell .report-summary span{border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--muted);font-size:11px;background:var(--panel)}
+#root .app-shell .report-summary b{color:var(--text);margin-right:3px}
+#root .app-shell .report-summary .report-summary-alert b{color:var(--danger-text)}
+#root .app-shell .reports-table-wrap{max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+#root .app-shell .reports-table-wrap table{min-width:760px;width:100%;table-layout:auto}
+#root .app-shell .reports-table-wrap th,
+#root .app-shell .reports-table-wrap td{white-space:normal;min-width:105px;overflow-wrap:anywhere;vertical-align:top}
+#root .app-shell .report-note{display:flex;gap:12px;align-items:flex-start;color:#ad7b37;background:#fffaf1}
+#root .app-shell .report-note p{margin-top:5px;line-height:1.6}
+@media(max-width:680px){
+  #root .app-shell .reports-dashboard{gap:12px}
+  #root .app-shell .report-period-panel,
+  #root .app-shell .report-data-panel{gap:12px}
+  #root .app-shell .report-period-toolbar{align-items:stretch;flex-direction:column}
+  #root .app-shell .report-search{grid-template-columns:minmax(0,1fr);gap:6px}
+  #root .app-shell .report-period-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  #root .app-shell .report-period-tabs button{padding:8px 4px}
+  #root .app-shell .reports-table-wrap{border:1px solid var(--border);border-radius:9px}
+  #root .app-shell .reports-table-wrap::after{content:"Vuốt ngang bảng để xem các cột còn lại";display:block;padding:7px 9px;color:var(--muted);font-size:10px;text-align:center;background:var(--panel-alt);border-top:1px solid var(--border)}
+}

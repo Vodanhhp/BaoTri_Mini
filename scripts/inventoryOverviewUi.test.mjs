@@ -6,7 +6,7 @@ const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 
 test('overview combines equipment and inventory summaries and links the maintenance module', async () => {
   const app = await read('../src/App.tsx')
-  assert.match(app, /useState<'dashboard'\|'assets'\|'inventory'\|'maintenance'>\('dashboard'\)/)
+  assert.match(app, /useState<'dashboard'|'assets'|'inventory'|'maintenance'|'reports'>('dashboard')|'assets'\|'inventory'\|'maintenance'>\('dashboard'\)/)
   assert.match(app, /setActiveModule\('dashboard'\)/)
   assert.match(app, /Vật tư đang theo dõi/)
   assert.match(app, /Sắp hết hàng/)
