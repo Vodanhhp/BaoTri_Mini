@@ -445,6 +445,10 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 
 ### Kiểm tra
 - Đã bổ sung source tests cho báo cáo hoạt động theo kỳ, nguồn Phiếu YC/lịch định kỳ, thời gian/người thực hiện/kết quả, lọc ngày và nguyên tắc không giả lập Checklist.
-- CI Build/Test, TypeScript/Vite build và GitHub Pages deployment: đang chờ PR.
+- PR #67: https://github.com/Vodanhhp/BaoTri_Mini/pull/67 (đang OPEN, chưa merge).
+- Head commit hiện tại: `970220489eaefbcf36164017e3f0bbaa8bd7c498`.
+- GitHub Actions Build and test run `45617994461`: SUCCESS; Unit tests PASS, TypeScript/Vite build PASS.
+- Validate BAOTRI Mini run `45617994449`: SUCCESS (`npm ci` và `npm run build` PASS).
+- GitHub Pages chưa deploy vì PR chưa merge.
 - Chưa kiểm tra trực tiếp giao diện, dữ liệu Local thật hoặc file XLSX tải về.
 - PR chưa merge; không thay đổi Supabase.
