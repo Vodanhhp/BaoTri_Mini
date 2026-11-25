@@ -236,3 +236,42 @@ Kiểm thử:
 - Đã ghi thay đổi lên GitHub nhánh main.
 - Chưa chạy build TypeScript/Vite sau thay đổi này và chưa kiểm thử trực tiếp trên trình duyệt. Người dùng cần Pull cập nhật về máy rồi khởi động lại Vite để kiểm tra.
 - Chế độ Local chỉ phục vụ kiểm thử giao diện/nghiệp vụ trên máy hiện tại; chưa thay thế đăng nhập thật.
+
+
+## 16. Cập nhật 25/11/2026 – triển khai bước đầu phân hệ Bảo dưỡng – Sửa chữa
+
+Người dùng yêu cầu tạm gác Checklist, ưu tiên khảo sát và chuyển phân hệ Bảo dưỡng – Sửa chữa từ repository tham chiếu `Vodanhhp/DuAn_BaoTRi` sang `Vodanhhp/BaoTri_Mini`.
+
+### Kết quả khảo sát repository tham chiếu
+
+- Đã đối chiếu `src/App.tsx`, `src/db.ts` và các luồng liên quan của dự án cũ.
+- Phân hệ cũ gồm Phiếu YC Bảo dưỡng – Sửa chữa, lịch bảo dưỡng định kỳ, trạng thái hoàn thành, người yêu cầu/người hoàn thành, lịch sử chỉnh sửa, cảnh báo phiếu chưa hoàn thành tại Công việc hôm nay và xuất dữ liệu.
+- Phiếu YC được gắn với assetId của hồ sơ thiết bị; không phải một danh sách công việc độc lập.
+- Phát hiện mapper Cloud ở dự án cũ đang từ chối một số trường nghiệp vụ (dueDate, requestedBy, editHistory) do schema Cloud chưa hỗ trợ đầy đủ. Không sao chép mù luồng đồng bộ cũ.
+
+### Đã triển khai trên nhánh `feat/maintenance-repair-module`
+
+- Tạo `src/MaintenancePanel.tsx`: giao diện Phiếu YC, lịch bảo dưỡng định kỳ, lọc trạng thái, cập nhật kết quả hoàn thành, lịch sử thao tác và xuất CSV mở được bằng Excel.
+- Bổ sung `MaintenanceDashboardSummary`: các Phiếu YC chưa hoàn thành luôn được đưa lên khu vực Công việc hôm nay với cảnh báo đỏ; mở nhanh phân hệ Bảo dưỡng – Sửa chữa.
+- `src/db.ts`: bổ sung các kiểu `MaintenanceRequest`, `MaintenanceTask`, `MaintenanceHistory` và Dexie version 12 với ba kho Local phân vùng theo organizationId.
+- `src/App.tsx`: bổ sung menu Bảo dưỡng – Sửa chữa; nối phân hệ với danh sách thiết bị và tổ chức hiện chọn; quyền thao tác giới hạn Admin/KTV theo quyền thao tác hiện có, Viewer chỉ xem. Cửa sổ chi tiết thiết bị có mục Lịch sử Bảo dưỡng – Sửa chữa.
+- `src/style.css`: bổ sung bố cục responsive và nhấn cảnh báo đỏ cho phiếu đang mở.
+- Lịch sử tạo/sửa/đổi trạng thái/hoàn thành được ghi trong maintenanceHistory; không xóa cứng phiếu.
+
+### Giới hạn và nguyên tắc an toàn
+
+- Đây là bước Local-first. Dữ liệu bảo dưỡng hiện lưu trong IndexedDB trên trình duyệt hiện tại; chưa đồng bộ sang máy khác/Cloud.
+- Chưa tạo migration, bảng, RPC, RLS, Auth, Storage hoặc thay đổi dữ liệu trên bất kỳ Supabase project nào.
+- Chưa thay đổi dữ liệu hay mã nguồn repository cũ.
+- Chưa merge PR và chưa deploy Production.
+- GitHub Actions trên PR #61: Build and test SUCCESS (run `45546990229`): 188/188 unit tests PASS, TypeScript (`tsc -b`) PASS, Vite production build PASS. Validate BAOTRI Mini SUCCESS (run `45546990449`).
+- Chưa kiểm thử trực tiếp trên trình duyệt PC/mobile; chưa xác nhận trải nghiệm thực tế hoặc dữ liệu trên nhiều thiết bị.
+- Cần kiểm thử riêng: phân quyền Viewer, tenant isolation, tạo/sửa/hoàn thành Phiếu YC, lịch định kỳ, lịch sử, cảnh báo dashboard, ngày quá hạn và xuất CSV.
+
+### Việc tiếp theo
+
+1. Chạy CI build/test trên Pull Request; xử lý lỗi nếu có.
+2. Review toàn bộ dữ liệu Local và luồng đồng thời, đặc biệt bảo đảm transaction ghi phiếu và lịch sử.
+3. Kiểm tra thực tế giao diện trên PC/mobile, tenant isolation và quyền Viewer/Admin/KTV.
+4. Thiết kế hợp đồng Cloud riêng cho maintenance requests/tasks/history; chỉ triển khai sau khi người dùng duyệt migration và chính sách đồng bộ.
+5. Chờ người dùng kiểm tra giao diện và phê duyệt riêng trước khi merge.

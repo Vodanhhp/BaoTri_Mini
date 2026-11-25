@@ -2869,3 +2869,55 @@ html,body,#root,.app-shell{
  #root .plan-request-modal .organization-change-grid{grid-template-columns:minmax(0,1fr);gap:8px}
  #root .plan-request-modal .organization-change-card{padding:9px}
 }
+
+
+/* Bảo dưỡng – Sửa chữa: module Local-first, 25/11/2026 */
+#root .maintenance-workspace{display:grid;gap:16px;min-width:0}
+#root .maintenance-local-note{display:inline-block;margin-top:5px;color:var(--muted,#64748b);font-size:10px}
+#root .maintenance-alert-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#root .maintenance-panel{gap:13px}
+#root .maintenance-tabs{display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--border,#e5e7eb);padding-bottom:9px}
+#root .maintenance-tabs button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border,#dbe1e8);border-radius:8px;background:var(--surface,#fff);padding:8px 11px;color:var(--text,#263445);font-size:11px;font-weight:650;cursor:pointer}
+#root .maintenance-tabs button.active{border-color:var(--primary,#2563eb);background:var(--primary-soft,#eff6ff);color:var(--primary,#1d4ed8)}
+#root .maintenance-toolbar{display:flex;justify-content:flex-end;gap:10px;align-items:center}
+#root .maintenance-toolbar label{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted,#64748b)}
+#root .maintenance-toolbar select,#root .maintenance-table select{max-width:190px;padding:7px 9px;border:1px solid var(--border,#dbe1e8);border-radius:7px;background:var(--surface,#fff);font-size:11px}
+#root .maintenance-table{min-width:1060px}
+#root .maintenance-table td{vertical-align:top;white-space:normal}
+#root .maintenance-table td small{display:block;margin-top:3px;color:var(--muted,#64748b);font-size:9px}
+#root .maintenance-open-row{background:rgba(220,38,38,.035)}
+#root .maintenance-open-row td:first-child{border-left:3px solid #dc2626}
+#root .maintenance-history{display:grid;gap:8px;padding:12px;border:1px solid var(--border,#e5e7eb);border-radius:9px;background:var(--surface-2,#f8fafc)}
+#root .maintenance-history h3{margin:0;font-size:12px}
+#root .maintenance-history>div{display:grid;gap:3px;padding:7px 0;border-bottom:1px solid var(--border,#e5e7eb)}
+#root .maintenance-history>div:last-child{border-bottom:0}
+#root .maintenance-history small{color:var(--muted,#64748b);font-size:10px}
+#root .maintenance-modal{width:min(720px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto}
+@media(max-width:760px){
+ #root .maintenance-alert-grid{grid-template-columns:1fr}
+ #root .maintenance-panel>.panel-head{align-items:flex-start;flex-direction:column}
+ #root .maintenance-panel>.panel-head>.top-actions{width:100%;justify-content:flex-start}
+ #root .maintenance-toolbar{justify-content:flex-start}
+}
+
+
+#root .maintenance-dashboard-section{border:1px solid rgba(220,38,38,.22);border-left:4px solid #dc2626;border-radius:11px;padding:14px;background:rgba(220,38,38,.025)}
+#root .maintenance-dashboard-list{display:grid;gap:5px}
+#root .maintenance-dashboard-list>button{display:flex;align-items:center;gap:10px;min-width:0;width:100%;padding:9px 10px;border:1px solid var(--border,#e5e7eb);border-radius:8px;background:var(--surface,#fff);text-align:left;cursor:pointer}
+#root .maintenance-dashboard-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#dc2626}
+#root .maintenance-dashboard-copy{display:grid;gap:2px;min-width:0;flex:1}
+#root .maintenance-dashboard-copy b{font-size:11px}
+#root .maintenance-dashboard-copy small{font-size:10px;color:var(--muted,#64748b);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#root .maintenance-dashboard-empty{padding:12px;border-radius:8px;background:var(--surface-2,#f8fafc);font-size:11px;color:var(--muted,#64748b)}
+@media(max-width:640px){#root .maintenance-dashboard-list>button{align-items:flex-start;flex-wrap:wrap}#root .maintenance-dashboard-list .status{margin-left:18px}}
+
+
+#root .maintenance-asset-history{display:grid;gap:8px;margin:14px 0;padding:12px;border:1px solid var(--border,#e5e7eb);border-radius:9px;background:var(--surface-2,#f8fafc)}
+#root .maintenance-asset-history h3{margin:0;font-size:12px}
+#root .maintenance-asset-history>p{margin:0;font-size:10px;color:var(--muted,#64748b)}
+#root .maintenance-asset-history-list{display:grid;gap:7px}
+#root .maintenance-asset-history-list article{display:grid;gap:4px;padding:8px;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:7px}
+#root .maintenance-asset-history-list article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#root .maintenance-asset-history-list article b{font-size:10px}
+#root .maintenance-asset-history-list article p{margin:0;font-size:10px;white-space:pre-wrap}
+#root .maintenance-asset-history-list article small{font-size:9px;color:var(--muted,#64748b)}

@@ -5,6 +5,7 @@ import { Activity, Download, Archive, Building2, Check, Hash, LayoutDashboard, L
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
+import MaintenancePanel, { MaintenanceAssetHistory, MaintenanceDashboardSummary } from './MaintenancePanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -74,7 +75,7 @@ export default function App() {
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
-  const [activeModule,setActiveModule]=useState<'dashboard'|'assets'|'inventory'>('dashboard')
+  const [activeModule,setActiveModule]=useState<'dashboard'|'assets'|'inventory'|'maintenance'>('dashboard')
   const [organizationReady,setOrganizationReady]=useState(false)
   const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
   const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
@@ -1264,6 +1265,7 @@ export default function App() {
       <button className={"nav-item"+(activeModule==='dashboard'?' active':'')} onClick={()=>{setActiveModule('dashboard');setMobileMenuOpen(false)}}><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
       <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
       {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
+      {(session||localPreview)&&(localPreview||canView)&&<button className={'nav-item'+(activeModule==='maintenance'?' active':'')} onClick={()=>{setActiveModule('maintenance');setMobileMenuOpen(false)}}><Wrench size={17}/><span>Bảo dưỡng – Sửa chữa</span></button>}
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
@@ -1278,11 +1280,13 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">{activeModule==='dashboard'?'TỔNG QUAN HỆ THỐNG':activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='dashboard'?'Trang tổng quan':activeModule==='inventory'?'Kho vật tư':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="page-heading"><div className="eyebrow">{activeModule==='dashboard'?'TỔNG QUAN HỆ THỐNG':activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':activeModule==='maintenance'?'BẢO DƯỠNG – SỬA CHỮA':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='dashboard'?'Trang tổng quan':activeModule==='inventory'?'Kho vật tư':activeModule==='maintenance'?'Bảo dưỡng – Sửa chữa':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
         <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
-        {activeModule==='inventory'
+        {activeModule==='maintenance'
+          ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate}/>
+          : activeModule==='inventory'
           ? <InventoryPanel organizationId={organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} userRoleLabel={currentOrganization?.roleCodes.map(role=>role==='admin'?'Admin':role==='technician'?'KTV':role==='viewer'?'Viewer':role).join(', ')||(currentOrganization?.isAdmin?'Admin':'KTV')} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)} equipmentCatalog={equipmentCatalog} equipmentCatalogLoading={equipmentCatalogLoading} equipmentCatalogError={equipmentCatalogError}/>
           : activeModule==='dashboard'
             ? <div className="overview-workspace">
@@ -1295,6 +1299,7 @@ export default function App() {
                     <div className="stat-card"><div className="stat-icon red"><Archive size={20}/></div><div><small>Ngừng sử dụng</small><strong>{stoppedCount}</strong><span>Không tính thiết bị đã lưu kho</span></div></div>
                   </div>
                 </section>
+                {(localPreview||canView)&&<MaintenanceDashboardSummary organizationId={localPreview?'local-preview':organizationId} assets={assets} onOpen={()=>setActiveModule('maintenance')}/>}
                 {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
@@ -1303,7 +1308,7 @@ export default function App() {
                     <div className="stat-card"><div><small>Giá trị tồn ước tính</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).reduce((sum,item)=>sum+item.quantity*item.unitPrice,0).toLocaleString('vi-VN',{maximumFractionDigits:0})} đ</strong><span>Theo đơn giá đang khai báo</span></div></div>
                   </div>
                 </section>}
-                <section className="overview-section overview-future"><div><div className="eyebrow">MỞ RỘNG THEO LỘ TRÌNH</div><h2>Checklist & công việc bảo trì</h2><p>Khu vực tổng quan dành cho thống kê Checklist, kiểm tra định kỳ, công việc và kế hoạch bảo trì khi các phân hệ này được tích hợp vào BAOTRI Mini.</p></div><span className="status gray">Sẽ bổ sung</span></section>
+                <section className="overview-section overview-future"><div><div className="eyebrow">NGHIỆP VỤ BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý Phiếu YC, lịch bảo dưỡng định kỳ và theo dõi các yêu cầu chưa hoàn thành theo từng thiết bị.</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('maintenance')}>Mở phân hệ →</button></section>
               </div>
             : <>
         <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · THIẾT BỊ</div><h2>Quản lý thiết bị tập trung</h2><p>Theo dõi hồ sơ, vị trí và tình trạng vận hành thiết bị.</p>{session&&organizationId&&<OrganizationPlanSummary catalog={equipmentCatalog} loading={equipmentCatalogLoading} error={equipmentCatalogError}/>}</div><div className="welcome-icon"><Wrench size={42}/></div></section>
@@ -1422,6 +1427,7 @@ export default function App() {
       {statusPickerOpen&&detailAsset&&canChangeStatus&&<div className="asset-status-editor"><label className="field">Trạng thái mới<select value={selectedAssetStatus} onChange={event=>setSelectedAssetStatus(event.target.value as AssetStatus)}>{STATUSES.map(item=><option key={item} value={item}>{item}</option>)}</select></label><button type="button" className="primary-btn" onClick={async()=>{const selected=detailAsset;const next=selectedAssetStatus;const opened=await openAssetEditor(selected,next);if(opened){setDetailAsset(null);setStatusPickerOpen(false)}}}>Tiếp tục cập nhật</button><small>Hệ thống mở phiên chỉnh sửa có khóa để lưu trạng thái và ghi lịch sử.</small></div>}
       <div className="detail-grid">{[['Mã quản lý',detailAsset.code],['Người thêm',detailAsset.createdByLabel || ''],['Nhóm thiết bị',detailAsset.category],['Vị trí lắp đặt',detailAsset.location],['Hãng sản xuất',detailAsset.brand],['Model',detailAsset.model],['Số serial',detailAsset.serial],['Công suất / thông số',detailAsset.power],['Ngày đưa vào sử dụng',dateText(detailAsset.commissionedAt)],['Chu kỳ bảo trì',detailAsset.cycle],['Chuyển từ cơ sở khác',detailAsset.transferredFromOtherFacility?'Có':'Không'],['Ngày lưu kho',detailAsset.archivedAt?dateText(detailAsset.archivedAt):'—']].map(([label,value])=><div className="detail-field" key={label}><small>{label}</small><b>{value || '—'}</b></div>)}</div>
       <div className="detail-notes"><small>Ghi chú</small><p>{detailAsset.notes || 'Chưa có ghi chú.'}</p></div>
+      <MaintenanceAssetHistory organizationId={localPreview?'local-preview':organizationId} assetId={detailAsset.id}/>
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><button type="button" className="detail-photo-open" key={index} title="Xem ảnh phóng to" onClick={()=>setImageViewer({images:detailAsset.images || [],index})}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></button>)}</div>:<p className="muted">{detailAsset.deletedAt?'Thiết bị đã xóa; không thể bổ sung ảnh.':'Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.'}</p>}</div>
       <div className="asset-qr-panel"><div><small>MÃ QR THIẾT BỊ</small><b>{detailAsset.code || 'Chưa có mã quản lý'}</b><span>QR hiện mã hóa trực tiếp mã quản lý thiết bị</span></div>{detailAsset.code&&<QRCodeSVG value={detailAsset.code} size={104} level="M" includeMargin/>}</div>
       <div className="asset-photo-actions"><button className="soft-btn" disabled={!detailAsset.code} onClick={()=>printAsset('sticker')}>In tem QR</button><button className="soft-btn" onClick={()=>printAsset('detail')}>In chi tiết</button></div>
