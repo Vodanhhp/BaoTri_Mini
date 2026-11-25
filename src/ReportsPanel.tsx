@@ -136,7 +136,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
       const occurredAt = row.completedAt || event?.occurredAt || row.updatedAt
       const asset = assets.find(item => item.id === row.assetId)
       return {
-        id: 'request-' + row.id, occurredAt, assetCode: asset?.code || '—',
+        id: 'request-' + row.id, assetId: row.assetId, occurredAt, assetCode: asset?.code || '—',
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
         activityType: row.kind, description: row.description || '—',
         detail: [row.readings && 'Thông số: ' + row.readings, row.parts && 'Vật tư: ' + row.parts].filter(Boolean).join(' · '),
@@ -154,7 +154,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
       const occurredAt = row.completedAt || completionEvent?.occurredAt || row.updatedAt
       const asset = assets.find(item => item.id === row.assetId)
       return {
-        id: 'task-' + row.id, occurredAt, assetCode: asset?.code || '—',
+        id: 'task-' + row.id, assetId: row.assetId, occurredAt, assetCode: asset?.code || '—',
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
         activityType: 'Bảo dưỡng định kỳ', description: row.title || '—',
         detail: [row.checklist && 'Các bước: ' + row.checklist, row.readings && 'Thông số: ' + row.readings, row.notes && 'Ghi chú: ' + row.notes].filter(Boolean).join(' · '),
@@ -225,7 +225,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
 
     {canViewAssets && <section className="panel report-data-panel">
       <div className="panel-head"><div><h2>Tình trạng thiết bị</h2><p>{rangeLabel(period, range)} · chỉ hiển thị thiết bị có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ</p></div>{canExport && <button type="button" className="soft-btn" onClick={() => void exportDeviceActivities()}><Download size={16}/> Xuất Excel</button>}</div>
-      <div className="report-summary"><span><b>{new Set(deviceActivities.map(row => row.assetCode)).size}</b> thiết bị có hoạt động</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng').length}</b> lượt bảo dưỡng</span><span><b>{deviceActivities.filter(row => row.activityType === 'Sửa chữa').length}</b> lượt sửa chữa</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng định kỳ').length}</b> lượt công việc định kỳ</span></div>
+      <div className="report-summary"><span><b>{new Set(deviceActivities.map(row => row.assetId)).size}</b> thiết bị có hoạt động</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng').length}</b> lượt bảo dưỡng</span><span><b>{deviceActivities.filter(row => row.activityType === 'Sửa chữa').length}</b> lượt sửa chữa</span><span><b>{deviceActivities.filter(row => row.activityType === 'Bảo dưỡng định kỳ').length}</b> lượt công việc định kỳ</span></div>
       <div className="table-wrap reports-table-wrap"><table className="period-report-table"><thead><tr><th>Ngày giờ</th><th>Thiết bị</th><th>Hoạt động</th><th>Nội dung / chi tiết</th><th>Người thực hiện</th><th>Kết quả</th></tr></thead><tbody>
         {deviceActivities.map(row => <tr key={row.id}><td>{dateTimeLabel(row.occurredAt)}</td><td><b>{row.assetCode}</b><small>{row.assetName}</small></td><td>{row.activityType}</td><td>{row.description}{row.detail && <small>{row.detail}</small>}</td><td>{row.performer}</td><td>{row.result}</td></tr>)}
       </tbody></table>{deviceActivities.length === 0 && <div className="empty">Không có hoạt động bảo dưỡng, sửa chữa hoặc công việc định kỳ hoàn thành trong kỳ báo cáo này.</div>}</div>
