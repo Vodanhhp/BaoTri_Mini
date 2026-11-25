@@ -86,6 +86,13 @@ begin
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_organization_id::text, 0));
+  select exists(select 1 from private.platform_data_seed_runs r where r.id=p_run_id) into v_run_exists;
+  if v_run_exists then
+    select result into v_result from private.platform_data_seed_runs
+      where id=p_run_id and organization_id=p_organization_id and actor_user_id=p_actor_user_id;
+    if not found then raise exception 'Seed run ID is already used by a different organization or actor.' using errcode='23505'; end if;
+    return v_result;
+  end if;
 
   select c.plan_code,c.snapshot,c.source_data_version,
          nullif(c.snapshot#>>'{plan,maxDevices}','')::integer
