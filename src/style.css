@@ -2804,7 +2804,17 @@ html,body,#root,.app-shell{
   }
   .equipment-print-info th {width:27%;background:#f0f0f0!important;font-weight:700;}
   .equipment-print-info td {width:73%;}
-  .equipment-print-history th {background:#eaeaea!important;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .equipment-print-history th,.equipment-print-maintenance th {background:#eaeaea!important;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .equipment-print-maintenance th,.equipment-print-maintenance td {font-size:7.2pt!important;padding:4px 4px!important;}
+  .equipment-print-maintenance th:nth-child(1){width:4%;text-align:center!important;}
+  .equipment-print-maintenance th:nth-child(2){width:11%;}
+  .equipment-print-maintenance th:nth-child(3){width:13%;}
+  .equipment-print-maintenance th:nth-child(4){width:25%;}
+  .equipment-print-maintenance th:nth-child(5){width:22%;}
+  .equipment-print-maintenance th:nth-child(6){width:13%;}
+  .equipment-print-maintenance th:nth-child(7){width:12%;}
+  .equipment-print-maintenance thead {display:table-header-group;}
+  .equipment-print-maintenance tr {break-inside:avoid;page-break-inside:avoid;}
   .equipment-print-history th:nth-child(1){width:5%;text-align:center!important;}
   .equipment-print-history th:nth-child(2){width:15%;}
   .equipment-print-history th:nth-child(3){width:17%;}
