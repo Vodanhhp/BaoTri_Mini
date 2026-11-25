@@ -25,7 +25,7 @@ test('Superadmin data tools show tenant Plan and capacity before creation', () =
 
 test('Superadmin seed backend verifies the platform owner and uses idempotent server-side RPC', () => {
   const edge = read('../supabase/functions/platform-data-tools/index.ts')
-  const migration = read('../supabase/pending_migrations/20261125180000_platform_superadmin_data_tools.sql')
+  const migration = read('../supabase/migrations/20261125180000_platform_superadmin_data_tools.sql')
   assert.match(edge, /PLATFORM_OWNER_EMAIL/)
   assert.match(edge, /auth\.getUser\(token\)/)
   assert.match(edge, /platform_seed_organization_data/)
