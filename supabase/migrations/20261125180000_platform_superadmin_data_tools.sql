@@ -198,7 +198,7 @@ begin
       sequence_value,month_year,status,asset_id,equipment_id,confirmed_at,original_name,
       normalized_name_at_creation,equipment_type_code,id_components_snapshot,source_data_version,group_name_at_creation
     ) values (
-      p_organization_id,coalesce(nullif(v_asset->>'reservationId','')::uuid,gen_random_uuid()),
+      p_organization_id,(select (a.id_components_snapshot->>'reservation_id')::uuid from public.assets a where a.id=v_asset_id),
       p_actor_user_id,v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,
       'confirmed',v_asset_id,v_code,v_now,btrim(v_asset->>'name'),v_normalized,v_equipment_code,
       (select a.id_components_snapshot from public.assets a where a.id=v_asset_id),v_source_version,v_group_name
