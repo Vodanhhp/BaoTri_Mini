@@ -61,6 +61,7 @@ declare
   v_result jsonb;
   v_inventory_sequence bigint;
   v_inventory_response jsonb;
+  v_components jsonb;
 begin
   if p_run_id is null or p_organization_id is null or p_actor_user_id is null then
     raise exception 'Run, organization and actor IDs are required.' using errcode='22023';
@@ -172,6 +173,27 @@ begin
     v_normalized:=coalesce(nullif(btrim(v_asset->>'normalizedNameAtCreation'),''),lower(regexp_replace(translate(coalesce(v_asset->>'name',''),'Đđ','Dd'),'[^a-zA-Z0-9]+',' ','g')));
     if nullif(btrim(v_asset->>'name'),'') is null or nullif(btrim(v_normalized),'') is null then raise exception 'Equipment name and normalized name are required at row %.',v_index using errcode='22023'; end if;
 
+    v_components:=jsonb_build_object(
+      'plan',v_plan,'equipment_code',v_equipment_code,
+      'group_code',nullif(v_group_code,''),'site_code',nullif(v_site_code,''),
+      'reservation_id',coalesce(nullif(v_asset->>'reservationId','')::uuid,gen_random_uuid()),
+      'sequence',v_sequence,'month_year',v_month_year,
+      'standard_equipment_name',coalesce(v_dictionary->>'standardName',btrim(v_asset->>'name')),
+      'group_name_at_creation',v_group_name,'source_data_version',v_source_version,'issued_at',v_now
+    );
+
+    -- The BEFORE INSERT trigger validates the already-confirmed reservation.
+    insert into private.asset_id_sequence_reservations(
+      organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,
+      sequence_value,month_year,status,asset_id,equipment_id,confirmed_at,original_name,
+      normalized_name_at_creation,equipment_type_code,id_components_snapshot,source_data_version,group_name_at_creation
+    ) values (
+      p_organization_id,(v_components->>'reservation_id')::uuid,
+      p_actor_user_id,v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,
+      'confirmed',v_asset_id,v_code,v_now,btrim(v_asset->>'name'),v_normalized,v_equipment_code,
+      v_components,v_source_version,v_group_name
+    );
+
     insert into public.assets(
       id,organization_id,code,name,category,brand,model,serial,location,commissioned_at,power,cycle,
       transferred_from_other_facility,status,notes,created_by_user_id,created_by_label,
@@ -184,24 +206,7 @@ begin
       coalesce(v_asset->>'cycle',''),false,'Đang hoạt động',
       coalesce(v_asset->>'notes','Tạo dữ liệu thử nghiệm bởi Superadmin.'),
       p_actor_user_id,v_label,btrim(v_asset->>'name'),v_normalized,v_equipment_code,
-      nullif(v_group_code,''),nullif(v_site_code,''),
-      jsonb_build_object('plan',v_plan,'equipment_code',v_equipment_code,
-        'group_code',nullif(v_group_code,''),'site_code',nullif(v_site_code,''),
-        'reservation_id',coalesce(nullif(v_asset->>'reservationId','')::uuid,gen_random_uuid()),
-        'sequence',v_sequence,'month_year',v_month_year,
-        'standard_equipment_name',coalesce(v_dictionary->>'standardName',btrim(v_asset->>'name')),
-        'group_name_at_creation',v_group_name,'source_data_version',v_source_version,'issued_at',v_now)
-    );
-
-    insert into private.asset_id_sequence_reservations(
-      organization_id,reservation_id,actor_user_id,plan_code,equipment_code,group_code,site_code,
-      sequence_value,month_year,status,asset_id,equipment_id,confirmed_at,original_name,
-      normalized_name_at_creation,equipment_type_code,id_components_snapshot,source_data_version,group_name_at_creation
-    ) values (
-      p_organization_id,(select (a.id_components_snapshot->>'reservation_id')::uuid from public.assets a where a.id=v_asset_id),
-      p_actor_user_id,v_plan,v_equipment_code,v_group_code,v_site_code,v_sequence,v_month_year,
-      'confirmed',v_asset_id,v_code,v_now,btrim(v_asset->>'name'),v_normalized,v_equipment_code,
-      (select a.id_components_snapshot from public.assets a where a.id=v_asset_id),v_source_version,v_group_name
+      nullif(v_group_code,''),nullif(v_site_code,''),v_components
     );
 
     insert into public.asset_activity_history(id,organization_id,asset_id,asset_code,event_type,summary,changes,actor_user_id,actor_label,occurred_at)
