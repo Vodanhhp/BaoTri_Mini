@@ -202,15 +202,6 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
     'Vị trí lưu kho': row.item?.location || ''
   })), 'bao-cao-vat-tu-' + range.startDate + '.xlsx', 'BÁO CÁO SỬ DỤNG VẬT TƯ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Vật tư sử dụng', ['Mã vật tư','Tên vật tư','Nhóm vật tư','ĐVT','Số lượng xuất trong kỳ','Số lượt xuất','Tồn kho hiện tại','Vị trí lưu kho'], 'landscape')
 
-  const exportAssets = () => downloadExcelReport(visibleAssets.map(asset => ({
-    'Mã thiết bị': asset.code,
-    'Tên thiết bị': asset.name,
-    'Nhóm thiết bị': asset.category,
-    'Vị trí': asset.location,
-    'Tình trạng hiện tại': asset.status,
-    'Ngày cập nhật': dateLabel(asset.updatedAt)
-  })), 'bao-cao-tinh-trang-thiet-bi-' + new Date().toISOString().slice(0, 10) + '.xlsx', 'BÁO CÁO TÌNH TRẠNG THIẾT BỊ · ' + dateLabel(new Date().toISOString()), 'Tình trạng thiết bị', ['Mã thiết bị','Tên thiết bị','Nhóm thiết bị','Vị trí','Tình trạng hiện tại','Ngày cập nhật'], 'landscape')
-
   return <div className="reports-dashboard">
     <section className="panel report-period-panel">
       <div className="panel-head"><div><h2>Báo cáo hoạt động thực tế</h2><p>Thống kê phiếu đã hoàn thành và vật tư đã xuất kho; không tính kế hoạch dự kiến.</p></div><BarChart3/></div>
