@@ -5,7 +5,8 @@ const ORIGIN='https://baotri.vieclamhp247.com'
 const cors=(origin:string|null)=>({'Access-Control-Allow-Origin':origin===ORIGIN||origin==='http://localhost:5173'||origin==='http://127.0.0.1:5173'?origin:ORIGIN,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS','Vary':'Origin'})
 const response=(body:unknown,status=200,origin:string|null=null)=>new Response(JSON.stringify(body),{status,headers:{...cors(origin),'Content-Type':'application/json'}})
 const uuid=(value:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-const today=()=>new Date().toISOString().slice(0,10)
+const today=()=>new Date(Date.now()+7*60*60*1000).toISOString().slice(0,10)
+const normalizeName=(value:string)=>value.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\\s+/g,' ')
 const planRank:Record<string,number>={A:1,B:2,C:3,D:4}
 
 const inventorySamples=[
@@ -95,15 +96,16 @@ Deno.serve(async(req)=>{
   const assets:any[]=[]
   if(assetCountRequested){
    const dictionary=catalog.snapshot.equipmentDictionary
-   if(dictionary.length<30)return response({error:'Catalog Snapshot không đủ 30 loại thiết bị để tạo dữ liệu thử nghiệm.'},409,origin)
+   if(!dictionary.length)return response({error:'Catalog Snapshot chưa có từ điển thiết bị.'},409,origin)
    for(let i=0;i<30;i++){
-    const entry=dictionary[i]
+    const entry=dictionary[i%dictionary.length]
     const suggested=allowedGroups.find((g:any)=>String(g.code).toUpperCase()===String(entry.suggestedGroup??'').toUpperCase())
     const group=catalog.plan_code==='A'?(suggested??allowedGroups[0]):(suggested??allowedGroups[0])
     if(catalog.plan_code!=='A'&&!group)return response({error:'Catalog Snapshot không có nhóm thiết bị phù hợp với Plan.'},409,origin)
     const category=group?.name??'Thiết bị chung'
+    const assetName=entry.standardName+' - Mẫu thử '+String(i+1).padStart(2,'0')
     assets.push({
-     id:crypto.randomUUID(),reservationId:crypto.randomUUID(),name:entry.standardName+' - Mẫu thử '+String(i+1).padStart(2,'0'),
+     id:crypto.randomUUID(),reservationId:crypto.randomUUID(),name:assetName,normalizedNameAtCreation:normalizeName(assetName),
      equipmentCode:entry.shortCode,category,groupCode:catalog.plan_code==='A'?'':group.code,
      siteCode:['C','D'].includes(catalog.plan_code)?siteCode:'',commissionedAt:today(),
      brand:['Mitsubishi','Schneider Electric','LS','Panasonic','Omron'][i%5],
