@@ -85,6 +85,8 @@ Deno.serve(async(req)=>{
   const assetCountRequested=body.createAssets===true?30:0
   const inventoryCountRequested=body.createInventory===true?30:0
   const siteCode=String(body.siteCode??'01')
+  const runId=String(body.runId??'')
+  if(!uuid(runId))return response({error:'Mã lượt tạo dữ liệu không hợp lệ. Hãy tải lại công cụ.'},400,origin)
   if(!assetCountRequested&&!inventoryCountRequested)return response({error:'Chọn ít nhất một loại dữ liệu cần tạo.'},400,origin)
   if(assetCountRequested&&remaining!==null&&remaining<assetCountRequested)return response({error:'Không đủ hạn mức thiết bị còn lại của Plan. Không có dữ liệu nào được tạo.'},409,origin)
   if(assetCountRequested&&['C','D'].includes(catalog.plan_code)&&!/^\d{2}$/.test(siteCode))return response({error:'Plan C/D yêu cầu mã cơ sở gồm đúng 2 chữ số.'},400,origin)
@@ -119,7 +121,6 @@ Deno.serve(async(req)=>{
    location:['Tủ vật tư điện','Kho cơ điện','Kệ linh kiện'][i%3],
    supplier:['Nhà cung cấp mẫu A','Nhà cung cấp mẫu B','Nhà cung cấp mẫu C'][i%3]
   })):[]
-  const runId=crypto.randomUUID()
   const {data:result,error:seedError}=await admin.rpc('platform_seed_organization_data',{
    p_run_id:runId,p_organization_id:organizationId,p_actor_user_id:auth.user.id,p_assets:assets,p_inventory_items:inventory
   })
