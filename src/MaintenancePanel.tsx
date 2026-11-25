@@ -53,7 +53,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
   const visibleRequests = useMemo(()=>requests.filter(row=>filter==='all'||(filter==='open'?row.status!=='Hoàn thành':row.status==='Hoàn thành')),[requests,filter])
   const openRequests = requests.filter(row=>row.status!=='Hoàn thành')
   const dueToday = openRequests.filter(row=>row.dueDate===today())
-  const overdue = openRequests.filter(row=>Boolean(row.dueDate)&&row.dueDate<today())
+  const overdue = openRequests.filter(row=>row.dueDate!==undefined&&row.dueDate<today())
 
   const addHistory = async (recordType:'request'|'task', recordId:string, eventType:MaintenanceHistory['eventType'], summary:string, before?:unknown, after?:unknown) => {
     await db.maintenanceHistory.add({
