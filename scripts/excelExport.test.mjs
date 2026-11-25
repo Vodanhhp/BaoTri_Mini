@@ -16,12 +16,19 @@ test('Excel workbook retains the legacy BAOTRI formatted report layout', async (
 test('Excel headings are centered and column widths prioritize readable maintenance fields', async () => {
  const source=await read('../src/lib/excelExport.ts')
  assert.match(source,/horizontal: 'center', wrapText: true/)
- assert.match(source,/horizontal: 'center', wrapText: true/)
  assert.match(source,/preferredWidths: Record<string, number>/)
  assert.match(source,/'Người yêu cầu': 22/)
  assert.match(source,/'Người hoàn thành': 22/)
  assert.ok(source.includes("orientation === 'portrait' ? 20 : 34"))
  assert.ok(source.includes('maxLength + 2'))
+})
+test('maintenance request export uses a compact width profile without changing other exports', async () => {
+ const source=await read('../src/lib/excelExport.ts')
+ assert.match(source,/const maintenanceRequestWidths: Record<string, number>/)
+ assert.match(source,/'Nội dung': 24/)
+ assert.match(source,/'Thông số ban đầu': 18/)
+ assert.match(source,/'Người yêu cầu': 18/)
+ assert.match(source,/if \(isMaintenanceRequest && maintenanceRequestWidths\[header\]\) return maintenanceRequestWidths\[header\]/)
 })
 test('inventory export follows filtered items and includes quantity and stock value', async () => {
  const source=await read('../src/InventoryPanel.tsx')
@@ -35,8 +42,6 @@ test('asset export follows current filters and is restricted to Admin, KTV or Lo
  assert.match(source,/const rows=visibleAssets\.map\(asset=>/);assert.match(source,/'Ngày xóa mềm'/)
  assert.match(source,/'Chu kỳ bảo trì'/)
 })
-
-
 test('all Excel exports use the shared report workbook formatter', async () => {
  const app=await read('../src/App.tsx')
  const inventory=await read('../src/InventoryPanel.tsx')
