@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Check, ClipboardList, Download, History, Plus, Wrench, X } from 'lucide-react'
+import ExcelJS from 'exceljs'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
 
 type Props = {
@@ -18,6 +19,33 @@ const emptyRequest = (organizationId: string, userLabel: string): MaintenanceReq
   description: '', parts: '', readings: '', requestedBy: userLabel, status: 'Chưa hoàn thành',
   result: '', performedBy: '', createdAt: now(), updatedAt: now()
 })
+const downloadExcel = async (fileName: string, sheetName: string, headers: string[], rows: unknown[][]) => {
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'BAOTRI Mini'
+  workbook.created = new Date()
+  const sheet = workbook.addWorksheet(sheetName)
+  sheet.columns = headers.map(header => ({ header, key: header, width: Math.max(14, Math.min(32, header.length + 8)) }))
+  sheet.addRows(rows)
+  sheet.views = [{ state: 'frozen', ySplit: 1 }]
+  sheet.autoFilter = { from: 'A1', to: { row: 1, column: headers.length } }
+  const header = sheet.getRow(1)
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF245B78' } }
+  header.alignment = { vertical: 'middle', wrapText: true }
+  header.height = 30
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber > 1) row.alignment = { vertical: 'top', wrapText: true }
+  })
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 const emptyTask = (organizationId: string): MaintenanceTask => ({
   id: uid(), organizationId, assetId: '', title: '', dueDate: today(), frequency: 'Một lần',
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
@@ -129,18 +157,20 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
   }
   const exportTasks = () => {
-    const rows=[['Ngày đến hạn','Mã thiết bị','Tên thiết bị','Công việc','Chu kỳ','Trạng thái','Các bước','Thông số','Ghi chú']]
-    for(const row of tasks){const asset=assets.find(item=>item.id===row.assetId);rows.push([row.dueDate,asset?.code||'',asset?.name||'',row.title,row.frequency,row.status,row.checklist,row.readings,row.notes])}
-    const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}))
-    const anchor=document.createElement('a');anchor.href=url;anchor.download='lich-bao-duong-dinh-ky.csv';anchor.click();URL.revokeObjectURL(url)
+    const rows: unknown[][] = []
+    for (const row of tasks) {
+      const asset = assets.find(item => item.id === row.assetId)
+      rows.push([row.dueDate, asset?.code || '', asset?.name || '', row.title, row.frequency, row.status, row.checklist || '', row.readings || '', row.notes || ''])
+    }
+    void downloadExcel('lich-bao-duong-dinh-ky.xlsx', 'Lịch bảo dưỡng', ['Ngày đến hạn', 'Mã thiết bị', 'Tên thiết bị', 'Công việc', 'Chu kỳ', 'Trạng thái', 'Các bước', 'Thông số', 'Ghi chú'], rows)
   }
   const exportRequests = () => {
-    const rows=[['Ngày yêu cầu','Hạn hoàn thành','Mã thiết bị','Tên thiết bị','Loại yêu cầu','Nội dung','Thông số / vật tư','Trạng thái','Kết quả','Người yêu cầu','Người hoàn thành']]
-    for(const row of visibleRequests){const asset=assets.find(item=>item.id===row.assetId);rows.push([row.requestDate,row.dueDate||'',asset?.code||'',asset?.name||'',row.kind,row.description,[row.readings,row.parts].filter(Boolean).join(' / '),row.status,row.result||'',row.requestedBy,row.performedBy])}
-    const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}))
-    const anchor=document.createElement('a');anchor.href=url;anchor.download='phieu-bao-duong-sua-chua.csv';anchor.click();URL.revokeObjectURL(url)
+    const rows: unknown[][] = []
+    for (const row of visibleRequests) {
+      const asset = assets.find(item => item.id === row.assetId)
+      rows.push([row.requestDate, row.dueDate || '', asset?.code || '', asset?.name || '', row.kind, row.description, [row.readings, row.parts].filter(Boolean).join(' / '), row.status, row.result || '', row.requestedBy, row.performedBy || ''])
+    }
+    void downloadExcel('phieu-bao-duong-sua-chua.xlsx', 'Phiếu yêu cầu', ['Ngày yêu cầu', 'Hạn hoàn thành', 'Mã thiết bị', 'Tên thiết bị', 'Loại yêu cầu', 'Nội dung', 'Thông số / vật tư', 'Trạng thái', 'Kết quả', 'Người yêu cầu', 'Người hoàn thành'], rows)
   }
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
@@ -153,7 +183,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     </div>
     <div className="panel maintenance-panel">
       <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
-        <button type="button" className="soft-btn" onClick={tab==='requests'?exportRequests:exportTasks}><Download size={15}/> Xuất CSV Excel</button>
+        <button type="button" className="soft-btn" onClick={tab==='requests'?exportRequests:exportTasks}><Download size={15}/> Xuất Excel</button>
         {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
       <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
