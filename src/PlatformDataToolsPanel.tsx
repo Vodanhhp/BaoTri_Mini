@@ -44,6 +44,7 @@ export default function PlatformDataToolsPanel({ client, organizations, onCreate
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<Result | null>(null)
+  const [runId, setRunId] = useState(() => crypto.randomUUID())
 
   useEffect(() => {
     if (!organizations.some(item => item.id === organizationId && item.status === 'active')) {
@@ -76,11 +77,12 @@ export default function PlatformDataToolsPanel({ client, organizations, onCreate
     setLoading(true); setError(''); setResult(null)
     try {
       const { data, error: invokeError } = await client.functions.invoke('platform-data-tools', {
-        body: { action: 'create', organizationId, createAssets, createInventory, siteCode }
+        body: { action: 'create', organizationId, createAssets, createInventory, siteCode, runId }
       })
       if (invokeError) throw new Error(invokeError.message)
       if (data?.error) throw new Error(data.error)
       setResult(data as Result)
+      setRunId(crypto.randomUUID())
       await loadPreviewAfterCreate()
       onCreated()
     } catch (cause) {
