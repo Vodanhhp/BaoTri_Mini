@@ -4,7 +4,12 @@ import { readFile } from 'node:fs/promises'
 const read = path => readFile(new URL(path, import.meta.url), 'utf8')
 test('Excel workbook retains the legacy BAOTRI formatted report layout', async () => {
  const source=await read('../src/lib/excelExport.ts')
- assert.match(source,/addBanner\(title/);assert.match(source,/Ngày xuất:/);assert.match(source,/Tổng số bản ghi:/)
+ assert.match(source,/addBanner\(title, 32, 'FF155B4B', 'FFFFFFFF'/)
+ assert.match(source,/for \(let column = 1; column <= headerNames\.length; column\+\+\)/)
+ assert.match(source,/color: \{ argb: fontColor \}/);assert.match(source,/fgColor: \{ argb: fill \}/)
+ assert.match(source,/color: \{ argb: 'FFFFFFFF' \}/)
+ assert.match(source,/fgColor: \{ argb: 'FF247763' \}/)
+ assert.match(source,/Ngày xuất:/);assert.match(source,/Tổng số bản ghi:/)
  assert.match(source,/worksheet\.autoFilter/);assert.match(source,/state: 'frozen', ySplit: 6/)
  assert.match(source,/orientation/);assert.match(source,/oddFooter = 'Trang &P \/ &N'/)
 })
@@ -29,4 +34,17 @@ test('asset export follows current filters and is restricted to Admin, KTV or Lo
  assert.match(source,/const canExport=Boolean\(localPreview\|\|currentOrganization\?\.isAdmin\|\|isKtv\)/)
  assert.match(source,/const rows=visibleAssets\.map\(asset=>/);assert.match(source,/'Ngày xóa mềm'/)
  assert.match(source,/'Chu kỳ bảo trì'/)
+})
+
+
+test('all Excel exports use the shared report workbook formatter', async () => {
+ const app=await read('../src/App.tsx')
+ const inventory=await read('../src/InventoryPanel.tsx')
+ const maintenance=await read('../src/MaintenancePanel.tsx')
+ const reports=await read('../src/ReportsPanel.tsx')
+ for (const source of [app,inventory,maintenance,reports]) assert.match(source,/downloadExcelReport/)
+ assert.equal((app.match(/downloadExcelReport\(/g)||[]).length,1)
+ assert.equal((inventory.match(/downloadExcelReport\(/g)||[]).length,1)
+ assert.equal((maintenance.match(/downloadExcelReport\(/g)||[]).length,2)
+ assert.equal((reports.match(/downloadExcelReport\(/g)||[]).length,3)
 })
