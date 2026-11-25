@@ -46,12 +46,33 @@ export async function downloadExcelReport(
     'Người yêu cầu': 22,
     'Người hoàn thành': 22
   }
+  // The maintenance request has 15 columns. Use a compact, form-specific layout
+  // so the workbook is not excessively wide while long text still wraps in cells.
+  const maintenanceRequestWidths: Record<string, number> = {
+    'Ngày yêu cầu': 12,
+    'Hạn hoàn thành': 12,
+    'Mã thiết bị': 14,
+    'Tên thiết bị': 20,
+    'Loại yêu cầu': 13,
+    'Nội dung': 24,
+    'Thông số ban đầu': 18,
+    'Thông số sau xử lý': 18,
+    'Tình trạng sau xử lý': 20,
+    'Vật tư / phụ tùng': 18,
+    'Trạng thái': 13,
+    'Kết quả': 12,
+    'Người yêu cầu': 18,
+    'Người hoàn thành': 18
+  }
+  const isMaintenanceRequest = title === 'PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA'
   const columnWidths = headerNames.map((header, column) => {
     const maxLength = Math.max(header.length, ...bodyRows.map(row => String(row[column] ?? '').split(/\r?\n/).reduce((max, line) => Math.max(max, line.length), 0)))
     const maxWidth = orientation === 'portrait' ? 20 : 34
     const preferredWidth = preferredWidths[header]
     const calculatedWidth = Math.max(9, maxLength + 2)
-    return column === 0 ? 6 : Math.min(maxWidth, preferredWidth ? Math.max(preferredWidth, Math.min(calculatedWidth, preferredWidth + 8)) : calculatedWidth)
+    if (column === 0) return 6
+    if (isMaintenanceRequest && maintenanceRequestWidths[header]) return maintenanceRequestWidths[header]
+    return Math.min(maxWidth, preferredWidth ? Math.max(preferredWidth, Math.min(calculatedWidth, preferredWidth + 8)) : calculatedWidth)
   })
   worksheet.columns = columnWidths.map(width => ({ width }))
 
