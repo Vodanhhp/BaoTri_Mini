@@ -44,3 +44,16 @@ test('maintenance reload ignores stale IndexedDB reads after an organization swi
   assert.match(panel, /if \(!isCurrent\(\)\) return/)
   assert.match(panel, /reload\(\(\)\s*=>\s*active\)/)
 })
+
+test('maintenance exports real XLSX workbooks instead of CSV files', async () => {
+  const panel = await read('../src/MaintenancePanel.tsx')
+  const packageJson = JSON.parse(await read('../package.json'))
+  assert.match(panel, /import ExcelJS from 'exceljs'/)
+  assert.match(panel, /workbook\.xlsx\.writeBuffer\(\)/)
+  assert.match(panel, /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/)
+  assert.match(panel, /phieu-bao-duong-sua-chua\.xlsx/)
+  assert.match(panel, /lich-bao-duong-dinh-ky\.xlsx/)
+  assert.match(panel, /Xuất Excel/)
+  assert.doesNotMatch(panel, /Xuất CSV Excel|text\/csv|\.csv['"]/)
+  assert.ok(packageJson.dependencies.exceljs, 'ExcelJS must be an installed runtime dependency')
+})
