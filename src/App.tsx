@@ -613,7 +613,7 @@ export default function App() {
         'Ngày xóa mềm':asset.deletedAt?dateText(asset.deletedAt):'',
         'Ghi chú':asset.notes||''
       }))
-      await downloadExcelReport(rows,'danh-sach-thiet-bi.xlsx','DANH SÁCH THIẾT BỊ','Danh sách thiết bị',headers,'landscape')
+      await downloadExcelReport(rows,'danh-sach-thiet-bi.xlsx','DANH SÁCH THIẾT BỊ','Danh sách thiết bị',headers,'landscape',currentOrganization?.name||'Đơn vị sử dụng')
       notify('Đã xuất '+rows.length+' hồ sơ thiết bị ra Excel.')
     }catch(cause){setError('Xuất Excel thiết bị thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
@@ -1287,7 +1287,7 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='reports'
-          ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport}/>
+          ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport}/>
           : activeModule==='maintenance'
           ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||''} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate}/>
           : activeModule==='inventory'

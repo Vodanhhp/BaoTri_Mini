@@ -6,6 +6,7 @@ import { downloadExcelReport } from './lib/excelExport'
 type Period = 'Ngày' | 'Tuần' | 'Tháng' | 'Quý' | 'Năm'
 type Props = {
   organizationId: string
+  organizationName: string
   assets: Asset[]
   canViewAssets: boolean
   canViewInventory: boolean
@@ -52,7 +53,7 @@ const dateTimeLabel = (value?: string) => value ? new Date(value).toLocaleString
 const localDateKey = (value: string) => { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value)); const part = (type: string) => parts.find(item => item.type === type)?.value || ''; return part('year') + '-' + part('month') + '-' + part('day') }
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value) + ' đ'
 
-export default function ReportsPanel({ organizationId, assets, canViewAssets, canViewInventory, canExport }: Props) {
+export default function ReportsPanel({ organizationId, organizationName, assets, canViewAssets, canViewInventory, canExport }: Props) {
   const [period, setPeriod] = useState<Period>('Tháng')
   const [anchorDate, setAnchorDate] = useState(() => { const date = new Date(); return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-') })
   const [search, setSearch] = useState('')
@@ -140,6 +141,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
         activityType: row.kind, description: row.description || '—',
         detail: [row.readings && 'Thông số ban đầu: ' + row.readings, row.completionReadings && 'Thông số sau xử lý: ' + row.completionReadings, row.conditionAfterRepair && 'Tình trạng sau xử lý: ' + row.conditionAfterRepair, row.parts && 'Vật tư: ' + row.parts].filter(Boolean).join(' · '),
+        requestedBy: row.requestedBy || '—',
         performer: event?.actorLabel || row.performedBy || '—',
         result: row.result || 'Chưa ghi nhận'
       }
@@ -158,7 +160,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
         assetName: asset?.name || 'Thiết bị không còn trong danh mục',
         activityType: 'Bảo dưỡng định kỳ', description: row.title || '—',
         detail: [row.checklist && 'Các bước: ' + row.checklist, row.readings && 'Thông số: ' + row.readings, row.notes && 'Ghi chú: ' + row.notes].filter(Boolean).join(' · '),
-        performer: completionEvent?.actorLabel || '—', result: 'Hoàn thành'
+        requestedBy: '—', performer: completionEvent?.actorLabel || '—', result: 'Hoàn thành'
       }
     })
     return [...completedRequestRows, ...completedTaskRows]
@@ -173,9 +175,10 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
     'Loại hoạt động': row.activityType,
     'Nội dung công việc': row.description,
     'Chi tiết / thông số': row.detail,
+    'Người yêu cầu': row.requestedBy,
     'Người thực hiện': row.performer,
     'Kết quả': row.result
-  })), 'bao-cao-tinh-trang-thiet-bi-' + range.startDate + '.xlsx', 'BÁO CÁO TÌNH TRẠNG THIẾT BỊ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Hoạt động thiết bị', ['Ngày giờ thực hiện','Mã thiết bị','Tên thiết bị','Loại hoạt động','Nội dung công việc','Chi tiết / thông số','Người thực hiện','Kết quả'], 'landscape')
+  })), 'bao-cao-tinh-trang-thiet-bi-' + range.startDate + '.xlsx', 'BÁO CÁO TÌNH TRẠNG THIẾT BỊ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Hoạt động thiết bị', ['Ngày giờ thực hiện','Mã thiết bị','Tên thiết bị','Loại hoạt động','Nội dung công việc','Chi tiết / thông số','Người yêu cầu','Người thực hiện','Kết quả'], 'landscape', organizationName)
 
   const exportWork = () => downloadExcelReport(completedRequests.map(row => {
     const asset = assets.find(item => item.id === row.assetId)
@@ -185,11 +188,15 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
       'Tên thiết bị': asset?.name || 'Thiết bị không còn trong danh mục',
       'Loại công việc': row.kind,
       'Nội dung đã thực hiện': row.description,
+      'Thông số ban đầu': row.readings || '',
+      'Thông số sau xử lý': row.completionReadings || '',
+      'Tình trạng sau xử lý': row.conditionAfterRepair || '',
       'Vật tư ghi trên phiếu': row.parts || '',
-      'Người thực hiện': row.performedBy || '',
+      'Người yêu cầu': row.requestedBy || '',
+      'Người hoàn thành': row.performedBy || '',
       'Kết quả': row.result || ''
     }
-  }), 'bao-cao-cong-viec-' + range.startDate + '.xlsx', 'BÁO CÁO CÔNG VIỆC BẢO TRÌ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Công việc bảo trì', ['Ngày hoàn thành','Mã thiết bị','Tên thiết bị','Loại công việc','Nội dung đã thực hiện','Vật tư ghi trên phiếu','Người thực hiện','Kết quả'], 'landscape')
+  }), 'bao-cao-cong-viec-' + range.startDate + '.xlsx', 'BÁO CÁO CÔNG VIỆC BẢO TRÌ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Công việc bảo trì', ['Ngày hoàn thành','Mã thiết bị','Tên thiết bị','Loại công việc','Nội dung đã thực hiện','Thông số ban đầu','Thông số sau xử lý','Tình trạng sau xử lý','Vật tư ghi trên phiếu','Người yêu cầu','Người hoàn thành','Kết quả'], 'landscape', organizationName)
 
   const exportMaterials = () => downloadExcelReport(materialUsage.map(row => ({
     'Mã vật tư': row.item?.code || 'Không còn trong danh mục',
@@ -200,7 +207,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
     'Số lượt xuất': row.transactions,
     'Tồn kho hiện tại': row.item?.quantity ?? '—',
     'Vị trí lưu kho': row.item?.location || ''
-  })), 'bao-cao-vat-tu-' + range.startDate + '.xlsx', 'BÁO CÁO SỬ DỤNG VẬT TƯ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Vật tư sử dụng', ['Mã vật tư','Tên vật tư','Nhóm vật tư','ĐVT','Số lượng xuất trong kỳ','Số lượt xuất','Tồn kho hiện tại','Vị trí lưu kho'], 'landscape')
+  })), 'bao-cao-vat-tu-' + range.startDate + '.xlsx', 'BÁO CÁO SỬ DỤNG VẬT TƯ · ' + rangeLabel(period, range).toLocaleUpperCase('vi'), 'Vật tư sử dụng', ['Mã vật tư','Tên vật tư','Nhóm vật tư','ĐVT','Số lượng xuất trong kỳ','Số lượt xuất','Tồn kho hiện tại','Vị trí lưu kho'], 'landscape', organizationName)
 
   return <div className="reports-dashboard">
     <section className="panel report-period-panel">
