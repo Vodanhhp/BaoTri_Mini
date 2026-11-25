@@ -1285,7 +1285,7 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='maintenance'
-          ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate}/>
+          ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||''} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate}/>
           : activeModule==='inventory'
           ? <InventoryPanel organizationId={organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} userRoleLabel={currentOrganization?.roleCodes.map(role=>role==='admin'?'Admin':role==='technician'?'KTV':role==='viewer'?'Viewer':role).join(', ')||(currentOrganization?.isAdmin?'Admin':'KTV')} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)} equipmentCatalog={equipmentCatalog} equipmentCatalogLoading={equipmentCatalogLoading} equipmentCatalogError={equipmentCatalogError}/>
           : activeModule==='dashboard'
