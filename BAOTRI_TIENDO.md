@@ -474,4 +474,5 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Bổ sung tên đơn vị vào phần đầu file Excel; sửa cách xác định chữ cột trong vùng in để hoạt động đúng cả khi bảng có trên 26 cột.
 - Báo cáo công việc và báo cáo hoạt động thiết bị bổ sung người yêu cầu/người hoàn thành khi dữ liệu có; báo cáo công việc bổ sung thông số trước/sau và tình trạng sau xử lý.
 - Đồng bộ các quy tắc in A4, font chữ, đầu trang, bảng, lặp tiêu đề bảng và chân trang cho phiếu vật tư, Phiếu YC và hồ sơ thiết bị. Tem QR vẫn giữ khổ tem riêng.
-- Chưa xác nhận build/CI hoặc kiểm tra thực tế bằng Excel, trình duyệt và máy in; cần chạy kiểm tra sau khi hoàn tất thay đổi.
+- GitHub Actions của PR #69: Validate BAOTRI Mini PASS; Build and test PASS (Unit tests và Build đều PASS).
+- Chưa kiểm tra thực tế bằng Excel desktop, trình duyệt hoặc máy in; cần nghiệm thu giao diện và file đầu ra sau khi merge/deploy.
