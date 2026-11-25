@@ -275,3 +275,16 @@ Người dùng yêu cầu tạm gác Checklist, ưu tiên khảo sát và chuy�
 3. Kiểm tra thực tế giao diện trên PC/mobile, tenant isolation và quyền Viewer/Admin/KTV.
 4. Thiết kế hợp đồng Cloud riêng cho maintenance requests/tasks/history; chỉ triển khai sau khi người dùng duyệt migration và chính sách đồng bộ.
 5. Chờ người dùng kiểm tra giao diện và phê duyệt riêng trước khi merge.
+
+
+## 17. Cập nhật 25/11/2026 – merge phân hệ Bảo dưỡng – Sửa chữa vào main
+
+Người dùng xác nhận dự án hiện vẫn trong giai đoạn xây dựng, chưa đưa vào vận hành; thống nhất ưu tiên đưa phân hệ lên bản chính thức để tiếp tục hoàn thiện và sửa lỗi phát sinh, không cần dựng thêm một vòng kiểm thử nhánh riêng trước khi merge.
+
+- PR #61 `feat: add maintenance and repair workspace` đã được squash-merge vào `main` theo xác nhận của người dùng.
+- Merge commit: `993e3228230ff452a45e71868b079c736b9c2236`.
+- Phạm vi merge: phân hệ Bảo dưỡng – Sửa chữa Local-first, lịch bảo dưỡng định kỳ, lịch sử thao tác, liên kết hồ sơ thiết bị và menu phân hệ.
+- GitHub Actions trước merge: Build/Test PASS (188/188 unit tests; TypeScript và Vite build PASS); Validate BAOTRI Mini PASS.
+- Không có migration hoặc thay đổi Supabase/Cloud trong PR; dữ liệu phân hệ hiện vẫn chỉ nằm trong IndexedDB trên trình duyệt đang sử dụng, chưa đồng bộ giữa thiết bị.
+- Chưa xác nhận website GitHub Pages đã hoàn tất cập nhật sau merge; cần theo dõi workflow deploy và kiểm tra URL thực tế.
+- Từ nay tiếp tục sửa lỗi trực tiếp theo phản hồi khi người dùng chạy ứng dụng; không tự ý thay đổi schema, dữ liệu, Auth, RLS, Storage hoặc bật đồng bộ Cloud nếu chưa được duyệt riêng.
