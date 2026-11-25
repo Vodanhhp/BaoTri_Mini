@@ -506,3 +506,14 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Bổ sung source tests khóa màu chữ trắng, màu nền tiêu đề và xác nhận các module xuất Excel đều dùng chung exporter.
 - Chỉ thay đổi định dạng file xuất; không thay đổi dữ liệu, công thức tổng hợp, phân quyền, IndexedDB, Supabase hoặc Cloud Sync.
 - Chưa kiểm tra file tải về bằng Excel desktop/LibreOffice hoặc trên mọi trình xem bảng tính; cần kiểm tra thực tế sau khi CI và deploy hoàn tất.
+
+
+
+## 25/11/2026 – thu gọn độ rộng cột Excel Phiếu yêu cầu bảo dưỡng – sửa chữa
+
+- Phản ánh thực tế: bảng Phiếu YC có 15 cột, tổng độ rộng lớn khiến các cột cách nhau quá xa và file bị phình ngang.
+- Bổ sung profile độ rộng riêng cho đúng biểu mẫu **PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA**: giảm các cột ngày, mã/tên thiết bị, loại yêu cầu, nội dung, thông số, vật tư, trạng thái, kết quả và người thực hiện; nội dung dài tiếp tục tự xuống dòng trong ô.
+- Không thay đổi thứ tự cột, dữ liệu, tiêu đề, màu sắc, bộ lọc, cố định hàng, các biểu mẫu Excel khác hoặc thiết lập trang in. Các export khác tiếp tục dùng độ rộng hiện tại.
+- Bổ sung source test xác nhận profile thu gọn chỉ áp dụng cho Phiếu YC.
+- Thay đổi ở nhánh `fix/excel-maintenance-request-compact`; chưa merge/deploy. Chưa kiểm tra file tải thực tế bằng Excel desktop/LibreOffice.
+- Không thay đổi dữ liệu Local, IndexedDB, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
