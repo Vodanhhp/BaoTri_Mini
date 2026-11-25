@@ -145,7 +145,7 @@ export default function InventoryPanel(props: Props) {
         'Ngày tạo':formatDateVN(item.createdAt),
         'Cập nhật lần cuối':formatDateVN(item.updatedAt)
       }))
-      await downloadExcelReport(rows,'ton-kho-vat-tu.xlsx','BÁO CÁO TỒN KHO VẬT TƯ','Tồn kho vật tư',headers,'landscape')
+      await downloadExcelReport(rows,'ton-kho-vat-tu.xlsx','BÁO CÁO TỒN KHO VẬT TƯ','Tồn kho vật tư',headers,'landscape',organizationName)
       setNotice('Đã xuất '+rows.length+' vật tư ra Excel.')
     }catch(cause){setError('Xuất Excel vật tư thất bại: '+(cause instanceof Error?cause.message:String(cause)))}
   }
