@@ -254,7 +254,7 @@ Người dùng yêu cầu tạm gác Checklist, ưu tiên khảo sát và chuy�
 - Tạo `src/MaintenancePanel.tsx`: giao diện Phiếu YC, lịch bảo dưỡng định kỳ, lọc trạng thái, cập nhật kết quả hoàn thành, lịch sử thao tác và xuất CSV mở được bằng Excel.
 - Bổ sung `MaintenanceDashboardSummary`: các Phiếu YC chưa hoàn thành luôn được đưa lên khu vực Công việc hôm nay với cảnh báo đỏ; mở nhanh phân hệ Bảo dưỡng – Sửa chữa.
 - `src/db.ts`: bổ sung các kiểu `MaintenanceRequest`, `MaintenanceTask`, `MaintenanceHistory` và Dexie version 12 với ba kho Local phân vùng theo organizationId.
-- `src/App.tsx`: bổ sung menu Bảo dưỡng – Sửa chữa; nối phân hệ với danh sách thiết bị và tổ chức hiện chọn; quyền thao tác giới hạn Admin/KTV theo quyền thao tác hiện có, Viewer chỉ xem.
+- `src/App.tsx`: bổ sung menu Bảo dưỡng – Sửa chữa; nối phân hệ với danh sách thiết bị và tổ chức hiện chọn; quyền thao tác giới hạn Admin/KTV theo quyền thao tác hiện có, Viewer chỉ xem. Cửa sổ chi tiết thiết bị có mục Lịch sử Bảo dưỡng – Sửa chữa.
 - `src/style.css`: bổ sung bố cục responsive và nhấn cảnh báo đỏ cho phiếu đang mở.
 - Lịch sử tạo/sửa/đổi trạng thái/hoàn thành được ghi trong maintenanceHistory; không xóa cứng phiếu.
 
@@ -264,13 +264,14 @@ Người dùng yêu cầu tạm gác Checklist, ưu tiên khảo sát và chuy�
 - Chưa tạo migration, bảng, RPC, RLS, Auth, Storage hoặc thay đổi dữ liệu trên bất kỳ Supabase project nào.
 - Chưa thay đổi dữ liệu hay mã nguồn repository cũ.
 - Chưa merge PR và chưa deploy Production.
-- Chưa chạy build/CI hoặc kiểm thử trình duyệt trong thời điểm ghi mục này. Cần chờ CI của Pull Request và sửa mọi lỗi trước khi yêu cầu người dùng kiểm tra giao diện.
+- GitHub Actions trên PR #61: Build and test SUCCESS (run `45546798831`), Validate BAOTRI Mini SUCCESS (run `45546798877`); unit tests và TypeScript/Vite build đều PASS.
+- Chưa kiểm thử trực tiếp trên trình duyệt PC/mobile; chưa xác nhận trải nghiệm thực tế hoặc dữ liệu trên nhiều thiết bị.
 - Cần kiểm thử riêng: phân quyền Viewer, tenant isolation, tạo/sửa/hoàn thành Phiếu YC, lịch định kỳ, lịch sử, cảnh báo dashboard, ngày quá hạn và xuất CSV.
 
 ### Việc tiếp theo
 
 1. Chạy CI build/test trên Pull Request; xử lý lỗi nếu có.
 2. Review toàn bộ dữ liệu Local và luồng đồng thời, đặc biệt bảo đảm transaction ghi phiếu và lịch sử.
-3. Bổ sung phần xem Phiếu YC/lịch bảo dưỡng ngay trong lý lịch thiết bị để liên kết hai chiều.
+3. Kiểm tra thực tế giao diện trên PC/mobile, tenant isolation và quyền Viewer/Admin/KTV.
 4. Thiết kế hợp đồng Cloud riêng cho maintenance requests/tasks/history; chỉ triển khai sau khi người dùng duyệt migration và chính sách đồng bộ.
 5. Chờ người dùng kiểm tra giao diện và phê duyệt riêng trước khi merge.
