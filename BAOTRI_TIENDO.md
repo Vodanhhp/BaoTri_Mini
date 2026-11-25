@@ -353,3 +353,12 @@ Người dùng gửi ảnh chụp giao diện trên điện thoại và phản �
 - Bổ sung test hồi quy kiểm tra CSS responsive của bảng, tiêu đề, nhóm nút và tab.
 
 Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chưa chạy browser thật trên điện thoại. Không thay đổi dữ liệu Local, IndexedDB schema, Supabase hoặc Cloud Sync.
+
+
+### Trạng thái hoàn tất PR #63 – cập nhật sau merge
+
+- PR #63 `fix: repair maintenance module mobile layout` đã được squash-merge vào `main` theo yêu cầu hoàn tất của người dùng.
+- Merge commit: `dbe4ac8648a69486701dec58f99e0bfe832dca75`.
+- CI trên PR head `491230baf144bb3bba79a7f4e72b71cc2499b064`: Build and test run `45594803640` SUCCESS (Unit tests PASS, Build PASS); Validate BAOTRI Mini run `45594803441` SUCCESS (npm ci và npm run build PASS).
+- Thay đổi CSS và test đã nằm trên `main`; không thay đổi dữ liệu Local, IndexedDB schema, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
+- Merge đã hoàn tất. Chưa có bằng chứng workflow deploy GitHub Pages sau merge đã chạy xong; cũng chưa kiểm tra browser thật hoặc giao diện trên điện thoại. Cần xác minh trạng thái deploy riêng, sau đó người dùng kiểm tra lại mobile thực tế.
