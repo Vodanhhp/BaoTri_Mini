@@ -476,3 +476,11 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Đồng bộ các quy tắc in A4, font chữ, đầu trang, bảng, lặp tiêu đề bảng và chân trang cho phiếu vật tư, Phiếu YC và hồ sơ thiết bị. Tem QR vẫn giữ khổ tem riêng.
 - GitHub Actions của PR #69: Validate BAOTRI Mini PASS; Build and test PASS (Unit tests và Build đều PASS).
 - Chưa kiểm tra thực tế bằng Excel desktop, trình duyệt hoặc máy in; cần nghiệm thu giao diện và file đầu ra sau khi merge/deploy.
+
+
+## 25/11/2026 – cải thiện độ rộng cột Excel Phiếu YC
+
+- Trên nhánh `fix/excel-maintenance-column-layout`, điều chỉnh bộ xuất Excel dùng chung: đặt độ rộng ưu tiên cho các cột ngày, mã/tên thiết bị, nội dung, thông số, tình trạng sau xử lý, vật tư và người yêu cầu/người hoàn thành.
+- Cột nội dung được nới rộng hơn; hai cột tên người được đặt độ rộng tối thiểu 22 để hạn chế tiêu đề và họ tên bị ép hẹp.
+- Tăng chiều cao hàng tiêu đề để tiêu đề dài xuống dòng dễ đọc hơn; giữ nguyên dữ liệu, thứ tự cột, bộ lọc, cố định hàng và vùng in.
+- Thay đổi nằm trong nhánh sửa lỗi, chưa tạo PR/merge/deploy. Chưa kiểm tra file XLSX thực tế bằng Excel desktop.
