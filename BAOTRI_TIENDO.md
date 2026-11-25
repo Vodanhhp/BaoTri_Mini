@@ -526,3 +526,28 @@ Giới hạn: thay đổi mới ở nhánh sửa lỗi; chưa merge/deploy, chư
 - Hiển thị ngày, loại công việc, nội dung, vật tư, thông số trước/sau xử lý, tình trạng sau xử lý, người thực hiện, kết quả và trạng thái. Nếu thiết bị chưa có lịch sử thì hiển thị một dòng thông báo, không để bảng rỗng.
 - Giữ nguyên mục thông tin thiết bị, lịch sử thay đổi hồ sơ, QR và dữ liệu nghiệp vụ. Không thay đổi schema, dữ liệu, phân quyền, Supabase, Auth, RLS, Storage hoặc Cloud Sync.
 - Bổ sung source test cho truy vấn đúng thiết bị/tổ chức, điều kiện công việc bảo dưỡng định kỳ đã hoàn thành và nội dung in. Chưa xác nhận bằng trình duyệt hoặc máy in thực tế; chờ CI.
+
+## 25/11/2026 – checkpoint thiết kế phân hệ Checklist (chưa triển khai)
+
+Người dùng và trợ lý đang thống nhất nghiệp vụ trước khi viết code. Checklist được xác định là phân hệ có nhiều biến thể theo từng doanh nghiệp; không áp một lịch hoặc quy trình cứng cho tất cả.
+
+### Nguyên tắc khởi tạo và cấu hình
+- Khi khởi tạo, BAOTRI Mini đề xuất sẵn chu kỳ kiểm tra, thời gian thực hiện, người/nhóm phụ trách và cách xử lý công việc chưa hoàn thành. Admin chọn và xác nhận; thiết lập nâng cao nằm trong phần tùy chỉnh.
+- Người thực hiện mặc định ban đầu là Admin. Doanh nghiệp có thể đổi sang KTV hoặc nhóm KTV sau, không bắt buộc cấu hình phân công phức tạp ngay từ đầu.
+- App đưa ra gợi ý phù hợp với doanh nghiệp nhưng Admin quyết định cuối cùng; không ép mọi doanh nghiệp dùng mọi loại Checklist.
+- Với Checklist hằng ngày, chỉ nên gợi ý khoảng 1–3 công việc quan trọng để tránh quá tải.
+
+### Chu kỳ và Checklist linh hoạt
+- Cần hỗ trợ nhiều chu kỳ như hằng ngày, hằng tuần, hằng tháng và các chu kỳ khác theo cấu hình.
+- Có doanh nghiệp không cần kiểm tra hằng ngày; có thể chủ yếu kiểm tra tuần/tháng.
+- Hỗ trợ Checklist linh hoạt/không có lịch cố định: khi doanh nghiệp chủ động kiểm tra thì mở biểu mẫu, thực hiện và lưu kết quả; không bắt buộc phải tạo lịch định kỳ.
+
+### Hiển thị trên trang Tổng quan
+Phân biệt rõ hai nhóm:
+1. **Công việc cần thực hiện:** Checklist theo lịch đã cấu hình, có thời điểm/hạn thực hiện và trạng thái theo dõi.
+2. **Công việc nên làm hôm nay:** gợi ý tùy chọn từ app, có thể bao gồm Checklist linh hoạt. KTV có thể thực hiện hoặc bỏ qua; bỏ qua không bị tính quá hạn hay ghi nhận là chưa hoàn thành nhiệm vụ bắt buộc. Khi thực hiện, kết quả vẫn được lưu lịch sử.
+
+### Ranh giới triển khai
+- Đây mới là quyết định/định hướng thiết kế; chưa có code, schema, migration hay thay đổi dữ liệu nào cho Checklist.
+- Tiếp tục thảo luận và thống nhất đầy đủ nghiệp vụ, trải nghiệm Admin/KTV, lịch, phân công, xử lý bỏ dở và báo cáo trước khi triển khai.
+- Không tạo nhánh, PR hoặc bắt đầu code Checklist nếu chưa có phê duyệt rõ ràng của người dùng sau khi hoàn tất thiết kế.
