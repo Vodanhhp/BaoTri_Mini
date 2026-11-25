@@ -2910,3 +2910,14 @@ html,body,#root,.app-shell{
 #root .maintenance-dashboard-copy small{font-size:10px;color:var(--muted,#64748b);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #root .maintenance-dashboard-empty{padding:12px;border-radius:8px;background:var(--surface-2,#f8fafc);font-size:11px;color:var(--muted,#64748b)}
 @media(max-width:640px){#root .maintenance-dashboard-list>button{align-items:flex-start;flex-wrap:wrap}#root .maintenance-dashboard-list .status{margin-left:18px}}
+
+
+#root .maintenance-asset-history{display:grid;gap:8px;margin:14px 0;padding:12px;border:1px solid var(--border,#e5e7eb);border-radius:9px;background:var(--surface-2,#f8fafc)}
+#root .maintenance-asset-history h3{margin:0;font-size:12px}
+#root .maintenance-asset-history>p{margin:0;font-size:10px;color:var(--muted,#64748b)}
+#root .maintenance-asset-history-list{display:grid;gap:7px}
+#root .maintenance-asset-history-list article{display:grid;gap:4px;padding:8px;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:7px}
+#root .maintenance-asset-history-list article>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#root .maintenance-asset-history-list article b{font-size:10px}
+#root .maintenance-asset-history-list article p{margin:0;font-size:10px;white-space:pre-wrap}
+#root .maintenance-asset-history-list article small{font-size:9px;color:var(--muted,#64748b)}
