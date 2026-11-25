@@ -216,7 +216,125 @@ begin
     v_asset_codes:=v_asset_codes||jsonb_build_array(v_code);
   end loop;
 
-  select coalesce(max((substring(i.code from '^VT-([0-9]+)$'))::bigint),0)+1
+  select coalesce(max((substring(upper(i.code) from '^VT-([0-9]+))::bigint),0)+1
+    into v_inventory_sequence
+  from public.inventory_items i where i.organization_id=p_organization_id;
+
+  v_index:=0;
+  for v_item in select value from jsonb_array_elements(p_inventory_items) loop
+    v_index:=v_index+1;
+    if nullif(btrim(v_item->>'name'),'') is null or nullif(btrim(v_item->>'unit'),'') is null then
+      raise exception 'Inventory name and unit are required at row %.',v_index using errcode='22023';
+    end if;
+    v_code:='VT-'||lpad(v_inventory_sequence::text,3,'0');
+    while exists(select 1 from public.inventory_items i where i.organization_id=p_organization_id and i.code_normalized=upper(v_code)) loop
+      v_inventory_sequence:=v_inventory_sequence+1;
+      v_code:='VT-'||lpad(v_inventory_sequence::text,3,'0');
+    end loop;
+    v_item_id:=coalesce(nullif(v_item->>'id','')::uuid,gen_random_uuid());
+    v_mutation_id:=coalesce(nullif(v_item->>'mutationId','')::uuid,gen_random_uuid());
+    insert into public.inventory_items(
+      id,organization_id,code,code_normalized,name,item_group,unit,part_number,size,quantity,min_quantity,
+      location,supplier,unit_price,created_by_user_id,created_by_label
+    ) values (
+      v_item_id,p_organization_id,v_code,upper(v_code),btrim(v_item->>'name'),
+      coalesce(nullif(btrim(v_item->>'group'),''),'Khác'),btrim(v_item->>'unit'),
+      nullif(btrim(v_item->>'partNumber'),''),nullif(btrim(v_item->>'size'),''),
+      0,coalesce(nullif(v_item->>'minQuantity','')::numeric,0),
+      coalesce(v_item->>'location',''),coalesce(v_item->>'supplier',''),
+      coalesce(nullif(v_item->>'unitPrice','')::numeric,0),p_actor_user_id,v_label
+    );
+    v_inventory_response:=jsonb_build_object(
+      'item',(select to_jsonb(i) from public.inventory_items i where i.id=v_item_id),
+      'movement',null,'applied_at',clock_timestamp()
+    );
+    perform private.record_inventory_sync_event(p_organization_id,v_mutation_id,'item_upsert',v_item_id,
+      v_inventory_response->'item',null);
+    insert into private.inventory_mutation_receipts(organization_id,mutation_id,item_id,operation,response)
+    values(p_organization_id,v_mutation_id,v_item_id,'create',v_inventory_response);
+    v_inventory_ids:=v_inventory_ids||jsonb_build_array(v_item_id);
+    v_inventory_codes:=v_inventory_codes||jsonb_build_array(v_code);
+  end loop;
+
+  v_result:=jsonb_build_object('runId',p_run_id,'organizationId',p_organization_id,'planCode',v_plan,
+    'assetsCreated',jsonb_array_length(p_assets),'inventoryCreated',jsonb_array_length(p_inventory_items),
+    'assetCodes',v_asset_codes,'inventoryCodes',v_inventory_codes,'createdBy',v_label);
+
+  insert into private.platform_data_seed_runs(
+    id,organization_id,actor_user_id,actor_label,plan_code,asset_count,inventory_count,asset_ids,inventory_ids,result
+  ) values (
+    p_run_id,p_organization_id,p_actor_user_id,v_label,v_plan,jsonb_array_length(p_assets),
+    jsonb_array_length(p_inventory_items),
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_asset_ids->i,'code',v_asset_codes->i)),'[]'::jsonb)
+      from generate_series(0,jsonb_array_length(v_asset_ids)-1) i),
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_inventory_ids->i,'code',v_inventory_codes->i)),'[]'::jsonb)
+      from generate_series(0,jsonb_array_length(v_inventory_ids)-1) i),
+    v_result
+  );
+
+  return v_result;
+end;
+$function$;
+
+revoke all on function public.platform_seed_organization_data(uuid,uuid,uuid,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.platform_seed_organization_data(uuid,uuid,uuid,jsonb,jsonb) to service_role;
+,'i'))[1]::bigint),0)+1
+    into v_inventory_sequence
+  from public.inventory_items i where i.organization_id=p_organization_id;
+
+  v_index:=0;
+  for v_item in select value from jsonb_array_elements(p_inventory_items) loop
+    v_index:=v_index+1;
+    if nullif(btrim(v_item->>'name'),'') is null or nullif(btrim(v_item->>'unit'),'') is null then
+      raise exception 'Inventory name and unit are required at row %.',v_index using errcode='22023';
+    end if;
+    v_code:='VT-'||lpad(v_index::text,3,'0');
+    while exists(select 1 from public.inventory_items i where i.organization_id=p_organization_id and i.code_normalized=upper(v_code)) loop
+      v_index:=v_index+1;
+      v_code:='VT-'||lpad(v_index::text,3,'0');
+    end loop;
+    v_item_id:=coalesce(nullif(v_item->>'id','')::uuid,gen_random_uuid());
+    v_mutation_id:=coalesce(nullif(v_item->>'mutationId','')::uuid,gen_random_uuid());
+    insert into public.inventory_items(
+      id,organization_id,code,code_normalized,name,item_group,unit,part_number,size,quantity,min_quantity,
+      location,supplier,unit_price,created_by_user_id,created_by_label
+    ) values (
+      v_item_id,p_organization_id,v_code,upper(v_code),btrim(v_item->>'name'),
+      coalesce(nullif(btrim(v_item->>'group'),''),'Khác'),btrim(v_item->>'unit'),
+      nullif(btrim(v_item->>'partNumber'),''),nullif(btrim(v_item->>'size'),''),
+      0,coalesce(nullif(v_item->>'minQuantity','')::numeric,0),
+      coalesce(v_item->>'location',''),coalesce(v_item->>'supplier',''),
+      coalesce(nullif(v_item->>'unitPrice','')::numeric,0),p_actor_user_id,v_label
+    );
+    perform private.record_inventory_sync_event(p_organization_id,v_mutation_id,'item_upsert',v_item_id,
+      (select to_jsonb(i) from public.inventory_items i where i.id=v_item_id),null);
+    v_inventory_ids:=v_inventory_ids||jsonb_build_array(v_item_id);
+    v_inventory_codes:=v_inventory_codes||jsonb_build_array(v_code);
+  end loop;
+
+  v_result:=jsonb_build_object('runId',p_run_id,'organizationId',p_organization_id,'planCode',v_plan,
+    'assetsCreated',jsonb_array_length(p_assets),'inventoryCreated',jsonb_array_length(p_inventory_items),
+    'assetCodes',v_asset_codes,'inventoryCodes',v_inventory_codes,'createdBy',v_label);
+
+  insert into private.platform_data_seed_runs(
+    id,organization_id,actor_user_id,actor_label,plan_code,asset_count,inventory_count,asset_ids,inventory_ids,result
+  ) values (
+    p_run_id,p_organization_id,p_actor_user_id,v_label,v_plan,jsonb_array_length(p_assets),
+    jsonb_array_length(p_inventory_items),
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_asset_ids->i,'code',v_asset_codes->i)),'[]'::jsonb)
+      from generate_series(0,jsonb_array_length(v_asset_ids)-1) i),
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_inventory_ids->i,'code',v_inventory_codes->i)),'[]'::jsonb)
+      from generate_series(0,jsonb_array_length(v_inventory_ids)-1) i),
+    v_result
+  );
+
+  return v_result;
+end;
+$function$;
+
+revoke all on function public.platform_seed_organization_data(uuid,uuid,uuid,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.platform_seed_organization_data(uuid,uuid,uuid,jsonb,jsonb) to service_role;
+))::bigint),0)+1
     into v_inventory_sequence
   from public.inventory_items i where i.organization_id=p_organization_id;
 
