@@ -83,8 +83,12 @@ export default function PlatformDataToolsPanel({ client, organizations, onCreate
       if (data?.error) throw new Error(data.error)
       setResult(data as Result)
       setRunId(crypto.randomUUID())
-      await loadPreviewAfterCreate()
       onCreated()
+      try {
+        await loadPreviewAfterCreate()
+      } catch (refreshCause) {
+        setError('Dữ liệu đã tạo thành công, nhưng chưa tải lại được số liệu mới: '+(refreshCause instanceof Error ? refreshCause.message : String(refreshCause)))
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally { setLoading(false) }
@@ -133,7 +137,7 @@ export default function PlatformDataToolsPanel({ client, organizations, onCreate
       </div>}
       {preview && createAssets && !canCreateAssets && <div className="auth-error full-field">Không đủ hạn mức thiết bị còn lại để tạo 30 thiết bị. Hệ thống sẽ không tạo một phần.</div>}
       {error && <div className="auth-error full-field">{error}</div>}
-      {result && <div className="platform-onboarding-success full-field"><div className="platform-onboarding-success-icon">✓</div><div><h4>Đã tạo dữ liệu thành công</h4><p>{result.message}</p><p>Thiết bị: <b>{result.assetsCreated}</b> · Vật tư: <b>{result.inventoryCreated}</b> · Người tạo: <b>{result.createdBy}</b></p><small>Mã lượt tạo: {result.runId}</small></div></div>}
+      {result && <div className="platform-onboarding-success full-field"><div className="platform-onboarding-success-icon">✓</div><div><h4>Đã tạo dữ liệu thành công</h4><p>{result.message}</p><p>Thiết bị: <b>{result.assetsCreated}</b> · Vật tư: <b>{result.inventoryCreated}</b> · Người tạo: <b>{result.createdBy}</b></p><small>Mã lượt tạo: {result.runId}</small>{Boolean(result.assetCodes?.length)&&<details><summary>Mã thiết bị đã cấp ({result.assetCodes!.length})</summary><small>{result.assetCodes!.join(' · ')}</small></details>}{Boolean(result.inventoryCodes?.length)&&<details><summary>Mã vật tư đã cấp ({result.inventoryCodes!.length})</summary><small>{result.inventoryCodes!.join(' · ')}</small></details>}</div></div>}
       <div className="modal-actions full-field">
         <button type="button" className="soft-btn" onClick={() => void loadPreview()} disabled={!organizationId || loading}>{loading ? 'Đang xử lý…' : 'Kiểm tra doanh nghiệp và Plan'}</button>
         <button type="button" className="primary-btn" onClick={() => void create()} disabled={!preview || loading || (!createAssets && !createInventory) || (createAssets && !canCreateAssets) || (preview.planCode==='C'||preview.planCode==='D') && createAssets && !/^\d{2}$/.test(siteCode)}>{loading ? 'Đang tạo…' : 'Tạo dữ liệu mẫu'}</button>
