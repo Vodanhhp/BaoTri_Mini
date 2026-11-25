@@ -11,7 +11,7 @@ type Props = {
   canManage: boolean
 }
 
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+const today = () => { const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); const part=(type:string)=>parts.find(item=>item.type===type)?.value||''; return part('year')+'-'+part('month')+'-'+part('day') }
 const dateLabel = (value?: string) => value ? new Date(value + 'T00:00:00').toLocaleDateString('vi-VN') : '—'
 const emptyRequest = (organizationId: string, userLabel: string): MaintenanceRequest => ({
   id: uid(), organizationId, assetId: '', requestDate: today(), dueDate: '', kind: 'Sửa chữa',
@@ -197,6 +197,24 @@ export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{orga
     <div className="overview-section-head"><div><h2>Công việc hôm nay</h2><p>Phiếu Bảo dưỡng – Sửa chữa chưa xác nhận hoàn thành</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở phân hệ →</button></div>
     {pending.length===0?<div className="maintenance-dashboard-empty">Không có Phiếu YC đang chờ xử lý.</div>:<div className="maintenance-dashboard-list">
       {pending.map(row=><button type="button" key={row.id} onClick={onOpen}><span className="maintenance-dashboard-dot"/><span className="maintenance-dashboard-copy"><b>{name(row.assetId)}</b><small>{row.kind} · {row.description}</small></span><span className="status red">{row.dueDate&&row.dueDate<today()?'Quá hạn':'Chưa hoàn thành'}</span></button>)}
+    </div>}
+  </section>
+}
+
+
+export function MaintenanceAssetHistory({organizationId,assetId}:{organizationId:string;assetId:string}) {
+  const [rows,setRows]=useState<MaintenanceRequest[]>([])
+  useEffect(()=>{
+    let active=true
+    db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray()
+      .then(items=>{if(active)setRows(items.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)))})
+      .catch(()=>{if(active)setRows([])})
+    return()=>{active=false}
+  },[organizationId,assetId])
+  return <section className="maintenance-asset-history">
+    <h3>Lịch sử Bảo dưỡng – Sửa chữa ({rows.length})</h3>
+    {rows.length===0?<p>Chưa có Phiếu YC Bảo dưỡng – Sửa chữa cho thiết bị này.</p>:<div className="maintenance-asset-history-list">
+      {rows.map(row=><article key={row.id}><div><b>{dateLabel(row.requestDate)} · {row.kind}</b><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></div><p>{row.description}</p><small>Người yêu cầu: {row.requestedBy||'—'} · Người hoàn thành: {row.performedBy||'—'} · Kết quả: {row.result||'Chưa xác nhận'}</small></article>)}
     </div>}
   </section>
 }
