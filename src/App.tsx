@@ -1337,7 +1337,7 @@ export default function App() {
               <button type="button" className="soft-btn asset-reset-btn" onClick={resetFilters}><RotateCcw size={14}/> Đặt lại</button>
             </div>
           </div>
-          <div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+          <div className="table-wrap table-standard-wrap asset-list-table-wrap"><table className="table-standard asset-list-table"><thead><tr><th>Mã / Tên thiết bị</th><th>Nhóm</th><th>Vị trí</th><th>Ngày sử dụng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
             {visibleAssets.length===0&&<tr><td colSpan={6}><div className="table-empty-state">{query.trim()||categoryFilter!=='Tất cả nhóm'||locationFilter!=='Tất cả vị trí'||statusFilter!=='Tất cả trạng thái'?'Không tìm thấy thiết bị phù hợp với điều kiện lọc.':showDeleted?'Chưa có thiết bị nào trong danh sách đã xóa.':showArchived?'Chưa có thiết bị nào trong Lưu kho.':'Chưa có thiết bị trong danh sách quản lý.'}</div></td></tr>}
             {visibleAssets.map(asset=><tr key={asset.id} className={asset.deletedAt?'asset-deleted-row':''}>
               <td><button className="asset-title-btn" onClick={()=>{setDetailAsset(asset);setSelectedAssetStatus(asset.archivedAt?'Lưu kho':asset.status);setStatusPickerOpen(false);void loadAssetHistory(asset.id,asset.code)}}><b>{asset.code}</b><small>{displayAssetName(asset)}</small></button></td>
