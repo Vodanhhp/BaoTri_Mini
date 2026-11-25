@@ -46,7 +46,8 @@ function rangeLabel(period: Period, range: { startDate: string; endDate: string 
 }
 
 const dateLabel = (value?: string) => value ? new Date(value.slice(0, 10) + 'T00:00:00').toLocaleDateString('vi-VN') : '—'
-const dateTimeLabel = (value?: string) => value ? new Date(value).toLocaleString('vi-VN') : '—'
+const dateTimeLabel = (value?: string) => value ? new Date(value).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '—'
+const localDateKey = (value: string) => { const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value)); const part = (type: string) => parts.find(item => item.type === type)?.value || ''; return part('year') + '-' + part('month') + '-' + part('day') }
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value) + ' đ'
 
 export default function ReportsPanel({ organizationId, assets, canViewAssets, canViewInventory, canExport }: Props) {
@@ -159,7 +160,7 @@ export default function ReportsPanel({ organizationId, assets, canViewAssets, ca
       }
     })
     return [...completedRequestRows, ...completedTaskRows]
-      .filter(row => row.occurredAt && row.occurredAt.slice(0, 10) >= range.startDate && row.occurredAt.slice(0, 10) <= range.endDate)
+      .filter(row => row.occurredAt && localDateKey(row.occurredAt) >= range.startDate && localDateKey(row.occurredAt) <= range.endDate)
       .filter(row => (row.assetCode + ' ' + row.assetName + ' ' + row.activityType + ' ' + row.description + ' ' + row.detail + ' ' + row.performer + ' ' + row.result).toLocaleLowerCase('vi').includes(query))
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
   }, [requests, tasks, maintenanceHistory, assets, range, query])
