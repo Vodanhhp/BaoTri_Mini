@@ -179,3 +179,24 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     </form></section></div>}
   </div>
 }
+
+
+export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{organizationId:string;assets:Asset[];onOpen:()=>void}) {
+  const [pending,setPending]=useState<MaintenanceRequest[]>([])
+  useEffect(()=>{
+    let active=true
+    const load=()=>db.maintenanceRequests.where('organizationId').equals(organizationId).toArray()
+      .then(rows=>{if(active)setPending(rows.filter(row=>row.status!=='Hoàn thành').sort((a,b)=>(a.dueDate||'9999-12-31').localeCompare(b.dueDate||'9999-12-31')||a.requestDate.localeCompare(b.requestDate)))})
+    void load()
+    const refresh=()=>{void load()}
+    window.addEventListener('baotri:maintenance-updated',refresh)
+    return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
+  },[organizationId])
+  const name=(id:string)=>{const asset=assets.find(row=>row.id===id);return asset?asset.code+' · '+asset.name:'Thiết bị'}
+  return <section className="overview-section maintenance-dashboard-section">
+    <div className="overview-section-head"><div><h2>Công việc hôm nay</h2><p>Phiếu Bảo dưỡng – Sửa chữa chưa xác nhận hoàn thành</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở phân hệ →</button></div>
+    {pending.length===0?<div className="maintenance-dashboard-empty">Không có Phiếu YC đang chờ xử lý.</div>:<div className="maintenance-dashboard-list">
+      {pending.map(row=><button type="button" key={row.id} onClick={onOpen}><span className="maintenance-dashboard-dot"/><span className="maintenance-dashboard-copy"><b>{name(row.assetId)}</b><small>{row.kind} · {row.description}</small></span><span className="status red">{row.dueDate&&row.dueDate<today()?'Quá hạn':'Chưa hoàn thành'}</span></button>)}
+    </div>}
+  </section>
+}
