@@ -117,6 +117,13 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     })
     await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
   }
+  const exportTasks = () => {
+    const rows=[['Ngày đến hạn','Mã thiết bị','Tên thiết bị','Công việc','Chu kỳ','Trạng thái','Các bước','Thông số','Ghi chú']]
+    for(const row of tasks){const asset=assets.find(item=>item.id===row.assetId);rows.push([row.dueDate,asset?.code||'',asset?.name||'',row.title,row.frequency,row.status,row.checklist,row.readings,row.notes])}
+    const csv='\uFEFF'+rows.map(row=>row.map(value=>'"'+String(value??'').replace(/"/g,'""')+'"').join(',')).join('\r\n')
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}))
+    const anchor=document.createElement('a');anchor.href=url;anchor.download='lich-bao-duong-dinh-ky.csv';anchor.click();URL.revokeObjectURL(url)
+  }
   const exportRequests = () => {
     const rows=[['Ngày yêu cầu','Hạn hoàn thành','Mã thiết bị','Tên thiết bị','Loại yêu cầu','Nội dung','Thông số / vật tư','Trạng thái','Kết quả','Người yêu cầu','Người hoàn thành']]
     for(const row of visibleRequests){const asset=assets.find(item=>item.id===row.assetId);rows.push([row.requestDate,row.dueDate||'',asset?.code||'',asset?.name||'',row.kind,row.description,[row.readings,row.parts].filter(Boolean).join(' / '),row.status,row.result||'',row.requestedBy,row.performedBy])}
@@ -135,7 +142,7 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
     </div>
     <div className="panel maintenance-panel">
       <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
-        {tab==='requests'&&<button type="button" className="soft-btn" onClick={exportRequests}><Download size={15}/> Xuất CSV Excel</button>}
+        <button type="button" className="soft-btn" onClick={tab==='requests'?exportRequests:exportTasks}><Download size={15}/> Xuất CSV Excel</button>
         {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
       <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
@@ -174,7 +181,8 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
       <label className="field">Chu kỳ<select value={taskEditor.frequency} onChange={event=>setTaskEditor({...taskEditor,frequency:event.target.value})}>{['Một lần','Hàng ngày','Hàng tuần','Hàng tháng','Hàng quý','6 tháng','Hàng năm'].map(value=><option key={value}>{value}</option>)}</select></label>
       <label className="field">Trạng thái<select value={taskEditor.status} onChange={event=>setTaskEditor({...taskEditor,status:event.target.value as MaintenanceTask['status']})}>{['Chờ thực hiện','Đang thực hiện','Hoàn thành','Quá hạn'].map(value=><option key={value}>{value}</option>)}</select></label>
       <label className="field full-field">Các bước công việc<textarea rows={4} value={taskEditor.checklist} onChange={event=>setTaskEditor({...taskEditor,checklist:event.target.value})} placeholder="Mỗi dòng một hạng mục"/></label>
-      <label className="field full-field">Thông số / ghi chú<textarea rows={3} value={taskEditor.readings+'\n'+taskEditor.notes} onChange={event=>setTaskEditor({...taskEditor,readings:event.target.value,notes:''})}/></label>
+      <label className="field">Thông số ghi nhận<input value={taskEditor.readings} onChange={event=>setTaskEditor({...taskEditor,readings:event.target.value})}/></label>
+      <label className="field full-field">Ghi chú<textarea rows={2} value={taskEditor.notes} onChange={event=>setTaskEditor({...taskEditor,notes:event.target.value})}/></label>
       <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>setTaskEditor(null)}>Hủy</button><button className="primary-btn" disabled={busy}><Check size={15}/> Lưu lịch</button></div>
     </form></section></div>}
   </div>
