@@ -2939,3 +2939,108 @@ html,body,#root,.app-shell{
   .maintenance-print-signatures{display:grid;grid-template-columns:1fr 1fr;gap:28px 18px;margin-top:30px;text-align:center;break-inside:avoid}.maintenance-print-signatures>div{display:grid;gap:3px;min-height:82px}.maintenance-print-signatures b{font-size:9pt}.maintenance-print-signatures span{font-size:8pt;font-style:italic}
   .maintenance-print-sheet footer{border-top:1px solid #aaa;margin-top:18px;padding-top:7px;font-size:8pt;color:#444}
 }
+
+
+/* 25/11/2026 — sửa responsive mobile cho Bảo dưỡng – Sửa chữa.
+   Các rule app-shell/table-standard phía trên đặt table-layout:fixed và min-width:0,
+   làm 10 cột của Phiếu YC bị ép thành từng ký tự trên màn hình hẹp. */
+#root .app-shell .maintenance-panel .table-wrap{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+#root .app-shell .maintenance-panel .table-wrap > table.maintenance-table{
+  width:max-content!important;
+  min-width:1060px!important;
+  table-layout:auto!important;
+  white-space:normal!important;
+}
+#root .app-shell .maintenance-panel .table-wrap > table.maintenance-table thead th{
+  min-width:88px;
+  white-space:normal!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+  line-height:1.4;
+}
+#root .app-shell .maintenance-panel .table-wrap > table.maintenance-table tbody td{
+  min-width:76px;
+  overflow-wrap:break-word;
+  word-break:normal;
+}
+#root .app-shell .maintenance-panel .table-wrap > table.maintenance-table tbody td.actions{
+  min-width:150px;
+}
+@media(max-width:680px){
+  #root .app-shell .maintenance-panel>.panel-head>.top-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    min-width:0;
+    gap:8px;
+  }
+  #root .app-shell .maintenance-panel>.panel-head>.top-actions button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:44px!important;
+    height:auto!important;
+    padding:9px 7px!important;
+    justify-content:center;
+    white-space:normal;
+    line-height:1.3;
+    font-size:11px!important;
+  }
+  #root .app-shell .maintenance-panel>.panel-head>.top-actions .primary-btn{
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:44px!important;
+    padding:9px 7px!important;
+  }
+  #root .app-shell .maintenance-tabs{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+  #root .app-shell .maintenance-tabs button{
+    min-width:0;
+    min-height:44px;
+    justify-content:center;
+    padding:8px 6px;
+    white-space:normal;
+    line-height:1.35;
+    font-size:11px;
+  }
+  #root .app-shell .maintenance-toolbar{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    width:100%;
+  }
+  #root .app-shell .maintenance-toolbar label{
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    align-items:center;
+    gap:9px;
+    width:100%;
+  }
+  #root .app-shell .maintenance-toolbar select{
+    width:100%;
+    max-width:none;
+    min-width:0;
+    min-height:42px;
+    font-size:14px;
+  }
+  #root .app-shell .maintenance-panel .table-wrap::after{
+    content:"Vuốt ngang bảng để xem các cột còn lại";
+    display:block;
+    padding:7px 9px;
+    color:var(--muted);
+    font-size:10px;
+    text-align:center;
+    background:var(--panel-alt);
+    border-top:1px solid var(--border);
+  }
+}
