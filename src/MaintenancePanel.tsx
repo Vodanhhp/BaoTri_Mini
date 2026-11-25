@@ -35,19 +35,30 @@ export default function MaintenancePanel({ organizationId, assets, userId, userL
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const reload = async () => {
-    if (!organizationId) { setRequests([]); setTasks([]); setHistory([]); return }
+  const reload = async (isCurrent: () => boolean = () => true) => {
+    if (!organizationId) {
+      if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]) }
+      return
+    }
     const [requestRows, taskRows, historyRows] = await Promise.all([
       db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
       db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
       db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
     ])
+    // A previous organization's IndexedDB read may finish after the user switches tenants.
+    // Never let that stale result replace the currently selected organization's view.
+    if (!isCurrent()) return
     setRequests(requestRows.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)||b.updatedAt.localeCompare(a.updatedAt)))
     setTasks(taskRows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)))
     setHistory(historyRows.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
   }
-  useEffect(()=>{ let active=true; void reload().catch(e=>{if(active)setError(e instanceof Error?e.message:String(e))}); return()=>{active=false} },[organizationId])
-  useEffect(()=>{ const refresh=()=>{void reload().catch(()=>{})}; window.addEventListener('baotri:maintenance-updated',refresh); return()=>window.removeEventListener('baotri:maintenance-updated',refresh) },[organizationId])
+  useEffect(()=>{
+    let active=true
+    const refresh=()=>{void reload(()=>active).catch(e=>{if(active)setError(e instanceof Error?e.message:String(e))})}
+    refresh()
+    window.addEventListener('baotri:maintenance-updated',refresh)
+    return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
+  },[organizationId])
 
   const assetName = (id:string) => { const asset=assets.find(item=>item.id===id); return asset ? asset.code+' · '+asset.name : 'Thiết bị không còn trong danh sách' }
   const visibleRequests = useMemo(()=>requests.filter(row=>filter==='all'||(filter==='open'?row.status!=='Hoàn thành':row.status==='Hoàn thành')),[requests,filter])
