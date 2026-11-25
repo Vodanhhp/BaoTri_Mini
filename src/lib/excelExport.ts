@@ -59,10 +59,14 @@ export async function downloadExcelReport(
     const row = worksheet.addRow([value])
     worksheet.mergeCells(row.number, 1, row.number, headerNames.length)
     row.height = height
-    const cell = row.getCell(1)
-    cell.font = { name: 'Aptos', size, bold, color: { argb: fontColor } }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
-    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+    // Apply explicit font/fill to every cell in the merged banner range.
+    // This avoids spreadsheet viewers rendering merged title cells with theme defaults.
+    for (let column = 1; column <= headerNames.length; column++) {
+      const cell = row.getCell(column)
+      cell.font = { name: 'Aptos', size, bold, color: { argb: fontColor } }
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+    }
   }
 
   addBanner(title, 32, 'FF155B4B', 'FFFFFFFF', 16, true)
