@@ -251,9 +251,9 @@ begin
   ) values (
     p_run_id,p_organization_id,p_actor_user_id,v_label,v_plan,jsonb_array_length(p_assets),
     jsonb_array_length(p_inventory_items),
-    (select jsonb_agg(jsonb_build_object('id',v_asset_ids->i,'code',v_asset_codes->i))
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_asset_ids->i,'code',v_asset_codes->i)),'[]'::jsonb)
       from generate_series(0,jsonb_array_length(v_asset_ids)-1) i),
-    (select jsonb_agg(jsonb_build_object('id',v_inventory_ids->i,'code',v_inventory_codes->i))
+    (select coalesce(jsonb_agg(jsonb_build_object('id',v_inventory_ids->i,'code',v_inventory_codes->i)),'[]'::jsonb)
       from generate_series(0,jsonb_array_length(v_inventory_ids)-1) i),
     v_result
   );
