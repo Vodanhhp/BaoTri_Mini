@@ -15,7 +15,6 @@ create table if not exists private.platform_data_seed_runs (
 );
 
 revoke all on table private.platform_data_seed_runs from public, anon, authenticated;
-grant select, insert on table private.platform_data_seed_runs to service_role;
 
 create or replace function public.platform_seed_organization_data(
   p_run_id uuid,
