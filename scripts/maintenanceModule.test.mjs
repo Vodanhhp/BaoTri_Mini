@@ -37,3 +37,10 @@ test('maintenance module is read-only for Viewer and exposes pending requests in
   assert.match(panel, /row\.status!=='Hoàn thành'/)
   assert.match(panel, /where\('\[organizationId\+assetId\]'\)/)
 })
+
+test('maintenance reload ignores stale IndexedDB reads after an organization switch', async () => {
+  const panel = await read('../src/MaintenancePanel.tsx')
+  assert.match(panel, /const reload = async \(isCurrent: \(\) => boolean = \(\) => true\)/)
+  assert.match(panel, /if \(!isCurrent\(\)\) return/)
+  assert.match(panel, /reload\(\(\) => active\)/)
+})
