@@ -216,14 +216,15 @@ const checklistSuggestionSet=(targetKind:'equipment'|'other',asset:Asset|undefin
 
 export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
  const [tasks,setTasks]=useState<ChecklistTask[]>([])
- useEffect(()=>{let active=true;void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{});return()=>{active=false}},[organizationId])
- useEffect(()=>{const timer=window.setInterval(()=>{void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})},60_000);return()=>window.clearInterval(timer)},[organizationId])
+ useEffect(()=>{let active=true
+   const load=async()=>{try{if(organizationId==='local-preview'){await ensureChecklistOccurrences(organizationId);const rows=await db.checklistTasks.where('organizationId').equals(organizationId).toArray();if(active)setTasks(rows)}else if(supabase&&navigator.onLine){const bundle=await loadChecklistCloud(supabase,organizationId,false);if(active)setTasks(bundle.tasks)}}catch{}}
+   void load();const timer=window.setInterval(()=>void load(),60_000);return()=>{active=false;window.clearInterval(timer)}
+ },[organizationId])
  const currentMs=Date.now()
  const actionable=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&new Date(item.dueAt).getTime()<=currentMs&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS)
  const missed=tasks.filter(item=>item.status==='Không Checklist')
  return <section className="overview-section"><div className="overview-section-head"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Chỉ hiển thị lượt đã đến hạn; lượt bị bỏ qua được lưu riêng trong lịch sử.</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở Checklist →</button></div><div className="stat-grid checklist-dashboard-stats"><div className="stat-card"><div><small>Đến hạn cần làm</small><strong>{actionable.length}</strong><span>Trong thời gian cho phép</span></div></div><div className="stat-card"><div><small>Không Checklist</small><strong>{missed.length}</strong><span>Đã quá thời gian cho phép</span></div></div></div>{actionable.length>0&&<div className="checklist-definition-list">{actionable.slice(0,5).map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · {task.assignee}</small><span className="checklist-outcome">{task.status}</span></div></article>)}</div>}</section>
 }
-
 export default function ChecklistPanel({organizationId,organizationName,userLabel,userId,canView,canManage,canExecute,assets,initialAssetId,onInitialAssetHandled}:Props) {
   const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
   const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
@@ -368,6 +369,18 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }
     await refresh()
   }
+  const toggleDefinitionEnabled=async(item:ChecklistDefinition)=>{
+    if(!canManage)return
+    const updated={...item,enabled:!item.enabled,updatedAt:now()}
+    try{
+      if(organizationId!=='local-preview'){
+        if(!supabase)throw new Error('Chưa kết nối Supabase.')
+        await saveChecklistDefinition(supabase,organizationId,updated)
+      }else await db.checklistDefinitions.update(item.id,{enabled:updated.enabled,updatedAt:updated.updatedAt})
+      await refresh()
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+  }
+
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId)
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
   const openNew=(asset?:Asset)=>{setEditing(null);setSelectedSuggestionLabels([]);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
@@ -605,7 +618,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm theo tên mẫu hoặc đối tượng kiểm tra…"/></div>
           <div className="checklist-template-help"><b>Trạng thái lịch là gì?</b><span>Đang tạo lịch: hệ thống tiếp tục sinh các lượt kiểm tra theo chu kỳ. Tạm ngừng lịch: không sinh lượt mới từ mẫu này; bạn có thể tiếp tục lại bất cứ lúc nào. Các lượt đã hoàn thành và lịch sử không bị xóa.</span></div><div className="checklist-definition-list">{definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))).map(item=><article className="checklist-definition-row" key={item.id}>
             <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.source==='starter'&&!settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled)?'Nhóm khởi tạo chưa được bật':item.enabled?'Đang tạo lịch':'Đã tạm ngừng lịch'}</span></div>
-            <div className="top-actions">{canManage&&<><button className="primary-btn" onClick={()=>openEdit(item)}>Sửa nội dung</button>{item.source!=='starter'&&<button className="soft-btn" title={item.enabled?'Tạm ngừng tạo các lượt kiểm tra mới từ mẫu này':'Tiếp tục tạo lịch kiểm tra theo chu kỳ đã cài đặt'} onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tạm ngừng lịch':'Tiếp tục lịch'}</button>}</>}</div>
+            <div className="top-actions">{canManage&&<><button className="primary-btn" onClick={()=>openEdit(item)}>Sửa nội dung</button>{item.source!=='starter'&&<button className="soft-btn" title={item.enabled?'Tạm ngừng tạo các lượt kiểm tra mới từ mẫu này':'Tiếp tục tạo lịch kiểm tra theo chu kỳ đã cài đặt'} onClick={()=>void toggleDefinitionEnabled(item)}>{item.enabled?'Tạm ngừng lịch':'Tiếp tục lịch'}</button>}</>}</div>
           </article>)}{definitions.length===0&&<div className="table-empty-state">Chưa có mẫu Checklist. Bạn có thể tạo mẫu mới hoặc bật nhóm khởi tạo bên dưới.</div>}</div>
         </section>
         <section className="panel checklist-section">
