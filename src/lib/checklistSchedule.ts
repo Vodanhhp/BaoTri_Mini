@@ -94,7 +94,7 @@ export async function ensureChecklistOccurrences(organizationId: string) {
   }
 
   if (additions.length) await db.checklistTasks.bulkAdd(additions)
-  const unfinished = existing.filter(item => item.status !== 'Hoàn thành' && item.status !== 'Quá hạn' && new Date(item.dueAt).getTime() < current.getTime())
+  const unfinished = existing.filter(item => item.status !== 'Hoàn thành' && item.status !== 'Quá hạn' && item.status !== 'Đang thực hiện' && new Date(item.dueAt).getTime() < current.getTime())
   if (unfinished.length) {
     await db.checklistTasks.bulkPut(unfinished.map(item => ({ ...item, status: 'Quá hạn' as const, updatedAt: now() })))
   }
