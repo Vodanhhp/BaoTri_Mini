@@ -239,6 +239,13 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
             {tasks.filter(item=>item.status!=='Hoàn thành').length===0&&<div className="table-empty-state">Không có Checklist định kỳ đang chờ thực hiện. Checklist linh hoạt không tạo hạn bắt buộc.</div>}
           </div>
         </section>
+        {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
+          <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện từ một số thiết bị quan trọng đã khai báo. Bỏ qua không bị tính quá hạn và không tạo lịch bắt buộc.</p></div></div>
+          {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).map(item=><div className="checklist-suggestion-row" key={item.title}>
+            <div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>
+            <button className="soft-btn" disabled={!canExecute} onClick={()=>startRun({id:uid(),organizationId,title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Linh hoạt',enabled:true,assignee:userLabel,questions:makeQuestions(item.questions),source:'equipment-suggestion',createdAt:now(),updatedAt:now()})}>Thực hiện ngay</button>
+          </div>)}
+        </section>}
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Bật những nhóm phù hợp với đơn vị. Đây là gợi ý cấu hình, không phải kết luận về nghĩa vụ pháp lý.</p></div></div>
           <div className="checklist-category-grid">{CATEGORIES.map(item=>{
