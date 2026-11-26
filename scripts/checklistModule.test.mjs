@@ -387,6 +387,17 @@ test('Equipment QR lookup uses the target identity captured by each task version
   assert.match(db,/targetAssetId\?: string/)
 })
 
+test('Manual Checklist saves are idempotent across a timed-out response and retry',async()=>{
+  const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../docs/drafts/20261126227000_checklist_manual_run_idempotency_persist_run_id.sql',import.meta.url),'utf8')
+  assert.match(panel,/run_id:runningManualRunId/)
+  assert.match(panel,/disabled=\{!canExecuteHere\|\|savingRun\}/)
+  assert.match(migration,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
+  assert.match(migration,/select \* into v_existing from public\.checklist_runs where id=v_run_id/)
+  assert.match(migration,/id,organization_id,definition_id,task_id/)
+  assert.match(migration,/v_run_id,p_organization_id,v_definition\.id,null/)
+})
+
 test('QR scanner stops camera streams and pending animation loops when restarted or closed',async()=>{
   const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
   assert.match(scanner,/const activeRef=useRef\(false\)/)
