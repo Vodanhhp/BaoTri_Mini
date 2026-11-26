@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
 import ExcelJS from 'exceljs'
-import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun } from './db'
+import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
+import { ensureChecklistOccurrences, checklistLocalDateKey } from './lib/checklistSchedule'
 
 type Props = {
   organizationId: string
@@ -27,10 +28,42 @@ const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
 const dateOnly = () => new Date().toLocaleDateString('en-CA')
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
+export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
+  const [tasks,setTasks]=useState<ChecklistTask[]>([])
+  useEffect(()=>{
+    let active=true
+    void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{})
+    return()=>{active=false}
+  },[organizationId])
+  const today=checklistLocalDateKey(new Date())
+  const endWeek=checklistLocalDateKey(new Date(Date.now()+6*86400000))
+  const year=today.slice(0,4)
+  const pending=tasks.filter(item=>item.status!=='Hoàn thành')
+  const overdue=pending.filter(item=>item.status==='Quá hạn')
+  const dueToday=pending.filter(item=>item.dueDate===today)
+  const dueWeek=pending.filter(item=>item.dueDate>=today&&item.dueDate<=endWeek)
+  const dueMonth=pending.filter(item=>item.dueDate.startsWith(today.slice(0,7)))
+  const dueYear=pending.filter(item=>item.dueDate.startsWith(year))
+  const visible=[...overdue,...pending.filter(item=>item.status!=='Quá hạn'&&item.dueDate<=endWeek)].slice(0,8)
+  return <section className="overview-section">
+    <div className="overview-section-head"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Theo dõi công việc theo lịch; các kỳ đã quá hạn vẫn được giữ riêng để truy vết.</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở Checklist →</button></div>
+    <div className="stat-grid">
+      <div className="stat-card"><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>Checklist cần thực hiện</span></div></div>
+      <div className="stat-card"><div><small>Trong tuần</small><strong>{dueWeek.length}</strong><span>Chờ đến hạn hoặc cần làm</span></div></div>
+      <div className="stat-card"><div><small>Trong tháng</small><strong>{dueMonth.length}</strong><span>Theo lịch đã cấu hình</span></div></div>
+      <div className="stat-card"><div><small>Trong năm</small><strong>{dueYear.length}</strong><span>Không tính lượt đã hoàn thành</span></div></div>
+    </div>
+    {overdue.length>0&&<p className="auth-error" role="status">Có {overdue.length} lượt Checklist quá hạn chưa thực hiện. Các lượt này không bị gộp hoặc tự chuyển kỳ.</p>}
+    {visible.length>0&&<div className="checklist-definition-list">{visible.map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · {task.dueDate} · {task.assignee}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div></article>)}</div>}
+  </section>
+}
+
 export default function ChecklistPanel({organizationId,organizationName,userLabel,canView,canManage,canExecute,assets}:Props) {
   const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
   const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
   const [runs,setRuns]=useState<ChecklistRun[]>([])
+  const [tasks,setTasks]=useState<ChecklistTask[]>([])
+  const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
@@ -51,14 +84,17 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const refresh=async()=>{
     setLoading(true)
     try{
-      const [settingRows,definitionRows,runRows]=await Promise.all([
+      await ensureChecklistOccurrences(organizationId)
+      const [settingRows,definitionRows,runRows,taskRows]=await Promise.all([
         db.checklistCategorySettings.where('organizationId').equals(organizationId).toArray(),
         db.checklistDefinitions.where('organizationId').equals(organizationId).toArray(),
-        db.checklistRuns.where('organizationId').equals(organizationId).toArray()
+        db.checklistRuns.where('organizationId').equals(organizationId).toArray(),
+        db.checklistTasks.where('organizationId').equals(organizationId).toArray()
       ])
       const merged=CATEGORIES.map(item=>settingRows.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
       setSettings(merged);setDefinitions(definitionRows.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
       setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
+      setTasks(taskRows.sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setLoading(false)}
   }
@@ -129,8 +165,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
-  const startRun=(item:ChecklistDefinition)=>{
-    setRunning(item);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
+  const startRun=(item:ChecklistDefinition, taskId:string|null=null)=>{
+    setRunning(item);setRunningTaskId(taskId);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
     setRepairCreated(false);setNoRepairReason('');setError('')
   }
   const completeRun=async(event:FormEvent)=>{
@@ -149,7 +185,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }
     await db.checklistRuns.add(record)
     await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:now()})
-    setRunning(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
+    if(runningTaskId)await db.checklistTasks.update(runningTaskId,{status:'Hoàn thành',completedAt:record.completedAt,runId:record.id,updatedAt:now()})
+    setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
   }
   const exportExcel=async()=>{
     const workbook=new ExcelJS.Workbook();const sheet=workbook.addWorksheet('Bao cao Checklist')
@@ -180,6 +217,27 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="stat-card"><div><small>Đã kiểm tra hôm nay</small><strong>{todayRuns.length}</strong><span>Kết quả đã lưu</span></div></div>
           <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div></div>
         </div>
+        <section className="panel checklist-section">
+          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Mỗi kỳ là một lượt riêng. Việc bỏ lỡ kỳ trước không làm mất hoặc chuyển kỳ đó sang ngày khác.</p></div></div>
+          <div className="checklist-report-summary">
+            <div><small>Đến hạn hôm nay</small><b>{tasks.filter(item=>item.dueDate===checklistLocalDateKey(new Date())&&item.status!=='Hoàn thành').length}</b></div>
+            <div><small>Quá hạn</small><b>{tasks.filter(item=>item.status==='Quá hạn').length}</b></div>
+            <div><small>Tuần này</small><b>{tasks.filter(item=>item.dueDate>=checklistLocalDateKey(new Date())&&item.dueDate<=checklistLocalDateKey(new Date(Date.now()+6*86400000))&&item.status!=='Hoàn thành').length}</b></div>
+          </div>
+          <div className="checklist-definition-list">
+            {tasks.filter(item=>item.status!=='Hoàn thành').slice(0,30).map(task=>{
+              const definition=definitions.find(item=>item.id===task.checklistId)
+              const runnable:ChecklistDefinition=definition?{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,questions:task.definitionSnapshot.questions}:{
+                id:task.checklistId,organizationId,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,enabled:true,assignee:task.assignee,questions:task.definitionSnapshot.questions,categoryKey:task.definitionSnapshot.categoryKey,source:'custom',createdAt:task.createdAt,updatedAt:task.updatedAt
+              }
+              return <article className="checklist-definition-row" key={task.id}>
+                <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div>
+                <div className="top-actions"><button className="primary-btn" disabled={!canExecute||!definition?.enabled} onClick={()=>startRun(runnable,task.id)}>Thực hiện</button></div>
+              </article>
+            })}
+            {tasks.filter(item=>item.status!=='Hoàn thành').length===0&&<div className="table-empty-state">Không có Checklist định kỳ đang chờ thực hiện. Checklist linh hoạt không tạo hạn bắt buộc.</div>}
+          </div>
+        </section>
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Bật những nhóm phù hợp với đơn vị. Đây là gợi ý cấu hình, không phải kết luận về nghĩa vụ pháp lý.</p></div></div>
           <div className="checklist-category-grid">{CATEGORIES.map(item=>{
