@@ -32,6 +32,7 @@ export type ChecklistTask = {
   frequency: ChecklistFrequency
   dueAt: string
   dueDate: string
+  executionTime?: string
   assignee: string
   status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn'
   definitionSnapshot: {
