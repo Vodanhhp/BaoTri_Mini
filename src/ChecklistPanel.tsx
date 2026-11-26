@@ -358,7 +358,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const setting=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const enable=!setting.enabled
     await saveSetting(key,{enabled:enable})
-    await Promise.all(definitions.filter(item=>item.categoryKey===key&&item.source==='starter').map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
+    const starters=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
+    if(organizationId!=='local-preview'&&supabase)await Promise.all(starters.map(item=>saveChecklistDefinition(supabase,organizationId,{...item,scheduleStartedAt:now(),updatedAt:now()})))
+    else await Promise.all(starters.map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
     if(enable&&!definitions.some(item=>item.categoryKey===key)){
       const meta=CATEGORIES.find(item=>item.key===key)!
       await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,executionTime:setting.executionTime||'09:00',questions:makeQuestions(meta.questions),source:'starter'})
@@ -385,7 +387,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const selectedAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
         const targetLabel=selectedAsset?assetTargetLabel(selectedAsset):target.trim()
         if(!targetLabel)throw new Error('Hãy chọn thiết bị hoặc nhập đối tượng kiểm tra.')
-        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel,...(selectedAsset?{targetAssetId:selectedAsset.id}:{targetAssetId:undefined}),categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,assignee,questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()})
+        const updated:ChecklistDefinition={...editing,title:title.trim(),targetLabel,...(selectedAsset?{targetAssetId:selectedAsset.id}:{targetAssetId:undefined}),categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,assignee,questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()}
+        if(organizationId!=='local-preview'){if(!supabase)throw new Error('Chưa kết nối Supabase.');await saveChecklistDefinition(supabase,organizationId,updated)}
+        else await db.checklistDefinitions.update(editing.id,updated)
         await refresh();setEditing(null);setShowBuilderForm(false);setNotice('Đã cập nhật Checklist.')
       }else{
         const selectedAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
@@ -403,6 +407,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
     if(!canExecuteHere||!userId||!isGroupAssignee(task.assignee))return
+    if(organizationId!=='local-preview'){
+      if(!supabase)return
+      try{await claimChecklistTask(supabase,organizationId,task.id);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      return
+    }
     await ensureChecklistOccurrences(organizationId)
     const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
       const current=await db.checklistTasks.get(task.id)
@@ -415,6 +424,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     else setNotice('Công việc đã được người khác nhận hoặc không còn khả dụng. Hãy tải lại danh sách.')
   }
   const releaseTask=async(taskId:string)=>{
+    if(organizationId!=='local-preview'){
+      if(!supabase)return
+      try{await releaseChecklistTask(supabase,organizationId,taskId);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      return
+    }
     const current=await db.checklistTasks.get(taskId)
     if(!current||!userId||current.claimedByUserId!==userId||current.status!=='Đang thực hiện')return
     const returnedToGroup=isGroupAssignee(current.assignee)
@@ -428,6 +442,16 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const beginTask=async(task:ChecklistTask,item:ChecklistDefinition)=>{
     if(!canExecuteHere)return
+    if(organizationId!=='local-preview'){
+      if(!supabase)return
+      const current=tasks.find(row=>row.id===task.id)
+      if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist')return
+      if(Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){await refresh();return}
+      if(current.status==='Đang thực hiện'&&current.claimedByUserId!==userId){setNotice('Công việc đang được một tài khoản khác thực hiện.');return}
+      try{if(current.status!=='Đang thực hiện')await claimChecklistTask(supabase,organizationId,current.id);await refresh();startRun(item,current.id)}
+      catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      return
+    }
     await ensureChecklistOccurrences(organizationId)
     const current=await db.checklistTasks.get(task.id)
     if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist'||current.status==='Quá hạn')return
@@ -460,8 +484,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt');const passed=running.questions.some(q=>answers[q.id]?.result==='Đạt')
     if(failed&&!repairCreated&&!noRepairReason.trim()){setError('Checklist có mục Không đạt. Hãy ghi lý do chưa tạo Phiếu yêu cầu sửa chữa.');return}
-    if(runningTaskId)await ensureChecklistOccurrences(organizationId)
-    const taskSnapshot=runningTaskId?await db.checklistTasks.get(runningTaskId):undefined
+    if(runningTaskId&&organizationId==='local-preview')await ensureChecklistOccurrences(organizationId)
+    const taskSnapshot=runningTaskId?(organizationId==='local-preview'?await db.checklistTasks.get(runningTaskId):tasks.find(task=>task.id===runningTaskId)):undefined
     if(runningTaskId&&taskSnapshot&&Date.now()-new Date(taskSnapshot.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){setError('Đã quá thời gian cho phép. Lượt này được ghi nhận là Không Checklist, không thể lưu kết quả kiểm tra muộn.');await refresh();return}
     if(runningTaskId&&(!taskSnapshot||taskSnapshot.organizationId!==organizationId||taskSnapshot.status!=='Đang thực hiện'||taskSnapshot.claimedByUserId!==userId)){setError('Bạn không còn là người nhận công việc này. Hãy tải lại danh sách trước khi lưu.');return}
     const record:ChecklistRun={
@@ -472,7 +496,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       assignmentHistory:taskSnapshot?.assignmentEvents||[],
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
-    if(runningTaskId){
+    if(organizationId!=='local-preview'){
+      if(!supabase)throw new Error('Chưa kết nối Supabase.')
+      const payload={answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
+      if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
+      else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
+    }else if(runningTaskId){
       const saved=await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
         const latest=await db.checklistTasks.get(runningTaskId)
         if(!latest||latest.organizationId!==organizationId||latest.status!=='Đang thực hiện'||latest.claimedByUserId!==userId)return false
@@ -486,7 +515,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       await db.checklistRuns.add(record)
       await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
     }
-    setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
+    setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra lên Cloud và cập nhật lịch sử Checklist.');await refresh()
   }
   const exportExcel=async()=>{
     const headers=['Ngày giờ','Tên Checklist','Đối tượng kiểm tra','Kết quả','Người kiểm tra','Phiếu yêu cầu sửa chữa','Lý do chưa tạo phiếu']
@@ -516,7 +545,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
-    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":!isMobileViewport?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":!isMobileViewport?"Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in. Thực hiện Checklist bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":isPcPlatform()?"Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in. Thực hiện Checklist bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
     <div className="checklist-tabs">
       <button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><ClipboardCheck size={15}/> Tổng quan</button>
       <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Quản lý mẫu</button>
@@ -561,7 +590,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
             {periodTasks.length===0&&<div className="table-empty-state">Không có công việc Checklist cần thực hiện trong kỳ này.</div>}
           </div>
         </section>
-        {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
+        {organizationId==='local-preview'&&suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
           <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện, không tạo lịch bắt buộc. Bỏ qua không bị tính quá hạn.</p></div><button className="soft-btn" type="button" onClick={()=>setShowSuggestions(value=>!value)}>{showSuggestions?'Thu gọn':'Xem gợi ý thiết bị'}</button></div>
           {showSuggestions&&suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).map(item=><div className="checklist-suggestion-row" key={item.title}>
             <div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>
