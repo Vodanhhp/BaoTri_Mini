@@ -628,3 +628,15 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung source test cho trường giờ, giao diện cấu hình và bộ sinh lịch. Chưa xác nhận CI/build hoặc kiểm tra trình duyệt thực tế; chưa deploy.
 - Chưa triển khai phân công/nhận việc theo nhóm KTV, lọc báo cáo theo kỳ, in A4 riêng từng kết quả, tích hợp tạo Phiếu YC thật hoặc Cloud sync.
 - Không thay đổi Supabase; PR #21 vẫn để nguyên, không merge.
+
+
+## 26/11/2026 – phân công và nhận việc Checklist theo nhóm KTV
+
+- Trường Người phụ trách trong Checklist Builder tiếp tục hỗ trợ Admin, tên KTV hoặc tên nhóm; mặc định Admin.
+- Với công việc giao cho nhóm (tên người phụ trách bắt đầu bằng “Nhóm”), thành viên KTV/Admin có quyền thực hiện có thể **Nhận việc**. Lượt chuyển sang **Đang thực hiện**, ghi người nhận, thời điểm và sự kiện vào chính bản ghi lượt Checklist.
+- Người đã nhận việc có thể mở biểu mẫu để thực hiện hoặc **Trả lại nhóm**. Khi trả lại, lượt quay về Chờ thực hiện hoặc Quá hạn tùy hạn thực tế; sự kiện trả lại được lưu trong assignmentEvents.
+- Khi hủy biểu mẫu đang làm, lượt được trả lại hàng chờ và lưu sự kiện Hủy thực hiện/Trả lại nhóm. Lượt đang thực hiện không bị bộ sinh lịch tự đổi thành Quá hạn.
+- Với công việc giao đích danh, chỉ người được giao hoặc Admin có quyền mở thực hiện; Viewer vẫn chỉ xem.
+- Đây là cơ chế nhận việc cơ bản theo tên nhóm/người phụ trách. Chưa có danh bạ nhóm thành viên được quản trị tập trung, thông báo đẩy, timeout tự động hoặc cơ chế bàn giao khi người nhận mất kết nối.
+- Bổ sung source tests cho trạng thái nhận việc, trả lại và lưu sự kiện. Chờ GitHub Actions xác nhận; chưa kiểm tra nhiều tài khoản thực tế trên trình duyệt.
+- Không thay đổi Supabase, Auth, RLS, Storage hoặc Cloud Sync. PR #21 vẫn không merge.
