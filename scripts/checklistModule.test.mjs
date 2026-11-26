@@ -337,7 +337,7 @@ test('system Checklist starter templates have at least five meaningful criteria 
 })
 
 test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
-  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&!isPcPlatform\(\)/)
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
   assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
   assert.match(panel,/disabled=\{!canExecuteHere\}/)
   assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
