@@ -362,6 +362,33 @@ test('Checklist Cloud is the live organization source and execution writes use s
 })
 
 
+
+test('Cloud recurrence generation covers old daily, weekly, monthly, quarterly and yearly schedules within the supported window',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/function calendarDayDistance/)
+  assert.match(cloud,/const cutoff=new Date\(Date\.now\(\)-366\*86400000\)/)
+  assert.match(cloud,/calendarDayDistance\(first,cutoff\)/)
+  assert.match(cloud,/const monthDelta=\(cutoff\.getFullYear\(\)-anchor\.getFullYear\(\)\)\*12/)
+  assert.match(cloud,/Math\.floor\(monthDelta\/3\)-1/)
+  assert.match(cloud,/for\(let d=first;d<=end;index\+\+,d=addMonths\(anchor,index\*3,time\)\)/)
+})
+
+test('Checklist equipment manual RPC is blocked and completed task history uses the immutable task snapshot',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql',import.meta.url),'utf8')
+  assert.match(migration,/v_definition\.target_kind='equipment'/)
+  assert.match(migration,/phải được mở từ lượt công việc sau khi quét QR/)
+  assert.match(migration,/v_task\.definition_snapshot->>'title'/)
+  assert.match(migration,/v_task\.definition_snapshot->'questions'/)
+  assert.doesNotMatch(migration,/coalesce\(p_payload->'checklist_snapshot'/)
+})
+
+test('Checklist execution is limited to phones and optional unanswered checks become Bỏ qua',async()=>{
+  const platform=await readFile(new URL('../src/lib/platform.ts',import.meta.url),'utf8')
+  assert.match(platform,/Android\.\*Mobile/)
+  assert.doesNotMatch(platform,/iPad|Tablet/)
+  assert.match(panel,/result:\(answers\[q\.id\]\?\.result\|\|'Bỏ qua'\)/)
+})
+
 test('equipment Checklist starts only from QR scan while system Checklist remains manual',async()=>{
   const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
   assert.match(panel,/supabase\.from\('assets'\)\.select\('id,code,name'\)/)
