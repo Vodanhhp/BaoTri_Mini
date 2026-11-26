@@ -302,7 +302,7 @@ test('Checklist selected-suggestion action uses compact separated styling',()=>{
 
 
 test('every equipment Checklist automatically includes four mandatory locked common checks',async()=>{
- const source=await read('../src/ChecklistPanel.tsx')
+ const source=panel
  assert.match(source,/const MANDATORY_EQUIPMENT_CHECKS = \[/)
  assert.match(source,/4 NỘI DUNG BẮT BUỘC CHO THIẾT BỊ/)
  assert.match(source,/targetKind==='equipment'\?\[\.\.\.MANDATORY_EQUIPMENT_CHECKS,\.\.\.optionalQuestions\]:optionalQuestions/)
@@ -312,8 +312,8 @@ test('every equipment Checklist automatically includes four mandatory locked com
 })
 
 test('Checklist print uses the equipment A4 print-sheet wrapper and full structured form',async()=>{
- const source=await read('../src/ChecklistPanel.tsx')
- const styles=await read('../src/style.css')
+ const source=panel
+ const styles=css
  assert.match(source,/className="asset-print-sheet print-checklist"/)
  assert.match(source,/className="asset-print-report equipment-print-report checklist-print-report"/)
  for(const label of ['I. THÔNG TIN KIỂM TRA','II. NỘI DUNG VÀ KẾT QUẢ KIỂM TRA','Ghi chú / thông số đo','Người xác nhận','Mã phiếu'])assert.ok(source.includes(label),label)
