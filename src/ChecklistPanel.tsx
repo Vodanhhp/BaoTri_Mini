@@ -8,6 +8,7 @@ type Props = {
   organizationId: string
   organizationName: string
   userLabel: string
+  userId: string
   canView: boolean
   canManage: boolean
   canExecute: boolean
@@ -58,7 +59,7 @@ export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationI
   </section>
 }
 
-export default function ChecklistPanel({organizationId,organizationName,userLabel,canView,canManage,canExecute,assets}:Props) {
+export default function ChecklistPanel({organizationId,organizationName,userLabel,userId,canView,canManage,canExecute,assets}:Props) {
   const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
   const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
   const [runs,setRuns]=useState<ChecklistRun[]>([])
@@ -173,29 +174,46 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
-    if(!canExecute||!isGroupAssignee(task.assignee))return
-    const current=await db.checklistTasks.get(task.id)
-    if(!current||current.status==='Hoàn thành'||current.status==='Đang thực hiện')return
-    await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedAt:now(),assignmentEvents:[...(current.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,at:now()}],updatedAt:now()})
-    await refresh()
+    if(!canExecute||!userId||!isGroupAssignee(task.assignee))return
+    const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
+      const current=await db.checklistTasks.get(task.id)
+      if(!current||current.organizationId!==organizationId||current.status==='Hoàn thành'||current.status==='Đang thực hiện')return false
+      const at=now()
+      await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedByUserId:userId,claimedAt:at,assignmentEvents:[...(current.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
+      return true
+    })
+    if(claimed)await refresh()
+    else setNotice('Công việc đã được người khác nhận hoặc không còn khả dụng. Hãy tải lại danh sách.')
   }
   const releaseTask=async(taskId:string)=>{
     const current=await db.checklistTasks.get(taskId)
-    if(!current||current.claimedBy!==userLabel||current.status!=='Đang thực hiện')return
+    if(!current||!userId||current.claimedByUserId!==userId||current.status!=='Đang thực hiện')return
     const returnedToGroup=isGroupAssignee(current.assignee)
     const overdue=new Date(current.dueAt).getTime()<Date.now()
-    await db.checklistTasks.update(taskId,{status:overdue?'Quá hạn':'Chờ thực hiện',claimedBy:undefined,claimedAt:undefined,assignmentEvents:[...(current.assignmentEvents||[]),{action:returnedToGroup?'Trả lại nhóm':'Hủy thực hiện',actor:userLabel,at:now()}],updatedAt:now()})
+    const at=now()
+    await db.transaction('rw',db.checklistTasks,async()=>{
+      const latest=await db.checklistTasks.get(taskId)
+      if(!latest||latest.organizationId!==organizationId||latest.claimedByUserId!==userId||latest.status!=='Đang thực hiện')return
+      await db.checklistTasks.update(taskId,{status:overdue?'Quá hạn':'Chờ thực hiện',claimedBy:undefined,claimedByUserId:undefined,claimedAt:undefined,assignmentEvents:[...(latest.assignmentEvents||[]),{action:returnedToGroup?'Trả lại nhóm':'Hủy thực hiện',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
+    })
   }
   const beginTask=async(task:ChecklistTask,item:ChecklistDefinition)=>{
     if(!canExecute)return
     const current=await db.checklistTasks.get(task.id)
     if(!current||current.status==='Hoàn thành')return
     const group=isGroupAssignee(current.assignee)
-    if(group&&(current.status!=='Đang thực hiện'||(current.claimedBy!==userLabel&&!canManage)))return
+    if(group&&(current.status!=='Đang thực hiện'||current.claimedByUserId!==userId))return
     if(!group&&current.assignee!==userLabel&&!canManage)return
-    if(current.status==='Đang thực hiện'&&current.claimedBy&&current.claimedBy!==userLabel&&!canManage)return
+    if(current.status==='Đang thực hiện'&&current.claimedByUserId!==userId)return
     if(current.status!=='Đang thực hiện'){
-      await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedAt:now(),assignmentEvents:[...(current.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,at:now()}],updatedAt:now()})
+      const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
+        const latest=await db.checklistTasks.get(task.id)
+        if(!latest||latest.organizationId!==organizationId||latest.status==='Hoàn thành'||latest.status==='Đang thực hiện')return false
+        const at=now()
+        await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedByUserId:userId,claimedAt:at,assignmentEvents:[...(latest.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
+        return true
+      })
+      if(!claimed){setNotice('Công việc vừa được người khác nhận.');await refresh();return}
       await refresh()
     }
     startRun(item,task.id)
@@ -212,6 +230,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
     if(failed&&!repairCreated&&!noRepairReason.trim()){setError('Checklist có mục Không đạt. Hãy ghi lý do chưa tạo Phiếu yêu cầu sửa chữa.');return}
     const taskSnapshot=runningTaskId?await db.checklistTasks.get(runningTaskId):undefined
+    if(runningTaskId&&(!taskSnapshot||taskSnapshot.organizationId!==organizationId||taskSnapshot.status!=='Đang thực hiện'||taskSnapshot.claimedByUserId!==userId)){setError('Bạn không còn là người nhận công việc này. Hãy tải lại danh sách trước khi lưu.');return}
     const record:ChecklistRun={
       id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
       targetLabel:running.targetLabel,frequency:running.frequency,
@@ -220,9 +239,18 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       assignmentHistory:taskSnapshot?.assignmentEvents||[],
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
-    await db.checklistRuns.add(record)
-    await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:now()})
-    if(runningTaskId)await db.checklistTasks.update(runningTaskId,{status:'Hoàn thành',completedAt:record.completedAt,runId:record.id,updatedAt:now()})
+    if(runningTaskId){
+      await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
+        const latest=await db.checklistTasks.get(runningTaskId)
+        if(!latest||latest.organizationId!==organizationId||latest.status!=='Đang thực hiện'||latest.claimedByUserId!==userId)throw new Error('Quyền nhận việc đã thay đổi. Không thể lưu kết quả.')
+        await db.checklistRuns.add(record)
+        await db.checklistTasks.update(runningTaskId,{status:'Hoàn thành',completedAt:record.completedAt,runId:record.id,updatedAt:record.completedAt})
+        await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
+      })
+    }else{
+      await db.checklistRuns.add(record)
+      await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
+    }
     setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
   }
   const exportExcel=async()=>{
@@ -274,11 +302,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 <div className="top-actions">
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
                   {groupTask&&task.status!=='Đang thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
-                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedBy===userLabel&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
-                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedBy!==userLabel&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
+                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
+                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
                   {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button>}
                   {!groupTask&&!directAllowed&&<small>Chỉ người được giao hoặc Admin thực hiện</small>}
-                  {!groupTask&&task.status==='Đang thực hiện'&&task.claimedBy&&task.claimedBy!==userLabel&&!canManage&&<small>Đang xử lý bởi {task.claimedBy}</small>}
+                  {!groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy}</small>}
                 </div>
               </article>
             })}
