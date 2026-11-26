@@ -6,9 +6,9 @@ const addMonthsClamped=(anchor:Date,monthOffset:number,executionTime:string)=>{c
 const scheduledDates=(definition:ChecklistDefinition,end:Date):Date[]=>{
  const anchor=new Date(definition.scheduleStartedAt||definition.createdAt);if(Number.isNaN(anchor.getTime()))return []
  const frequency:ChecklistFrequency=definition.frequency;const executionTime=definition.executionTime||'09:00';const dates:Date[]=[]
- const pushIfValid=(candidate:Date)=>{if(candidate>=anchor&&candidate<=end)dates.push(candidate)}
- if(frequency==='Hàng ngày'){const first=atExecutionTime(anchor,executionTime);if(first<anchor)first.setDate(first.getDate()+1);for(const cursor=new Date(first);cursor<=end;cursor.setDate(cursor.getDate()+1))dates.push(new Date(cursor))}
- else if(frequency==='Hàng tuần'){let candidate=atExecutionTime(anchor,executionTime);if(candidate<anchor)candidate.setDate(candidate.getDate()+7);for(;candidate<=end;candidate=new Date(candidate.getTime()+7*86400000))dates.push(new Date(candidate))}
+ const pushIfValid=(candidate:Date)=>{if(candidate.getTime()>=anchor.getTime()-CHECKLIST_GRACE_PERIOD_MS&&candidate<=end)dates.push(candidate)}
+ if(frequency==='Hàng ngày'){const first=atExecutionTime(anchor,executionTime);if(first<anchor&&Date.now()-first.getTime()>=CHECKLIST_GRACE_PERIOD_MS)first.setDate(first.getDate()+1);for(const cursor=new Date(first);cursor<=end;cursor.setDate(cursor.getDate()+1))dates.push(new Date(cursor))}
+ else if(frequency==='Hàng tuần'){let candidate=atExecutionTime(anchor,executionTime);if(candidate<anchor&&Date.now()-candidate.getTime()>=CHECKLIST_GRACE_PERIOD_MS)candidate.setDate(candidate.getDate()+7);for(;candidate<=end;candidate=new Date(candidate.getTime()+7*86400000))dates.push(new Date(candidate))}
  else if(frequency==='Hàng tháng'){for(let offset=0;offset<=18;offset++)pushIfValid(addMonthsClamped(anchor,offset,executionTime))}
  else if(frequency==='Hàng quý'){for(let offset=0;offset<=6;offset++)pushIfValid(addMonthsClamped(anchor,offset*3,executionTime))}
  else if(frequency==='Hàng năm'){for(let offset=0;offset<=2;offset++){const candidate=new Date(anchor.getFullYear()+offset,anchor.getMonth(),1);const lastDay=new Date(candidate.getFullYear(),candidate.getMonth()+1,0).getDate();candidate.setDate(Math.min(anchor.getDate(),lastDay));pushIfValid(atExecutionTime(candidate,executionTime))}}
