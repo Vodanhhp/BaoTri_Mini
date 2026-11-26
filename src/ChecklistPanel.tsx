@@ -41,13 +41,14 @@ const blankSetting = (organizationId:string,key:ChecklistCategoryKey):ChecklistC
 const dueText = (frequency:ChecklistFrequency) => frequency==='Linh hoạt'?'Không có lịch cố định':frequency
 const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
 const dateOnly = () => new Date().toLocaleDateString('en-CA')
-const checklistPeriodRange = (period:'day'|'week'|'month'|'quarter',reference=new Date()) => {
+const checklistPeriodRange = (period:'day'|'week'|'month'|'quarter'|'year',reference=new Date()) => {
  const start=new Date(reference);start.setHours(0,0,0,0)
  const end=new Date(start)
  if(period==='day')end.setDate(end.getDate()+1)
  else if(period==='week'){const day=end.getDay()||7;start.setDate(start.getDate()-day+1);end.setTime(start.getTime());end.setDate(end.getDate()+7)}
  else if(period==='month'){start.setDate(1);end.setFullYear(start.getFullYear(),start.getMonth()+1,1)}
- else {const quarter=Math.floor(start.getMonth()/3);start.setMonth(quarter*3,1);end.setFullYear(start.getFullYear(),quarter*3+3,1)}
+ else if(period==='quarter'){const quarter=Math.floor(start.getMonth()/3);start.setMonth(quarter*3,1);end.setFullYear(start.getFullYear(),quarter*3+3,1)}
+ else {start.setMonth(0,1);end.setFullYear(start.getFullYear()+1,0,1)}
  return {start:checklistLocalDateKey(start),end:checklistLocalDateKey(end)}
 }
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
@@ -236,7 +237,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [savingRun,setSavingRun]=useState(false)
   const [legacyLocalCounts,setLegacyLocalCounts]=useState<{settings:number;definitions:number;runs:number;tasks:number}|null>(null)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
-  const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'>('day')
+  const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'|'year'>('day')
   const [showSuggestions,setShowSuggestions]=useState(false)
   const [showStarterGroups,setShowStarterGroups]=useState(false)
   const [showBuilderForm,setShowBuilderForm]=useState(false)
@@ -336,7 +337,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&(!reportFrom||item.dueDate>=reportFrom)&&(!reportTo||item.dueDate<=reportTo)),[tasks,reportFrom,reportTo])
   const currentMs=Date.now()
   const periodRange=checklistPeriodRange(workPeriod)
-  const periodFrequency:Record<typeof workPeriod,ChecklistFrequency>={day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý'}
+  const periodFrequency:Record<typeof workPeriod,ChecklistFrequency>={day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý',year:'Hàng năm'}
   const selectedFrequency=periodFrequency[workPeriod]
   const periodTasks=tasks.filter(item=>item.frequency===selectedFrequency&&(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const missedTasks=tasks.filter(item=>item.frequency===selectedFrequency&&item.status==='Không Checklist'&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end).sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
@@ -669,8 +670,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div><div><small>Bỏ qua</small><strong>{runs.filter(item=>item.outcome==='Bỏ qua').length}</strong><span>Không tính là Đạt</span></div></div>
         </div>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị Checklist có chu kỳ tương ứng với kỳ đã chọn (Ngày: Hàng ngày, Tuần: Hàng tuần, Tháng: Hàng tháng, Quý: Hàng quý). Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist. Checklist Hàng năm xem trong Lịch sử và Báo cáo.</p></div></div>
-          <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button></div>
+          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị Checklist có chu kỳ tương ứng với kỳ đã chọn (Ngày: Hàng ngày, Tuần: Hàng tuần, Tháng: Hàng tháng, Quý: Hàng quý, Năm: Hàng năm). Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist.</p></div></div>
+          <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button><button type="button" className={workPeriod==='year'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('year')}>Năm</button></div>
           {!isPcPlatform()&&<div className="checklist-qr-actions"><button type="button" className="primary-btn" onClick={()=>setQrOpen(true)} disabled={!canExecuteHere||qrSearching}><QrCode size={16}/> {qrSearching?'Đang tìm thiết bị…':'Quét QR thiết bị'}</button><small>Checklist thiết bị chỉ mở từ mã QR trên tem. Checklist hệ thống vẫn chọn thủ công bên dưới.</small></div>}
           <div className="checklist-report-summary"><div><small>Công việc {selectedFrequency.toLocaleLowerCase('vi')} trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist trong kỳ</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
