@@ -36,7 +36,7 @@ export type ChecklistTask = {
   assignee: string
   claimedBy?: string
   claimedAt?: string
-  assignmentEvents?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm'; actor: string; at: string }>
+  assignmentEvents?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; at: string }>
   status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn'
   definitionSnapshot: {
     categoryKey: ChecklistDefinition['categoryKey']
