@@ -196,7 +196,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
   return <div className="maintenance-workspace">
-    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu được lưu trên Cloud và dùng chung trong tổ chức. Lịch bảo dưỡng định kỳ hiện vẫn lưu Local.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
+    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu và lịch bảo dưỡng định kỳ được lưu trên Cloud, dùng chung trong tổ chức.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
     <div className="maintenance-alert-grid">
       <div className="stat-card"><div className="stat-icon red"><ClipboardList size={19}/></div><div><small>Phiếu chưa hoàn thành</small><strong>{openRequests.length}</strong><span>Luôn cần theo dõi đến khi xác nhận</span></div></div>
       <div className="stat-card"><div className="stat-icon orange"><CalendarDays size={19}/></div><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>{dateLabel(today())}</span></div></div>
@@ -271,17 +271,19 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 }
 
 
-export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{organizationId:string;assets:Asset[];onOpen:()=>void}) {
+export function MaintenanceDashboardSummary({organizationId,assets,onOpen,supabaseClient}:{organizationId:string;assets:Asset[];onOpen:()=>void;supabaseClient?:SupabaseClient|null}) {
   const [pending,setPending]=useState<MaintenanceRequest[]>([])
   useEffect(()=>{
     let active=true
-    const load=()=>db.maintenanceRequests.where('organizationId').equals(organizationId).toArray()
+    const load=()=> (supabaseClient&&organizationId!=='local-preview'
+      ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests)
+      : db.maintenanceRequests.where('organizationId').equals(organizationId).toArray())
       .then(rows=>{if(active)setPending(rows.filter(row=>row.status!=='Hoàn thành').sort((a,b)=>(a.dueDate||'9999-12-31').localeCompare(b.dueDate||'9999-12-31')||a.requestDate.localeCompare(b.requestDate)))})
     void load()
     const refresh=()=>{void load()}
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
-  },[organizationId])
+  },[organizationId,supabaseClient])
   const name=(id:string)=>{const asset=assets.find(row=>row.id===id);return asset?asset.code+' · '+asset.name:'Thiết bị'}
   return <section className="overview-section maintenance-dashboard-section">
     <div className="overview-section-head"><div><h2>Công việc hôm nay</h2><p>Phiếu Bảo dưỡng – Sửa chữa chưa xác nhận hoàn thành</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở phân hệ →</button></div>
@@ -292,15 +294,17 @@ export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{orga
 }
 
 
-export function MaintenanceAssetHistory({organizationId,assetId}:{organizationId:string;assetId:string}) {
+export function MaintenanceAssetHistory({organizationId,assetId,supabaseClient}:{organizationId:string;assetId:string;supabaseClient?:SupabaseClient|null}) {
   const [rows,setRows]=useState<MaintenanceRequest[]>([])
   useEffect(()=>{
     let active=true
-    db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray()
+    (supabaseClient&&organizationId!=='local-preview'
+      ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests.filter(row=>row.assetId===assetId))
+      : db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray())
       .then(items=>{if(active)setRows(items.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)))})
       .catch(()=>{if(active)setRows([])})
     return()=>{active=false}
-  },[organizationId,assetId])
+  },[organizationId,assetId,supabaseClient])
   return <section className="maintenance-asset-history">
     <h3>Lịch sử Bảo dưỡng – Sửa chữa ({rows.length})</h3>
     {rows.length===0?<p>Chưa có Phiếu YC Bảo dưỡng – Sửa chữa cho thiết bị này.</p>:<div className="maintenance-asset-history-list">
