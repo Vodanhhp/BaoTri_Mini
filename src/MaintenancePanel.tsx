@@ -100,7 +100,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     try{
       const value:MaintenanceRequest={...requestEditor,organizationId,description:requestEditor.description.trim(),requestedBy:requestEditor.requestedBy.trim(),performedBy:requestEditor.performedBy.trim(),dueDate:requestEditor.dueDate||undefined,updatedAt:now()}
       if(supabaseClient&&organizationId!=='local-preview'){
-        await saveMaintenanceRequest(supabaseClient,organizationId,value)
+        await saveMaintenanceRequest(supabaseClient,organizationId,value,requests.some(row=>row.id===value.id))
       }else{
         const previous=await db.maintenanceRequests.get(requestEditor.id)
         await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
