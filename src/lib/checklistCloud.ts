@@ -77,7 +77,8 @@ function mapTask(row: Row, organizationId: string, events: Row[]): ChecklistTask
   if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả lượt Checklist sai tổ chức.')
   const snapshot=row.definition_snapshot&&typeof row.definition_snapshot==='object'?row.definition_snapshot:{}
   const taskEvents=events.filter(event=>event.task_id===row.id).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at)))
-  const latestClaim=taskEvents.filter(event=>event.event_type==='Nhận việc').at(-1)\n  const assignmentEvents=taskEvents.map(event=>({
+  const latestClaim=taskEvents.filter(event=>event.event_type==='Nhận việc').at(-1)
+  const assignmentEvents=taskEvents.map(event=>({
     action:String(event.event_type) as 'Nhận việc'|'Trả lại nhóm'|'Hủy thực hiện',
     actor:String(event.actor_label||''),actorUserId:event.actor_user_id?String(event.actor_user_id):undefined,
     at:String(event.occurred_at)
