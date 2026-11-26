@@ -246,3 +246,18 @@ test('Checklist template editor opens in a separate accessible modal and explain
   assert.match(panel,/Tạm ngừng lịch/)
   assert.match(panel,/Tiếp tục lịch/)
 })
+
+
+test('Checklist Excel export uses the shared BAOTRI report workbook format',()=>{
+  assert.match(panel,/import \{ downloadExcelReport \} from '\.\/lib\/excelExport'/)
+  assert.match(panel,/await downloadExcelReport\(rows,'bao-cao-checklist\.xlsx'/)
+  assert.match(panel,/BÁO CÁO KIỂM TRA ĐỊNH KỲ \(CHECKLIST\)/)
+  assert.match(panel,/organizationName\)/)
+  assert.doesNotMatch(panel,/new ExcelJS\.Workbook/)
+})
+
+test('newly activated recurring Checklists still show the current occurrence within the 24-hour grace period',()=>{
+  assert.match(schedule,/candidate\.getTime\(\)>=anchor\.getTime\(\)-CHECKLIST_GRACE_PERIOD_MS/)
+  assert.match(schedule,/Date\.now\(\)-first\.getTime\(\)>=CHECKLIST_GRACE_PERIOD_MS/)
+  assert.match(schedule,/Date\.now\(\)-candidate\.getTime\(\)>=CHECKLIST_GRACE_PERIOD_MS/)
+})
