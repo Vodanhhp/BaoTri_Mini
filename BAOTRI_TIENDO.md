@@ -759,3 +759,11 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Mở rộng thư viện lên nhiều nội dung chuyên biệt cho từng nhóm; vẫn cho phép sửa/xóa từng dòng, thêm câu hỏi riêng. Các câu hỏi đã lưu của mẫu không bị thay thế khi mở trình biên soạn.
 - Bỏ nút Làm mới gây nhầm lẫn; xóa nội dung bằng nút Xóa ngay trên dòng câu hỏi. Lịch sử Checklist đã hoàn thành vẫn giữ snapshot cũ.
 - Chỉ thay đổi giao diện và dữ liệu mẫu nội dung trong mã nguồn; không thay đổi Dexie schema, dữ liệu người dùng hoặc Supabase.
+
+
+## 26/11/2026 – chỉnh giao diện chọn nội dung và đưa in phiếu Checklist về Báo cáo
+- Thu gọn nút **Thêm nội dung đã chọn**: đổi từ nút chính cỡ lớn sang nút phụ gọn, thêm khoảng cách và đường phân cách với danh sách gợi ý; bố trí responsive để không chèn chữ/nội dung. Giữ nguyên thao tác **Thêm nội dung kiểm tra riêng**.
+- Bỏ nút in khỏi tab **Lịch sử**. Tab **Báo cáo** có cột **Phiếu Checklist** và nút **In phiếu A4** cho từng kết quả đã kiểm tra; danh sách **Không Checklist** không có phiếu kết quả để in.
+- Sửa vòng đời in: chờ trình duyệt render phiếu vào DOM bằng requestAnimationFrame rồi mới gọi hộp thoại in; giữ phiếu trong DOM cho đến sự kiện afterprint thay vì xóa trạng thái ngay sau window.print(). Chỉnh CSS bản in sang bố cục luồng tài liệu để phiếu dài có thể phân trang A4.
+- Bổ sung source regression tests cho vị trí nút in, luồng render/afterprint và style nút gọn. Chưa kiểm tra trực tiếp hộp thoại in trên trình duyệt hoặc máy in vật lý.
+- Không thay đổi Dexie schema, dữ liệu Checklist, Supabase, Auth, RLS, Storage, Cloud Sync hoặc PR #21.
