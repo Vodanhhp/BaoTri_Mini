@@ -69,7 +69,7 @@ export async function createMaintenanceRequestFromChecklist(client:SupabaseClien
  return mapRequest(row as Row,organizationId)
 }
 
-export async function saveMaintenanceTask(client:SupabaseClient,organizationId:string,task:MaintenanceTask,isExisting=false):Promise<MaintenanceTask>{
+export async function saveMaintenanceTask(client:SupabaseClient,organizationId:string,task:MaintenanceTask):Promise<MaintenanceTask>{
  online()
  const row=await checked(client.rpc('maintenance_save_task',{p_organization_id:organizationId,p_task_id:task.id,p_payload:{
   asset_id:task.assetId,title:task.title,due_date:task.dueDate,frequency:task.frequency,status:task.status,
