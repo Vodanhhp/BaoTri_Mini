@@ -246,7 +246,7 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
  const [loading,setLoading]=useState(true)
  const [busy,setBusy]=useState(false)
  const [confirmed,setConfirmed]=useState(false)
- const [resetAssets,setResetAssets]=useState(true)
+ const [resetAssets,setResetAssets]=useState(false)
  const [resetInventory,setResetInventory]=useState(false)
  const [resetChecklist,setResetChecklist]=useState(false)
  const [error,setError]=useState('')
@@ -272,7 +272,7 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
    if(invokeError)throw new Error(invokeError.message)
    if(data?.error)throw new Error(data.error)
    setMessage(data?.message||'Đã gửi yêu cầu Reset để Superadmin xem xét.')
-   setNote('');setConfirmed(false);setResetAssets(true);setResetInventory(false);setResetChecklist(false);await load()
+   setNote('');setConfirmed(false);setResetAssets(false);setResetInventory(false);setResetChecklist(false);await load()
   }catch(e){setError(e instanceof Error?e.message:String(e))}
   finally{setBusy(false)}
  }
