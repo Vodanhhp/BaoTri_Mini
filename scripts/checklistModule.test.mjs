@@ -413,6 +413,12 @@ test('QR scanner stops camera streams and pending animation loops when restarted
   assert.match(scanner,/if\(!activeRef\.current\)\{stream\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\);return\}/)
 })
 
+test('Cloud template RPC refuses retired equipment as a target',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126230000_checklist_equipment_target_must_be_active.sql',import.meta.url),'utf8')
+  assert.match(migration,/a\.status<>'Thanh lý'/)
+  assert.match(panel,/neq\('status','Thanh lý'\)/)
+})
+
 test('Cloud template RPC rejects malformed or duplicate Checklist question identities',async()=>{
   const migration=await readFile(new URL('../docs/drafts/20261126229000_checklist_definition_question_validation.sql',import.meta.url),'utf8')
   assert.match(migration,/jsonb_array_elements\(v_questions\)/)
