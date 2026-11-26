@@ -66,7 +66,16 @@ export async function ensureChecklistOccurrences(organizationId: string) {
   const horizon = new Date(current.getFullYear() + 1, current.getMonth(), current.getDate(), 23, 59, 59, 999)
   const existing = await db.checklistTasks.where('organizationId').equals(organizationId).toArray()
   const currentById = new Map(active.map(item => [item.id, item]))
-  const obsolete = existing.filter(task => task.status !== 'Hoàn thành' && new Date(task.dueAt).getTime() >= current.getTime() && (!activeIds.has(task.checklistId) || (currentById.has(task.checklistId) && (currentById.get(task.checklistId)!.frequency !== task.frequency || (currentById.get(task.checklistId)!.executionTime || '09:00') !== (task.executionTime || '09:00')))))
+  const obsolete = existing.filter(task => task.status !== 'Hoàn thành' && task.status !== 'Đang thực hiện' && new Date(task.dueAt).getTime() >= current.getTime() && (!activeIds.has(task.checklistId) || (currentById.has(task.checklistId) && (() => {
+    const definition = currentById.get(task.checklistId)!
+    return definition.frequency !== task.frequency
+      || (definition.executionTime || '09:00') !== (task.executionTime || '09:00')
+      || definition.title !== task.title
+      || definition.targetLabel !== task.targetLabel
+      || definition.assignee !== task.assignee
+      || definition.categoryKey !== task.definitionSnapshot.categoryKey
+      || JSON.stringify(definition.questions) !== JSON.stringify(task.definitionSnapshot.questions)
+  })())))
   if (obsolete.length) await db.checklistTasks.bulkDelete(obsolete.map(item => item.id))
   const retained = existing.filter(item => !obsolete.some(row => row.id === item.id))
   const known = new Set(retained.map(item => item.id))
