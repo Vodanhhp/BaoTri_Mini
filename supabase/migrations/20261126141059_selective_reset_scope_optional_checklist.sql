@@ -161,7 +161,7 @@ begin
   update private.organization_asset_reset_state set generation=generation+1,reset_at=clock_timestamp(),updated_at=clock_timestamp() where organization_id=p_organization_id returning generation into v_gen;
   update public.asset_activity_history set asset_id=null where organization_id=p_organization_id and asset_id is not null;
   update private.asset_group_change_history set asset_id=null where organization_id=p_organization_id and asset_id is not null;
-  delete from public.asset_import_receipts where organization_id=p_organization_id;get diagnostics v_ir=row_count;
+  if to_regclass('public.asset_import_receipts') is not null then execute 'delete from public.asset_import_receipts where organization_id=$1' using p_organization_id;get diagnostics v_ir=row_count;end if;
   delete from public.asset_mutation_receipts where organization_id=p_organization_id;get diagnostics v_mr=row_count;
   delete from public.asset_edit_locks where organization_id=p_organization_id;get diagnostics v_l=row_count;
   update private.asset_id_sequence_reservations set status='released',asset_id=null,equipment_id=null,released_at=clock_timestamp() where organization_id=p_organization_id and status='reserved';
