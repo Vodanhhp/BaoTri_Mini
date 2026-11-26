@@ -964,3 +964,23 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 ### Hai điểm nghiệp vụ cần chốt trước nghiệm thu – 26/11/2026
 - **Xóa/bớt mẫu:** UI hiện có Tạo mẫu, Sửa nội dung và Tạm ngừng/Tiếp tục lịch; chưa có thao tác xóa hoặc lưu trữ mẫu khỏi danh sách. Hard delete không phù hợp vì mẫu đang được lịch sử tham chiếu. Đề xuất dùng Lưu trữ mẫu (soft archive), giữ nguyên kết quả và phiên bản cũ; chờ xác nhận nghiệp vụ trước khi triển khai.
 - **Dữ liệu Dexie cũ:** cảnh báo đã được thêm, nhưng chưa có luồng import. Cần chọn một thiết bị/nguồn dữ liệu chuẩn và cách hợp nhất dữ liệu từ nhiều trình duyệt để tránh nhập trùng hoặc ghi đè mẫu.
+26/11/2026 — Sửa phụ thuộc khi xóa vĩnh viễn tổ chức
+
+- Điều tra lỗi PostgreSQL `23503` khi xóa tổ chức: `organization_equipment_catalog_history` có FK `ON DELETE RESTRICT` tới `organizations`, nhưng routine cũ chưa dọn bản ghi audit này. Đối chiếu Production còn phát hiện `private.platform_data_seed_runs` cũng cần được dọn trước khi xóa tổ chức.
+- Đã merge PR #76 vào `main` (squash commit `43cd748155d5cc93b5c9bae5d7fcf6cbd99370c0`); CI Validate và Build/Unit tests đều thành công.
+- Đã áp dụng migration Production `20261126160654_fix_platform_delete_catalog_history_dependencies` và lưu migration tương ứng tại `supabase/migrations/20261126160654_fix_platform_delete_catalog_history_dependencies.sql`.
+- Routine mới xóa catalog audit (có kiểm tra `to_regclass`) và seed-run metadata trước khi xóa tổ chức; cleanup giữ trong cùng transaction. Không xóa `auth.users` hoặc `profiles`.
+- Đã kiểm tra Production: migration có trong lịch sử, hàm đang chạy có cả hai bước cleanup; tổ chức `My Company` vẫn tồn tại (1 bản ghi). Chưa thực hiện thao tác xóa tổ chức thật; chưa kiểm chứng end-to-end qua giao diện.
+
+
+## 26/11/2026 — Checklist, Phiếu yêu cầu và báo cáo bảo trì Cloud (đang triển khai)
+
+- Bổ sung cấu trúc Cloud cho Phiếu yêu cầu bảo dưỡng/sửa chữa, liên kết với tổ chức và thiết bị; có lịch sử tạo, cập nhật, hoàn thành. RLS bật, đọc theo quyền `maintenance.view`; ghi dữ liệu qua RPC kiểm tra quyền `maintenance.create/update`.
+- Thêm RPC tạo Phiếu yêu cầu từ kết quả Checklist Không đạt. Phiếu lấy thiết bị, người kiểm tra và nội dung tiêu chí Không đạt; mỗi kết quả Checklist chỉ có tối đa một Phiếu liên kết. Lưu `maintenance_request_id` ngược lại trên kết quả Checklist.
+- Chuyển đọc/ghi Phiếu yêu cầu và lịch bảo dưỡng định kỳ của phân hệ Bảo dưỡng – Sửa chữa sang Cloud; lưu lịch sử thao tác, cập nhật trạng thái và kết quả hoàn thành.
+- Báo cáo bổ sung thống kê Phiếu phát sinh trong kỳ, Phiếu hoàn thành trong kỳ, Phiếu đang xử lý, Phiếu quá hạn và lịch bảo dưỡng định kỳ theo ngày/tuần/tháng/quý/năm. Báo cáo thiết bị giữ nguyên cách tính; báo cáo vật tư không thay đổi và vẫn lấy dữ liệu Local.
+- Đã thêm kỳ Năm vào bộ lọc công việc cần thực hiện của Checklist.
+- Đã áp dụng các migration bảo trì lên Supabase Test `oyzhxgzltpdebpymuicb`; SQL smoke tests chạy trong transaction rollback xác nhận tạo/cập nhật/hoàn thành Phiếu, lịch định kỳ, liên kết Checklist→Phiếu không trùng, và routine xóa tổ chức xử lý được các phụ thuộc mới. Sau rollback, tổ chức và dữ liệu Test vẫn nguyên vẹn.
+- Bổ sung cleanup cho Phiếu yêu cầu, lịch bảo dưỡng và Checklist vào routine xóa tổ chức; xử lý liên kết vòng giữa Checklist run và Phiếu yêu cầu trước khi xóa.
+- Chưa có CI mới sau các commit gần nhất; chưa Preview/E2E giao diện. Chưa áp dụng migration nào lên Production, chưa merge PR #75.
+- Còn việc phải hoàn tất: rà soát lỗi TypeScript/build/test toàn nhánh; hợp nhất các commit mới trên `main` vào PR; đưa các migration Checklist đã chạy Test vào đúng thư mục `supabase/migrations` để bảo đảm deploy có thể tái lập; kiểm tra báo cáo và nguồn dữ liệu trên giao diện thực tế.
