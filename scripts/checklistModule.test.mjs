@@ -105,3 +105,18 @@ test('Checklist execution time is configurable and future task snapshots use it'
   assert.match(schedule, /currentById\.get\(task\.checklistId\)!\.executionTime/)
   assert.match(schedule, /task\.executionTime \|\| '09:00'/)
 })
+
+
+test('group-assigned Checklist tasks can be claimed, worked, and returned with an event trail', () => {
+  assert.match(db, /claimedBy\?: string/)
+  assert.match(db, /assignmentEvents\?: Array/)
+  assert.match(db, /'Hủy thực hiện'/)
+  assert.match(panel, /startsWith\('nhóm'\)/)
+  assert.match(panel, /const claimTask=async/)
+  assert.match(panel, /const releaseTask=async/)
+  assert.match(panel, /Nhận việc/)
+  assert.match(panel, /Trả lại nhóm/)
+  assert.match(panel, /Đang xử lý bởi/)
+  assert.match(panel, /Chỉ người được giao hoặc Admin thực hiện/)
+  assert.match(schedule, /item\.status !== 'Đang thực hiện'/)
+})
