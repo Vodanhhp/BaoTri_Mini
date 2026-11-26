@@ -334,6 +334,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const enabledCount=settings.filter(item=>item.enabled).length
   const visibleDefinitions=definitions.filter(item=>Boolean(item.archivedAt)===showArchivedDefinitions&&(!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))))
   const todayRuns=runs.filter(item=>checklistLocalDateKey(new Date(item.completedAt))===dateOnly())
+  const reportPeriodLabel:Record<typeof reportPeriod,string>={day:'Ngày',week:'Tuần',month:'Tháng',quarter:'Quý',year:'Năm'}
   const reportRange=useMemo(()=>checklistPeriodRange(reportPeriod,new Date(reportAnchorDate+'T00:00:00')),[reportPeriod,reportAnchorDate])
   const reportEndDate=useMemo(()=>{const end=new Date(reportRange.end+'T00:00:00');end.setDate(end.getDate()-1);return checklistLocalDateKey(end)},[reportRange.end])
   const reportRuns=useMemo(()=>runs.filter(item=>{const day=checklistLocalDateKey(new Date(item.completedAt));return day>=reportRange.start&&day<=reportEndDate}),[runs,reportRange.start,reportEndDate])
@@ -665,7 +666,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         'Lý do chưa tạo phiếu':'Quá thời gian cho phép; không thực hiện kiểm tra'
       }))
     ]
-    await downloadExcelReport(rows,'bao-cao-checklist.xlsx','BÁO CÁO CHECKLIST · '+reportPeriod.toUpperCase()+' · '+reportRange.start+' – '+reportEndDate,'Báo cáo Checklist',headers,'landscape',organizationName)
+    await downloadExcelReport(rows,'bao-cao-checklist.xlsx','BÁO CÁO CHECKLIST · '+reportPeriodLabel[reportPeriod].toLocaleUpperCase('vi')+' · '+reportRange.start+' – '+reportEndDate,'Báo cáo Checklist',headers,'landscape',organizationName)
   }
 
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
