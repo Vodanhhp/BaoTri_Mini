@@ -130,8 +130,8 @@ test('legacy direct reset endpoint is disabled and approval endpoint reauthentic
 test('reset is requested by organization Admin and reviewed in the Superadmin request queue', async () => {
   const tenant = await read('../src/PlanChangePanels.tsx')
   const ui = await read('../src/PlatformAdminPanel.tsx')
-  assert.match(tenant, /Yêu cầu Reset thiết bị và vật tư/)
-  assert.match(tenant, /dữ liệu Local trên các thiết bị đã đăng ký sẽ được xóa khi kết nối lại/)
+  assert.match(tenant, /Yêu cầu Reset thiết bị, vật tư và Checklist/)
+  assert.match(tenant, /toàn bộ mẫu, lịch và lịch sử Checklist trên Local cũng được xóa khi từng thiết bị kết nối lại/)
   assert.match(ui, /PlatformAssetResetRequestsPanel/)
   assert.doesNotMatch(ui, /beginManagement\(org,'reset'\)/)
   assert.doesNotMatch(ui, /platform-reset-organization-assets/)
