@@ -102,7 +102,7 @@ test('Checklist execution time is configurable and future task snapshots use it'
   assert.match(panel, /executionTime!==\(editing\.executionTime\|\|'09:00'\)/)
   assert.match(schedule, /atExecutionTime\(anchor, executionTime\)/)
   assert.match(schedule, /executionTime, assignee: definition\.assignee/)
-  assert.match(schedule, /currentById\.get\(task\.checklistId\)!\.executionTime/)
+  assert.match(schedule, /definition\.executionTime \|\| '09:00'/)
   assert.match(schedule, /task\.executionTime \|\| '09:00'/)
 })
 
