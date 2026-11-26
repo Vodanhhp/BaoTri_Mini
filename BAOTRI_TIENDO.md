@@ -767,3 +767,10 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Sửa vòng đời in: chờ trình duyệt render phiếu vào DOM bằng requestAnimationFrame rồi mới gọi hộp thoại in; giữ phiếu trong DOM cho đến sự kiện afterprint thay vì xóa trạng thái ngay sau window.print(). Chỉnh CSS bản in sang bố cục luồng tài liệu để phiếu dài có thể phân trang A4.
 - Bổ sung source regression tests cho vị trí nút in, luồng render/afterprint và style nút gọn. Chưa kiểm tra trực tiếp hộp thoại in trên trình duyệt hoặc máy in vật lý.
 - Không thay đổi Dexie schema, dữ liệu Checklist, Supabase, Auth, RLS, Storage, Cloud Sync hoặc PR #21.
+
+
+## 26/11/2026 – nội dung bắt buộc cho thiết bị, phiếu in Checklist và Reset Checklist
+- Mọi Checklist tạo cho một thiết bị tự động có 4 mục kiểm tra chung bắt buộc: hình thức bên ngoài; vệ sinh/thông thoáng/ẩm nước; dây nguồn/đầu nối/tiếp địa (quan sát an toàn); nguồn cấp và điện áp so với thông số (chỉ đo khi đủ điều kiện và người thực hiện đủ chuyên môn). Các mục hiển thị riêng, luôn được áp dụng, không cho sửa/xóa. Gợi ý chuyên biệt và câu hỏi tự thêm vẫn nằm phía dưới; đối tượng khu vực/hệ thống không bị áp dụng bộ câu hỏi thiết bị.
+- Sửa phiếu in Checklist dùng đúng wrapper `asset-print-sheet print-checklist` mà CSS A4 đang chờ; trước đây markup dùng class khác nên quy tắc chỉ hiện nội dung in không bắt được phiếu. Phiếu mới theo bố cục form thiết bị: tên đơn vị, tiêu đề BAOTRI MINI, thông tin đối tượng/chu kỳ/người kiểm tra/kết quả, bảng nội dung và kết quả, ghi chú/thông số, xử lý Không đạt và chữ ký.
+- Bổ sung Checklist vào transaction reset theo generation của tổ chức. Khi thiết bị Local đã đăng ký nhận generation reset mới, xóa cấu hình nhóm, toàn bộ mẫu Checklist, lịch thực hiện và lịch sử kết quả của đúng tổ chức; Checklist trở về trạng thái khởi tạo. Local Preview và tổ chức khác không bị tác động. Checklist hiện là dữ liệu Dexie Local, không có bảng Cloud riêng; không tạo migration hay thay đổi Supabase.
+- Cập nhật nội dung yêu cầu/duyệt Reset để nói rõ Checklist cũng bị xóa. Bổ sung regression tests. Chưa chạy browser E2E hoặc hộp thoại in vật lý; reset destructive chưa được thực hiện trên tổ chức nào.
