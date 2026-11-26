@@ -166,7 +166,7 @@ test('Checklist reports filter by local date range and Excel exports the filtere
 
 test('Checklist A4 print renders one selected result with answers and follow-up decision', () => {
   assert.match(panel, /setPrintingRun\(row\)/)
-  assert.match(panel, /checklist-print-sheet/)
+  assert.match(panel, /asset-print-sheet print-checklist/)
   assert.match(panel, /printingRun\.answers\.map/)
   assert.match(panel, /printingRun\.noRepairReason/)
   assert.match(panel, /window\.print\(\)/)
