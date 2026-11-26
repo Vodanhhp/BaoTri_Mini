@@ -254,6 +254,17 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [reportFrom,setReportFrom]=useState('')
   const [reportTo,setReportTo]=useState('')
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
+  const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
+  const [isMobileViewport,setIsMobileViewport]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(max-width: 680px)').matches)
+  const canExecuteHere=canExecute&&isOnline&&isMobileViewport
+  useEffect(()=>{
+    const updateOnline=()=>setIsOnline(navigator.onLine)
+    const media=window.matchMedia('(max-width: 680px)')
+    const updateViewport=()=>setIsMobileViewport(media.matches)
+    window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
+    media.addEventListener('change',updateViewport)
+    return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline);media.removeEventListener('change',updateViewport)}
+  },[])
 
   const refresh=async()=>{
     setLoading(true)
@@ -373,7 +384,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
-    if(!canExecute||!userId||!isGroupAssignee(task.assignee))return
+    if(!canExecuteHere||!userId||!isGroupAssignee(task.assignee))return
     await ensureChecklistOccurrences(organizationId)
     const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
       const current=await db.checklistTasks.get(task.id)
@@ -398,7 +409,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     })
   }
   const beginTask=async(task:ChecklistTask,item:ChecklistDefinition)=>{
-    if(!canExecute)return
+    if(!canExecuteHere)return
     await ensureChecklistOccurrences(organizationId)
     const current=await db.checklistTasks.get(task.id)
     if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist'||current.status==='Quá hạn')return
@@ -426,7 +437,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const completeRun=async(event:FormEvent)=>{
     event.preventDefault()
-    if(!running||!canExecute)return
+    if(!running||!canExecuteHere)return
     const missing=running.questions.filter(q=>q.required&&!answers[q.id]?.result)
     if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
@@ -487,6 +498,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":!isMobileViewport?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":!isMobileViewport?"Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in. Thực hiện Checklist bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
     <div className="checklist-tabs">
       <button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><ClipboardCheck size={15}/> Tổng quan</button>
       <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Quản lý mẫu</button>
@@ -519,8 +531,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}{task.claimedBy?' · Đang nhận: '+task.claimedBy:''}</small><span className="checklist-outcome">{task.status}</span></div>
                 <div className="top-actions">
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
-                  {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
-                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
+                  {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecute} disabled={!canExecuteHere} onClick={()=>void claimTask(task)}>Nhận việc</button>}
+                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecute} disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
                   {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button>}
                   {!groupTask&&!directAllowed&&<small>Chỉ người được giao hoặc Admin thực hiện</small>}
@@ -609,9 +621,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     </div></div>}
     {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)void cancelRun()}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" onClick={()=>void cancelRun()}><X size={17}/></button></div>
       <form onSubmit={completeRun} className="checklist-run-form">
-        {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
+        {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} disabled={!canExecuteHere} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} disabled={!canExecuteHere} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
         {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Đã tạo Phiếu yêu cầu sửa chữa riêng</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Phiếu Checklist vẫn lưu kết quả Không đạt. Việc đánh dấu này không tự tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa.</small></div>}
-        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn"><Check size={15}/> Lưu kết quả</button></div>
+        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere}><Check size={15}/> Lưu kết quả</button></div>
       </form>
     </section></div>}
   </div>
