@@ -9,7 +9,7 @@ const [app, panel, css] = await Promise.all([
 ])
 
 test('Báo cáo is a first-class module and is available to users with read access', () => {
-  assert.match(app, /'dashboard'\|'assets'\|'inventory'\|'maintenance'\|'reports'/)
+  assert.match(app, /'dashboard'\|'assets'\|'inventory'\|'maintenance'\|'checklist'\|'reports'/)
   assert.match(app, /activeModule==='reports'/)
   assert.match(app, /localPreview\|\|canView\|\|canInventoryView/)
   assert.match(app, /<ReportsPanel/)
