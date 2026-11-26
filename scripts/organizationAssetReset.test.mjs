@@ -241,7 +241,7 @@ test('approved organization reset also removes all organization-scoped Checklist
 
 
 test('selective reset migration keeps equipment, inventory and Checklist generations independent',async()=>{
- const sql=await read('../supabase/migrations/20261126140900_selective_reset_scope_optional_checklist.sql')
+ const sql=await read('../supabase/migrations/20261126141059_selective_reset_scope_optional_checklist.sql')
  assert.match(sql,/inventory_generation/)
  assert.match(sql,/checklist_generation/)
  assert.match(sql,/reset_assets boolean/)
