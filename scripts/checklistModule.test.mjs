@@ -181,7 +181,7 @@ test('Disabling a Checklist removes all uncompleted tasks even when their due ti
 
 test('disabled or inactive Checklist templates are hidden from the active template list',()=>{
   assert.match(panel,/const visibleDefinitions=useMemo\(\(\)=>definitions\.filter\(item=>item\.enabled&&\(item\.source!=='starter'\|\|settings\.some\(setting=>setting\.categoryKey===item\.categoryKey&&setting\.enabled\)\)/)
-  assert.match(panel,/<h2>Mẫu Checklist đang áp dụng<\\/h2>/)
+  assert.ok(panel.includes('<h2>Mẫu Checklist đang áp dụng</h2>'))
   assert.match(panel,/Chỉ Checklist Linh hoạt mới thực hiện trực tiếp từ đây/)
 })
 
