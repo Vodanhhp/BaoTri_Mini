@@ -167,9 +167,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
     if(!canExecute||!userId||!isGroupAssignee(task.assignee))return
+    await ensureChecklistOccurrences(organizationId)
     const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
       const current=await db.checklistTasks.get(task.id)
-      if(!current||current.organizationId!==organizationId||current.status!=='Chờ thực hiện')return false
+      if(!current||current.organizationId!==organizationId||current.status!=='Chờ thực hiện'||Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS)return false
       const at=now()
       await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedByUserId:userId,claimedAt:at,assignmentEvents:[...(current.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
       return true
@@ -202,7 +203,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(current.status!=='Đang thực hiện'){
       const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
         const latest=await db.checklistTasks.get(task.id)
-        if(!latest||latest.organizationId!==organizationId||latest.status==='Hoàn thành'||latest.status==='Đang thực hiện')return false
+        if(!latest||latest.organizationId!==organizationId||latest.status==='Hoàn thành'||latest.status==='Đang thực hiện'||Date.now()-new Date(latest.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS)return false
         const at=now()
         await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedByUserId:userId,claimedAt:at,assignmentEvents:[...(latest.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
         return true
