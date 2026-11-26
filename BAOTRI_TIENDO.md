@@ -675,4 +675,4 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Màn hình Tổng quan không liệt kê lịch tương lai. Nút **Lịch sắp tới** mở riêng, cho xem Tuần tới / Tháng tới / Quý tới; mặc định đóng.
 - Dashboard rút gọn còn số lượt đến hạn cần làm và số lượt Không Checklist.
 - Không thay đổi Local-first, không liên kết Checklist với lịch sử thiết bị, không sửa Supabase, không đụng PR #21.
-- Cần kiểm tra CI Build/Test và GitHub Pages Deploy; chưa thực hiện browser E2E/PC-mobile hoặc in giấy thật.
+- CI Build/Test đã thành công (230 bài test); GitHub Pages Deploy đã thành công tại commit `577b2dd9`. Chưa thực hiện browser E2E/PC-mobile hoặc in giấy thật.
