@@ -125,7 +125,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       const previous=tasks.find(row=>row.id===taskEditor.id)||await db.maintenanceTasks.get(taskEditor.id)
       const value:MaintenanceTask={...taskEditor,organizationId,title:taskEditor.title.trim(),updatedAt:now()}
       if(supabaseClient&&organizationId!=='local-preview'){
-        await saveMaintenanceTask(supabaseClient,organizationId,value,Boolean(previous))
+        await saveMaintenanceTask(supabaseClient,organizationId,value)
       }else{
         await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
           await db.maintenanceTasks.put(value)
