@@ -37,6 +37,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   const [historyFor, setHistoryFor] = useState<string|null>(null)
   const [filter, setFilter] = useState<'all'|'open'|'done'>('all')
   const [error, setError] = useState('')
+  const [notice,setNotice]=useState('')
   const [busy, setBusy] = useState(false)
   const [printRequest, setPrintRequest] = useState<MaintenanceRequest|null>(null)
   const [completionEditor, setCompletionEditor] = useState<{row:MaintenanceRequest;performedBy:string;completionReadings:string;conditionAfterRepair:string;result:MaintenanceRequest['result']}|null>(null)
@@ -255,6 +256,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       <p>{legacyLocalCounts.requests} Phiếu yêu cầu · {legacyLocalCounts.tasks} lịch bảo dưỡng · {legacyLocalCounts.history} sự kiện lịch sử chưa có trên Cloud. Bản Local sẽ được giữ nguyên; không xóa dữ liệu trình duyệt cho đến khi đối chiếu xong.</p>
       {canManage&&<button type="button" className="primary-btn" onClick={()=>void importLegacyData()} disabled={importingLegacy}>{importingLegacy?'Đang chuyển dữ liệu…':'Chuyển dữ liệu cũ lên Cloud'}</button>}
     </section>}
+    {notice&&<div className="maintenance-success-notice">{notice}</div>}
     <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
       {tab==='requests'?<>
         <div className="maintenance-toolbar"><label>Trạng thái <select value={filter} onChange={event=>setFilter(event.target.value as typeof filter)}><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="done">Hoàn thành</option></select></label></div>
