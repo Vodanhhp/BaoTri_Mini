@@ -722,6 +722,13 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Xác nhận GitHub Actions tại commit mã nguồn `08a718cd`: Build/Test thành công, 236/236 tests PASS; Pages build và deploy thành công. Chưa thực hiện browser E2E/kiểm tra trực tiếp PC-mobile.
 
 
+## 26/11/2026 – tạo Checklist trực tiếp từ thiết bị và từ phân hệ Checklist
+- Bổ sung nút **Tạo Checklist cho thiết bị này** trong hồ sơ thiết bị. Khi chọn, ứng dụng chuyển sang phân hệ Checklist và mở sẵn hộp thoại tạo mới với thiết bị được chọn.
+- Trong phân hệ Checklist, Admin có thể tạo mẫu cho một thiết bị đã khai báo bằng danh sách chọn; hoặc chọn đối tượng khác để nhập tên hạ tầng, khu vực hay hệ thống.
+- Mẫu gắn với thiết bị lưu `targetAssetId` ở cấp định nghĩa để nhận diện đúng đối tượng; từng lượt và kết quả vẫn lưu nhãn đối tượng dạng snapshot riêng, không ghi vào lịch sử thiết bị hoặc lịch sử bảo trì.
+- Chu kỳ, giờ, người phụ trách và nội dung Checklist do Admin cấu hình độc lập. Không đọc, sao chép hoặc kế thừa `Asset.cycle` hay chu kỳ bảo trì.
+- Không thay đổi bảng lịch sử, không nâng version Dexie, không thay đổi Supabase/Auth/RLS/Storage/Cloud Sync. Chưa kiểm thử browser PC/mobile; cần chờ CI Build/Test và Pages Deploy.
+
 ## 26/11/2026 – làm rõ trạng thái mẫu và chuyển trình sửa Checklist thành hộp thoại
 - Giữ nguyên Tổng quan theo xác nhận người dùng: bốn kỳ Ngày/Tuần/Tháng/Quý và khu vực Công việc nên làm hôm nay.
 - Phân biệt bật/tắt **nhóm mẫu khởi tạo** với trạng thái từng mẫu tự tạo. Trên mẫu tự tạo, đổi nhãn thành **Tạm ngừng lịch / Tiếp tục lịch**: tạm ngừng việc sinh các lượt kiểm tra mới từ mẫu; không xóa kết quả đã hoàn thành và lịch sử. Bổ sung phần giải thích trực tiếp trong tab Quản lý mẫu.
