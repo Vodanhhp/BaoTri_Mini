@@ -619,7 +619,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 <div className="top-actions">
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
                   {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void claimTask(task)}>Nhận việc</button>}
-                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
+                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(()=>refresh())}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
                   {!groupTask&&Boolean(definition?.targetAssetId)&&<small>Checklist thiết bị: quét mã QR trên tem để thực hiện</small>}
                   {!groupTask&&!definition?.targetAssetId&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
