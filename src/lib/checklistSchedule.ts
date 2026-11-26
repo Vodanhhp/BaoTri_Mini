@@ -21,7 +21,7 @@ const addMonthsClamped = (anchor: Date, monthOffset: number) => {
 }
 
 const scheduledDates = (definition: ChecklistDefinition, end: Date): Date[] => {
-  const anchor = new Date(definition.createdAt)
+  const anchor = new Date(definition.scheduleStartedAt || definition.createdAt)
   if (Number.isNaN(anchor.getTime())) return []
   const frequency: ChecklistFrequency = definition.frequency
   const dates: Date[] = []
@@ -55,11 +55,17 @@ const scheduledDates = (definition: ChecklistDefinition, end: Date): Date[] => {
 export async function ensureChecklistOccurrences(organizationId: string) {
   if (!organizationId) return
   const definitions = await db.checklistDefinitions.where('organizationId').equals(organizationId).toArray()
-  const active = definitions.filter(item => item.enabled && item.frequency !== 'Linh hoạt')
+  const settings = await db.checklistCategorySettings.where('organizationId').equals(organizationId).toArray()
+  const active = definitions.filter(item => item.enabled && item.frequency !== 'Linh hoạt' && (item.source !== 'starter' || settings.some(setting => setting.categoryKey === item.categoryKey && setting.enabled)))
+  const activeIds = new Set(active.map(item => item.id))
   const current = new Date()
   const horizon = new Date(current.getFullYear() + 1, current.getMonth(), current.getDate(), 23, 59, 59, 999)
   const existing = await db.checklistTasks.where('organizationId').equals(organizationId).toArray()
-  const known = new Set(existing.map(item => item.id))
+  const currentById = new Map(active.map(item => [item.id, item]))
+  const obsolete = existing.filter(task => task.status !== 'Hoàn thành' && new Date(task.dueAt).getTime() >= current.getTime() && (!activeIds.has(task.checklistId) || (currentById.has(task.checklistId) && currentById.get(task.checklistId)!.frequency !== task.frequency)))
+  if (obsolete.length) await db.checklistTasks.bulkDelete(obsolete.map(item => item.id))
+  const retained = existing.filter(item => !obsolete.some(row => row.id === item.id))
+  const known = new Set(retained.map(item => item.id))
   const additions: ChecklistTask[] = []
 
   for (const definition of active) {
