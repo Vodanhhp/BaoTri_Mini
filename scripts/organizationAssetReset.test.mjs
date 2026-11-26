@@ -216,3 +216,16 @@ test('reset request and Superadmin confirmation explicitly describe full invento
  assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\/xuất\/điều chỉnh/)
  assert.match(ui,/xóa sạch toàn bộ thiết bị và vật tư Cloud\/Local/)
 })
+
+
+test('approved organization reset also removes all organization-scoped Checklist data locally',async()=>{
+ const source=await read('../src/lib/assetReset.ts')
+ for(const store of ['checklistCategorySettings','checklistDefinitions','checklistRuns','checklistTasks']){
+  assert.match(source,new RegExp('db\\.'+store+'\\.where\\(\\'organizationId\\'\\)\\.equals\\(organizationId\\)\\.delete\\(\\)'))
+  assert.match(source,new RegExp('db\\.'+store))
+ }
+ assert.match(source,/Checklist is device-local/)
+ const tenant=await read('../src/PlanChangePanels.tsx')
+ assert.match(tenant,/mẫu, lịch và lịch sử Checklist/)
+ assert.match(tenant,/toàn bộ cấu hình\/mẫu\/lịch\/lịch sử Checklist/)
+})
