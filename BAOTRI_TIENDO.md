@@ -700,3 +700,13 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Chỉ Checklist **Linh hoạt** mới cho phép thực hiện trực tiếp từ mẫu.
 - Bổ sung source tests cho việc ẩn mẫu tắt và luồng thực hiện theo task định kỳ.
 - Chưa xác nhận CI, GitHub Pages deploy hoặc kiểm thử trình duyệt thực tế; không thay đổi Supabase và không đụng PR #21.
+
+
+## Checklist – sửa lỗi mẫu và lượt định kỳ còn hiển thị sau khi hoàn thành (26/11/2026)
+- Phân biệt khu vực **Mẫu Checklist đang áp dụng** với **Công việc cần thực hiện**; giải thích mẫu được giữ để tái sử dụng theo chu kỳ, còn lượt hoàn thành phải biến mất khỏi danh sách công việc.
+- Danh sách mẫu chỉ hiển thị định nghĩa đang bật; định nghĩa khởi tạo thuộc nhóm đã tắt không còn xuất hiện.
+- Bỏ thao tác thực hiện trực tiếp từ mẫu định kỳ. Lượt Ngày/Tuần/Tháng/Quý chỉ được thực hiện từ task tương ứng để lưu kết quả và đóng đúng task. Mẫu Linh hoạt vẫn có thể thực hiện trực tiếp.
+- Bổ sung đối chiếu các kết quả Checklist đã lưu trước đây với task cùng Checklist và cùng kỳ (Ngày/Tuần/Tháng/Quý/Năm), trong giới hạn 24 giờ tính từ giờ đến hạn. Task được đối chiếu chuyển Hoàn thành và ẩn khỏi danh sách; task đã Không Checklist không bị hồi tố thành hoàn thành.
+- Bổ sung source tests cho lọc mẫu tắt, chỉ chạy mẫu Linh hoạt trực tiếp và đối chiếu kết quả lịch sử với task.
+- Đã cập nhật mã trực tiếp trên main. Chưa xác nhận CI/build/deploy hoặc chạy browser E2E do công cụ hiện tại không cung cấp danh sách workflow push runs; không tuyên bố website đã nhận bản mới.
+- Không thay đổi Supabase, Cloud data, Auth, RLS, Storage, migrations; PR #21 vẫn nguyên trạng.
