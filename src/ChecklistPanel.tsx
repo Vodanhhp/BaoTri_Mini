@@ -1,0 +1,235 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
+import ExcelJS from 'exceljs'
+import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun } from './db'
+
+type Props = {
+  organizationId: string
+  organizationName: string
+  userLabel: string
+  canView: boolean
+  canManage: boolean
+  assets: Asset[]
+}
+
+const FREQUENCIES: ChecklistFrequency[] = ['Hàng ngày','Hàng tuần','Hàng tháng','Hàng quý','Hàng năm','Linh hoạt']
+const CATEGORIES: Array<{key:ChecklistCategoryKey;label:string;description:string;icon:string;questions:string[]}> = [
+  {key:'infrastructure',label:'Cơ sở hạ tầng',description:'Khu vực, kết cấu, cửa, mái, lối đi và điều kiện chung.',icon:'🏢',questions:['Khu vực kiểm tra sạch sẽ, thông thoáng và không có vật cản?','Tường, trần, mái, cửa và nền không có dấu hiệu hư hỏng bất thường?','Lối đi và cửa thoát hiểm không bị che chắn?']},
+  {key:'electrical',label:'Hệ thống điện',description:'Tủ điện, nguồn cấp, dây dẫn và điều kiện an toàn điện.',icon:'⚡',questions:['Tủ điện đóng kín, có nhãn nhận diện và không có dấu hiệu bất thường?','Không phát hiện mùi khét, tiếng kêu, phát nhiệt hoặc phóng điện bất thường?','Khu vực trước tủ điện khô ráo, thông thoáng và không bị che chắn?']},
+  {key:'water',label:'Hệ thống nước',description:'Đường ống, van, bơm, bể chứa và dấu hiệu rò rỉ.',icon:'💧',questions:['Đường ống, van và các mối nối không có dấu hiệu rò rỉ?','Áp lực/lưu lượng nước ở trạng thái bình thường?','Khu vực bơm và bể chứa sạch sẽ, không có dấu hiệu bất thường?']},
+  {key:'fire',label:'Phòng cháy chữa cháy',description:'Lối thoát nạn, phương tiện PCCC và dấu hiệu mất an toàn.',icon:'🧯',questions:['Lối thoát nạn và đường tiếp cận phương tiện chữa cháy thông thoáng?','Bình chữa cháy và phương tiện PCCC ở đúng vị trí, dễ tiếp cận?','Thiết bị/đèn báo PCCC không có dấu hiệu hư hỏng hoặc cảnh báo bất thường?']}
+]
+const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(item=>[item.key,item.label])) as Record<ChecklistCategoryKey,string>
+const blankSetting = (organizationId:string,key:ChecklistCategoryKey):ChecklistCategorySetting => ({id:organizationId+':'+key,organizationId,categoryKey:key,enabled:false,frequency:key==='infrastructure'?'Hàng tuần':'Hàng ngày',assignee:'Admin',updatedAt:now()})
+const dueText = (frequency:ChecklistFrequency) => frequency==='Linh hoạt'?'Không có lịch cố định':frequency
+const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
+const dateOnly = () => new Date().toLocaleDateString('en-CA')
+const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
+
+export default function ChecklistPanel({organizationId,organizationName,userLabel,canView,canManage,assets}:Props) {
+  const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
+  const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
+  const [runs,setRuns]=useState<ChecklistRun[]>([])
+  const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
+  const [loading,setLoading]=useState(true)
+  const [error,setError]=useState('')
+  const [notice,setNotice]=useState('')
+  const [editing,setEditing]=useState<ChecklistDefinition|null>(null)
+  const [running,setRunning]=useState<ChecklistDefinition|null>(null)
+  const [answers,setAnswers]=useState<Record<string,{result:'Đạt'|'Không đạt'|'Không áp dụng'|'';note:string}>>({})
+  const [repairCreated,setRepairCreated]=useState(false)
+  const [noRepairReason,setNoRepairReason]=useState('')
+  const [title,setTitle]=useState('')
+  const [target,setTarget]=useState('')
+  const [category,setCategory]=useState<ChecklistCategoryKey|'equipment'|'custom'>('custom')
+  const [frequency,setFrequency]=useState<ChecklistFrequency>('Hàng tháng')
+  const [questionText,setQuestionText]=useState('')
+  const [assignee,setAssignee]=useState('Admin')
+  const [search,setSearch]=useState('')
+
+  const refresh=async()=>{
+    setLoading(true)
+    try{
+      const [settingRows,definitionRows,runRows]=await Promise.all([
+        db.checklistCategorySettings.where('organizationId').equals(organizationId).toArray(),
+        db.checklistDefinitions.where('organizationId').equals(organizationId).toArray(),
+        db.checklistRuns.where('organizationId').equals(organizationId).toArray()
+      ])
+      const merged=CATEGORIES.map(item=>settingRows.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
+      setSettings(merged);setDefinitions(definitionRows.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
+      setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    finally{setLoading(false)}
+  }
+  useEffect(()=>{void refresh()},[organizationId])
+
+  const enabledCount=settings.filter(item=>item.enabled).length
+  const todayRuns=runs.filter(item=>item.completedAt.slice(0,10)===dateOnly())
+  const visibleDefinitions=useMemo(()=>definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))),[definitions,search])
+  const suggestions=useMemo(()=>{
+    const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
+    const rules=[
+      {match:/máy nén khí|máy sấy khí|khí nén/i,title:'Kiểm tra hệ thống khí nén',questions:['Kiểm tra áp suất làm việc và áp suất cài đặt?','Kiểm tra rò rỉ khí tại đường ống và đầu nối?','Kiểm tra mức dầu, nhiệt độ và tiếng ồn bất thường?']},
+      {match:/động cơ điện|motor/i,title:'Kiểm tra động cơ điện',questions:['Kiểm tra tiếng ồn, rung động và nhiệt độ vỏ động cơ?','Kiểm tra tình trạng đấu nối và cáp cấp nguồn?','Kiểm tra dấu hiệu rò dầu, bụi bẩn hoặc hư hỏng cơ khí?']},
+      {match:/máy bơm/i,title:'Kiểm tra máy bơm',questions:['Kiểm tra áp suất/lưu lượng và tiếng ồn khi vận hành?','Kiểm tra rò rỉ tại phớt, mặt bích và đường ống?','Kiểm tra rung động, nhiệt độ ổ bi và tình trạng chân đế?']},
+      {match:/máy phát điện/i,title:'Kiểm tra máy phát điện',questions:['Kiểm tra mức nhiên liệu, dầu bôi trơn và nước làm mát?','Kiểm tra ắc quy, bộ sạc và tình trạng rò rỉ?','Kiểm tra thông số điện áp/tần số khi chạy thử theo quy trình đơn vị?']}
+    ]
+    return rules.flatMap(rule=>{
+      const matched=active.filter(asset=>rule.match.test(asset.category+' '+asset.name))
+      return matched.length?[{...rule,target:matched.map(asset=>asset.name+' ('+asset.code+')').join(', '),count:matched.length}]:[]
+    })
+  },[assets])
+
+  const saveSetting=async(key:ChecklistCategoryKey,patch:Partial<ChecklistCategorySetting>)=>{
+    if(!canManage)return
+    const current=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
+    const next={...current,...patch,updatedAt:now()}
+    await db.checklistCategorySettings.put(next)
+    if(patch.frequency){
+      const defs=definitions.filter(item=>item.categoryKey===key)
+      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{frequency:patch.frequency,updatedAt:now()})))
+    }
+    await refresh()
+  }
+  const createDefinition=async(data:{title:string;targetLabel:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
+    if(!canManage)return
+    if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
+    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now()}
+    await db.checklistDefinitions.add(record)
+    await refresh()
+    return record
+  }
+  const toggleCategory=async(key:ChecklistCategoryKey)=>{
+    const setting=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
+    const enable=!setting.enabled
+    await saveSetting(key,{enabled:enable})
+    if(enable&&!definitions.some(item=>item.categoryKey===key)){
+      const meta=CATEGORIES.find(item=>item.key===key)!
+      await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,questions:makeQuestions(meta.questions),source:'starter'})
+      setNotice('Đã bật nhóm gợi ý. Hãy rà soát nội dung và chu kỳ trước khi áp dụng chính thức.')
+    }
+    await refresh()
+  }
+  const openNew=()=>{setEditing(null);setTitle('');setTarget('');setCategory('custom');setFrequency('Hàng tháng');setAssignee('Admin');setQuestionText('');setTab('builder')}
+  const openEdit=(item:ChecklistDefinition)=>{
+    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setCategory(item.categoryKey);setFrequency(item.frequency);setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setTab('builder')
+  }
+  const saveEditor=async(event:FormEvent)=>{
+    event.preventDefault()
+    if(!canManage)return
+    try{
+      const questions=makeQuestions(questionText.split('\n').filter(line=>line.trim()))
+      if(editing){
+        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,assignee,questions,updatedAt:now()})
+        await refresh();setEditing(null);setNotice('Đã cập nhật Checklist.')
+      }else{
+        await createDefinition({title,targetLabel:target,categoryKey:category,frequency,questions,source:category==='equipment'?'equipment-suggestion':'custom'})
+        setTitle('');setTarget('');setQuestionText('');setNotice('Đã tạo Checklist.')
+      }
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+  }
+  const startRun=(item:ChecklistDefinition)=>{
+    setRunning(item);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
+    setRepairCreated(false);setNoRepairReason('');setError('')
+  }
+  const completeRun=async(event:FormEvent)=>{
+    event.preventDefault()
+    if(!running||!canManage)return
+    const missing=running.questions.filter(q=>q.required&&!answers[q.id]?.result)
+    if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
+    const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
+    if(failed&&!repairCreated&&!noRepairReason.trim()){setError('Checklist có mục Không đạt. Hãy ghi lý do chưa tạo Phiếu yêu cầu sửa chữa.');return}
+    const record:ChecklistRun={
+      id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
+      targetLabel:running.targetLabel,frequency:running.frequency,
+      answers:running.questions.map(q=>({questionId:q.id,question:q.label,result:answers[q.id]?.result as 'Đạt'|'Không đạt'|'Không áp dụng',note:answers[q.id]?.note||''})),
+      outcome:failed?'Không đạt':'Đạt',inspector:userLabel,completedAt:now(),repairRequestCreated:failed&&repairCreated,noRepairReason:failed&&!repairCreated?noRepairReason.trim():undefined,
+      checklistSnapshot:running.questions.map(q=>({...q}))
+    }
+    await db.checklistRuns.add(record)
+    await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:now()})
+    setRunning(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
+  }
+  const exportExcel=async()=>{
+    const workbook=new ExcelJS.Workbook();const sheet=workbook.addWorksheet('Bao cao Checklist')
+    sheet.columns=[{header:'Thời gian',key:'time',width:22},{header:'Checklist',key:'title',width:30},{header:'Đối tượng',key:'target',width:28},{header:'Kết quả',key:'outcome',width:16},{header:'Người kiểm tra',key:'inspector',width:24},{header:'Phiếu sửa chữa',key:'repair',width:20},{header:'Lý do chưa tạo phiếu',key:'reason',width:32}]
+    sheet.addRows(runs.map(row=>({time:dateTime(row.completedAt),title:row.checklistTitle,target:row.targetLabel,outcome:row.outcome,inspector:row.inspector,repair:row.repairRequestCreated?'Đã tạo':'Không tạo',reason:row.noRepairReason||''})))
+    sheet.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};sheet.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B5C'}}
+    sheet.views=[{state:'frozen',ySplit:1}];sheet.autoFilter={from:'A1',to:'G1'}
+    const buffer=await workbook.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
+    const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download='Bao-cao-Checklist.xlsx';anchor.click();URL.revokeObjectURL(url)
+  }
+
+  if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
+  return <div className="checklist-workspace">
+    <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
+    <div className="checklist-tabs">
+      <button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><ClipboardCheck size={15}/> Tổng quan</button>
+      <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Checklist Builder</button>
+      <button className={tab==='history'?'active':''} onClick={()=>setTab('history')}><History size={15}/> Lịch sử</button>
+      <button className={tab==='reports'?'active':''} onClick={()=>setTab('reports')}><BarChart3 size={15}/> Báo cáo</button>
+    </div>
+    {error&&<div className="checklist-alert error">{error}<button onClick={()=>setError('')}><X size={14}/></button></div>}
+    {notice&&<div className="checklist-alert success">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+    {loading?<div className="panel">Đang tải dữ liệu Checklist…</div>:<>
+      {tab==='overview'&&<>
+        <div className="checklist-stat-grid">
+          <div className="stat-card"><div><small>Nhóm khởi tạo đã bật</small><strong>{enabledCount}/4</strong><span>Admin tự chọn phạm vi</span></div></div>
+          <div className="stat-card"><div><small>Checklist đang hoạt động</small><strong>{definitions.filter(item=>item.enabled).length}</strong><span>Có thể thực hiện</span></div></div>
+          <div className="stat-card"><div><small>Đã kiểm tra hôm nay</small><strong>{todayRuns.length}</strong><span>Kết quả đã lưu</span></div></div>
+          <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div></div>
+        </div>
+        <section className="panel checklist-section">
+          <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Bật những nhóm phù hợp với đơn vị. Đây là gợi ý cấu hình, không phải kết luận về nghĩa vụ pháp lý.</p></div></div>
+          <div className="checklist-category-grid">{CATEGORIES.map(item=>{
+            const setting=settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key)
+            return <article className={'checklist-category-card'+(setting.enabled?' enabled':'')} key={item.key}>
+              <div className="checklist-category-top"><span className="checklist-category-icon">{item.icon}</span><span className={'checklist-enabled-tag'+(setting.enabled?' on':'')}>{setting.enabled?'Đang bật':'Chưa bật'}</span></div>
+              <h3>{item.label}</h3><p>{item.description}</p>
+              <label className="checklist-inline-field"><span>Chu kỳ gợi ý</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency})}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+              <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void toggleCategory(item.key)}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
+            </article>
+          })}</div>
+        </section>
+        <section className="panel checklist-section">
+          <div className="panel-head"><div><h2>Danh sách Checklist</h2><p>Mỗi Checklist có đối tượng, chu kỳ và biểu mẫu riêng.</p></div><div className="top-actions">{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div></div>
+          <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm Checklist hoặc đối tượng kiểm tra…"/></div>
+          <div className="checklist-definition-list">{visibleDefinitions.map(item=><article className="checklist-definition-row" key={item.id}>
+            <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.enabled?'Đang hoạt động':'Đã tắt'}</span></div>
+            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canManage}>Thực hiện</button>}</div>
+          </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
+        </section>
+        {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Chỉ đề xuất một số loại thiết bị quan trọng đã có trong danh mục; Admin quyết định thêm hay bỏ qua.</p></div></div>
+          {suggestions.map((item,index)=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
+        </section>}
+      </>}
+      {tab==='builder'&&<section className="panel checklist-section">
+        <div className="panel-head"><div><h2>{editing?'Chỉnh sửa Checklist':'Checklist Builder'}</h2><p>Tạo biểu mẫu từ các nhóm gợi ý, loại thiết bị hoặc nội dung riêng của doanh nghiệp.</p></div>{editing&&<button className="soft-btn" onClick={()=>setEditing(null)}>Checklist mới</button>}</div>
+        {!canManage?<p>Tài khoản chỉ có quyền xem cấu hình.</p>:<form className="checklist-builder-form" onSubmit={saveEditor}>
+          <label className="field">Tên Checklist *<input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="Ví dụ: Kiểm tra máy nén khí"/></label>
+          <label className="field">Đối tượng kiểm tra *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Tên hệ thống, khu vực hoặc loại thiết bị"/></label>
+          <label className="field">Nhóm<input value={category} onChange={event=>setCategory(event.target.value as typeof category)} list="checklist-category-options" /><datalist id="checklist-category-options">{CATEGORIES.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}<option value="equipment">Thiết bị</option><option value="custom">Tùy chỉnh</option></datalist></label>
+          <label className="field">Chu kỳ<select value={frequency} onChange={event=>setFrequency(event.target.value as ChecklistFrequency)}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+          <label className="field">Người phụ trách<input value={assignee} onChange={event=>setAssignee(event.target.value)} placeholder="Mặc định: Admin"/></label>
+          <label className="field full-field">Nội dung kiểm tra *<textarea required rows={7} value={questionText} onChange={event=>setQuestionText(event.target.value)} placeholder={'Mỗi dòng là một nội dung kiểm tra.\nVí dụ: Kiểm tra rò rỉ dầu?\nKiểm tra tiếng ồn bất thường?'} /></label>
+          <div className="checklist-builder-note"><ShieldCheck size={16}/> Thay đổi biểu mẫu chỉ áp dụng cho lần kiểm tra sau. Kết quả cũ giữ nguyên nội dung đã thực hiện.</div>
+          <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setEditing(null);setTitle('');setTarget('');setQuestionText('')}}>Làm mới</button><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu thay đổi':'Tạo Checklist'}</button></div>
+        </form>}
+      </section>}
+      {tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử kiểm tra</h2><p>Lưu độc lập theo tổ chức, không phụ thuộc hồ sơ hoặc lịch sử thiết bị.</p></div></div>
+        <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><button className="soft-btn" onClick={()=>window.print()}>In A4</button><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.outcome==='Không đạt'&&<p>{row.repairRequestCreated?'Đã đánh dấu có tạo Phiếu yêu cầu sửa chữa.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
+      </section>}
+      {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và quyết định tạo Phiếu yêu cầu sửa chữa.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={!runs.length}><Download size={15}/> Xuất Excel</button></div>
+        <div className="checklist-report-summary"><div><small>Tổng lượt kiểm tra</small><b>{runs.length}</b></div><div><small>Đạt</small><b>{runs.filter(row=>row.outcome==='Đạt').length}</b></div><div><small>Không đạt</small><b>{runs.filter(row=>row.outcome==='Không đạt').length}</b></div><div><small>Đã tạo Phiếu YC</small><b>{runs.filter(row=>row.repairRequestCreated).length}</b></div><div><small>Không tạo Phiếu YC</small><b>{runs.filter(row=>row.outcome==='Không đạt'&&!row.repairRequestCreated).length}</b></div></div>
+        <div className="checklist-report-table-wrap"><table className="table-standard"><thead><tr><th>Thời gian</th><th>Checklist</th><th>Đối tượng</th><th>Kết quả</th><th>Người kiểm tra</th><th>Phiếu YC sửa chữa</th></tr></thead><tbody>{runs.map(row=><tr key={row.id}><td>{dateTime(row.completedAt)}</td><td>{row.checklistTitle}</td><td>{row.targetLabel}</td><td>{row.outcome}</td><td>{row.inspector}</td><td>{row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo: '+row.noRepairReason:'Không phát sinh'}</td></tr>)}</tbody></table></div>
+      </section>}
+    </>}
+    {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setRunning(null)}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" onClick={()=>setRunning(null)}><X size={17}/></button></div>
+      <form onSubmit={completeRun} className="checklist-run-form">
+        {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Không áp dụng'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
+        {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Đã tạo Phiếu yêu cầu sửa chữa riêng</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Phiếu Checklist vẫn lưu kết quả Không đạt. Việc đánh dấu này không tự tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa.</small></div>}
+        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>setRunning(null)}>Hủy</button><button type="submit" className="primary-btn"><Check size={15}/> Lưu kết quả</button></div>
+      </form>
+    </section></div>}
+  </div>
+}
