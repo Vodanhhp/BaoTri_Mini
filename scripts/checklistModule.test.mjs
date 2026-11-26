@@ -95,7 +95,7 @@ test('optional daily suggestions can be executed but never create scheduled over
   assert.match(panel, /Bỏ qua không bị tính quá hạn/)
   assert.match(panel, /frequency:'Linh hoạt'/)
   assert.match(panel, /Thực hiện ngay/)
-  assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
+  assert.match(schedule, /item\.frequency!=='Linh hoạt'/)
 })
 
 
