@@ -124,8 +124,8 @@ function mapTask(row: Row, organizationId: string, events: Row[], definitions: C
     assignmentEvents,status:row.status as ChecklistTask['status'],
     definitionSnapshot:{
       categoryKey:String(snapshot.categoryKey||definition?.categoryKey||'custom') as ChecklistDefinition['categoryKey'],
-      targetKind:(snapshot.targetKind||(snapshot.targetAssetId||definition?.targetAssetId?'equipment':'system')) as 'equipment'|'system',
-      ...((snapshot.targetAssetId||definition?.targetAssetId)?{targetAssetId:String(snapshot.targetAssetId||definition?.targetAssetId)}:{}),
+      targetKind:(snapshot.targetKind||snapshot.target_kind||(snapshot.targetAssetId||snapshot.target_asset_id||definition?.targetAssetId?'equipment':'system')) as 'equipment'|'system',
+      ...((snapshot.targetAssetId||snapshot.target_asset_id||definition?.targetAssetId)?{targetAssetId:String(snapshot.targetAssetId||snapshot.target_asset_id||definition?.targetAssetId)}:{}),
       questions:mapQuestionRows(snapshot.questions||definition?.questions)
     },
     ...(row.completed_at?{completedAt:String(row.completed_at)}:{}),...(row.run_id?{runId:String(row.run_id)}:{}),
