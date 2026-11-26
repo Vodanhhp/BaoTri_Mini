@@ -10,7 +10,7 @@ export type ChecklistCategorySetting = {
 }
 export type ChecklistDefinition = {
   id: string; organizationId: string; title: string; categoryKey: ChecklistCategoryKey | 'equipment' | 'custom'
-  targetLabel: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string; executionTime?: string
+  targetLabel: string; targetAssetId?: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string; executionTime?: string
   questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
   createdAt: string; updatedAt: string; lastCompletedAt?: string; scheduleStartedAt?: string
 }
