@@ -182,8 +182,8 @@ test('Disabling a Checklist removes all uncompleted tasks even when their due ti
 test('Checklist templates remain manageable when disabled and can be edited from the management tab',()=>{
   assert.ok(panel.includes('<h2>Quản lý mẫu Checklist</h2>'))
   assert.match(panel,/definitions\.filter\(item=>!search\.trim\(\)/)
-  assert.match(panel,/item\.enabled\?'Tắt mẫu':'Bật mẫu'/)
-  assert.match(panel,/showBuilderForm&&<section className="panel checklist-section"/)
+  assert.match(panel,/item\.enabled\?'Tạm ngừng lịch':'Tiếp tục lịch'/)
+  assert.match(panel,/showBuilderForm&&<div className="checklist-modal-backdrop"/);assert.match(panel,/role="dialog" aria-modal="true"/)
   assert.match(panel,/Sửa nội dung Checklist/)
   assert.match(panel,/\+ Thêm nội dung kiểm tra/)
   assert.match(panel,/questionText\.split\('\\n'\)/)
@@ -211,7 +211,17 @@ test('Checklist overview has one optional suggestion area and template editing i
   assert.match(panel,/Quản lý mẫu Checklist/)
   assert.match(panel,/onClick=\{\(\)=>openEdit\(item\)\}>Sửa nội dung/)
   assert.match(panel,/Cấu hình nhóm mẫu/)
-  assert.match(panel,/showBuilderForm&&<section/)
+  assert.match(panel,/showBuilderForm&&<div className="checklist-modal-backdrop"/)
   assert.ok(panel.includes("current?current+'\\n':''"))
   assert.match(panel,/lines\.splice\(index,1\)/)
+})
+
+
+test('Checklist template editor opens in a separate accessible modal and explains schedule pause',()=>{
+  assert.match(panel,/className="checklist-modal-backdrop"/)
+  assert.match(panel,/className="checklist-editor-modal" role="dialog" aria-modal="true"/)
+  assert.match(panel,/Trạng thái lịch là gì\?/)
+  assert.match(panel,/không sinh lượt mới từ mẫu này/)
+  assert.match(panel,/Tạm ngừng lịch/)
+  assert.match(panel,/Tiếp tục lịch/)
 })
