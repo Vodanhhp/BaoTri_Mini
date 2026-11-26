@@ -80,11 +80,11 @@ function mapTask(row: Row, organizationId: string, events: Row[], definitions: C
   const taskEvents=events.filter(event=>event.task_id===row.id).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at)))
   const claimEvents=taskEvents.filter(event=>event.event_type==='Nhận việc')
   const latestClaim=claimEvents[claimEvents.length-1]
-  const assignmentEvents=taskEvents.map(event=>({
+  const assignmentEvents=taskEvents.filter(event=>event.event_type!=='Hoàn thành').map(event=>({
     action:String(event.event_type) as 'Nhận việc'|'Trả lại nhóm'|'Hủy thực hiện',
     actor:String(event.actor_label||''),actorUserId:event.actor_user_id?String(event.actor_user_id):undefined,
     at:String(event.occurred_at)
-  })).filter(event=>event.action!=='Hoàn thành')
+  }))
   return {
     id:String(row.id),organizationId,checklistId:String(row.definition_id),title:String(snapshot.title||definition?.title||''),
     targetLabel:String(snapshot.targetLabel||definition?.targetLabel||''),frequency:(snapshot.frequency||definition?.frequency) as ChecklistFrequency,
@@ -114,11 +114,11 @@ function mapRun(row: Row, organizationId: string, events: Row[]): ChecklistRun {
     targetLabel:String(row.target_label),frequency:row.frequency as ChecklistFrequency,answers,
     outcome:row.outcome as ChecklistRun['outcome'],inspector:String(row.inspector),completedAt:String(row.completed_at),
     repairRequestCreated:Boolean(row.repair_request_created),...(row.no_repair_reason?{noRepairReason:String(row.no_repair_reason)}:{}),
-    assignmentHistory:taskEvents.map(event=>({
+    assignmentHistory:taskEvents.filter(event=>event.event_type!=='Hoàn thành').map(event=>({
       action:String(event.event_type) as 'Nhận việc'|'Trả lại nhóm'|'Hủy thực hiện',
       actor:String(event.actor_label||''),actorUserId:event.actor_user_id?String(event.actor_user_id):undefined,
       at:String(event.occurred_at)
-    })).filter(event=>event.action!=='Hoàn thành'),
+    })),
     checklistSnapshot:mapQuestionRows(row.checklist_snapshot)
   }
 }
@@ -159,7 +159,7 @@ export async function saveChecklistDefinition(
   return mapDefinition(data as Row,organizationId)
 }
 export async function loadChecklistCloud(
-  client: SupabaseClient,organizationId: string,userId: string
+  client: SupabaseClient,organizationId: string,canManageOccurrences = false
 ): Promise<CloudBundle> {
   assertOnline()
   const [settingData,definitionData]=await Promise.all([
@@ -174,12 +174,12 @@ export async function loadChecklistCloud(
   const definitions=asRows(definitionData).map(row=>mapDefinition(row,organizationId))
   const active=definitions.filter(def=>def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
   const horizon=new Date();horizon.setFullYear(horizon.getFullYear()+1);horizon.setHours(23,59,59,999)
-  const occurrenceInputs=active.flatMap(def=>occurrenceDates(def,horizon).map(d=>({
-    definition_id:def.id,due_at:d.toISOString(),due_date:dateKey(d)
-  })))
-  for(let i=0;i<occurrenceInputs.length;i+=PAGE_SIZE){
-    const batch=occurrenceInputs.slice(i,i+PAGE_SIZE)
-    await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:batch}),'Tạo lịch Checklist trên Cloud')
+  if(canManageOccurrences){
+    const occurrenceInputs=active.flatMap(def=>occurrenceDates(def,horizon).map(d=>({definition_id:def.id,due_at:d.toISOString(),due_date:dateKey(d)})))
+    for(let i=0;i<occurrenceInputs.length;i+=PAGE_SIZE){
+      const batch=occurrenceInputs.slice(i,i+PAGE_SIZE)
+      await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:batch}),'Tạo lịch Checklist trên Cloud')
+    }
   }
   const [taskData,runData,eventData]=await Promise.all([
     checked(client.from('checklist_tasks').select('*').eq('organization_id',organizationId).order('due_at'),'Tải lịch công việc Checklist'),
