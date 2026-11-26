@@ -720,3 +720,11 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Không thay đổi mô hình Local-first, lịch sử độc lập hoặc dữ liệu Supabase. Cần chờ CI Build/Test và Pages Deploy; chưa xác nhận thao tác trình duyệt PC/mobile.
 
 - Xác nhận GitHub Actions tại commit mã nguồn `08a718cd`: Build/Test thành công, 236/236 tests PASS; Pages build và deploy thành công. Chưa thực hiện browser E2E/kiểm tra trực tiếp PC-mobile.
+
+
+## 26/11/2026 – làm rõ trạng thái mẫu và chuyển trình sửa Checklist thành hộp thoại
+- Giữ nguyên Tổng quan theo xác nhận người dùng: bốn kỳ Ngày/Tuần/Tháng/Quý và khu vực Công việc nên làm hôm nay.
+- Phân biệt bật/tắt **nhóm mẫu khởi tạo** với trạng thái từng mẫu tự tạo. Trên mẫu tự tạo, đổi nhãn thành **Tạm ngừng lịch / Tiếp tục lịch**: tạm ngừng việc sinh các lượt kiểm tra mới từ mẫu; không xóa kết quả đã hoàn thành và lịch sử. Bổ sung phần giải thích trực tiếp trong tab Quản lý mẫu.
+- Mẫu thuộc nhóm khởi tạo không có nút tạm ngừng riêng; bật/tắt nhóm tại cấu hình nhóm khởi tạo là nguồn điều khiển.
+- Nhấn **Sửa nội dung** hoặc **Tạo Checklist** mở hộp thoại riêng (modal) có nền phủ, tiêu đề, đóng/hủy, form chỉnh tên/đối tượng/nhóm/chu kỳ/giờ/người phụ trách và thêm/sửa/xóa từng mục. Có responsive PC/mobile.
+- Chưa thay đổi Supabase. Chờ CI Build/Test và Pages Deploy; chưa xác nhận browser E2E.
