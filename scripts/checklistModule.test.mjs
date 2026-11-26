@@ -319,5 +319,6 @@ test('Checklist print uses the equipment A4 print-sheet wrapper and full structu
  for(const label of ['I. THÔNG TIN KIỂM TRA','II. NỘI DUNG VÀ KẾT QUẢ KIỂM TRA','Ghi chú / thông số đo','Người xác nhận','Mã phiếu'])assert.ok(source.includes(label),label)
  assert.ok(styles.includes('#root .app-shell .checklist-print-sheet *{visibility:visible!important}'))
  assert.ok(styles.includes('#root .app-shell .checklist-workspace>.checklist-print-sheet{display:block!important;visibility:visible!important'))
+ assert.match(styles,/\.checklist-print-sheet \.checklist-print-table thead\{display:table-header-group\}/)
  assert.match(styles,/\.checklist-print-report thead\{display:table-header-group!important\}/)
 })
