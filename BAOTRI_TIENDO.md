@@ -878,3 +878,15 @@ Kiểm tra:
 - Chưa kiểm thử E2E UI với tài khoản Admin thực tế trên trình duyệt.
 - Chưa áp dụng bất kỳ migration Checklist nào lên Production; PR #75 vẫn Draft, chưa merge.
 - Giao diện Cloud chưa được chạy trên môi trường preview gắn Supabase Test; CI build/test không thay thế kiểm thử vận hành.
+
+
+### Hoàn thiện kỹ thuật bổ sung – 26/11/2026
+- Cloud loader phân trang các bảng mẫu, công việc, kết quả và sự kiện; tránh giới hạn mặc định 1.000 dòng của PostgREST.
+- Chỉ tạo trước lịch công việc khi mở lần đầu hoặc sau khi Admin sửa mẫu/cấu hình. Làm mới định kỳ 60 giây chỉ cập nhật trạng thái quá hạn, không tạo lại cả năm công việc liên tục.
+- Giới hạn lịch được tải/tạo trong cửa sổ 366 ngày quá khứ và 1 năm tương lai để không gửi lịch cũ ngoài phạm vi RPC.
+- Server xóa các lượt tương lai chưa nhận khi mẫu tạm ngừng hoặc nhóm starter bị tắt; lượt đang thực hiện/đã hoàn thành giữ snapshot.
+- Giao diện đóng QR scanner khi mất kết nối hoặc thiết bị được nhận diện là PC. Sau khi RPC nhận việc thành công, mở phiếu ngay và làm mới danh sách nền.
+- Đã khóa quyền ghi trực tiếp vào `checklist_definitions`; mọi tạo/sửa mẫu phải đi qua RPC có version snapshot. Các bảng lịch sử/task chỉ còn SELECT cho authenticated; anon bị thu hồi quyền bảng.
+- Smoke test trong transaction rollback sau khi siết quyền: RPC lưu mẫu vẫn hoạt động với authenticated Admin; INSERT trực tiếp vào bảng definitions bị từ chối.
+- CI Build and test + Validate thành công tại commit code `20134a787bf2956bee783e4c2edb09d3e53d1870`. Các thay đổi sau đó chủ yếu là SQL migration source; run mới đang chờ hoàn tất.
+- Migration Test bổ sung: `20261126211000 checklist_definitions_write_only_through_versioned_rpc`, `20261126212000 checklist_cloud_minimum_table_privileges`.
