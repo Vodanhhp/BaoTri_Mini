@@ -34,6 +34,7 @@ export default function ChecklistQrScanner({onDetected,onClose}:Props){
       if(!video)throw new Error('Không tìm thấy vùng hiển thị camera.')
       video.srcObject=stream
       await video.play()
+      if(!activeRef.current){stream.getTracks().forEach(track=>track.stop());return}
       setCameraReady(true)
       const detector=new Detector({formats:['qr_code']})
       let busy=false
@@ -57,7 +58,7 @@ export default function ChecklistQrScanner({onDetected,onClose}:Props){
       activeRef.current=false
       streamRef.current?.getTracks().forEach(track=>track.stop())
       streamRef.current=null
-      setCameraReady(false)
+      if(activeRef.current)setCameraReady(false)
     }
   }
   return <div className="checklist-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
