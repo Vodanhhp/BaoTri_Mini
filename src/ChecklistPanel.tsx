@@ -266,7 +266,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [qrAssetLabel,setQrAssetLabel]=useState('')
   const [qrCandidates,setQrCandidates]=useState<Array<{definition:ChecklistDefinition;task:ChecklistTask}>>([])
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
-  const canExecuteHere=canExecute&&isOnline&&!isPcPlatform()
+  const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform()
   useEffect(()=>{
     const updateOnline=()=>setIsOnline(navigator.onLine)
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
