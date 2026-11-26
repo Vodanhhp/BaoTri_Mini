@@ -355,7 +355,8 @@ test('Checklist Cloud is the live organization source and execution writes use s
   assert.match(cloud,/checklist_ensure_occurrences/)
   assert.match(cloud,/checklist_claim_task/)
   assert.match(cloud,/checklist_complete_task/)
-  assert.match(cloud,/navigator\.onLine/)\n  assert.match(cloud,/fetchAllRows/)\n  assert.match(cloud,/range\(offset,offset\+PAGE_SIZE-1\)/)\n  assert.match(cloud,/Date\.now\(\)-366\*86400000/)
+  assert.match(cloud,/navigator\.onLine/ )
+  assert.match(cloud,/fetchAllRows/)\n  assert.match(cloud,/range\(offset,offset\+PAGE_SIZE-1\)/)\n  assert.match(cloud,/Date\.now\(\)-366\*86400000/)
 })
 
 
@@ -371,7 +372,8 @@ test('equipment Checklist starts only from QR scan while system Checklist remain
 
 test('phase-one Checklist assignment remains Admin-only in UI and server RPC',async()=>{
   const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
-  const scannerPanel=panel\n  const guards=await readFile(new URL('../docs/drafts/20261126205000_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')\n  assert.match(guards,/not private\.has_org_role\(p_organization_id,'admin'\)/)\n  assert.match(guards,/assignee.*Admin/)\n  assert.match(scannerPanel,/value="Admin" readOnly/)
+  const scannerPanel=panel
+  const guards=await readFile(new URL('../docs/drafts/20261126205000_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')\n  assert.match(guards,/not private\.has_org_role\(p_organization_id,'admin'\)/)\n  assert.match(guards,/assignee.*Admin/)\n  assert.match(scannerPanel,/value="Admin" readOnly/)
   assert.match(scannerPanel,/assignee:organizationId==='local-preview'\?assignee:'Admin'/)
   assert.match(cloud,/checklist_save_definition/)
   assert.match(cloud,/checklist_claim_task/)
