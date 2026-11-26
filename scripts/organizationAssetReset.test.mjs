@@ -219,8 +219,11 @@ test('reset barrier runs before both equipment and inventory sync, including inv
 test('reset request and Superadmin confirmation explicitly describe full inventory deletion', async () => {
  const ui = await read('../src/PlanChangePanels.tsx')
  assert.match(ui,/Yêu cầu Reset thiết bị, vật tư và Checklist/)
- assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\/xuất\/điều chỉnh/)
- assert.match(ui,/xóa sạch toàn bộ thiết bị, vật tư Cloud\/Local và Checklist/)
+ assert.match(ui,/resetAssets/)
+ assert.match(ui,/resetInventory/)
+ assert.match(ui,/resetChecklist/)
+ assert.match(ui,/xóa đúng các mục đã chọn ở Cloud và áp dụng cùng phạm vi trên Local/)
+ assert.doesNotMatch(ui,/xóa sạch toàn bộ thiết bị, vật tư Cloud\/Local và Checklist/)
 })
 
 
