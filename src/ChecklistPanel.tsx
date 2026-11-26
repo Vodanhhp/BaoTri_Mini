@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
 import ExcelJS from 'exceljs'
 import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
-import { ensureChecklistOccurrences, checklistLocalDateKey } from './lib/checklistSchedule'
+import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERIOD_MS } from './lib/checklistSchedule'
 
 type Props = {
   organizationId: string
@@ -30,33 +30,12 @@ const dateOnly = () => new Date().toLocaleDateString('en-CA')
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
 export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
-  const [tasks,setTasks]=useState<ChecklistTask[]>([])
-  useEffect(()=>{
-    let active=true
-    void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{})
-    return()=>{active=false}
-  },[organizationId])
-  const today=checklistLocalDateKey(new Date())
-  const endWeek=checklistLocalDateKey(new Date(Date.now()+6*86400000))
-  const year=today.slice(0,4)
-  const pending=tasks.filter(item=>item.status!=='Hoàn thành')
-  const overdue=pending.filter(item=>item.status==='Quá hạn')
-  const dueToday=pending.filter(item=>item.dueDate===today)
-  const dueWeek=pending.filter(item=>item.dueDate>=today&&item.dueDate<=endWeek)
-  const dueMonth=pending.filter(item=>item.dueDate.startsWith(today.slice(0,7)))
-  const dueYear=pending.filter(item=>item.dueDate.startsWith(year))
-  const visible=[...overdue,...pending.filter(item=>item.status!=='Quá hạn'&&item.dueDate<=endWeek)].slice(0,8)
-  return <section className="overview-section">
-    <div className="overview-section-head"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Theo dõi công việc theo lịch; các kỳ đã quá hạn vẫn được giữ riêng để truy vết.</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở Checklist →</button></div>
-    <div className="stat-grid">
-      <div className="stat-card"><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>Checklist cần thực hiện</span></div></div>
-      <div className="stat-card"><div><small>Trong tuần</small><strong>{dueWeek.length}</strong><span>Chờ đến hạn hoặc cần làm</span></div></div>
-      <div className="stat-card"><div><small>Trong tháng</small><strong>{dueMonth.length}</strong><span>Theo lịch đã cấu hình</span></div></div>
-      <div className="stat-card"><div><small>Trong năm</small><strong>{dueYear.length}</strong><span>Không tính lượt đã hoàn thành</span></div></div>
-    </div>
-    {overdue.length>0&&<p className="auth-error" role="status">Có {overdue.length} lượt Checklist quá hạn chưa thực hiện. Các lượt này không bị gộp hoặc tự chuyển kỳ.</p>}
-    {visible.length>0&&<div className="checklist-definition-list">{visible.map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · {task.dueDate} · {task.assignee}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div></article>)}</div>}
-  </section>
+ const [tasks,setTasks]=useState<ChecklistTask[]>([])
+ useEffect(()=>{let active=true;void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{});return()=>{active=false}},[organizationId])
+ const currentMs=Date.now()
+ const actionable=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&new Date(item.dueAt).getTime()<=currentMs&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS)
+ const missed=tasks.filter(item=>item.status==='Không Checklist')
+ return <section className="overview-section"><div className="overview-section-head"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Chỉ hiển thị lượt đã đến hạn; lượt bị bỏ qua được lưu riêng trong lịch sử.</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở Checklist →</button></div><div className="stat-grid checklist-dashboard-stats"><div className="stat-card"><div><small>Đến hạn cần làm</small><strong>{actionable.length}</strong><span>Trong thời gian cho phép</span></div></div><div className="stat-card"><div><small>Không Checklist</small><strong>{missed.length}</strong><span>Đã quá thời gian cho phép</span></div></div></div>{actionable.length>0&&<div className="checklist-definition-list">{actionable.slice(0,5).map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · {task.assignee}</small><span className="checklist-outcome">{task.status}</span></div></article>)}</div>}</section>
 }
 
 export default function ChecklistPanel({organizationId,organizationName,userLabel,userId,canView,canManage,canExecute,assets}:Props) {
@@ -66,6 +45,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [tasks,setTasks]=useState<ChecklistTask[]>([])
   const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
+  const [upcomingOpen,setUpcomingOpen]=useState(false)
+  const [upcomingPeriod,setUpcomingPeriod]=useState<'week'|'month'|'quarter'>('week')
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
@@ -109,6 +90,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const enabledCount=settings.filter(item=>item.enabled).length
   const todayRuns=runs.filter(item=>checklistLocalDateKey(new Date(item.completedAt))===dateOnly())
   const reportRuns=useMemo(()=>runs.filter(item=>{const day=checklistLocalDateKey(new Date(item.completedAt));return (!reportFrom||day>=reportFrom)&&(!reportTo||day<=reportTo)}),[runs,reportFrom,reportTo])
+  const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&(!reportFrom||item.dueDate>=reportFrom)&&(!reportTo||item.dueDate<=reportTo)),[tasks,reportFrom,reportTo])
+  const currentMs=Date.now()
+  const actionableTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&new Date(item.dueAt).getTime()<=currentMs&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
+  const missedTasks=tasks.filter(item=>item.status==='Không Checklist').sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
+  const upcomingRange=useMemo(()=>{const start=new Date();start.setHours(0,0,0,0);let end=new Date(start);if(upcomingPeriod==='week'){const day=end.getDay()||7;start.setDate(start.getDate()+(8-day));end=new Date(start);end.setDate(end.getDate()+6);end.setHours(23,59,59,999)}else if(upcomingPeriod==='month'){start.setDate(1);start.setMonth(start.getMonth()+1);end=new Date(start.getFullYear(),start.getMonth()+1,0,23,59,59,999)}else{const quarter=Math.floor(start.getMonth()/3);start.setMonth((quarter+1)*3,1);end=new Date(start.getFullYear(),start.getMonth()+3,0,23,59,59,999)}return {start,end}},[upcomingPeriod])
+  const upcomingTasks=tasks.filter(item=>item.status==='Chờ thực hiện'&&new Date(item.dueAt)>=upcomingRange.start&&new Date(item.dueAt)<=upcomingRange.end).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const visibleDefinitions=useMemo(()=>definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))),[definitions,search])
   const suggestions=useMemo(()=>{
     const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
@@ -182,7 +169,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(!canExecute||!userId||!isGroupAssignee(task.assignee))return
     const claimed=await db.transaction('rw',db.checklistTasks,async()=>{
       const current=await db.checklistTasks.get(task.id)
-      if(!current||current.organizationId!==organizationId||current.status==='Hoàn thành'||current.status==='Đang thực hiện')return false
+      if(!current||current.organizationId!==organizationId||current.status!=='Chờ thực hiện')return false
       const at=now()
       await db.checklistTasks.update(task.id,{status:'Đang thực hiện',claimedBy:userLabel,claimedByUserId:userId,claimedAt:at,assignmentEvents:[...(current.assignmentEvents||[]),{action:'Nhận việc',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
       return true
@@ -194,18 +181,18 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const current=await db.checklistTasks.get(taskId)
     if(!current||!userId||current.claimedByUserId!==userId||current.status!=='Đang thực hiện')return
     const returnedToGroup=isGroupAssignee(current.assignee)
-    const overdue=new Date(current.dueAt).getTime()<Date.now()
+    const missed=Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS
     const at=now()
     await db.transaction('rw',db.checklistTasks,async()=>{
       const latest=await db.checklistTasks.get(taskId)
       if(!latest||latest.organizationId!==organizationId||latest.claimedByUserId!==userId||latest.status!=='Đang thực hiện')return
-      await db.checklistTasks.update(taskId,{status:overdue?'Quá hạn':'Chờ thực hiện',claimedBy:undefined,claimedByUserId:undefined,claimedAt:undefined,assignmentEvents:[...(latest.assignmentEvents||[]),{action:returnedToGroup?'Trả lại nhóm':'Hủy thực hiện',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
+      await db.checklistTasks.update(taskId,{status:missed?'Không Checklist':'Chờ thực hiện',claimedBy:undefined,claimedByUserId:undefined,claimedAt:undefined,assignmentEvents:[...(latest.assignmentEvents||[]),{action:returnedToGroup?'Trả lại nhóm':'Hủy thực hiện',actor:userLabel,actorUserId:userId,at}],updatedAt:at})
     })
   }
   const beginTask=async(task:ChecklistTask,item:ChecklistDefinition)=>{
     if(!canExecute)return
     const current=await db.checklistTasks.get(task.id)
-    if(!current||current.status==='Hoàn thành')return
+    if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist'||current.status==='Quá hạn')return
     const group=isGroupAssignee(current.assignee)
     if(group&&(current.status!=='Đang thực hiện'||current.claimedByUserId!==userId))return
     if(!group&&current.assignee!==userLabel&&!canManage)return
@@ -234,7 +221,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
     if(failed&&!repairCreated&&!noRepairReason.trim()){setError('Checklist có mục Không đạt. Hãy ghi lý do chưa tạo Phiếu yêu cầu sửa chữa.');return}
+    if(runningTaskId)await ensureChecklistOccurrences(organizationId)
     const taskSnapshot=runningTaskId?await db.checklistTasks.get(runningTaskId):undefined
+    if(runningTaskId&&taskSnapshot&&Date.now()-new Date(taskSnapshot.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){setError('Đã quá thời gian cho phép. Lượt này được ghi nhận là Không Checklist, không thể lưu kết quả kiểm tra muộn.');await refresh();return}
     if(runningTaskId&&(!taskSnapshot||taskSnapshot.organizationId!==organizationId||taskSnapshot.status!=='Đang thực hiện'||taskSnapshot.claimedByUserId!==userId)){setError('Bạn không còn là người nhận công việc này. Hãy tải lại danh sách trước khi lưu.');return}
     const record:ChecklistRun={
       id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
@@ -263,7 +252,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const exportExcel=async()=>{
     const workbook=new ExcelJS.Workbook();const sheet=workbook.addWorksheet('Bao cao Checklist')
     sheet.columns=[{header:'Thời gian',key:'time',width:22},{header:'Checklist',key:'title',width:30},{header:'Đối tượng',key:'target',width:28},{header:'Kết quả',key:'outcome',width:16},{header:'Người kiểm tra',key:'inspector',width:24},{header:'Phiếu sửa chữa',key:'repair',width:20},{header:'Lý do chưa tạo phiếu',key:'reason',width:32}]
-    sheet.addRows(reportRuns.map(row=>({time:dateTime(row.completedAt),title:row.checklistTitle,target:row.targetLabel,outcome:row.outcome,inspector:row.inspector,repair:row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',reason:row.noRepairReason||''})))
+    sheet.addRows([...reportRuns.map(row=>({time:dateTime(row.completedAt),title:row.checklistTitle,target:row.targetLabel,outcome:row.outcome,inspector:row.inspector,repair:row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',reason:row.noRepairReason||''})),...reportMissedTasks.map(row=>({time:dateTime(row.dueAt),title:row.title,target:row.targetLabel,outcome:'Không Checklist',inspector:'—',repair:'—',reason:'Quá thời gian cho phép; không thực hiện kiểm tra'}))])
     sheet.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};sheet.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B5C'}}
     sheet.views=[{state:'frozen',ySplit:1}];sheet.autoFilter={from:'A1',to:'G1'}
     const buffer=await workbook.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
@@ -291,13 +280,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         </div>
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Mỗi kỳ là một lượt riêng. Việc bỏ lỡ kỳ trước không làm mất hoặc chuyển kỳ đó sang ngày khác.</p></div></div>
-          <div className="checklist-report-summary">
-            <div><small>Đến hạn hôm nay</small><b>{tasks.filter(item=>item.dueDate===checklistLocalDateKey(new Date())&&item.status!=='Hoàn thành').length}</b></div>
-            <div><small>Quá hạn</small><b>{tasks.filter(item=>item.status==='Quá hạn').length}</b></div>
-            <div><small>Tuần này</small><b>{tasks.filter(item=>item.dueDate>=checklistLocalDateKey(new Date())&&item.dueDate<=checklistLocalDateKey(new Date(Date.now()+6*86400000))&&item.status!=='Hoàn thành').length}</b></div>
-          </div>
+          <div className="checklist-report-summary"><div><small>Đến hạn cần làm</small><b>{actionableTasks.length}</b></div><div><small>Không Checklist</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
-            {tasks.filter(item=>item.status!=='Hoàn thành').slice(0,30).map(task=>{
+            {actionableTasks.map(task=>{
               const definition=definitions.find(item=>item.id===task.checklistId)
               const runnable:ChecklistDefinition=definition?{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,questions:task.definitionSnapshot.questions}:{
                 id:task.checklistId,organizationId,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,enabled:true,assignee:task.assignee,questions:task.definitionSnapshot.questions,categoryKey:task.definitionSnapshot.categoryKey,source:'custom',createdAt:task.createdAt,updatedAt:task.updatedAt
@@ -305,10 +290,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               const groupTask=isGroupAssignee(task.assignee)
               const directAllowed=task.assignee===userLabel||canManage
               return <article className="checklist-definition-row" key={task.id}>
-                <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}{task.claimedBy?' · Đang nhận: '+task.claimedBy:''}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div>
+                <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}{task.claimedBy?' · Đang nhận: '+task.claimedBy:''}</small><span className="checklist-outcome">{task.status}</span></div>
                 <div className="top-actions">
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
-                  {groupTask&&task.status!=='Đang thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
+                  {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
                   {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button>}
@@ -317,8 +302,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 </div>
               </article>
             })}
-            {tasks.filter(item=>item.status!=='Hoàn thành').length===0&&<div className="table-empty-state">Không có Checklist định kỳ đang chờ thực hiện. Checklist linh hoạt không tạo hạn bắt buộc.</div>}
+            {actionableTasks.length===0&&<div className="table-empty-state">Hiện không có lượt Checklist đến hạn cần thực hiện.</div>}
           </div>
+          <div className="checklist-upcoming-toggle"><button type="button" className="soft-btn" onClick={()=>setUpcomingOpen(value=>!value)}>{upcomingOpen?'Ẩn lịch sắp tới':'Lịch sắp tới'}</button></div>
+          {upcomingOpen&&<section className="checklist-upcoming-panel"><div className="checklist-upcoming-filters"><button type="button" className={upcomingPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('week')}>Tuần tới</button><button type="button" className={upcomingPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('month')}>Tháng tới</button><button type="button" className={upcomingPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('quarter')}>Quý tới</button></div><div className="checklist-definition-list">{upcomingTasks.map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className="checklist-outcome">{task.status}</span></div></article>)}{upcomingTasks.length===0&&<div className="table-empty-state">Không có lịch Checklist trong khoảng thời gian này.</div>}</div></section>
         </section>
         {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
           <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện từ một số thiết bị quan trọng đã khai báo. Bỏ qua không bị tính quá hạn và không tạo lịch bắt buộc.</p></div></div>
@@ -366,13 +353,16 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setEditing(null);setTitle('');setTarget('');setQuestionText('')}}>Làm mới</button><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu thay đổi':'Tạo Checklist'}</button></div>
         </form>}
       </section>}
-      {tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử kiểm tra</h2><p>Lưu độc lập theo tổ chức, không phụ thuộc hồ sơ hoặc lịch sử thiết bị.</p></div></div>
+      {tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử Checklist</h2><p>Lưu độc lập theo tổ chức. Phân biệt lượt không thực hiện với kết quả kiểm tra Không đạt.</p></div></div>
+        {missedTasks.length>0&&<><h3 className="checklist-history-subtitle">Không Checklist ({missedTasks.length})</h3><div className="checklist-missed-history">{missedTasks.map(task=><article className="checklist-history-row checklist-missed-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className="checklist-outcome fail">Không Checklist</span><small>Không thực hiện trong thời gian cho phép (24 giờ).</small></div></article>)}</div></>}
+        <h3 className="checklist-history-subtitle">Kết quả đã kiểm tra ({runs.length})</h3>
         <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><button className="soft-btn" onClick={()=>setPrintingRun(row)}>In A4</button><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.assignmentHistory&&row.assignmentHistory.length>0&&<><b>Lịch sử phân công</b><ul>{row.assignmentHistory.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></>}{row.outcome==='Không đạt'&&<p>{row.repairRequestCreated?'Đã đánh dấu có tạo Phiếu yêu cầu sửa chữa.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
       </section>}
-      {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và quyết định tạo Phiếu yêu cầu sửa chữa.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={!reportRuns.length}><Download size={15}/> Xuất Excel</button></div>
+      {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và quyết định tạo Phiếu yêu cầu sửa chữa.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={!reportRuns.length&&!reportMissedTasks.length}><Download size={15}/> Xuất Excel</button></div>
         <div className="checklist-report-filters"><label>Từ ngày<input type="date" value={reportFrom} max={reportTo||undefined} onChange={event=>setReportFrom(event.target.value)}/></label><label>Đến ngày<input type="date" value={reportTo} min={reportFrom||undefined} onChange={event=>setReportTo(event.target.value)}/></label><button className="soft-btn" onClick={()=>{setReportFrom('');setReportTo('')}}>Toàn bộ thời gian</button></div>
-        <div className="checklist-report-summary"><div><small>Tổng lượt kiểm tra</small><b>{reportRuns.length}</b></div><div><small>Đạt</small><b>{reportRuns.filter(row=>row.outcome==='Đạt').length}</b></div><div><small>Không đạt</small><b>{reportRuns.filter(row=>row.outcome==='Không đạt').length}</b></div><div><small>Đã tạo Phiếu YC</small><b>{reportRuns.filter(row=>row.repairRequestCreated).length}</b></div><div><small>Không tạo Phiếu YC</small><b>{reportRuns.filter(row=>row.outcome==='Không đạt'&&!row.repairRequestCreated).length}</b></div></div>
-        <div className="checklist-report-table-wrap"><table className="table-standard"><thead><tr><th>Thời gian</th><th>Checklist</th><th>Đối tượng</th><th>Kết quả</th><th>Người kiểm tra</th><th>Phiếu YC sửa chữa</th></tr></thead><tbody>{reportRuns.map(row=><tr key={row.id}><td>{dateTime(row.completedAt)}</td><td>{row.checklistTitle}</td><td>{row.targetLabel}</td><td>{row.outcome}</td><td>{row.inspector}</td><td>{row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo: '+row.noRepairReason:'Không phát sinh'}</td></tr>)}</tbody></table>{reportRuns.length===0&&<div className="table-empty-state">Không có kết quả trong khoảng thời gian đã chọn.</div>}</div>
+        <div className="checklist-report-summary"><div><small>Tổng lượt kiểm tra</small><b>{reportRuns.length}</b></div><div><small>Đạt</small><b>{reportRuns.filter(row=>row.outcome==='Đạt').length}</b></div><div><small>Không đạt</small><b>{reportRuns.filter(row=>row.outcome==='Không đạt').length}</b></div><div><small>Không Checklist</small><b>{reportMissedTasks.length}</b></div><div><small>Đã tạo Phiếu YC</small><b>{reportRuns.filter(row=>row.repairRequestCreated).length}</b></div><div><small>Không tạo Phiếu YC</small><b>{reportRuns.filter(row=>row.outcome==='Không đạt'&&!row.repairRequestCreated).length}</b></div></div>
+        <div className="checklist-report-table-wrap"><table className="table-standard"><thead><tr><th>Thời gian</th><th>Checklist</th><th>Đối tượng</th><th>Kết quả</th><th>Người kiểm tra</th><th>Phiếu YC sửa chữa</th></tr></thead><tbody>{reportRuns.map(row=><tr key={row.id}><td>{dateTime(row.completedAt)}</td><td>{row.checklistTitle}</td><td>{row.targetLabel}</td><td>{row.outcome}</td><td>{row.inspector}</td><td>{row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo: '+row.noRepairReason:'Không phát sinh'}</td></tr>)}</tbody></table>{reportRuns.length===0&&<div className="table-empty-state">Không có kết quả kiểm tra trong khoảng thời gian đã chọn.</div>}</div>
+        {reportMissedTasks.length>0&&<div className="checklist-report-table-wrap checklist-missed-report"><h3>Danh sách Không Checklist</h3><table className="table-standard"><thead><tr><th>Hạn thực hiện</th><th>Checklist</th><th>Đối tượng</th><th>Trạng thái</th><th>Phụ trách</th></tr></thead><tbody>{reportMissedTasks.map(row=><tr key={row.id}><td>{dateTime(row.dueAt)}</td><td>{row.title}</td><td>{row.targetLabel}</td><td className="danger">Không Checklist</td><td>{row.assignee}</td></tr>)}</tbody></table></div>}
       </section>}
     </>}
     {printingRun&&<section className="checklist-print-sheet"><header><div><strong>{organizationName}</strong><h1>PHIẾU KẾT QUẢ KIỂM TRA ĐỊNH KỲ</h1></div><div className="checklist-print-meta"><b>{printingRun.outcome}</b><span>Mã phiếu: {printingRun.id}</span></div></header><h2>{printingRun.checklistTitle}</h2><p><b>Đối tượng:</b> {printingRun.targetLabel}</p><p><b>Thời gian:</b> {dateTime(printingRun.completedAt)}　 <b>Người kiểm tra:</b> {printingRun.inspector}</p><table><thead><tr><th style={{width:'7%'}}>STT</th><th>Nội dung kiểm tra</th><th style={{width:'20%'}}>Kết quả</th><th>Ghi chú / thông số</th></tr></thead><tbody>{printingRun.answers.map((answer,index)=><tr key={answer.questionId}><td>{index+1}</td><td>{answer.question}</td><td>{answer.result}</td><td>{answer.note||'—'}</td></tr>)}</tbody></table>{printingRun.outcome==='Không đạt'&&<section className="checklist-print-failure"><b>Xử lý nội dung không đạt</b><p>{printingRun.repairRequestCreated?'Đã đánh dấu tạo Phiếu yêu cầu sửa chữa riêng.':'Chưa tạo Phiếu yêu cầu sửa chữa.'}</p>{printingRun.noRepairReason&&<p><b>Lý do:</b> {printingRun.noRepairReason}</p>}</section>}<footer><div>Người kiểm tra<br/><br/><br/><b>{printingRun.inspector}</b></div><div>Người xác nhận<br/><br/><br/><b>(Ký, ghi rõ họ tên)</b></div></footer></section>}
