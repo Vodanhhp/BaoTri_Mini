@@ -240,13 +240,15 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
     if(runningTaskId){
-      await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
+      const saved=await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
         const latest=await db.checklistTasks.get(runningTaskId)
-        if(!latest||latest.organizationId!==organizationId||latest.status!=='Đang thực hiện'||latest.claimedByUserId!==userId)throw new Error('Quyền nhận việc đã thay đổi. Không thể lưu kết quả.')
+        if(!latest||latest.organizationId!==organizationId||latest.status!=='Đang thực hiện'||latest.claimedByUserId!==userId)return false
         await db.checklistRuns.add(record)
         await db.checklistTasks.update(runningTaskId,{status:'Hoàn thành',completedAt:record.completedAt,runId:record.id,updatedAt:record.completedAt})
         await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
+        return true
       })
+      if(!saved){setError('Quyền nhận việc đã thay đổi. Kết quả chưa được lưu; hãy tải lại danh sách.');return}
     }else{
       await db.checklistRuns.add(record)
       await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
