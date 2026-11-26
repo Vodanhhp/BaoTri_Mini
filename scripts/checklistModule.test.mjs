@@ -345,8 +345,8 @@ test('Checklist execution is locked without Internet and on desktop while manage
 })
 
 
-test('Checklist Cloud is the live organization source and execution writes use server RPCs',()=>{
-  const cloud=read('src/lib/checklistCloud.ts')
+test('Checklist Cloud is the live organization source and execution writes use server RPCs',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
   assert.match(panel,/loadChecklistCloud\(supabase,organizationId,canManage\)/)
   assert.match(panel,/saveChecklistDefinition\(supabase,organizationId/)
   assert.match(panel,/completeChecklistTask\(supabase,organizationId/)
