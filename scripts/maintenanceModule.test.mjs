@@ -115,8 +115,8 @@ test('maintenance requests and recurring tasks use tenant-scoped Cloud RPCs with
 test('legacy Local maintenance records are detected and can be imported to Cloud without deleting the local copy', async () => {
   const panel = await read('../src/MaintenancePanel.tsx')
   const cloud = await read('../src/lib/maintenanceCloud.ts')
-  const migration = await read('../supabase/migrations/20261126165100_maintenance_legacy_local_import.sql')
-  const timestampMigration = await read('../supabase/migrations/20261126165200_preserve_legacy_maintenance_timestamps.sql')
+  const migration = await read('../supabase/migrations/20261126170750_maintenance_legacy_local_import.sql')
+  const timestampMigration = await read('../supabase/migrations/20261126170844_preserve_legacy_maintenance_timestamps.sql')
   assert.match(panel,/legacyLocalCounts/)
   assert.match(panel,/Chuyển dữ liệu cũ lên Cloud/)
   assert.match(panel,/db\.maintenanceRequests\.where\('organizationId'\)/)
