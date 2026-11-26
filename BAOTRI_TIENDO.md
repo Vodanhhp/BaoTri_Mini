@@ -789,3 +789,40 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Migration được ghi vào lịch sử cả Test và Production. Production schema thay đổi, nhưng không có dữ liệu doanh nghiệp nào bị reset. Chưa chạy browser/E2E thực tế hoặc hộp thoại in trên thiết bị người dùng.
 
 - Kiểm tra thêm bằng transaction có rollback trên Production: tạo và duyệt thử yêu cầu **Checklist-only** và **Inventory-only**. Cả hai RPC trả `status=executed` với đúng hai cờ còn lại `false`; transaction rollback nên không xóa dữ liệu doanh nghiệp. Phát hiện và sửa unique constraint cũ `(organization_id,generation)` trên reset history vì nó ngăn nhiều lần Reset vật tư/Checklist khi asset generation không đổi; thay bằng khóa idempotency `(organization_id,request_id)` hiện có.
+
+
+## Cập nhật 26/11/2026 – bắt đầu Checklist Cloud và quy tắc Online-only
+
+Nhánh triển khai: `feature/checklist-cloud-online-qr`  
+PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
+
+### Yêu cầu nghiệp vụ đã chốt
+- Checklist thực hiện trên điện thoại; PC dành cho Admin quản lý mẫu, cấu hình, xem lịch sử, báo cáo và in.
+- Checklist thiết bị sẽ được mở bằng quét QR Code trên điện thoại.
+- Checklist theo hệ thống (hạ tầng, điện, nước, PCCC và các hệ thống khác) được chọn thủ công trên điện thoại, không bắt buộc QR.
+- Mất Internet: khóa thao tác thực hiện Checklist; không ghi nhận offline để đồng bộ sau.
+- Giai đoạn 1 mặc định Admin phụ trách; phân công KTV chi tiết để giai đoạn 2.
+- Mẫu Checklist theo hệ thống tối thiểu 5 tiêu chí; mỗi tiêu chí có Đạt / Không đạt / Bỏ qua. Bỏ qua không tính là Đạt hoặc Không đạt; nếu toàn bộ tiêu chí đều Bỏ qua thì kết quả tổng thể là Bỏ qua.
+
+### Đã thay đổi trên nhánh
+- Bốn nhóm mẫu gợi ý Cơ sở hạ tầng, Điện, Nước, PCCC được nâng lên 7 tiêu chí mỗi nhóm.
+- Builder từ chối lưu mẫu hệ thống có dưới 5 tiêu chí.
+- Thay lựa chọn mới thành Bỏ qua; giữ đọc được bản ghi cũ có kết quả Không áp dụng.
+- Bổ sung chặn thao tác thực hiện khi trình duyệt offline hoặc giao diện desktop; PC vẫn giữ các tab quản lý, lịch sử, báo cáo và in.
+- Bổ sung thông báo trạng thái kết nối và hướng dẫn sử dụng điện thoại.
+
+### Supabase Test
+- Đã áp dụng migration `20261126144630_checklist_cloud_online_foundation` trên Supabase Test `oyzhxgzltpdebpymuicb` בלבד.
+- Tạo các bảng mới: `checklist_category_settings`, `checklist_definitions`, `checklist_definition_versions`, `checklist_tasks`, `checklist_runs`, `checklist_task_events`.
+- Các bảng mới đều bật RLS và có policy theo `checklist.view` / `checklist.template.manage`; task claim và complete đi qua RPC trong schema private, kiểm tra `checklist.result.create` và cập nhật atomic.
+- Smoke test trong transaction rollback: tạo mẫu hệ thống 5 tiêu chí thành công; mẫu 4 tiêu chí bị constraint từ chối; không giữ lại dữ liệu thử nghiệm.
+- Đã kiểm tra các bảng và policy sau migration. Security Advisor chỉ trả các cảnh báo hiện hữu của những bảng/hàm khác; không phát hiện bảng Checklist mới thiếu policy.
+
+### Chưa hoàn tất – không được coi là đã nghiệm thu
+- Kết nối giao diện Checklist với các bảng Cloud mới; hiện các luồng UI hiện hữu vẫn còn Local Dexie.
+- Tạo/sinh lịch công việc trên Cloud và đồng bộ snapshot/version.
+- Gắn luồng nhận việc/hoàn thành UI vào RPC atomic.
+- Quét QR Code thiết bị và kiểm tra quyền/trạng thái trên Cloud.
+- Chặn thực hiện Checklist trên PC cần được xác thực bằng kiểm thử giao diện thực tế; hiện mới có chặn theo viewport desktop.
+- Chạy CI/build/test sau các thay đổi; chưa kiểm thử trên điện thoại hoặc camera thực tế.
+- Chưa áp dụng bất kỳ migration nào lên Production; chưa merge PR #75.
