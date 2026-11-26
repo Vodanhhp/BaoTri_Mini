@@ -684,3 +684,10 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Khi hoàn thành, lượt chuyển Hoàn thành và ẩn khỏi danh sách công việc; kết quả vẫn giữ trong Lịch sử và Báo cáo.
 - Mốc Không Checklist vẫn tính 24 giờ sau giờ đến hạn riêng của từng lượt; lượt quá hạn bị loại khỏi danh sách đang làm và được giữ trong mục Không Checklist/Lịch sử/Báo cáo.
 - Không thay đổi bộ sinh lịch, dữ liệu Local, Supabase, Auth, RLS, Storage, Cloud Sync hoặc PR #21. Chờ CI và deploy xác nhận; chưa kiểm thử giao diện trình duyệt thực tế.
+
+
+## Checklist – giao diện gọn và xử lý tắt nhóm (26/11/2026)
+- Thu gọn danh sách gợi ý thiết bị sau nút mở; thu gọn nhóm kiểm tra khởi tạo sau nút riêng.
+- Bổ sung lối tắt sửa nội dung Checklist ngay từ dòng công việc đang thực hiện; chức năng Builder hiện có hỗ trợ sửa tên, đối tượng, chu kỳ, người phụ trách và danh sách câu hỏi (thêm/bớt qua nội dung nhiều dòng).
+- Khi tắt nhóm hoặc Checklist, các task chưa hoàn thành của định nghĩa không còn hoạt động được loại khỏi danh sách, kể cả task có giờ đến hạn đã qua; bản ghi đã hoàn thành và bản ghi Không Checklist được giữ để bảo toàn lịch sử.
+- Chưa xác nhận build/deploy và chưa thực hiện kiểm tra trình duyệt PC/mobile sau thay đổi.
