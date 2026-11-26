@@ -650,7 +650,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         'Đối tượng kiểm tra':row.targetLabel,
         'Kết quả':row.outcome,
         'Người kiểm tra':row.inspector,
-        'Phiếu yêu cầu sửa chữa':row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',
+        'Phiếu yêu cầu sửa chữa':row.maintenanceRequestId?'Đã liên kết: '+row.maintenanceRequestId:row.repairRequestCreated?'Đã yêu cầu tạo – chưa xác nhận liên kết':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',
         'Lý do chưa tạo phiếu':row.noRepairReason||''
       })),
       ...reportMissedTasks.map(row=>({
