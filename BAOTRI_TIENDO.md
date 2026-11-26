@@ -791,9 +791,10 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Kiểm tra thêm bằng transaction có rollback trên Production: tạo và duyệt thử yêu cầu **Checklist-only** và **Inventory-only**. Cả hai RPC trả `status=executed` với đúng hai cờ còn lại `false`; transaction rollback nên không xóa dữ liệu doanh nghiệp. Phát hiện và sửa unique constraint cũ `(organization_id,generation)` trên reset history vì nó ngăn nhiều lần Reset vật tư/Checklist khi asset generation không đổi; thay bằng khóa idempotency `(organization_id,request_id)` hiện có.
 
 
-## 26/11/2026 — Sửa phụ thuộc khi xóa vĩnh viễn tổ chức (đang chờ review)
+## 26/11/2026 — Sửa phụ thuộc khi xóa vĩnh viễn tổ chức
 
-- Điều tra lỗi PostgreSQL `23503` khi xóa tổ chức: bảng `organization_equipment_catalog_history` có FK `ON DELETE RESTRICT` tới `organizations` nhưng routine `private.platform_delete_organization` cũ chưa xóa bản ghi audit này.
-- Đối chiếu thêm danh sách FK trên Production (chỉ đọc): routine cũ cũng chưa xóa metadata `private.platform_data_seed_runs` có FK RESTRICT tới tổ chức và Auth user. Bản sửa xóa hai loại dữ liệu tenant-owned này trước khi xóa tổ chức; catalog audit được kiểm tra `to_regclass` để migration vẫn tương thích môi trường chưa bật bảng audit.
-- Không xóa `auth.users` hoặc `profiles`. Các thao tác cleanup nằm trong cùng transaction của RPC; nếu một bước lỗi, toàn bộ lệnh xóa rollback.
-- Đã tạo branch `fix/platform-delete-organization-history` và migration `20261126233000_fix_platform_delete_catalog_history_dependencies.sql`, kèm regression test tĩnh. Chưa áp dụng migration lên Production, chưa chạy xóa tổ chức thật, chưa merge.
+- Điều tra lỗi PostgreSQL `23503` khi xóa tổ chức: `organization_equipment_catalog_history` có FK `ON DELETE RESTRICT` tới `organizations`, nhưng routine cũ chưa dọn bản ghi audit này. Đối chiếu Production còn phát hiện `private.platform_data_seed_runs` cũng cần được dọn trước khi xóa tổ chức.
+- Đã merge PR #76 vào `main` (squash commit `43cd748155d5cc93b5c9bae5d7fcf6cbd99370c0`); CI Validate và Build/Unit tests đều thành công.
+- Đã áp dụng migration Production `20261126160654_fix_platform_delete_catalog_history_dependencies` và lưu migration tương ứng tại `supabase/migrations/20261126160654_fix_platform_delete_catalog_history_dependencies.sql`.
+- Routine mới xóa catalog audit (có kiểm tra `to_regclass`) và seed-run metadata trước khi xóa tổ chức; cleanup giữ trong cùng transaction. Không xóa `auth.users` hoặc `profiles`.
+- Đã kiểm tra Production: migration có trong lịch sử, hàm đang chạy có cả hai bước cleanup; tổ chức `My Company` vẫn tồn tại (1 bản ghi). Chưa thực hiện thao tác xóa tổ chức thật; chưa kiểm chứng end-to-end qua giao diện.
