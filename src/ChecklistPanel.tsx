@@ -525,6 +525,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     startRun(item,task.id)
   }
   const cancelRun=async()=>{
+    if(savingRun)return
     if(runningTaskId)await releaseTask(runningTaskId)
     setRunning(null);setRunningTaskId(null);setRunningManualRunId(null);await refresh()
   }
@@ -555,7 +556,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const payload={run_id:runningManualRunId,answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
         if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
         else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
-      }catch(cause){setError(cause instanceof Error?cause.message:String(cause));setSavingRun(false);return}
+      }catch(cause){setError(cause instanceof Error?cause.message:String(cause));setSavingRun(false);await refresh();return}
       setSavingRun(false)
     }else if(runningTaskId){
       const saved=await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
@@ -726,11 +727,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     </div></div>}
     {qrOpen&&<ChecklistQrScanner onDetected={handleQrDetected} onClose={()=>setQrOpen(false)}/>}
     {qrCandidates.length>0&&<div className="checklist-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setQrCandidates([])}}><section className="checklist-editor-modal checklist-qr-results" role="dialog" aria-modal="true" aria-labelledby="checklist-qr-results-title"><div className="panel-head"><div><h2 id="checklist-qr-results-title">Checklist của thiết bị</h2><p>{qrAssetLabel}</p></div><button type="button" className="soft-btn" onClick={()=>setQrCandidates([])}>Đóng</button></div><div className="checklist-definition-list">{qrCandidates.map(({definition,task})=><article className="checklist-definition-row" key={task.id}><div><b>{definition.title}</b><small>{definition.frequency} · Hạn: {dateTime(task.dueAt)} · {task.status}</small><span>{definition.questions.length} tiêu chí kiểm tra</span></div><button type="button" className="primary-btn" disabled={!canExecuteHere||(task.status==='Đang thực hiện'&&task.claimedByUserId!==userId)} onClick={()=>{setQrCandidates([]);void beginTask(task,definition)}}>{task.status==='Đang thực hiện'?'Tiếp tục kiểm tra':'Thực hiện Checklist'}</button></article>)}</div></section></div>}
-    {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)void cancelRun()}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" onClick={()=>void cancelRun()}><X size={17}/></button></div>
+    {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!savingRun)void cancelRun()}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" disabled={savingRun} onClick={()=>void cancelRun()}><X size={17}/></button></div>
       <form onSubmit={completeRun} className="checklist-run-form">
         {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} disabled={!canExecuteHere} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} disabled={!canExecuteHere} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
         {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Đã tạo Phiếu yêu cầu sửa chữa riêng</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Phiếu Checklist vẫn lưu kết quả Không đạt. Việc đánh dấu này không tự tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa.</small></div>}
-        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere||savingRun}><Check size={15}/> {savingRun?'Đang lưu…':'Lưu kết quả'}</button></div>
+        <div className="modal-actions"><button type="button" className="soft-btn" disabled={savingRun} onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere||savingRun}><Check size={15}/> {savingRun?'Đang lưu…':'Lưu kết quả'}</button></div>
       </form>
     </section></div>}
   </div>
