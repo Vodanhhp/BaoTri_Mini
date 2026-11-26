@@ -159,7 +159,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId)
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
-  const openNew=(asset?:Asset)=>{setEditing(null);setTargetKind(asset?'equipment':'other');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory(asset?'equipment':'custom');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
+  const openNew=(asset?:Asset)=>{setEditing(null);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
     setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setTargetKind(item.targetAssetId?'equipment':'other');setTargetAssetId(item.targetAssetId||'');setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setShowBuilderForm(true);setTab('builder')
   }
