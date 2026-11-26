@@ -3182,3 +3182,91 @@ html,body,#root,.app-shell{
   .maintenance-print-sheet h1,.maintenance-print-sheet h2,.inventory-print-sheet h1,.inventory-print-sheet h2,
   .equipment-print-report h1,.equipment-print-report h2,.equipment-print-report h3 { color: #111 !important; break-after: avoid; }
 }
+
+
+/* Checklist module: independent Local-first inspection workspace. */
+#root .app-shell .checklist-workspace{display:grid;gap:14px;min-width:0}
+#root .app-shell .checklist-welcome{margin-bottom:0}
+#root .app-shell .checklist-tabs{display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:10px}
+#root .app-shell .checklist-tabs button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px 13px;background:var(--panel);color:var(--muted);font-size:11px}
+#root .app-shell .checklist-tabs button.active{background:var(--success-bg);border-color:#8bc5ad;color:#145b48;font-weight:700}
+#root .app-shell .checklist-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+#root .app-shell .checklist-section{display:grid;gap:14px;min-width:0}
+#root .app-shell .checklist-category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#root .app-shell .checklist-category-card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--panel)}
+#root .app-shell .checklist-category-card.enabled{border-color:#83bda4;background:linear-gradient(180deg,var(--panel),var(--success-bg))}
+#root .app-shell .checklist-category-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#root .app-shell .checklist-category-icon{font-size:25px}
+#root .app-shell .checklist-enabled-tag{font-size:9px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 7px;white-space:nowrap}
+#root .app-shell .checklist-enabled-tag.on{background:var(--success-bg);border-color:#8bc5ad;color:#145b48;font-weight:700}
+#root .app-shell .checklist-category-card h3{font-size:13px;margin:0;color:var(--text)}
+#root .app-shell .checklist-category-card p{font-size:10px;line-height:1.55;color:var(--muted);margin:0;min-height:48px}
+#root .app-shell .checklist-inline-field{display:grid;gap:5px;font-size:10px;color:var(--muted)}
+#root .app-shell .checklist-inline-field select{width:100%;min-width:0;border:1px solid var(--border);border-radius:7px;padding:8px;background:var(--panel);color:var(--text);font-size:11px}
+#root .app-shell .checklist-definition-list,#root .app-shell .checklist-history-list{display:grid;gap:0}
+#root .app-shell .checklist-definition-row,#root .app-shell .checklist-history-row,#root .app-shell .checklist-suggestion-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--border)}
+#root .app-shell .checklist-definition-row>div:first-child,#root .app-shell .checklist-history-row>div:first-child,#root .app-shell .checklist-suggestion-row>div:first-child{display:grid;gap:5px;min-width:0}
+#root .app-shell .checklist-definition-row b,#root .app-shell .checklist-history-row b,#root .app-shell .checklist-suggestion-row b{font-size:12px;color:var(--text)}
+#root .app-shell .checklist-definition-row small,#root .app-shell .checklist-history-row small,#root .app-shell .checklist-suggestion-row small{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+#root .app-shell .checklist-definition-row span{font-size:10px;color:var(--muted)}
+#root .app-shell .checklist-search input{width:100%;max-width:480px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--panel);color:var(--text)}
+#root .app-shell .checklist-builder-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#root .app-shell .checklist-builder-form .field{display:grid;gap:6px;font-size:11px;color:var(--muted)}
+#root .app-shell .checklist-builder-form input,#root .app-shell .checklist-builder-form select,#root .app-shell .checklist-builder-form textarea{width:100%;min-width:0;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel);color:var(--text);font:inherit}
+#root .app-shell .checklist-builder-form .full-field{grid-column:1/-1}
+#root .app-shell .checklist-builder-note{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:8px;background:var(--panel-alt);font-size:10px;line-height:1.5;color:var(--muted)}
+#root .app-shell .checklist-outcome{display:inline-flex;width:max-content;padding:4px 8px;border-radius:20px;font-size:10px;font-weight:700}
+#root .app-shell .checklist-outcome.pass{background:var(--success-bg);color:#145b48}
+#root .app-shell .checklist-outcome.fail{background:#fbe9e7;color:#a33b34}
+#root .app-shell .checklist-history-row details{grid-column:1/-1;font-size:11px;color:var(--muted)}
+#root .app-shell .checklist-history-row details summary{cursor:pointer}
+#root .app-shell .checklist-report-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+#root .app-shell .checklist-report-summary>div{display:grid;gap:6px;padding:11px;border:1px solid var(--border);border-radius:9px;background:var(--panel-alt)}
+#root .app-shell .checklist-report-summary small{font-size:10px;color:var(--muted)}
+#root .app-shell .checklist-report-summary b{font-size:20px;color:var(--text)}
+#root .app-shell .checklist-report-table-wrap{max-width:100%;overflow-x:auto}
+#root .app-shell .checklist-report-table-wrap table{min-width:760px;width:100%}
+#root .app-shell .checklist-alert{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:8px;font-size:11px}
+#root .app-shell .checklist-alert.error{background:#fbe9e7;color:#a33b34}
+#root .app-shell .checklist-alert.success{background:var(--success-bg);color:#145b48}
+#root .app-shell .checklist-alert button{border:0;background:transparent;color:inherit;display:grid;place-items:center}
+#root .app-shell .checklist-run-modal{max-width:760px;max-height:90vh;overflow:auto}
+#root .app-shell .checklist-run-form{display:grid;gap:13px}
+#root .app-shell .checklist-question{display:grid;gap:9px;padding:12px;border:1px solid var(--border);border-radius:9px}
+#root .app-shell .checklist-question>b{font-size:12px;line-height:1.5;color:var(--text)}
+#root .app-shell .checklist-answer-options{display:flex;gap:7px;flex-wrap:wrap}
+#root .app-shell .checklist-answer-options button{border:1px solid var(--border);border-radius:7px;background:var(--panel);padding:8px 12px;font-size:10px;color:var(--muted)}
+#root .app-shell .checklist-answer-options button.selected{border-color:#62a98b;background:var(--success-bg);color:#145b48;font-weight:700}
+#root .app-shell .checklist-answer-options button.bad.selected{border-color:#d98b84;background:#fbe9e7;color:#a33b34}
+#root .app-shell .checklist-question>input{width:100%;border:1px solid var(--border);border-radius:7px;padding:9px;background:var(--panel);color:var(--text);font-size:11px}
+#root .app-shell .checklist-failure-box{display:grid;gap:9px;padding:12px;border:1px solid #e5b0aa;border-radius:9px;background:#fff8f7;color:#853b34;font-size:11px}
+#root .app-shell .checklist-failure-box label{display:flex;align-items:center;gap:8px}
+#root .app-shell .checklist-failure-box label.field{display:grid;align-items:stretch}
+#root .app-shell .checklist-failure-box textarea{width:100%;border:1px solid var(--border);border-radius:7px;padding:9px}
+#root .app-shell .checklist-failure-box small{line-height:1.5}
+@media(max-width:1050px){
+ #root .app-shell .checklist-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .app-shell .checklist-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .app-shell .checklist-report-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:680px){
+ #root .app-shell .checklist-category-grid{grid-template-columns:minmax(0,1fr)}
+ #root .app-shell .checklist-category-card p{min-height:0}
+ #root .app-shell .checklist-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .app-shell .checklist-tabs button{justify-content:center}
+ #root .app-shell .checklist-builder-form{grid-template-columns:minmax(0,1fr)}
+ #root .app-shell .checklist-builder-form .full-field,#root .app-shell .checklist-builder-note{grid-column:auto}
+ #root .app-shell .checklist-definition-row,#root .app-shell .checklist-history-row,#root .app-shell .checklist-suggestion-row{grid-template-columns:minmax(0,1fr);align-items:stretch}
+ #root .app-shell .checklist-definition-row .top-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .app-shell .checklist-definition-row .top-actions button{justify-content:center;min-height:40px}
+ #root .app-shell .checklist-report-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #root .app-shell .checklist-run-modal{width:calc(100vw - 20px);padding:14px}
+ #root .app-shell .checklist-answer-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ #root .app-shell .checklist-answer-options button{padding:8px 4px}
+}
+@media print{
+ #root .app-shell .checklist-workspace>*:not(.checklist-section){display:none!important}
+ #root .app-shell .checklist-workspace .checklist-tabs,
+ #root .app-shell .checklist-workspace .panel-head .top-actions{display:none!important}
+ #root .app-shell .checklist-history-row{break-inside:avoid}
+}
