@@ -166,7 +166,7 @@ test('Checklist reports filter by local date range and Excel exports the filtere
 
 test('Checklist A4 print renders one selected result with answers and follow-up decision', () => {
   assert.match(panel, /setPrintingRun\(row\)/)
-  assert.match(panel, /asset-print-sheet print-checklist/)
+  assert.match(panel, /checklist-print-sheet/)
   assert.match(panel, /printingRun\.answers\.map/)
   assert.match(panel, /printingRun\.noRepairReason/)
   assert.match(panel, /window\.print\(\)/)
@@ -314,7 +314,7 @@ test('every equipment Checklist automatically includes four mandatory locked com
 test('Checklist print uses the equipment A4 print-sheet wrapper and full structured form',async()=>{
  const source=panel
  const styles=css
- assert.match(source,/className="asset-print-sheet print-checklist"/)
+ assert.match(source,/className="checklist-print-sheet"/)
  assert.match(source,/className="asset-print-report equipment-print-report checklist-print-report"/)
  for(const label of ['I. THÔNG TIN KIỂM TRA','II. NỘI DUNG VÀ KẾT QUẢ KIỂM TRA','Ghi chú / thông số đo','Người xác nhận','Mã phiếu'])assert.ok(source.includes(label),label)
  assert.match(styles,/\.asset-print-sheet\.print-checklist,\s*\.asset-print-sheet\.print-checklist \* \{ visibility: visible !important;/)
