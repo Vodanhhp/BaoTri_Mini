@@ -39,7 +39,7 @@ export type ChecklistTask = {
   claimedByUserId?: string
   claimedAt?: string
   assignmentEvents?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; actorUserId?: string; at: string }>
-  status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn'
+  status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn' | 'Không Checklist'
   definitionSnapshot: {
     categoryKey: ChecklistDefinition['categoryKey']
     questions: ChecklistQuestion[]
