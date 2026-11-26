@@ -389,7 +389,7 @@ test('Equipment QR lookup uses the target identity captured by each task version
   const db=await readFile(new URL('../src/db.ts',import.meta.url),'utf8')
   const migration=await readFile(new URL('../docs/drafts/20261126225000_checklist_task_snapshot_target_identity.sql',import.meta.url),'utf8')
   assert.match(migration,/'targetAssetId',v_definition\.target_asset_id/)
-  assert.match(cloud,/targetAssetId:String\(snapshot\.targetAssetId\|\|definition\?\.targetAssetId\)/)
+  assert.match(cloud,/targetAssetId:String\(snapshot\.targetAssetId\|\|snapshot\.target_asset_id\|\|definition\?\.targetAssetId\)/)
   assert.match(panel,/task\.definitionSnapshot\.targetAssetId===asset\.id/)
   assert.match(db,/targetAssetId\?: string/)
 })
