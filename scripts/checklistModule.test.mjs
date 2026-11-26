@@ -55,7 +55,7 @@ test('Checklist keeps a snapshot of the checked questions and exposes history an
   assert.match(panel, /Lịch sử Checklist/)
   assert.match(panel, /Báo cáo Checklist/)
   assert.match(panel, /exportExcel/)
-  assert.match(panel, /writeBuffer/)
+  assert.match(panel, /downloadExcelReport\(rows,'bao-cao-checklist\.xlsx'/)
 })
 
 test('Checklist has responsive PC/mobile styling and printable history', () => {
@@ -160,7 +160,7 @@ test('Checklist reports filter by local date range and Excel exports the filtere
   assert.match(panel, /const \[reportTo,setReportTo\]=useState\(''\)/)
   assert.match(panel, /const reportRuns=useMemo\(/)
   assert.match(panel, /checklistLocalDateKey\(new Date\(item\.completedAt\)\)/)
-  assert.match(panel, /sheet\.addRows\(\[\.\.\.reportRuns\.map/)
+  assert.match(panel, /\.\.\.reportRuns\.map\(row=>\(/)
   assert.match(panel, /reportRuns\.map\(row=>/)
 })
 
@@ -172,7 +172,7 @@ test('Checklist A4 print renders one selected result with answers and follow-up 
   assert.match(panel, /window\.print\(\)/)
 })
 
-test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/outcome:'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
+test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/'Kết quả':'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
 test('scheduled Checklist tasks are grouped into current day, week, month, and quarter tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
 
 test('period tabs only show tasks and missed counts for the matching Checklist cycle',()=>{
