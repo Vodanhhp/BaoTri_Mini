@@ -73,27 +73,29 @@ function mapDefinition(row: Row, organizationId: string): ChecklistDefinition {
     ...(row.schedule_started_at?{scheduleStartedAt:String(row.schedule_started_at)}:{})
   }
 }
-function mapTask(row: Row, organizationId: string, events: Row[]): ChecklistTask {
+function mapTask(row: Row, organizationId: string, events: Row[], definitions: ChecklistDefinition[]): ChecklistTask {
   if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả lượt Checklist sai tổ chức.')
   const snapshot=row.definition_snapshot&&typeof row.definition_snapshot==='object'?row.definition_snapshot:{}
+  const definition=definitions.find(item=>item.id===String(row.definition_id))
   const taskEvents=events.filter(event=>event.task_id===row.id).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at)))
-  const latestClaim=taskEvents.filter(event=>event.event_type==='Nhận việc').at(-1)
+  const claimEvents=taskEvents.filter(event=>event.event_type==='Nhận việc')
+  const latestClaim=claimEvents[claimEvents.length-1]
   const assignmentEvents=taskEvents.map(event=>({
     action:String(event.event_type) as 'Nhận việc'|'Trả lại nhóm'|'Hủy thực hiện',
     actor:String(event.actor_label||''),actorUserId:event.actor_user_id?String(event.actor_user_id):undefined,
     at:String(event.occurred_at)
   })).filter(event=>event.action!=='Hoàn thành')
   return {
-    id:String(row.id),organizationId,checklistId:String(row.definition_id),title:String(snapshot.title||''),
-    targetLabel:String(snapshot.targetLabel||''),frequency:snapshot.frequency as ChecklistFrequency,
-    dueAt:String(row.due_at),dueDate:String(row.due_date),executionTime:String(snapshot.executionTime||'09:00'),
-    assignee:String(row.assignee||snapshot.assignee||'Admin'),...(row.claimed_by_user_id?{claimedByUserId:String(row.claimed_by_user_id)}:{}),
+    id:String(row.id),organizationId,checklistId:String(row.definition_id),title:String(snapshot.title||definition?.title||''),
+    targetLabel:String(snapshot.targetLabel||definition?.targetLabel||''),frequency:(snapshot.frequency||definition?.frequency) as ChecklistFrequency,
+    dueAt:String(row.due_at),dueDate:String(row.due_date),executionTime:String(snapshot.executionTime||definition?.executionTime||'09:00'),
+    assignee:String(row.assignee||snapshot.assignee||definition?.assignee||'Admin'),...(row.claimed_by_user_id?{claimedByUserId:String(row.claimed_by_user_id)}:{}),
     ...(row.claimed_at?{claimedAt:String(row.claimed_at)}:{}),
-    ...(latestClaim?.actor_label?{claimedBy:String(latestClaim.actor_label)}:{}),
+    ...(row.status==='Đang thực hiện'&&latestClaim?.actor_label?{claimedBy:String(latestClaim.actor_label)}:{}),
     assignmentEvents,status:row.status as ChecklistTask['status'],
     definitionSnapshot:{
-      categoryKey:String(snapshot.categoryKey||'custom') as ChecklistDefinition['categoryKey'],
-      questions:mapQuestionRows(snapshot.questions)
+      categoryKey:String(snapshot.categoryKey||definition?.categoryKey||'custom') as ChecklistDefinition['categoryKey'],
+      questions:mapQuestionRows(snapshot.questions||definition?.questions)
     },
     ...(row.completed_at?{completedAt:String(row.completed_at)}:{}),...(row.run_id?{runId:String(row.run_id)}:{}),
     createdAt:String(row.created_at),updatedAt:String(row.updated_at)
@@ -187,7 +189,7 @@ export async function loadChecklistCloud(
   const events=asRows(eventData)
   return {
     settings,definitions,
-    tasks:asRows(taskData).map(row=>mapTask(row,organizationId,events)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)),
+    tasks:asRows(taskData).map(row=>mapTask(row,organizationId,events,definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)),
     runs:asRows(runData).map(row=>mapRun(row,organizationId,events)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
   }
 }
