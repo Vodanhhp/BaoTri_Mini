@@ -1303,7 +1303,7 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='checklist'
-          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets}/>
+          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets}/>
           : activeModule==='reports'
           ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport}/>
           : activeModule==='maintenance'
