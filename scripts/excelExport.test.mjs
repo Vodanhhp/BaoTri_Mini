@@ -51,5 +51,5 @@ test('all Excel exports use the shared report workbook formatter', async () => {
  assert.equal((app.match(/downloadExcelReport\(/g)||[]).length,1)
  assert.equal((inventory.match(/downloadExcelReport\(/g)||[]).length,1)
  assert.equal((maintenance.match(/downloadExcelReport\(/g)||[]).length,2)
- assert.equal((reports.match(/downloadExcelReport\(/g)||[]).length,3)
+ assert.equal((reports.match(/downloadExcelReport\(/g)||[]).length,4)
 })
