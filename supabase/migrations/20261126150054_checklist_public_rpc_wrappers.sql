@@ -74,4 +74,3 @@ grant execute on function public.checklist_claim_task(uuid,uuid) to authenticate
 grant execute on function public.checklist_release_task(uuid,uuid) to authenticated;
 grant execute on function public.checklist_complete_task(uuid,uuid,jsonb) to authenticated;
 grant execute on function public.checklist_complete_manual_run(uuid,uuid,jsonb) to authenticated;
-commit;
