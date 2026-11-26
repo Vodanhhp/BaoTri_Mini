@@ -189,6 +189,8 @@ export type AssetSyncCursor = {
 export type OrganizationAssetResetState = {
   organizationId: string
   generation: number
+  inventoryGeneration?: number
+  checklistGeneration?: number
   appliedAt: string
   /** Local installation identity paired with the acknowledged generation. */
   deviceId?: string
