@@ -508,7 +508,7 @@ test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited 
   const cloud=await readFile(new URL('../src/lib/maintenanceCloud.ts',import.meta.url),'utf8')
   const report=await readFile(new URL('../src/ReportsPanel.tsx',import.meta.url),'utf8')
   const requestMigration=await readFile(new URL('../supabase/migrations/20261126163024_maintenance_request_cloud_rpcs.sql',import.meta.url),'utf8')
-  const scheduleMigration=await readFile(new URL('../supabase/migrations/20261126234200_maintenance_schedule_cloud_rpcs.sql',import.meta.url),'utf8')
+  const scheduleMigration=await readFile(new URL('../supabase/migrations/20261126163513_maintenance_schedule_cloud_rpcs.sql',import.meta.url),'utf8')
   assert.match(panel,/loadMaintenanceRequests\(supabaseClient,organizationId\)/)
   assert.match(panel,/saveMaintenanceRequest\(supabaseClient,organizationId,value/)
   assert.match(panel,/completeMaintenanceRequest\(supabaseClient,organizationId,row\.id/)
