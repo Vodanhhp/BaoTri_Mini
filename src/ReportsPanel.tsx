@@ -135,7 +135,9 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
     const overdue= row.status!=='Hoàn thành'&&Boolean(row.dueDate)&&String(row.dueDate)<todayKey
     return created||completed||overdue
   }).sort((a,b)=>(b.completedAt||b.requestDate).localeCompare(a.completedAt||a.requestDate))
-  const scheduledTasksInPeriod=tasks.filter(row=>(row.dueDate>=range.startDate&&row.dueDate<=range.endDate)||(Boolean(row.completedAt)&&localDateKey(row.completedAt!)>=range.startDate&&localDateKey(row.completedAt!)<=range.endDate))
+  const overdueScheduledTasks=tasks.filter(row=>row.status!=='Hoàn thành'&&row.dueDate<todayKey)
+    .filter(row=>{const asset=assets.find(item=>item.id===row.assetId);return (row.title+' '+row.frequency+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query)})
+  const scheduledTasksInPeriod=tasks.filter(row=>(row.dueDate>=range.startDate&&row.dueDate<=range.endDate)||(Boolean(row.completedAt)&&localDateKey(row.completedAt!)>=range.startDate&&localDateKey(row.completedAt!)<=range.endDate)||(row.status!=='Hoàn thành'&&row.dueDate<todayKey))
     .filter(row=>{const asset=assets.find(item=>item.id===row.assetId);return (row.title+' '+row.frequency+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query)})
   const exportMaintenanceReport=()=>{
     const requestRows=maintenanceRequestRows.map(row=>{
@@ -345,6 +347,7 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
         <span><b>{overdueMaintenanceRequests.length}</b> phiếu quá hạn</span>
         <span><b>{tasks.filter(row=>row.dueDate>=range.startDate&&row.dueDate<=range.endDate).length}</b> lịch bảo dưỡng đến hạn</span>
         <span><b>{tasks.filter(row=>row.status==='Hoàn thành'&&row.completedAt&&localDateKey(row.completedAt)>=range.startDate&&localDateKey(row.completedAt)<=range.endDate).length}</b> lịch bảo dưỡng hoàn thành</span>
+        <span><b>{overdueScheduledTasks.length}</b> lịch bảo dưỡng quá hạn</span>
       </div>
       <div className="table-wrap reports-table-wrap"><table className="period-report-table"><thead><tr><th>Ngày phát sinh</th><th>Hạn xử lý</th><th>Thiết bị</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th>Người yêu cầu</th><th>Người thực hiện</th><th>Kết quả</th></tr></thead><tbody>
         {maintenanceRequestRows.map(row=>{const asset=assets.find(item=>item.id===row.assetId);return <tr key={row.id}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td><b>{asset?.code||'—'}</b><small>{asset?.name||'Thiết bị không còn trong danh mục'}</small></td><td>{row.kind}</td><td>{row.description}{row.completedAt&&<small>Hoàn thành: {dateTimeLabel(row.completedAt)}</small>}</td><td>{row.status}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}</td><td>{row.result||'—'}</td></tr>})}
