@@ -155,11 +155,14 @@ test('Checklist group claims are atomic and ownership uses stable user IDs, not 
 })
 
 
-test('Checklist reports filter by local date range and Excel exports the filtered result set', () => {
-  assert.match(panel, /const \[reportFrom,setReportFrom\]=useState\(''\)/)
-  assert.match(panel, /const \[reportTo,setReportTo\]=useState\(''\)/)
+test('Checklist reports support day, week, month, quarter and year periods and export the filtered result set', () => {
+  assert.match(panel, /const \[reportPeriod,setReportPeriod\]=useState/)
+  assert.match(panel, /const \[reportAnchorDate,setReportAnchorDate\]=useState\(dateOnly\(\)\)/)
+  assert.match(panel, /const reportRange=useMemo\(/)
+  assert.match(panel, /const reportEndDate=useMemo\(/)
   assert.match(panel, /const reportRuns=useMemo\(/)
   assert.match(panel, /checklistLocalDateKey\(new Date\(item\.completedAt\)\)/)
+  assert.match(panel, /\{value:'year',label:'Năm'\}/)
   assert.match(panel, /\.\.\.reportRuns\.map\(row=>\(/)
   assert.match(panel, /reportRuns\.map\(row=>/)
 })
