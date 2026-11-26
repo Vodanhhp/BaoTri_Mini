@@ -745,3 +745,9 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung source test xác nhận cả danh sách công việc lẫn bộ đếm Không Checklist được lọc theo chu kỳ.
 - Thực hiện trên nhánh main. Chưa xác nhận CI Build/Test và GitHub Pages Deploy cho đến khi kiểm tra workflow; không kiểm thử trình duyệt thực tế trong bước này.
 - Không thay đổi Supabase, Dexie schema, dữ liệu, Auth, RLS, Storage hoặc PR #21.
+
+
+## 26/11/2026 – chuẩn hóa Excel Checklist và sửa lượt đến hạn ngay sau khi bật mẫu
+- Báo cáo Checklist chuyển sang dùng chung hàm `downloadExcelReport` của toàn website: tiêu đề/đơn vị/ngày xuất/tổng bản ghi, header định dạng, zebra rows, bộ lọc, cố định phần đầu, căn lề và thiết lập in A4 ngang. Giữ nguyên dữ liệu kết quả và các lượt **Không Checklist** trong phạm vi lọc báo cáo.
+- Sửa bộ sinh lịch: khi Admin tạo hoặc bật mẫu sau giờ thực hiện trong ngày, lượt đến hạn của ngày hiện tại vẫn được sinh nếu còn trong cửa sổ 24 giờ. Nếu đã quá 24 giờ trước thời điểm kích hoạt thì không tạo ngược một lượt bỏ lỡ trước khi mẫu được bật. Áp dụng độc lập cho lịch ngày/tuần/tháng/quý/năm.
+- Không thay đổi quan hệ Checklist với thiết bị, chu kỳ bảo trì, Dexie schema hoặc dữ liệu Supabase. Bổ sung source regression tests cho định dạng Excel chung và trường hợp kích hoạt sau giờ đến hạn.
