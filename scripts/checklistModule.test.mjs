@@ -83,10 +83,11 @@ test('Dashboard shows period-based Checklist counts and does not treat flexible 
   assert.match(app, /<ChecklistDashboardSummary/)
   assert.match(panel, /Đến hạn cần làm/)
   assert.match(panel, /Không Checklist/)
-  assert.match(panel, /Lịch sắp tới/)
-  assert.match(panel, /Tuần tới/)
-  assert.match(panel, /Tháng tới/)
-  assert.match(panel, /Quý tới/)
+  assert.match(panel, /Công việc trong kỳ/)
+  assert.match(panel, /setWorkPeriod\('day'\)/)
+  assert.match(panel, /setWorkPeriod\('week'\)/)
+  assert.match(panel, /setWorkPeriod\('month'\)/)
+  assert.match(panel, /setWorkPeriod\('quarter'\)/)
   assert.match(schedule, /item\.frequency!=='Linh hoạt'/)
 })
 
@@ -171,4 +172,4 @@ test('Checklist A4 print renders one selected result with answers and follow-up 
 })
 
 test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/outcome:'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
-test('future schedule is hidden by default and opened separately by week, month, or quarter',()=>{assert.match(panel,/const \[upcomingOpen,setUpcomingOpen\]=useState\(false\)/);assert.match(panel,/const upcomingTasks=tasks\.filter/);assert.match(panel,/upcomingOpen&&/);assert.match(panel,/setUpcomingPeriod\('week'\)/);assert.match(panel,/setUpcomingPeriod\('month'\)/);assert.match(panel,/setUpcomingPeriod\('quarter'\)/);assert.match(panel,/actionableTasks\.map/)})
+test('scheduled Checklist tasks are grouped into current day, week, month, and quarter tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\\.filter/);assert.match(panel,/item\\.dueDate>=periodRange\\.start&&item\\.dueDate<periodRange\\.end/);assert.match(panel,/currentMs-new Date\\(item\\.dueAt\\)\\.getTime\\(\\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
