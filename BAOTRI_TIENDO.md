@@ -826,3 +826,11 @@ PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
 - Chặn thực hiện Checklist trên PC cần được xác thực bằng kiểm thử giao diện thực tế; hiện mới có chặn theo viewport desktop.
 - Chạy CI/build/test sau các thay đổi; chưa kiểm thử trên điện thoại hoặc camera thực tế.
 - Chưa áp dụng bất kỳ migration nào lên Production; chưa merge PR #75.
+
+
+### Kiểm thử nhánh Checklist (26/11/2026)
+- CI `Build and test` run `45843259457`: **success**; các bước Unit tests và Build đều thành công.
+- CI `Validate BAOTRI Mini` run `45843259528`: **success**.
+- Đã sửa lỗi JSX trùng thuộc tính disabled và cập nhật các kiểm thử để phản ánh chính sách thực hiện Checklist trên điện thoại, online-only.
+- Migration đã áp dụng ở Supabase Test được lưu tại `docs/drafts/20261126144630_checklist_cloud_online_foundation.sql`, không nằm trong `supabase/migrations/` vì chưa áp dụng Production và bộ kiểm thử migration yêu cầu đồng bộ chính xác với lịch sử Production.
+- Trạng thái vẫn là PR Draft #75; không merge, không deploy Production.
