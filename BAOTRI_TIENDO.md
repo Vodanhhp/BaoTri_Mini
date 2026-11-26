@@ -959,3 +959,8 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - RPC lưu mẫu thiết bị chỉ chấp nhận thiết bị còn hoạt động, chưa archive/delete và trạng thái không phải Thanh lý.
 - Thêm cảnh báo Admin về dữ liệu Checklist Dexie cũ trên chính trình duyệt hiện tại; không tự nhập và không xóa dữ liệu.
 - Migration Checklist Test hiện có 20 bản ghi. CI tại commit code trước hai thay đổi cuối đã xanh; run cho head mới đang chạy.
+
+
+### Hai điểm nghiệp vụ cần chốt trước nghiệm thu – 26/11/2026
+- **Xóa/bớt mẫu:** UI hiện có Tạo mẫu, Sửa nội dung và Tạm ngừng/Tiếp tục lịch; chưa có thao tác xóa hoặc lưu trữ mẫu khỏi danh sách. Hard delete không phù hợp vì mẫu đang được lịch sử tham chiếu. Đề xuất dùng Lưu trữ mẫu (soft archive), giữ nguyên kết quả và phiên bản cũ; chờ xác nhận nghiệp vụ trước khi triển khai.
+- **Dữ liệu Dexie cũ:** cảnh báo đã được thêm, nhưng chưa có luồng import. Cần chọn một thiết bị/nguồn dữ liệu chuẩn và cách hợp nhất dữ liệu từ nhiều trình duyệt để tránh nhập trùng hoặc ghi đè mẫu.
