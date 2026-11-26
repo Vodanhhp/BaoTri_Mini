@@ -108,7 +108,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const periodRange=checklistPeriodRange(workPeriod)
   const periodTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const missedTasks=tasks.filter(item=>item.status==='Không Checklist').sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
-  const visibleDefinitions=useMemo(()=>definitions.filter(item=>item.enabled&&(item.source!=='starter'||settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled))&&(!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi')))),[definitions,search,settings])
   const suggestions=useMemo(()=>{
     const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
     const rules=[
