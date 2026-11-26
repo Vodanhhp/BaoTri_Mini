@@ -736,3 +736,12 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Mẫu thuộc nhóm khởi tạo không có nút tạm ngừng riêng; bật/tắt nhóm tại cấu hình nhóm khởi tạo là nguồn điều khiển.
 - Nhấn **Sửa nội dung** hoặc **Tạo Checklist** mở hộp thoại riêng (modal) có nền phủ, tiêu đề, đóng/hủy, form chỉnh tên/đối tượng/nhóm/chu kỳ/giờ/người phụ trách và thêm/sửa/xóa từng mục. Có responsive PC/mobile.
 - Chưa thay đổi Supabase. Chờ CI Build/Test và Pages Deploy; chưa xác nhận browser E2E.
+
+
+## 26/11/2026 – tách công việc Checklist theo đúng chu kỳ ở các tab Ngày/Tuần/Tháng/Quý
+- Sửa bộ lọc Tổng quan: tab **Ngày** chỉ hiển thị lượt của mẫu chu kỳ **Hàng ngày**; **Tuần** chỉ Hàng tuần; **Tháng** chỉ Hàng tháng; **Quý** chỉ Hàng quý. Không còn đưa các lượt Hàng ngày vào danh sách Tuần/Tháng/Quý chỉ vì ngày đến hạn nằm trong khoảng kỳ.
+- Bộ đếm **Công việc trong kỳ** và **Không Checklist trong kỳ** đều lọc theo đúng chu kỳ đang chọn và khoảng ngày của kỳ. Lượt đã hoàn thành vẫn ẩn; quy tắc quá 24 giờ sau giờ đến hạn vẫn giữ nguyên.
+- Checklist chu kỳ **Hàng năm** không ghép vào tab Quý; kết quả và lượt bỏ lỡ vẫn được tra cứu trong Lịch sử/Báo cáo.
+- Bổ sung source test xác nhận cả danh sách công việc lẫn bộ đếm Không Checklist được lọc theo chu kỳ.
+- Thực hiện trên nhánh main. Chưa xác nhận CI Build/Test và GitHub Pages Deploy cho đến khi kiểm tra workflow; không kiểm thử trình duyệt thực tế trong bước này.
+- Không thay đổi Supabase, Dexie schema, dữ liệu, Auth, RLS, Storage hoặc PR #21.
