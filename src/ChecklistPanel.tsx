@@ -284,7 +284,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div></div>
         </div>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Mỗi kỳ là một lượt riêng. Việc bỏ lỡ kỳ trước không làm mất hoặc chuyển kỳ đó sang ngày khác.</p></div></div>
+          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị lượt đã đến hạn trong 24 giờ cho phép. Quá thời gian này, lượt được ghi nhận là Không Checklist.</p></div></div>
           <div className="checklist-report-summary"><div><small>Đến hạn cần làm</small><b>{actionableTasks.length}</b></div><div><small>Không Checklist</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
             {actionableTasks.map(task=>{
