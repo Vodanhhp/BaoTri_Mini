@@ -3318,3 +3318,12 @@ html,body,#root,.app-shell{
 .checklist-question-edit-row .soft-btn:disabled{opacity:.45;cursor:not-allowed}
 .checklist-builder-form .field>p{line-height:1.6}
 @media(max-width:520px){.checklist-question-edit-row{grid-template-columns:20px minmax(0,1fr) auto;gap:5px}.checklist-question-edit-row .soft-btn{padding:8px}}
+
+/* Checklist editor: modal riêng để phân biệt rõ chế độ chỉnh sửa */
+#root .app-shell .checklist-modal-backdrop{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.58);overflow-y:auto}
+#root .app-shell .checklist-editor-modal{width:min(860px,100%);max-height:min(90vh,900px);overflow-y:auto;padding:22px;border:1px solid var(--border);border-radius:14px;background:var(--panel);box-shadow:0 24px 80px rgba(0,0,0,.28)}
+#root .app-shell .checklist-editor-modal>.panel-head{position:sticky;top:-22px;z-index:2;margin:-22px -22px 18px;padding:18px 22px;background:var(--panel);border-bottom:1px solid var(--border);border-radius:14px 14px 0 0}
+#root .app-shell .checklist-editor-modal .checklist-builder-form{padding-bottom:4px}
+#root .app-shell .checklist-template-help{display:grid;gap:5px;margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--panel-alt);font-size:11px;line-height:1.55;color:var(--muted)}
+#root .app-shell .checklist-template-help b{color:var(--text)}
+@media(max-width:600px){#root .app-shell .checklist-modal-backdrop{align-items:flex-start;padding:8px}#root .app-shell .checklist-editor-modal{max-height:calc(100vh - 16px);padding:14px;border-radius:11px}#root .app-shell .checklist-editor-modal>.panel-head{top:-14px;margin:-14px -14px 14px;padding:14px;border-radius:11px 11px 0 0}#root .app-shell .checklist-editor-modal .checklist-builder-form{grid-template-columns:minmax(0,1fr)}}
