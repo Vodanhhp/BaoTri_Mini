@@ -336,10 +336,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const next={...current,...patch,updatedAt:now()}
     if(organizationId!=='local-preview'){
       if(!supabase)throw new Error('Chưa kết nối Supabase.')
-      await saveChecklistCategorySetting(supabase,organizationId,userId,next)
+      const client=supabase
+      await saveChecklistCategorySetting(client,organizationId,userId,next)
       if((patch.frequency&&patch.frequency!==current.frequency)||(patch.executionTime&&patch.executionTime!==(current.executionTime||'09:00'))){
         const defs=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
-        await Promise.all(defs.map(item=>saveChecklistDefinition(supabase,organizationId,{...item,...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
+        await Promise.all(defs.map(item=>saveChecklistDefinition(client,organizationId,{...item,...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
       }
     }else{
       await db.checklistCategorySettings.put(next)
@@ -365,7 +366,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const enable=!setting.enabled
     await saveSetting(key,{enabled:enable})
     const starters=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
-    if(organizationId!=='local-preview'&&supabase)await Promise.all(starters.map(item=>saveChecklistDefinition(supabase,organizationId,{...item,scheduleStartedAt:now(),updatedAt:now()})))
+    if(organizationId!=='local-preview'&&supabase){const client=supabase;await Promise.all(starters.map(item=>saveChecklistDefinition(client,organizationId,{...item,scheduleStartedAt:now(),updatedAt:now()})))}
     else await Promise.all(starters.map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
     if(enable&&!definitions.some(item=>item.categoryKey===key)){
       const meta=CATEGORIES.find(item=>item.key===key)!
