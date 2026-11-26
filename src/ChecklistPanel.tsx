@@ -9,6 +9,7 @@ type Props = {
   userLabel: string
   canView: boolean
   canManage: boolean
+  canExecute: boolean
   assets: Asset[]
 }
 
@@ -26,7 +27,7 @@ const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
 const dateOnly = () => new Date().toLocaleDateString('en-CA')
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
-export default function ChecklistPanel({organizationId,organizationName,userLabel,canView,canManage,assets}:Props) {
+export default function ChecklistPanel({organizationId,organizationName,userLabel,canView,canManage,canExecute,assets}:Props) {
   const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
   const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
   const [runs,setRuns]=useState<ChecklistRun[]>([])
@@ -134,7 +135,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const completeRun=async(event:FormEvent)=>{
     event.preventDefault()
-    if(!running||!canManage)return
+    if(!running||!canExecute)return
     const missing=running.questions.filter(q=>q.required&&!answers[q.id]?.result)
     if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
@@ -196,7 +197,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm Checklist hoặc đối tượng kiểm tra…"/></div>
           <div className="checklist-definition-list">{visibleDefinitions.map(item=><article className="checklist-definition-row" key={item.id}>
             <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.enabled?'Đang hoạt động':'Đã tắt'}</span></div>
-            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canManage}>Thực hiện</button>}</div>
+            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canExecute}>Thực hiện</button>}</div>
           </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
         </section>
         {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Chỉ đề xuất một số loại thiết bị quan trọng đã có trong danh mục; Admin quyết định thêm hay bỏ qua.</p></div></div>
