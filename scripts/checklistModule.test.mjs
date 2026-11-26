@@ -419,6 +419,28 @@ test('Cloud template RPC refuses retired equipment as a target',async()=>{
   assert.match(panel,/neq\('status','Thanh lý'\)/)
 })
 
+test('Checklist templates can be archived and restored without deleting history',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126231000_checklist_template_soft_archive.sql',import.meta.url),'utf8')
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const types=await readFile(new URL('../src/db.ts',import.meta.url),'utf8')
+  assert.match(migration,/ADD COLUMN archived_at timestamptz/)
+  assert.match(migration,/ADD COLUMN cancelled_at timestamptz/)
+  assert.match(migration,/private\.archive_checklist_definition/)
+  assert.match(migration,/private\.restore_checklist_definition/)
+  assert.match(migration,/checklist_definition_versions/)
+  assert.match(migration,/status='Đang thực hiện'/)
+  assert.match(cloud,/checklist_archive_definition/)
+  assert.match(cloud,/checklist_restore_definition/)
+  assert.match(cloud,/!def\.archivedAt&&def\.enabled/)
+  assert.match(cloud,/excludeCancelled=true/)
+  assert.match(types,/archivedAt\?: string/)
+  assert.match(types,/cancelledAt\?: string/)
+  assert.match(panel,/Mẫu đã lưu trữ/)
+  assert.match(panel,/Lưu trữ mẫu/)
+  assert.match(panel,/Khôi phục mẫu/)
+  assert.match(panel,/Lịch sử và kết quả cũ vẫn được giữ/)
+})
+
 test('Cloud template RPC rejects malformed or duplicate Checklist question identities',async()=>{
   const migration=await readFile(new URL('../docs/drafts/20261126229000_checklist_definition_question_validation.sql',import.meta.url),'utf8')
   assert.match(migration,/jsonb_array_elements\(v_questions\)/)
