@@ -20,7 +20,7 @@ export type ChecklistRun = {
   answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Không áp dụng'; note: string }>
   outcome: 'Đạt' | 'Không đạt'; inspector: string; completedAt: string
   repairRequestCreated: boolean; noRepairReason?: string
-  assignmentHistory?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; at: string }>
+  assignmentHistory?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; actorUserId?: string; at: string }>
   checklistSnapshot: ChecklistQuestion[]
 }
 
@@ -36,8 +36,9 @@ export type ChecklistTask = {
   executionTime?: string
   assignee: string
   claimedBy?: string
+  claimedByUserId?: string
   claimedAt?: string
-  assignmentEvents?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; at: string }>
+  assignmentEvents?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; actorUserId?: string; at: string }>
   status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn'
   definitionSnapshot: {
     categoryKey: ChecklistDefinition['categoryKey']
