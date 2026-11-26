@@ -40,6 +40,169 @@ const checklistPeriodRange = (period:'day'|'week'|'month'|'quarter',reference=ne
 }
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
+const CHECKLIST_SUGGESTIONS:Record<string,string[]> = {
+  pump:[
+    'Kiểm tra tình trạng khởi động, dừng và khả năng vận hành của máy bơm?',
+    'Kiểm tra áp suất đầu hút, đầu đẩy có nằm trong giới hạn vận hành?',
+    'Kiểm tra lưu lượng nước/chất lỏng có ổn định, đúng yêu cầu?',
+    'Kiểm tra rò rỉ tại phớt cơ khí, trục bơm, mặt bích và các đầu nối?',
+    'Kiểm tra tiếng ồn, rung động bất thường khi máy chạy?',
+    'Kiểm tra nhiệt độ ổ bi, thân bơm và động cơ?',
+    'Kiểm tra tình trạng chân đế, bu lông neo và khớp nối trục?',
+    'Kiểm tra chiều quay động cơ có đúng chiều quy định?',
+    'Kiểm tra van hút, van đẩy và van một chiều hoạt động bình thường?',
+    'Kiểm tra lưới lọc/rọ hút không bị tắc nghẽn?',
+    'Kiểm tra đồng hồ áp suất, lưu lượng và thiết bị đo còn hoạt động?',
+    'Kiểm tra tình trạng dầu mỡ bôi trơn theo hướng dẫn của nhà sản xuất?',
+    'Kiểm tra dây/cáp điện, đầu cos và hộp cực động cơ?',
+    'Kiểm tra dòng điện các pha, điện áp và dấu hiệu mất cân bằng?',
+    'Kiểm tra khu vực đặt bơm khô ráo, sạch sẽ, không bị ngập nước?'
+  ],
+  compressor:[
+    'Kiểm tra áp suất khí nén đầu ra và áp suất cài đặt đóng/ngắt?',
+    'Kiểm tra rò rỉ khí tại đường ống, van, khớp nối và đầu nối nhanh?',
+    'Kiểm tra mức dầu bôi trơn và tình trạng dầu theo khuyến cáo?',
+    'Kiểm tra nhiệt độ đầu nén, dầu và khí xả?',
+    'Kiểm tra tiếng ồn, rung động bất thường khi vận hành?',
+    'Kiểm tra lọc gió đầu vào và dấu hiệu tắc bẩn?',
+    'Kiểm tra lọc dầu, lọc tách dầu và dấu hiệu chênh áp bất thường?',
+    'Kiểm tra bộ làm mát, quạt giải nhiệt và đường thoát nhiệt?',
+    'Kiểm tra bộ xả nước ngưng tự động và bình chứa khí?',
+    'Kiểm tra van an toàn, van một chiều và van xả áp?',
+    'Kiểm tra dây đai/khớp nối, độ căng và tình trạng mài mòn?',
+    'Kiểm tra dòng điện, điện áp và tình trạng đóng cắt contactor?',
+    'Kiểm tra rơ le áp suất, cảm biến áp suất và tín hiệu cảnh báo?',
+    'Kiểm tra chân đế, bu lông liên kết và độ chắc chắn của máy?',
+    'Ghi nhận thời gian chạy, số lần khởi động và cảnh báo trên bộ điều khiển?'
+  ],
+  motor:[
+    'Kiểm tra tiếng ồn và rung động bất thường của động cơ?',
+    'Kiểm tra nhiệt độ vỏ động cơ và ổ bi khi vận hành?',
+    'Kiểm tra dòng điện từng pha và so sánh độ cân bằng?',
+    'Kiểm tra điện áp cấp và tình trạng mất pha/quá áp/thấp áp?',
+    'Kiểm tra đầu cốt, hộp cực và độ chắc chắn của các mối nối?',
+    'Kiểm tra cáp nguồn, ống luồn và lớp cách điện bên ngoài?',
+    'Kiểm tra quạt làm mát, cánh quạt và lưới che gió?',
+    'Kiểm tra bụi bẩn, dầu mỡ và tình trạng thông gió?',
+    'Kiểm tra chân đế, bu lông và khớp nối với máy công tác?',
+    'Kiểm tra dấu hiệu cọ sát, lệch trục hoặc hư hỏng cơ khí?',
+    'Kiểm tra thiết bị bảo vệ quá tải, mất pha và nối đất?',
+    'Kiểm tra chiều quay và tốc độ theo yêu cầu vận hành?'
+  ],
+  generator:[
+    'Kiểm tra mức nhiên liệu và dấu hiệu rò rỉ tại đường cấp?',
+    'Kiểm tra mức dầu bôi trơn và áp suất dầu?',
+    'Kiểm tra nước làm mát, két nước, ống dẫn và dấu hiệu rò rỉ?',
+    'Kiểm tra tình trạng dây curoa, quạt và két tản nhiệt?',
+    'Kiểm tra ắc quy, điện áp ắc quy, đầu cọc và bộ sạc?',
+    'Kiểm tra bộ khởi động và khả năng khởi động động cơ?',
+    'Kiểm tra rò rỉ dầu, nhiên liệu, nước và khí xả?',
+    'Kiểm tra tiếng ồn, rung động và khói xả bất thường?',
+    'Kiểm tra điện áp, tần số và dòng điện khi chạy thử theo quy trình?',
+    'Kiểm tra bộ điều khiển, đèn báo và cảnh báo lỗi?',
+    'Kiểm tra ATS, chế độ Auto/Manual và tín hiệu điều khiển?',
+    'Kiểm tra tiếp địa, đầu nối điện và tình trạng cách điện bên ngoài?',
+    'Kiểm tra mức nhiên liệu dự trữ và tình trạng thông thoáng phòng máy?',
+    'Ghi nhận giờ chạy máy và lịch sử cảnh báo?'
+  ],
+  electrical:[
+    'Kiểm tra tủ điện đóng kín, khóa và biển cảnh báo đầy đủ?',
+    'Kiểm tra dấu hiệu phát nhiệt, mùi khét, tiếng phóng điện hoặc đổi màu?',
+    'Kiểm tra đèn báo pha, đồng hồ đo và thiết bị hiển thị?',
+    'Kiểm tra điện áp các pha và điện áp pha-trung tính?',
+    'Kiểm tra dòng tải các pha, dấu hiệu quá tải hoặc lệch pha?',
+    'Kiểm tra contactor, relay, aptomat và dấu hiệu tiếp điểm bất thường?',
+    'Kiểm tra đầu cos, thanh cái và mối nối có dấu hiệu lỏng?',
+    'Kiểm tra dây dẫn, máng cáp và lớp cách điện nhìn thấy được?',
+    'Kiểm tra quạt, lọc gió và nhiệt độ bên trong tủ?',
+    'Kiểm tra nối đất vỏ tủ và dây PE?',
+    'Kiểm tra nhãn mạch, sơ đồ điện và ký hiệu thiết bị?',
+    'Kiểm tra khu vực trước tủ điện khô ráo, thông thoáng, không bị che chắn?',
+    'Kiểm tra nút dừng khẩn cấp và liên động an toàn theo quy trình?',
+    'Ghi nhận cảnh báo hoặc bất thường phát hiện trong ca?'
+  ],
+  water:[
+    'Kiểm tra đường ống, mặt bích, van và mối nối có rò rỉ?',
+    'Kiểm tra áp lực nước đầu vào và đầu ra?',
+    'Kiểm tra lưu lượng cấp nước có ổn định?',
+    'Kiểm tra tình trạng hoạt động của van khóa và van một chiều?',
+    'Kiểm tra bơm cấp nước, bơm tăng áp và bơm dự phòng?',
+    'Kiểm tra bể chứa, nắp bể và dấu hiệu thấm/rò rỉ?',
+    'Kiểm tra phao điện, cảm biến mức và tín hiệu điều khiển?',
+    'Kiểm tra đồng hồ áp lực, đồng hồ lưu lượng và đồng hồ nước?',
+    'Kiểm tra giá đỡ ống, chống rung và tình trạng ăn mòn?',
+    'Kiểm tra khu vực kỹ thuật khô ráo, sạch sẽ và thoát nước tốt?'
+  ],
+  fire:[
+    'Kiểm tra lối thoát nạn và đường tiếp cận phương tiện chữa cháy thông thoáng?',
+    'Kiểm tra bình chữa cháy đúng vị trí, còn niêm phong và dễ tiếp cận?',
+    'Kiểm tra áp suất bình chữa cháy trong vùng cho phép?',
+    'Kiểm tra tem kiểm định, hạn kiểm tra và hướng dẫn sử dụng?',
+    'Kiểm tra tủ/họng chữa cháy, cuộn vòi, lăng phun và van?',
+    'Kiểm tra bơm chữa cháy chính, dự phòng và bơm bù áp?',
+    'Kiểm tra áp lực đường ống và tình trạng rò rỉ?',
+    'Kiểm tra tủ trung tâm báo cháy và trạng thái nguồn điện?',
+    'Kiểm tra đầu báo khói, đầu báo nhiệt và nút nhấn khẩn?',
+    'Kiểm tra chuông, còi, đèn báo cháy và đèn exit?',
+    'Kiểm tra đèn chiếu sáng sự cố và nguồn dự phòng?',
+    'Kiểm tra cửa chống cháy, tay co và cơ cấu tự đóng?',
+    'Kiểm tra biển chỉ dẫn thoát nạn và sơ đồ thoát hiểm?',
+    'Ghi nhận lỗi/cảnh báo trên hệ thống PCCC và báo người phụ trách?'
+  ],
+  infrastructure:[
+    'Kiểm tra sàn, nền và lối đi có nứt vỡ, trơn trượt hoặc vật cản?',
+    'Kiểm tra tường, vách và lớp sơn có nứt, bong tróc hoặc thấm nước?',
+    'Kiểm tra trần, mái và dấu hiệu dột, võng hoặc hư hỏng?',
+    'Kiểm tra cửa đi, cửa sổ, khóa và bản lề hoạt động bình thường?',
+    'Kiểm tra cầu thang, lan can và tay vịn chắc chắn?',
+    'Kiểm tra hành lang, lối thoát hiểm không bị chiếm dụng?',
+    'Kiểm tra hệ thống chiếu sáng khu vực hoạt động bình thường?',
+    'Kiểm tra thông gió, điều hòa và điều kiện nhiệt độ khu vực?',
+    'Kiểm tra hệ thống thoát nước sàn, phễu thu và mùi bất thường?',
+    'Kiểm tra dấu hiệu côn trùng, động vật gây hại hoặc mất vệ sinh?',
+    'Kiểm tra biển báo, sơ đồ khu vực và nhãn nhận diện?',
+    'Kiểm tra khu vực sạch sẽ, thông thoáng và được sắp xếp đúng quy định?'
+  ],
+  generalEquipment:[
+    'Kiểm tra tình trạng hoạt động và khả năng khởi động/dừng thiết bị?',
+    'Kiểm tra tiếng ồn, rung động, nhiệt độ bất thường?',
+    'Kiểm tra dấu hiệu rò rỉ dầu, nước, khí hoặc hóa chất?',
+    'Kiểm tra dây điện, đầu nối và thiết bị bảo vệ bên ngoài?',
+    'Kiểm tra che chắn an toàn, nắp bảo vệ và nút dừng khẩn cấp?',
+    'Kiểm tra bu lông, chân đế, khung máy và liên kết cơ khí?',
+    'Kiểm tra vệ sinh, bụi bẩn và điều kiện thông gió?',
+    'Kiểm tra đồng hồ, cảm biến, đèn báo và cảnh báo lỗi?',
+    'Kiểm tra khu vực xung quanh thiết bị thông thoáng, không có vật cản?',
+    'Ghi nhận thông số vận hành và bất thường so với trạng thái bình thường?'
+  ],
+  generalArea:[
+    'Kiểm tra khu vực sạch sẽ, thông thoáng và không có vật cản?',
+    'Kiểm tra sàn, tường, trần và cửa không có dấu hiệu hư hỏng?',
+    'Kiểm tra chiếu sáng và thông gió khu vực?',
+    'Kiểm tra lối đi, lối thoát hiểm và biển chỉ dẫn?',
+    'Kiểm tra dấu hiệu thấm dột, rò rỉ nước hoặc đọng nước?',
+    'Kiểm tra ổ cắm, công tắc và dây dẫn nhìn thấy được an toàn?',
+    'Kiểm tra phương tiện PCCC tại khu vực dễ tiếp cận?',
+    'Kiểm tra vệ sinh, mùi lạ, côn trùng và điều kiện môi trường?',
+    'Kiểm tra hệ thống thoát nước và khả năng thoát nước?',
+    'Ghi nhận các hư hỏng cần xử lý hoặc theo dõi?'
+  ]
+}
+const checklistSuggestionSet=(targetKind:'equipment'|'other',asset:Asset|undefined,category:ChecklistCategoryKey|'equipment'|'custom',target:string)=>{
+ const subject=((asset?.name||'')+' '+(asset?.category||'')+' '+target).toLocaleLowerCase('vi')
+ if(targetKind==='equipment'){
+  if(/bơm|pump/.test(subject))return {label:'Gợi ý cho máy bơm',items:CHECKLIST_SUGGESTIONS.pump}
+  if(/nén khí|máy nén|compressor|sấy khí/.test(subject))return {label:'Gợi ý cho máy nén khí',items:CHECKLIST_SUGGESTIONS.compressor}
+  if(/động cơ|motor/.test(subject))return {label:'Gợi ý cho động cơ điện',items:CHECKLIST_SUGGESTIONS.motor}
+  if(/máy phát|generator/.test(subject))return {label:'Gợi ý cho máy phát điện',items:CHECKLIST_SUGGESTIONS.generator}
+  return {label:'Gợi ý kiểm tra thiết bị',items:CHECKLIST_SUGGESTIONS.generalEquipment}
+ }
+ if(category==='electrical'||/tủ điện|điện|cáp điện/.test(subject))return {label:'Gợi ý cho hệ thống điện',items:CHECKLIST_SUGGESTIONS.electrical}
+ if(category==='water'||/nước|đường ống|bể chứa/.test(subject))return {label:'Gợi ý cho hệ thống nước',items:CHECKLIST_SUGGESTIONS.water}
+ if(category==='fire'||/pccc|phòng cháy|chữa cháy|báo cháy/.test(subject))return {label:'Gợi ý cho PCCC',items:CHECKLIST_SUGGESTIONS.fire}
+ return {label:'Gợi ý cho cơ sở hạ tầng / khu vực',items:CHECKLIST_SUGGESTIONS.infrastructure.concat(CHECKLIST_SUGGESTIONS.generalArea)}
+}
+
 export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
  const [tasks,setTasks]=useState<ChecklistTask[]>([])
  useEffect(()=>{let active=true;void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{});return()=>{active=false}},[organizationId])
@@ -77,6 +240,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [frequency,setFrequency]=useState<ChecklistFrequency>('Hàng tháng')
   const [executionTime,setExecutionTime]=useState('09:00')
   const [questionText,setQuestionText]=useState('')
+  const [selectedSuggestionLabels,setSelectedSuggestionLabels]=useState<string[]>([])
   const [assignee,setAssignee]=useState('Admin')
   const [search,setSearch]=useState('')
   const [reportFrom,setReportFrom]=useState('')
@@ -161,11 +325,14 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId)
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
-  const openNew=(asset?:Asset)=>{setEditing(null);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
+  const openNew=(asset?:Asset)=>{setEditing(null);setSelectedSuggestionLabels([]);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
-    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setTargetKind(item.targetAssetId?'equipment':'other');setTargetAssetId(item.targetAssetId||'');setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setShowBuilderForm(true);setTab('builder')
+    setSelectedSuggestionLabels([]);setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setTargetKind(item.targetAssetId?'equipment':'other');setTargetAssetId(item.targetAssetId||'');setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setShowBuilderForm(true);setTab('builder')
   }
   useEffect(()=>{if(!initialAssetId)return;const selected=assets.find(asset=>asset.id===initialAssetId&&!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý');if(!selected)return;openNew(selected);onInitialAssetHandled?.()},[initialAssetId,assets]);
+  const suggestionAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
+  const suggestionSet=checklistSuggestionSet(targetKind,suggestionAsset,category,target)
+  const addSelectedSuggestions=()=>{const selected=suggestionSet.items.filter(item=>selectedSuggestionLabels.includes(item));if(!selected.length)return;const existing=(questionText?questionText.split('\n'):[]).map(item=>item.trim().toLocaleLowerCase('vi'));const additions=selected.filter(item=>!existing.includes(item.trim().toLocaleLowerCase('vi')));setQuestionText(current=>[current,...additions].filter(Boolean).join('\n'));setSelectedSuggestionLabels([])}
   const saveEditor=async(event:FormEvent)=>{
     event.preventDefault()
     if(!canManage)return
@@ -337,7 +504,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               return <article className="checklist-definition-row" key={task.id}>
                 <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}{task.claimedBy?' · Đang nhận: '+task.claimedBy:''}</small><span className="checklist-outcome">{task.status}</span></div>
                 <div className="top-actions">
-                  {canManage&&definition&&<button className="soft-btn" onClick={()=>openEdit(definition)}>Sửa nội dung</button>}
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
                   {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
@@ -385,20 +551,24 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         {showBuilderForm&&<div className="checklist-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget){setShowBuilderForm(false);setEditing(null)}}}><section className="checklist-editor-modal" role="dialog" aria-modal="true" aria-labelledby="checklist-editor-title">
           <div className="panel-head"><div><h2 id="checklist-editor-title">{editing?'Sửa nội dung Checklist':'Tạo mẫu Checklist'}</h2><p>Thêm, sửa hoặc xóa từng nội dung kiểm tra. Các lượt đã phát sinh vẫn giữ nguyên bản chụp cũ.</p></div><button type="button" className="soft-btn" onClick={()=>{setShowBuilderForm(false);setEditing(null)}}>Đóng</button></div>
           {!canManage?<p>Tài khoản chỉ có quyền xem cấu hình.</p>:<form className="checklist-builder-form" onSubmit={saveEditor}>
-            <label className="field">Đối tượng kiểm tra *<select value={targetKind} onChange={event=>{const kind=event.target.value as 'equipment'|'other';setTargetKind(kind);setTargetAssetId('');setTarget('');if(kind==='equipment')setCategory('equipment');else setCategory('custom')}}><option value="equipment">Thiết bị trong danh mục</option><option value="other">Hạ tầng / khu vực / hệ thống khác</option></select></label>
-            {targetKind==='equipment'?<label className="field">Chọn thiết bị *<select required value={targetAssetId} onChange={event=>{const id=event.target.value;setTargetAssetId(id);const asset=activeEquipment.find(item=>item.id===id);if(asset){setTarget(assetTargetLabel(asset));if(!title.trim())setTitle(`Kiểm tra ${asset.name}`)}}}><option value="">-- Chọn thiết bị đã khai báo --</option>{activeEquipment.map(asset=><option key={asset.id} value={asset.id}>{asset.code} · {asset.name}{asset.location?` · ${asset.location}`:''}</option>)}</select>{activeEquipment.length===0&&<small>Chưa có thiết bị đang quản lý để chọn. Hãy khai báo thiết bị trước hoặc chọn đối tượng khác.</small>}</label>:<label className="field">Tên hạ tầng / khu vực / hệ thống *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Ví dụ: Tủ điện tầng 1, khu vực kho…"/></label>}
+            <label className="field">Đối tượng kiểm tra *<select value={targetKind} onChange={event=>{const kind=event.target.value as 'equipment'|'other';setTargetKind(kind);setTargetAssetId('');setTarget('');setSelectedSuggestionLabels([]);if(kind==='equipment')setCategory('equipment');else setCategory('custom')}}><option value="equipment">Thiết bị trong danh mục</option><option value="other">Hạ tầng / khu vực / hệ thống khác</option></select></label>
+            {targetKind==='equipment'?<label className="field">Chọn thiết bị *<select required value={targetAssetId} onChange={event=>{const id=event.target.value;setTargetAssetId(id);setSelectedSuggestionLabels([]);const asset=activeEquipment.find(item=>item.id===id);if(asset){setTarget(assetTargetLabel(asset));if(!title.trim())setTitle(`Kiểm tra ${asset.name}`)}}}><option value="">-- Chọn thiết bị đã khai báo --</option>{activeEquipment.map(asset=><option key={asset.id} value={asset.id}>{asset.code} · {asset.name}{asset.location?` · ${asset.location}`:''}</option>)}</select>{activeEquipment.length===0&&<small>Chưa có thiết bị đang quản lý để chọn. Hãy khai báo thiết bị trước hoặc chọn đối tượng khác.</small>}</label>:<label className="field">Tên hạ tầng / khu vực / hệ thống *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Ví dụ: Tủ điện tầng 1, khu vực kho…"/></label>}
             <label className="field">Tên Checklist *<input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="Ví dụ: Kiểm tra máy nén khí"/></label>
             {targetKind==='other'&&<label className="field">Nhóm<input value={category} onChange={event=>setCategory(event.target.value as typeof category)} list="checklist-category-options" /><datalist id="checklist-category-options">{CATEGORIES.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}<option value="custom">Tùy chỉnh</option></datalist></label>}
             {targetKind==='equipment'&&<div className="checklist-builder-note full-field">Đang kiểm tra một thiết bị đã khai báo. Chu kỳ Checklist được Admin chọn riêng, không lấy theo chu kỳ bảo trì của thiết bị.</div>}
             <label className="field">Chu kỳ<select value={frequency} onChange={event=>setFrequency(event.target.value as ChecklistFrequency)}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
             <label className="field">Giờ thực hiện<input type="time" value={executionTime} onChange={event=>setExecutionTime(event.target.value)}/></label>
             <label className="field">Người phụ trách<input value={assignee} onChange={event=>setAssignee(event.target.value)} placeholder="Admin, tên KTV hoặc Nhóm KTV"/></label>
-            <div className="field full-field"><span>Nội dung kiểm tra *</span><p>Mỗi dòng là một mục. Có thể sửa trực tiếp, thêm dòng hoặc xóa mục không cần thiết.</p>
-              <div className="checklist-question-editor">{(questionText?questionText.split('\n'):['']).map((line,index)=><div className="checklist-question-edit-row" key={index}><span>{index+1}.</span><input value={line} onChange={event=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines[index]=event.target.value;return lines.join('\n')})} placeholder="Nhập nội dung cần kiểm tra"/><button type="button" className="soft-btn" disabled={(questionText?questionText.split('\n'):['']).length<=1} onClick={()=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines.splice(index,1);return lines.join('\n')})}>Xóa</button></div>)}</div>
-              <button type="button" className="soft-btn" onClick={()=>setQuestionText(current=>current?current+'\n':'')}>+ Thêm nội dung kiểm tra</button>
+            <div className="field full-field checklist-suggestion-picker"><span>Nội dung gợi ý · {suggestionSet.label}</span><p>Chọn những mục phù hợp với thiết bị hoặc khu vực đang kiểm tra. Bạn có thể chọn nhiều mục rồi thêm vào biểu mẫu; nội dung không phù hợp chỉ cần bỏ dấu chọn.</p>
+              <div className="checklist-suggestion-options">{suggestionSet.items.map((item,index)=><label className="checklist-suggestion-option" key={item}><input type="checkbox" checked={selectedSuggestionLabels.includes(item)} onChange={event=>setSelectedSuggestionLabels(current=>event.target.checked?[...current,item]:current.filter(value=>value!==item))}/><span>{index+1}. {item}</span></label>)}</div>
+              <div className="checklist-suggestion-actions"><button type="button" className="primary-btn" disabled={!selectedSuggestionLabels.length} onClick={addSelectedSuggestions}>Thêm {selectedSuggestionLabels.length||''} nội dung đã chọn</button><small>{suggestionSet.items.length} nội dung gợi ý · Có thể tiếp tục thêm nội dung riêng bên dưới</small></div>
+            </div>
+            <div className="field full-field"><span>Nội dung Checklist đang sử dụng *</span><p>Mỗi dòng là một mục trong biểu mẫu. Có thể sửa trực tiếp, xóa mục không cần hoặc tự thêm câu hỏi riêng.</p>
+              <div className="checklist-question-editor">{(questionText?questionText.split('\n'):['']).map((line,index)=><div className="checklist-question-edit-row" key={index}><span>{index+1}.</span><input value={line} onChange={event=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines[index]=event.target.value;return lines.join('\n')})} placeholder="Nhập nội dung cần kiểm tra"/><button type="button" className="soft-btn" onClick={()=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines.splice(index,1);return lines.join('\n')})}>Xóa</button></div>)}</div>
+              <button type="button" className="soft-btn" onClick={()=>setQuestionText(current=>current?current+'\n':'')}>+ Thêm nội dung kiểm tra riêng</button>
             </div>
             <div className="checklist-builder-note"><ShieldCheck size={16}/> Thay đổi biểu mẫu chỉ áp dụng cho lần kiểm tra sau. Kết quả cũ giữ nguyên nội dung đã thực hiện.</div>
-            <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setEditing(null);setTitle('');setTarget('');setTargetKind('other');setTargetAssetId('');setCategory('custom');setQuestionText('')}}>Làm mới</button><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu nội dung Checklist':'Tạo Checklist'}</button></div>
+            <div className="modal-actions"><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu nội dung Checklist':'Tạo Checklist'}</button></div>
           </form>}
         </section></div>}
       </>}{tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử Checklist</h2><p>Lưu độc lập theo tổ chức. Phân biệt lượt không thực hiện với kết quả kiểm tra Không đạt.</p></div></div>
