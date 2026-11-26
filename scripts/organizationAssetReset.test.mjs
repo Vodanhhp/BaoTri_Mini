@@ -212,9 +212,9 @@ test('reset barrier runs before both equipment and inventory sync, including inv
 
 test('reset request and Superadmin confirmation explicitly describe full inventory deletion', async () => {
  const ui = await read('../src/PlanChangePanels.tsx')
- assert.match(ui,/Yêu cầu Reset thiết bị và vật tư/)
+ assert.match(ui,/Yêu cầu Reset thiết bị, vật tư và Checklist/)
  assert.match(ui,/xóa cả danh mục nhóm, tồn kho, toàn bộ lịch sử nhập\/xuất\/điều chỉnh/)
- assert.match(ui,/xóa sạch toàn bộ thiết bị và vật tư Cloud\/Local/)
+ assert.match(ui,/xóa sạch toàn bộ thiết bị, vật tư Cloud\/Local và Checklist/)
 })
 
 
@@ -225,7 +225,7 @@ test('approved organization reset also removes all organization-scoped Checklist
   assert.match(source,new RegExp('db\\.'+store))
  }
  assert.match(source,/Checklist is device-local/)
- const tenant=await read('../src/PlanChangePanels.tsx')
- assert.match(tenant,/mẫu, lịch và lịch sử Checklist/)
- assert.match(tenant,/toàn bộ cấu hình\/mẫu\/lịch\/lịch sử Checklist/)
+ const ui=await read('../src/PlanChangePanels.tsx')
+ assert.match(ui,/mẫu, lịch và lịch sử Checklist/)
+ assert.match(ui,/toàn bộ cấu hình\/mẫu\/lịch\/lịch sử Checklist/)
 })
