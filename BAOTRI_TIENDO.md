@@ -890,3 +890,20 @@ Kiểm tra:
 - Smoke test trong transaction rollback sau khi siết quyền: RPC lưu mẫu vẫn hoạt động với authenticated Admin; INSERT trực tiếp vào bảng definitions bị từ chối.
 - CI Build and test + Validate thành công tại commit code `20134a787bf2956bee783e4c2edb09d3e53d1870`. Các thay đổi sau đó chủ yếu là SQL migration source; run mới đang chờ hoàn tất.
 - Migration Test bổ sung: `20261126211000 checklist_definitions_write_only_through_versioned_rpc`, `20261126212000 checklist_cloud_minimum_table_privileges`.
+
+
+### Rà soát sau khi phiên triển khai bị ngắt – 26/11/2026
+- PR #75 hiện vẫn OPEN + DRAFT, base `main`, head `feature/checklist-cloud-online-qr`, head SHA `a1ace46aca6cb33d0db0584c45fa6d7bf671e30f`; chưa merge, Production không thay đổi.
+- CI tại đúng head SHA đã hoàn tất thành công:
+  - Build and test run `45846843476`: Unit tests + Build đều SUCCESS.
+  - Validate BAOTRI Mini run `45846843459`: npm ci + npm run build SUCCESS.
+- Supabase Test có đủ 11 migration Checklist:
+  `20261126144630`, `20261126145323`, `20261126150046`, `20261126150054`, `20261126150203`, `20261126150642`, `20261126150723`, `20261126150817`, `20261126150853`, `20261126151227`, `20261126151244`.
+  Public RPC wrappers của migration `20261126150054` hiện được ghi chung trong source draft `docs/drafts/20261126150000_checklist_cloud_management_and_schedule_rpcs.sql`; cần giữ rõ quan hệ này khi tách/chỉnh migration sau này.
+- Danh sách phần còn dở trước khi có thể xem là hoàn tất:
+  1. Chạy app trên Preview/nhánh thử nghiệm trỏ đúng Supabase Test; đăng nhập tài khoản Admin thật để kiểm thử CRUD mẫu, lịch, task, kết quả, lịch sử, báo cáo và in.
+  2. Kiểm thử điện thoại thật: quyền camera, QR tem đang dùng, quét đúng/sai mã, nhiều mẫu cùng thiết bị, không có task đến hạn, mất mạng giữa lúc quét/nhận/lưu, và trình duyệt không hỗ trợ BarcodeDetector.
+  3. Xác nhận nghiệp vụ nhập mã thiết bị thủ công dự phòng có được chấp nhận hay thiết bị bắt buộc quét QR bằng camera.
+  4. Rà soát nhận diện PC/mobile trên thiết bị lai (tablet, trình duyệt desktop giả lập mobile); hiện là kiểm soát phía giao diện, server RPC vẫn kiểm soát quyền Admin và trạng thái task nhưng không xác minh loại thiết bị.
+  5. Chưa triển khai migration lên Production; chỉ làm sau khi Preview/E2E được nghiệm thu và có xác nhận riêng.
+- Không được hiểu CI xanh là đã kiểm thử camera, giao diện thực tế hoặc Production.
