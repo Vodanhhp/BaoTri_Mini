@@ -120,3 +120,11 @@ test('group-assigned Checklist tasks can be claimed, worked, and returned with a
   assert.match(panel, /Chỉ người được giao hoặc Admin thực hiện/)
   assert.match(schedule, /item\.status !== 'Đang thực hiện'/)
 })
+
+
+test('assignment events remain visible after an inspection is completed', () => {
+  assert.match(db, /assignmentHistory\?: Array/)
+  assert.match(panel, /assignmentHistory:taskSnapshot\?\.assignmentEvents\|\|\[\]/)
+  assert.match(panel, /Lịch sử phân công/)
+  assert.match(panel, /row\.assignmentHistory\.map/)
+})
