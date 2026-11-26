@@ -6,7 +6,7 @@ import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERI
 import ChecklistQrScanner from './ChecklistQrScanner'
 import { supabase } from './lib/supabase'
 import { isPcPlatform } from './lib/platform'
-import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun } from './lib/checklistCloud'
+import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun } from './lib/checklistCloud'
 
 type Props = {
   organizationId: string
@@ -259,6 +259,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [selectedSuggestionLabels,setSelectedSuggestionLabels]=useState<string[]>([])
   const [assignee,setAssignee]=useState('Admin')
   const [search,setSearch]=useState('')
+  const [showArchivedDefinitions,setShowArchivedDefinitions]=useState(false)
   const [reportFrom,setReportFrom]=useState('')
   const [reportTo,setReportTo]=useState('')
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
@@ -296,7 +297,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const merged=CATEGORIES.map(item=>settingRows.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
         setSettings(merged);setDefinitions(definitionRows.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
         setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
-        setTasks(taskRows.sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
+        setTasks(taskRows.filter(row=>!row.cancelledAt).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setLoading(false)}
@@ -329,6 +330,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   },[printingRun])
 
   const enabledCount=settings.filter(item=>item.enabled).length
+  const visibleDefinitions=definitions.filter(item=>Boolean(item.archivedAt)===showArchivedDefinitions&&(!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))))
   const todayRuns=runs.filter(item=>checklistLocalDateKey(new Date(item.completedAt))===dateOnly())
   const reportRuns=useMemo(()=>runs.filter(item=>{const day=checklistLocalDateKey(new Date(item.completedAt));return (!reportFrom||day>=reportFrom)&&(!reportTo||day<=reportTo)}),[runs,reportFrom,reportTo])
   const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&(!reportFrom||item.dueDate>=reportFrom)&&(!reportTo||item.dueDate<=reportTo)),[tasks,reportFrom,reportTo])
@@ -398,7 +400,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     await refresh(true)
   }
   const toggleDefinitionEnabled=async(item:ChecklistDefinition)=>{
-    if(!canManage)return
+    if(!canManage||item.archivedAt)return
     const updated={...item,enabled:!item.enabled,updatedAt:now()}
     try{
       if(organizationId!=='local-preview'){
@@ -406,6 +408,38 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         await saveChecklistDefinition(supabase,organizationId,updated)
       }else await db.checklistDefinitions.update(item.id,{enabled:updated.enabled,updatedAt:updated.updatedAt})
       await refresh(true)
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
+  }
+
+  const archiveDefinition=async(item:ChecklistDefinition)=>{
+    if(!canManage||item.archivedAt||!window.confirm('Lưu trữ mẫu “'+item.title+'”? Mẫu sẽ không tạo lượt mới; lịch sử và kết quả cũ vẫn được giữ. Bạn có thể khôi phục sau.'))return
+    try{
+      if(organizationId!=='local-preview'){
+        if(!supabase)throw new Error('Chưa kết nối Supabase.')
+        await archiveChecklistDefinition(supabase,organizationId,item.id)
+      }else{
+        const linked=await db.checklistTasks.where('checklistId').equals(item.id).toArray()
+        if(linked.some(task=>task.status==='Đang thực hiện'&&!task.cancelledAt))throw new Error('Mẫu đang có lượt Checklist được nhận. Hãy hoàn tất hoặc trả lượt trước khi lưu trữ.')
+        const archivedAt=now()
+        await db.transaction('rw',db.checklistDefinitions,db.checklistTasks,async()=>{
+          await db.checklistDefinitions.update(item.id,{archivedAt,archivedBy:userId,archivedEnabled:item.enabled,enabled:false,updatedAt:archivedAt})
+          for(const task of linked.filter(task=>task.status==='Chờ thực hiện'&&!task.cancelledAt))await db.checklistTasks.update(task.id,{cancelledAt:archivedAt,cancelledBy:userId,updatedAt:archivedAt})
+        })
+      }
+      await refresh(true);setNotice('Đã lưu trữ mẫu Checklist. Lịch sử và kết quả cũ vẫn được giữ.')
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
+  }
+  const restoreDefinition=async(item:ChecklistDefinition)=>{
+    if(!canManage||!item.archivedAt)return
+    try{
+      if(organizationId!=='local-preview'){
+        if(!supabase)throw new Error('Chưa kết nối Supabase.')
+        await restoreChecklistDefinition(supabase,organizationId,item.id)
+      }else{
+        const resume=item.archivedEnabled??false,restoredAt=now()
+        await db.checklistDefinitions.update(item.id,{archivedAt:undefined,archivedBy:undefined,archivedEnabled:undefined,enabled:resume,...(resume?{scheduleStartedAt:restoredAt}:{}),updatedAt:restoredAt})
+      }
+      await refresh(true);setNotice(item.archivedEnabled?'Đã khôi phục mẫu và tiếp tục lịch từ thời điểm hiện tại.':'Đã khôi phục mẫu. Lịch vẫn tạm ngừng như trước khi lưu trữ.')
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
   }
 
@@ -675,12 +709,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       </>}
       {tab==='builder'&&<>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Quản lý mẫu Checklist</h2><p>Chọn mẫu để sửa. Với mẫu tự tạo, bạn có thể tạm ngừng lịch khi không còn cần kiểm tra định kỳ; dữ liệu lịch sử vẫn được giữ.</p></div>{canManage&&<button className="primary-btn" onClick={()=>openNew()}><Plus size={15}/> Tạo Checklist</button>}</div>
+          <div className="panel-head"><div><h2>Quản lý mẫu Checklist</h2><p>Chọn mẫu để sửa, tạm ngừng lịch hoặc lưu trữ. Mẫu lưu trữ không sinh lượt mới; lịch sử và kết quả vẫn được giữ.</p></div><div className="top-actions">{canManage&&<button className="soft-btn" type="button" onClick={()=>{setShowArchivedDefinitions(value=>!value);setSearch('')}}>{showArchivedDefinitions?'Quay lại mẫu đang dùng':'Mẫu đã lưu trữ ('+definitions.filter(item=>item.archivedAt).length+')'}</button>}{canManage&&!showArchivedDefinitions&&<button className="primary-btn" onClick={()=>openNew()}><Plus size={15}/> Tạo Checklist</button>}</div></div>
           <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm theo tên mẫu hoặc đối tượng kiểm tra…"/></div>
-          <div className="checklist-template-help"><b>Trạng thái lịch là gì?</b><span>Đang tạo lịch: hệ thống tiếp tục sinh các lượt kiểm tra theo chu kỳ. Tạm ngừng lịch: không sinh lượt mới từ mẫu này; bạn có thể tiếp tục lại bất cứ lúc nào. Các lượt đã hoàn thành và lịch sử không bị xóa.</span></div><div className="checklist-definition-list">{definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))).map(item=><article className="checklist-definition-row" key={item.id}>
-            <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.source==='starter'&&!settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled)?'Nhóm khởi tạo chưa được bật':item.enabled?'Đang tạo lịch':'Đã tạm ngừng lịch'}</span></div>
-            <div className="top-actions">{canManage&&<><button className="primary-btn" onClick={()=>openEdit(item)}>Sửa nội dung</button>{item.source!=='starter'&&<button className="soft-btn" title={item.enabled?'Tạm ngừng tạo các lượt kiểm tra mới từ mẫu này':'Tiếp tục tạo lịch kiểm tra theo chu kỳ đã cài đặt'} onClick={()=>void toggleDefinitionEnabled(item)}>{item.enabled?'Tạm ngừng lịch':'Tiếp tục lịch'}</button>}</>}</div>
-          </article>)}{definitions.length===0&&<div className="table-empty-state">Chưa có mẫu Checklist. Bạn có thể tạo mẫu mới hoặc bật nhóm khởi tạo bên dưới.</div>}</div>
+          {!showArchivedDefinitions&&<div className="checklist-template-help"><b>Trạng thái lịch là gì?</b><span>Đang tạo lịch: hệ thống tiếp tục sinh các lượt kiểm tra theo chu kỳ. Tạm ngừng lịch: không sinh lượt mới. Lưu trữ mẫu: ẩn khỏi danh sách đang dùng, ngừng các lượt chưa thực hiện; lịch sử vẫn được giữ và có thể khôi phục.</span></div>}<div className="checklist-definition-list">{visibleDefinitions.map(item=><article className="checklist-definition-row" key={item.id}>
+            <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.archivedAt?'Đã lưu trữ':item.source==='starter'&&!settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled)?'Nhóm khởi tạo chưa được bật':item.enabled?'Đang tạo lịch':'Đã tạm ngừng lịch'}</span></div>
+            <div className="top-actions">{canManage&&(item.archivedAt?<button className="primary-btn" onClick={()=>void restoreDefinition(item)}>Khôi phục mẫu</button>:<><button className="primary-btn" onClick={()=>openEdit(item)}>Sửa nội dung</button><button className="soft-btn" title={item.enabled?'Tạm ngừng tạo các lượt kiểm tra mới từ mẫu này':'Tiếp tục tạo lịch kiểm tra theo chu kỳ đã cài đặt'} onClick={()=>void toggleDefinitionEnabled(item)}>{item.enabled?'Tạm ngừng lịch':'Tiếp tục lịch'}</button>{item.source!=='starter'&&<button className="soft-btn" onClick={()=>void archiveDefinition(item)}>Lưu trữ mẫu</button>}</>)}</div>
+          </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">{showArchivedDefinitions?'Chưa có mẫu Checklist nào được lưu trữ.':'Chưa có mẫu Checklist. Bạn có thể tạo mẫu mới hoặc bật nhóm khởi tạo bên dưới.'}</div>}</div>
         </section>
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Nhóm mẫu khởi tạo</h2><p>Các mẫu có sẵn để tham khảo. Chỉ bật nhóm thực sự cần dùng; sau đó có thể sửa nội dung như mẫu bình thường.</p></div><button className="soft-btn" type="button" onClick={()=>setShowStarterGroups(value=>!value)}>{showStarterGroups?'Thu gọn':'Cấu hình nhóm mẫu'}</button></div>
