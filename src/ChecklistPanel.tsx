@@ -107,7 +107,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const periodRange=checklistPeriodRange(workPeriod)
   const periodTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const missedTasks=tasks.filter(item=>item.status==='Không Checklist').sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
-  const visibleDefinitions=useMemo(()=>definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))),[definitions,search])
+  const visibleDefinitions=useMemo(()=>definitions.filter(item=>item.enabled&&(item.source!=='starter'||settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled))&&(!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))),[definitions,search,settings])
   const suggestions=useMemo(()=>{
     const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
     const rules=[
@@ -342,11 +342,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           })}</div>}
         </section>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Danh sách Checklist</h2><p>Mỗi Checklist có đối tượng, chu kỳ và biểu mẫu riêng.</p></div><div className="top-actions">{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div></div>
+          <div className="panel-head"><div><h2>Mẫu Checklist đang áp dụng</h2><p>Đây là biểu mẫu dùng để sinh công việc theo lịch. Hoàn thành một lượt không xóa mẫu; công việc đã hoàn thành sẽ biến mất khỏi danh sách Công việc cần thực hiện. Chỉ Checklist Linh hoạt mới thực hiện trực tiếp từ đây.</p></div><div className="top-actions">{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div></div>
           <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm Checklist hoặc đối tượng kiểm tra…"/></div>
           <div className="checklist-definition-list">{visibleDefinitions.map(item=><article className="checklist-definition-row" key={item.id}>
             <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.enabled?'Đang hoạt động':'Đã tắt'}</span></div>
-            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canExecute}>Thực hiện</button>}</div>
+            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&item.frequency==='Linh hoạt'&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canExecute}>Thực hiện</button>}</div>
           </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
         </section>
         {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Gợi ý tự động dựa trên thiết bị đã khai báo.</p></div><button className="soft-btn" type="button" onClick={()=>setShowSuggestions(value=>!value)}>{showSuggestions?'Thu gọn':'Xem gợi ý thiết bị'}</button></div>
