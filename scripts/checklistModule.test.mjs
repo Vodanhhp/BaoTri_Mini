@@ -413,6 +413,14 @@ test('QR scanner stops camera streams and pending animation loops when restarted
   assert.match(scanner,/if\(!activeRef\.current\)\{stream\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\);return\}/)
 })
 
+test('Cloud template RPC rejects malformed or duplicate Checklist question identities',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126229000_checklist_definition_question_validation.sql',import.meta.url),'utf8')
+  assert.match(migration,/jsonb_array_elements\(v_questions\)/)
+  assert.match(migration,/count\(distinct q->>'id'\)/)
+  assert.match(migration,/jsonb_typeof\(q->'required'\)<>'boolean'/)
+  assert.match(migration,/char_length\(q->>'label'\)>1000/)
+})
+
 test('Checklist equipment manual RPC is blocked and completed task history uses the immutable task snapshot',async()=>{
   const migration=await readFile(new URL('../docs/drafts/20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql',import.meta.url),'utf8')
   assert.match(migration,/v_definition\.target_kind='equipment'/)
