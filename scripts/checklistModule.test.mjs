@@ -40,7 +40,7 @@ test('Viewer can inspect configuration and reports but cannot configure or execu
   assert.match(app, /canManage=\{localPreview\|\|Boolean\(currentOrganization\?\.isAdmin\)\}/)
   assert.match(app, /canExecute=\{localPreview\|\|canMutate\}/)
   assert.match(panel, /if\(!canManage\)return/)
-  assert.match(panel, /if\(!running\|\|!canExecute\)return/)
+  assert.match(panel, /if\(!running\|\|!canExecuteHere\)return/)
 })
 
 test('failed inspection cannot be recorded as pass and requires repair decision', () => {
