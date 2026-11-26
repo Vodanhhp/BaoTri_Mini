@@ -278,5 +278,5 @@ test('Checklist Builder offers extensive target-specific suggestions and custom 
   assert.match(panel,/addSelectedSuggestions/)
   assert.match(panel,/Thêm nội dung kiểm tra riêng/)
   assert.match(panel,/onClick=\{\(\)=>setQuestionText\(current=>\{const lines=current\?current\.split\('\\n'\):\[''\];lines\.splice\(index,1\);return lines\.join\('\\n'\)\}\)\}>Xóa/)
-  assert.doesNotMatch(panel,/>Làm mới<\\/button>/)
+  assert.equal(panel.includes('>Làm mới</button>'),false)
 })
