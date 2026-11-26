@@ -255,7 +255,7 @@ test('Checklist template editor opens in a separate accessible modal and explain
 test('Checklist Excel export uses the shared BAOTRI report workbook format',()=>{
   assert.match(panel,/import \{ downloadExcelReport \} from '\.\/lib\/excelExport'/)
   assert.match(panel,/await downloadExcelReport\(rows,'bao-cao-checklist\.xlsx'/)
-  assert.match(panel,/BÁO CÁO KIỂM TRA ĐỊNH KỲ \(CHECKLIST\)/)
+  assert.match(panel,/BÁO CÁO CHECKLIST/)
   assert.match(panel,/organizationName\)/)
   assert.doesNotMatch(panel,/new ExcelJS\.Workbook/)
 })
