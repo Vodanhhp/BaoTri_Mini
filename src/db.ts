@@ -13,6 +13,7 @@ export type ChecklistDefinition = {
   targetLabel: string; targetAssetId?: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string; executionTime?: string
   questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
   createdAt: string; updatedAt: string; lastCompletedAt?: string; scheduleStartedAt?: string
+  archivedAt?: string; archivedBy?: string; archivedEnabled?: boolean
 }
 export type ChecklistRun = {
   id: string; organizationId: string; checklistId: string; checklistTitle: string
@@ -48,6 +49,7 @@ export type ChecklistTask = {
   }
   completedAt?: string
   runId?: string
+  cancelledAt?: string; cancelledBy?: string
   createdAt: string
   updatedAt: string
 }
