@@ -23,6 +23,27 @@ export type ChecklistRun = {
   checklistSnapshot: ChecklistQuestion[]
 }
 
+export type ChecklistTask = {
+  id: string
+  organizationId: string
+  checklistId: string
+  title: string
+  targetLabel: string
+  frequency: ChecklistFrequency
+  dueAt: string
+  dueDate: string
+  assignee: string
+  status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn'
+  definitionSnapshot: {
+    categoryKey: ChecklistDefinition['categoryKey']
+    questions: ChecklistQuestion[]
+  }
+  completedAt?: string
+  runId?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừng sử dụng' | 'Thanh lý' | 'Lưu kho'
 export type CloudLinkStatus = 'linked' | 'conflict'
 export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
@@ -344,6 +365,7 @@ class BaoTriDatabase extends Dexie {
   checklistCategorySettings!: Table<ChecklistCategorySetting, string>
   checklistDefinitions!: Table<ChecklistDefinition, string>
   checklistRuns!: Table<ChecklistRun, string>
+  checklistTasks!: Table<ChecklistTask, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -505,6 +527,10 @@ class BaoTriDatabase extends Dexie {
       checklistCategorySettings: 'id, organizationId, categoryKey, [organizationId+categoryKey], enabled',
       checklistDefinitions: 'id, organizationId, categoryKey, enabled, updatedAt',
       checklistRuns: 'id, organizationId, checklistId, completedAt, outcome'
+    })
+    // v14: recurring Checklist occurrences are independent Local records.
+    this.version(14).stores({
+      checklistTasks: 'id, organizationId, checklistId, [organizationId+checklistId], dueDate, [organizationId+dueDate], status, [organizationId+status]'
     })
   }
 }
