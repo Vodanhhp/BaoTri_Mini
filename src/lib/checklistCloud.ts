@@ -97,7 +97,9 @@ function mapDefinition(row: Row, organizationId: string): ChecklistDefinition {
     executionTime:String(row.execution_time||'09:00'),questions:mapQuestionRows(row.questions),
     source:row.source as ChecklistDefinition['source'],createdAt:String(row.created_at),updatedAt:String(row.updated_at),
     ...(row.last_completed_at?{lastCompletedAt:String(row.last_completed_at)}:{}),
-    ...(row.schedule_started_at?{scheduleStartedAt:String(row.schedule_started_at)}:{})
+    ...(row.schedule_started_at?{scheduleStartedAt:String(row.schedule_started_at)}:{}),
+    ...(row.archived_at?{archivedAt:String(row.archived_at)}:{}),...(row.archived_by?{archivedBy:String(row.archived_by)}:{}),
+    ...(row.archived_enabled!==null&&row.archived_enabled!==undefined?{archivedEnabled:Boolean(row.archived_enabled)}:{})
   }
 }
 function mapTask(row: Row, organizationId: string, events: Row[], definitions: ChecklistDefinition[]): ChecklistTask {
@@ -155,12 +157,13 @@ function assertOnline(): void {
   if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Mất Internet. Checklist chỉ hoạt động khi có kết nối Cloud.')
 }
 async function fetchAllRows(
-  client:SupabaseClient,table:string,organizationId:string,orderColumn:string,ascending=true,minimumDueAt?:string
+  client:SupabaseClient,table:string,organizationId:string,orderColumn:string,ascending=true,minimumDueAt?:string,excludeCancelled=false
 ):Promise<Row[]>{
   const rows:Row[]=[]
   for(let offset=0;;offset+=PAGE_SIZE){
     let query=client.from(table as any).select('*').eq('organization_id',organizationId)
     if(minimumDueAt)query=query.gte('due_at',minimumDueAt)
+    if(excludeCancelled)query=query.is('cancelled_at',null)
     query=query.order(orderColumn,{ascending}).order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1)
     const {data,error}=await query
     if(error)throw new Error('Tải '+table+' từ Cloud: '+error.message)
@@ -202,6 +205,14 @@ export async function saveChecklistDefinition(
   }),'Lưu mẫu Checklist')
   return mapDefinition(data as Row,organizationId)
 }
+export async function archiveChecklistDefinition(client:SupabaseClient,organizationId:string,definitionId:string):Promise<void>{
+  assertOnline()
+  await checked(client.rpc('checklist_archive_definition',{p_organization_id:organizationId,p_definition_id:definitionId}),'Lưu trữ mẫu Checklist')
+}
+export async function restoreChecklistDefinition(client:SupabaseClient,organizationId:string,definitionId:string):Promise<void>{
+  assertOnline()
+  await checked(client.rpc('checklist_restore_definition',{p_organization_id:organizationId,p_definition_id:definitionId}),'Khôi phục mẫu Checklist')
+}
 export async function loadChecklistCloud(
   client: SupabaseClient,organizationId: string,canManageOccurrences = false,ensureSchedule = false
 ): Promise<CloudBundle> {
@@ -216,7 +227,7 @@ export async function loadChecklistCloud(
     executionTime:String(row.execution_time||'09:00'),updatedAt:String(row.updated_at)
   }))
   const definitions=definitionRows.map(row=>mapDefinition(row,organizationId))
-  const active=definitions.filter(def=>def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
+  const active=definitions.filter(def=>!def.archivedAt&&def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
   const horizon=new Date();horizon.setFullYear(horizon.getFullYear()+1);horizon.setHours(23,59,59,999)
   if(canManageOccurrences){
     const occurrenceInputs=ensureSchedule?active.flatMap(def=>occurrenceDates(def,horizon).map(d=>({definition_id:def.id,due_at:d.toISOString(),due_date:dateKey(d)}))):[]
@@ -231,7 +242,7 @@ export async function loadChecklistCloud(
   }
   const minimumDueAt=new Date(Date.now()-366*86400000).toISOString()
   const [taskRows,runRows,events]=await Promise.all([
-    fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,minimumDueAt),
+    fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,minimumDueAt,true),
     fetchAllRows(client,'checklist_runs',organizationId,'completed_at',false),
     fetchAllRows(client,'checklist_task_events',organizationId,'occurred_at')
   ])
