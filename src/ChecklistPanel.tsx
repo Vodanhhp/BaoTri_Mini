@@ -439,7 +439,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       const matched=latest.definitions.filter(definition=>definition.enabled&&definition.targetAssetId===asset.id)
       const candidates=matched.flatMap(definition=>latest.tasks.filter(task=>{
         const due=Date.parse(task.dueAt),nowMs=Date.now()
-        return task.checklistId===definition.id&&(task.status==='Chờ thực hiện'||(task.status==='Đang thực hiện'&&task.claimedByUserId===userId))&&due<=nowMs&&nowMs-due<CHECKLIST_GRACE_PERIOD_MS
+        return task.checklistId===definition.id&&(task.status==='Chờ thực hiện'||task.status==='Đang thực hiện')&&due<=nowMs&&nowMs-due<CHECKLIST_GRACE_PERIOD_MS
       }).map(task=>({definition:{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,questions:task.definitionSnapshot.questions},task})))
       if(!candidates.length)throw new Error('Đã tìm thấy thiết bị '+asset.code+' – '+asset.name+', nhưng hiện không có Checklist thiết bị đến hạn để thực hiện.')
       setQrAssetLabel(asset.code+' – '+asset.name);setQrCandidates(candidates)
@@ -533,7 +533,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const record:ChecklistRun={
       id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
       targetLabel:running.targetLabel,frequency:running.frequency,
-      answers:running.questions.map(q=>({questionId:q.id,question:q.label,result:answers[q.id]?.result as 'Đạt'|'Không đạt'|'Bỏ qua',note:answers[q.id]?.note||''})),
+      answers:running.questions.map(q=>({questionId:q.id,question:q.label,result:(answers[q.id]?.result||'Bỏ qua') as 'Đạt'|'Không đạt'|'Bỏ qua',note:answers[q.id]?.note||''})),
       outcome:failed?'Không đạt':passed?'Đạt':'Bỏ qua',inspector:userLabel,completedAt:now(),repairRequestCreated:failed&&repairCreated,noRepairReason:failed&&!repairCreated?noRepairReason.trim():undefined,
       assignmentHistory:taskSnapshot?.assignmentEvents||[],
       checklistSnapshot:running.questions.map(q=>({...q}))
