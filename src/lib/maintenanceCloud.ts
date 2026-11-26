@@ -39,9 +39,9 @@ export async function loadMaintenanceRequests(client:SupabaseClient,organization
  if(events.error)throw new Error('Tải lịch sử Phiếu yêu cầu Cloud: '+events.error.message)
  return {requests:asRows(requests.data).map(row=>mapRequest(row,organizationId)),history:asRows(events.data).map(row=>mapEvent(row,organizationId))}
 }
-export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest):Promise<MaintenanceRequest>{
+export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest,isExisting=false):Promise<MaintenanceRequest>{
  online()
- const row=await checked(client.rpc('maintenance_save_request',{p_organization_id:organizationId,p_request_id:request.id,p_payload:{
+ const row=await checked(client.rpc('maintenance_save_request',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_payload:{
   asset_id:request.assetId,request_date:request.requestDate,due_date:request.dueDate||null,kind:request.kind,
   description:request.description,parts:request.parts,readings:request.readings,requested_by:request.requestedBy
  }}),'Lưu Phiếu yêu cầu')
