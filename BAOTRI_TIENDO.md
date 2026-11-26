@@ -710,3 +710,11 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung source tests cho lọc mẫu tắt, chỉ chạy mẫu Linh hoạt trực tiếp và đối chiếu kết quả lịch sử với task.
 - Đã cập nhật mã trực tiếp trên main. Chưa xác nhận CI/build/deploy hoặc chạy browser E2E do công cụ hiện tại không cung cấp danh sách workflow push runs; không tuyên bố website đã nhận bản mới.
 - Không thay đổi Supabase, Cloud data, Auth, RLS, Storage, migrations; PR #21 vẫn nguyên trạng.
+
+
+## 26/11/2026 – tinh gọn giao diện Checklist và làm rõ chỉnh sửa mẫu
+- Tổng quan chỉ còn một khu vực gợi ý tự nguyện **Công việc nên làm hôm nay**; bỏ khu vực gợi ý thiết bị thứ hai bị trùng nội dung.
+- Chuyển cấu hình các nhóm khởi tạo khỏi Tổng quan sang tab **Quản lý mẫu**, sau nút **Cấu hình nhóm mẫu**. Không còn trộn cấu hình nhóm, gợi ý thiết bị và công việc đến hạn trong cùng màn hình.
+- Tab **Quản lý mẫu** hiển thị toàn bộ mẫu đang bật/tắt; mỗi mẫu có nút **Sửa nội dung** rõ ràng, có thể bật/tắt lại mẫu.
+- Form sửa mẫu chỉ mở khi người dùng chọn sửa hoặc tạo mới. Nội dung kiểm tra được chỉnh từng dòng; có nút thêm và xóa từng mục. Thay đổi biểu mẫu chỉ ảnh hưởng các lượt phát sinh sau; lịch sử cũ giữ snapshot.
+- Không thay đổi mô hình Local-first, lịch sử độc lập hoặc dữ liệu Supabase. Cần chờ CI Build/Test và Pages Deploy; chưa xác nhận thao tác trình duyệt PC/mobile.
