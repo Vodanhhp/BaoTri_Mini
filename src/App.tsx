@@ -118,6 +118,7 @@ export default function App() {
   const [editing, setEditing] = useState<Asset | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [detailAsset, setDetailAsset] = useState<Asset | null>(null)
+  const [checklistInitialAssetId,setChecklistInitialAssetId]=useState<string|null>(null)
   const [imageViewer, setImageViewer] = useState<{ images: string[]; index: number } | null>(null)
   const [printAssetMode, setPrintAssetMode] = useState<null | 'sticker' | 'detail'>(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -1303,7 +1304,7 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='checklist'
-          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets}/>
+          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets} initialAssetId={checklistInitialAssetId} onInitialAssetHandled={()=>setChecklistInitialAssetId(null)}/>
           : activeModule==='reports'
           ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport}/>
           : activeModule==='maintenance'
@@ -1454,7 +1455,7 @@ export default function App() {
       <div className="detail-photos"><h3>Hình ảnh thiết bị ({detailAsset.images?.length || 0})</h3>{detailAsset.images?.length?<div className="detail-photo-grid">{detailAsset.images.map((src,index)=><button type="button" className="detail-photo-open" key={index} title="Xem ảnh phóng to" onClick={()=>setImageViewer({images:detailAsset.images || [],index})}><img src={src} alt={'Ảnh thiết bị '+(index+1)}/></button>)}</div>:<p className="muted">{detailAsset.deletedAt?'Thiết bị đã xóa; không thể bổ sung ảnh.':'Chưa có hình ảnh. Chọn Sửa để bổ sung ảnh.'}</p>}</div>
       <div className="asset-qr-panel"><div><small>MÃ QR THIẾT BỊ</small><b>{detailAsset.code || 'Chưa có mã quản lý'}</b><span>QR hiện mã hóa trực tiếp mã quản lý thiết bị</span></div>{detailAsset.code&&<QRCodeSVG value={detailAsset.code} size={104} level="M" includeMargin/>}</div>
       <div className="asset-photo-actions"><button className="soft-btn" disabled={!detailAsset.code} onClick={()=>printAsset('sticker')}>In tem QR</button><button className="soft-btn" onClick={()=>printAsset('detail')}>In chi tiết</button></div>
-      <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button>{!detailAsset.deletedAt&&(localPreview||canUpdate)&&<button className="primary-btn" onClick={()=>{const selected=detailAsset;setDetailAsset(null);void openAssetEditor(selected)}}>Chỉnh sửa hồ sơ</button>}</div>
+      <div className="modal-actions"><button className="soft-btn" onClick={()=>setDetailAsset(null)}>Đóng</button>{!detailAsset.deletedAt&&!detailAsset.archivedAt&&detailAsset.status!=='Thanh lý'&&(localPreview||Boolean(currentOrganization?.isAdmin))&&<button className="soft-btn" onClick={()=>{setChecklistInitialAssetId(detailAsset.id);setDetailAsset(null);setActiveModule('checklist')}}>Tạo Checklist cho thiết bị này</button>}{!detailAsset.deletedAt&&(localPreview||canUpdate)&&<button className="primary-btn" onClick={()=>{const selected=detailAsset;setDetailAsset(null);void openAssetEditor(selected)}}>Chỉnh sửa hồ sơ</button>}</div>
     </section></div>}
     {printAssetMode&&detailAsset&&<div className={'asset-print-sheet print-'+printAssetMode}>
       {printAssetMode==='sticker'&&<div className="asset-sticker"><QRCodeSVG value={detailAsset.code} size={78} level="M"/><div className="asset-sticker-info"><strong>{detailAsset.code}</strong><strong>{displayAssetName(detailAsset)}</strong></div></div>}
