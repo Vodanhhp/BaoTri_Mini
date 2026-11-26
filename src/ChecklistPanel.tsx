@@ -110,8 +110,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&(!reportFrom||item.dueDate>=reportFrom)&&(!reportTo||item.dueDate<=reportTo)),[tasks,reportFrom,reportTo])
   const currentMs=Date.now()
   const periodRange=checklistPeriodRange(workPeriod)
-  const periodTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
-  const missedTasks=tasks.filter(item=>item.status==='Không Checklist').sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
+  const periodFrequency:Record<typeof workPeriod,ChecklistFrequency>={day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý'}
+  const selectedFrequency=periodFrequency[workPeriod]
+  const periodTasks=tasks.filter(item=>item.frequency===selectedFrequency&&(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
+  const missedTasks=tasks.filter(item=>item.frequency===selectedFrequency&&item.status==='Không Checklist'&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end).sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
   const suggestions=useMemo(()=>{
     const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
     const rules=[
@@ -306,9 +308,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div></div>
         </div>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chọn kỳ để xem công việc từ đầu kỳ. Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist.</p></div></div>
+          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị Checklist có chu kỳ tương ứng với kỳ đã chọn (Ngày: Hàng ngày, Tuần: Hàng tuần, Tháng: Hàng tháng, Quý: Hàng quý). Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist. Checklist Hàng năm xem trong Lịch sử và Báo cáo.</p></div></div>
           <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button></div>
-          <div className="checklist-report-summary"><div><small>Công việc trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist</small><b>{missedTasks.length}</b></div></div>
+          <div className="checklist-report-summary"><div><small>Công việc {selectedFrequency.toLocaleLowerCase('vi')} trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist trong kỳ</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
             {periodTasks.map(task=>{
               const definition=definitions.find(item=>item.id===task.checklistId)
