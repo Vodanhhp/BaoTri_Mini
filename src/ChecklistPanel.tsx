@@ -434,7 +434,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(!canExecuteHere||!supabase||!navigator.onLine){setError('Cần điện thoại có Internet và tài khoản được quyền thực hiện Checklist.');return}
     setQrSearching(true);setError('');setQrCandidates([])
     try{
-      const {data:asset,error:assetError}=await supabase.from('assets').select('id,code,name').eq('organization_id',organizationId).eq('code',code.trim()).maybeSingle()
+      const {data:asset,error:assetError}=await supabase.from('assets').select('id,code,name').eq('organization_id',organizationId).eq('code',code.trim()).is('archived_at',null).is('deleted_at',null).neq('status','Thanh lý').maybeSingle()
       if(assetError)throw assetError
       if(!asset)throw new Error('Không tìm thấy thiết bị có mã QR '+code+'. Hãy kiểm tra đúng tổ chức hoặc tem QR.')
       const latest=await loadChecklistCloud(supabase,organizationId,canManage,canManage)
