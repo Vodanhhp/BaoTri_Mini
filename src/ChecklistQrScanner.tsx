@@ -11,17 +11,24 @@ export default function ChecklistQrScanner({onDetected,onClose}:Props){
   const videoRef=useRef<HTMLVideoElement|null>(null)
   const streamRef=useRef<MediaStream|null>(null)
   const frameRef=useRef<number|null>(null)
+  const activeRef=useRef(false)
   const [manualCode,setManualCode]=useState('')
   const [cameraError,setCameraError]=useState('')
   const [cameraReady,setCameraReady]=useState(false)
-  useEffect(()=>()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);streamRef.current?.getTracks().forEach(track=>track.stop())},[])
+  useEffect(()=>()=>{activeRef.current=false;if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null},[])
   const startCamera=async()=>{
+    activeRef.current=false
+    if(frameRef.current!==null){cancelAnimationFrame(frameRef.current);frameRef.current=null}
+    streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null
+    setCameraReady(false)
     setCameraError('')
     const Detector=(window as unknown as {BarcodeDetector?:BarcodeDetectorConstructor}).BarcodeDetector
     if(!Detector){setCameraError('Trình duyệt này chưa hỗ trợ quét QR trực tiếp. Bạn có thể nhập mã thiết bị ở bên dưới.');return}
     if(!navigator.mediaDevices?.getUserMedia){setCameraError('Thiết bị hoặc trình duyệt không hỗ trợ truy cập camera.');return}
     try{
+      activeRef.current=true
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false})
+      if(!activeRef.current){stream.getTracks().forEach(track=>track.stop());return}
       streamRef.current=stream
       const video=videoRef.current
       if(!video)throw new Error('Không tìm thấy vùng hiển thị camera.')
@@ -29,23 +36,25 @@ export default function ChecklistQrScanner({onDetected,onClose}:Props){
       await video.play()
       setCameraReady(true)
       const detector=new Detector({formats:['qr_code']})
-      let active=true,busy=false
+      let busy=false
       const scan=async()=>{
-        if(!active)return
+        if(!activeRef.current)return
         if(video.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA&&!busy){
           busy=true
           try{
             const codes=await detector.detect(video)
+            if(!activeRef.current)return
             const value=codes.find(code=>code.rawValue?.trim())?.rawValue?.trim()
-            if(value){active=false;onDetected(value);return}
-          }catch{setCameraError('Không đọc được QR. Hãy giữ mã QR rõ nét trong khung hình hoặc nhập mã thủ công.')}
+            if(value){activeRef.current=false;onDetected(value);return}
+          }catch{if(activeRef.current)setCameraError('Không đọc được QR. Hãy giữ mã QR rõ nét trong khung hình hoặc nhập mã thủ công.')}
           finally{busy=false}
         }
-        if(active)frameRef.current=requestAnimationFrame(()=>void scan())
+        if(activeRef.current)frameRef.current=requestAnimationFrame(()=>void scan())
       }
       frameRef.current=requestAnimationFrame(()=>void scan())
     }catch(cause){
-      setCameraError(cause instanceof Error?cause.message:'Không thể mở camera. Hãy kiểm tra quyền truy cập camera.')
+      if(activeRef.current)setCameraError(cause instanceof Error?cause.message:'Không thể mở camera. Hãy kiểm tra quyền truy cập camera.')
+      activeRef.current=false
       streamRef.current?.getTracks().forEach(track=>track.stop())
       streamRef.current=null
       setCameraReady(false)
