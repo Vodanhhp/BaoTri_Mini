@@ -7,7 +7,7 @@ import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
 import MaintenancePanel, { MaintenanceAssetHistory, MaintenanceDashboardSummary } from './MaintenancePanel'
 import ReportsPanel from './ReportsPanel'
-import ChecklistPanel from './ChecklistPanel'
+import ChecklistPanel, { ChecklistDashboardSummary } from './ChecklistPanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -1322,7 +1322,7 @@ export default function App() {
                   </div>
                 </section>
                 {(localPreview||canView)&&<MaintenanceDashboardSummary organizationId={localPreview?'local-preview':organizationId} assets={assets} onOpen={()=>setActiveModule('maintenance')}/>}
-                {(localPreview||canView)&&<section className="overview-section overview-future"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập các nhóm kiểm tra, thực hiện biểu mẫu và theo dõi kết quả độc lập với lịch sử thiết bị.</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('checklist')}>Mở Checklist →</button></section>}
+                {(localPreview||canView)&&<ChecklistDashboardSummary organizationId={localPreview?'local-preview':organizationId} onOpen={()=>setActiveModule('checklist')}/>}
                 {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
