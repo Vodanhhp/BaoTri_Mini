@@ -177,3 +177,16 @@ test('scheduled Checklist tasks are grouped into current day, week, month, and q
 
 test('Checklist suggestions and starter groups are collapsed behind explicit buttons',()=>{assert.match(panel,/Xem gợi ý thiết bị/);assert.match(panel,/Xem nhóm khởi tạo/);assert.match(panel,/showSuggestions&&suggestions\.map/);assert.match(panel,/showStarterGroups&&<div className="checklist-category-grid"/)});
 test('Disabling a Checklist removes all uncompleted tasks even when their due time has passed',()=>{assert.match(schedule,/!activeIds\.has\(task\.checklistId\)/);assert.match(schedule,/task\.status!=='Hoàn thành'&&task\.status!=='Không Checklist'/);assert.match(panel,/Sửa nội dung/);assert.match(panel,/openEdit\(definition\)/)});
+
+
+test('disabled or inactive Checklist templates are hidden from the active template list',()=>{
+  assert.match(panel,/const visibleDefinitions=useMemo\(\(\)=>definitions\.filter\(item=>item\.enabled&&\(item\.source!=='starter'\|\|settings\.some\(setting=>setting\.categoryKey===item\.categoryKey&&setting\.enabled\)\)/)
+  assert.match(panel,/<h2>Mẫu Checklist đang áp dụng<\\/h2>/)
+  assert.match(panel,/Chỉ Checklist Linh hoạt mới thực hiện trực tiếp từ đây/)
+})
+
+test('recurring Checklist runs must start from a scheduled task, not from the reusable template',()=>{
+  assert.match(panel,/item\.frequency==='Linh hoạt'&&item\.enabled&&<button className="primary-btn" onClick=\{\(\)=>startRun\(item\)\}/)
+  assert.match(panel,/periodTasks\.map\(task=>/)
+  assert.match(panel,/status:'Hoàn thành',completedAt:record\.completedAt/)
+})
