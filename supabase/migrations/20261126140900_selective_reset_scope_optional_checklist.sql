@@ -1,5 +1,6 @@
 -- Selective Reset scopes: equipment, inventory and Checklist generations are independent.
 begin;
+drop function if exists public.create_organization_asset_reset_request(uuid,uuid,text);
 alter table private.organization_asset_reset_state add column if not exists inventory_generation bigint not null default 0 check(inventory_generation>=0), add column if not exists checklist_generation bigint not null default 0 check(checklist_generation>=0);
 alter table private.organization_asset_reset_devices add column if not exists acknowledged_inventory_generation bigint not null default 0, add column if not exists acknowledged_checklist_generation bigint not null default 0;
 alter table private.organization_asset_reset_requests add column if not exists inventory_items_deleted bigint not null default 0, add column if not exists inventory_movements_deleted bigint not null default 0, add column if not exists inventory_mutation_receipts_deleted bigint not null default 0, add column if not exists inventory_sync_events_deleted bigint not null default 0, add column if not exists checklist_templates_deleted bigint not null default 0, add column if not exists checklist_versions_deleted bigint not null default 0, add column if not exists checklist_results_deleted bigint not null default 0;
