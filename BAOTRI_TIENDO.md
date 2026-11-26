@@ -982,7 +982,11 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Đã thêm kỳ Năm vào bộ lọc công việc cần thực hiện của Checklist.
 - Đã áp dụng các migration bảo trì lên Supabase Test `oyzhxgzltpdebpymuicb`; SQL smoke tests chạy trong transaction rollback xác nhận tạo/cập nhật/hoàn thành Phiếu, lịch định kỳ, liên kết Checklist→Phiếu không trùng, và routine xóa tổ chức xử lý được các phụ thuộc mới. Sau rollback, tổ chức và dữ liệu Test vẫn nguyên vẹn.
 - Bổ sung cleanup cho Phiếu yêu cầu, lịch bảo dưỡng và Checklist vào routine xóa tổ chức; xử lý liên kết vòng giữa Checklist run và Phiếu yêu cầu trước khi xóa.
-- Chưa có CI mới sau các commit gần nhất; chưa Preview/E2E giao diện. Chưa áp dụng migration nào lên Production, chưa merge PR #75.
+- Đã bổ sung cảnh báo và nút chuyển dữ liệu bảo trì Local cũ trên từng trình duyệt lên Cloud; giữ nguyên bản Local, nhập theo ID để có thể chạy lại an toàn, nhập cả lịch sử và giữ thời điểm hoàn thành cũ. Các hồ sơ cũ thiếu thông tin hoàn thành được giữ ở trạng thái cần rà soát, không tự bịa dữ liệu.
+- Đã thêm bộ lọc báo cáo Checklist theo Ngày/Tuần/Tháng/Quý/Năm; thống kê Phiếu yêu cầu theo ngày phát sinh/ngày hoàn thành và trạng thái đang xử lý/quá hạn; báo cáo lịch bảo dưỡng định kỳ cũng tính công việc quá hạn và xuất chung Excel.
+- CI Build và Unit tests đã PASS trên commit `c334ea7e4ed71abc0c6235c1805adf21b2531af0`.
+- SQL smoke tests trên Supabase Test đã PASS trong transaction rollback: tạo/hoàn thành Phiếu; tạo/hoàn thành lịch; Checklist Không đạt tạo Phiếu có liên kết và retry không trùng; nhập dữ liệu Local idempotent; giữ ngày hoàn thành; xóa tổ chức xử lý các phụ thuộc và rollback xác nhận dữ liệu Test còn nguyên.
+- Chưa Preview/E2E giao diện thực tế và chưa kiểm thử trên điện thoại vật lý. Chưa áp dụng migration nào lên Production, chưa merge PR #75.
 - Đã đăng ký các migration Checklist và Cloud maintenance đã áp dụng trên Test vào `supabase/migrations` theo đúng version trong `supabase_migrations.schema_migrations`; bổ sung migration harden tạo phiếu từ Checklist (`20261126165000`).
 - Đã đồng bộ nhánh PR với `main` bằng merge commit; PR không còn behind.
 - Còn việc phải hoàn tất: có CI Build/Unit mới và kiểm tra TypeScript; kiểm tra Preview giao diện thực tế trên Supabase Test; kiểm thử E2E trên điện thoại vật lý; kiểm tra luồng tạo Phiếu yêu cầu từ Checklist trong UI.
