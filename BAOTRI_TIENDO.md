@@ -728,6 +728,7 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Mẫu gắn với thiết bị lưu `targetAssetId` ở cấp định nghĩa để nhận diện đúng đối tượng; từng lượt và kết quả vẫn lưu nhãn đối tượng dạng snapshot riêng, không ghi vào lịch sử thiết bị hoặc lịch sử bảo trì.
 - Chu kỳ, giờ, người phụ trách và nội dung Checklist do Admin cấu hình độc lập. Không đọc, sao chép hoặc kế thừa `Asset.cycle` hay chu kỳ bảo trì.
 - Không thay đổi bảng lịch sử, không nâng version Dexie, không thay đổi Supabase/Auth/RLS/Storage/Cloud Sync. Chưa kiểm thử browser PC/mobile; cần chờ CI Build/Test và Pages Deploy.
+- Sau khi push, CI phát hiện lỗi TypeScript tại nút **Tạo Checklist**: `onClick={openNew}` truyền MouseEvent vào tham số Asset tùy chọn. Đã sửa thành `onClick={()=>openNew()}` trong commit `9df199f1d4d3658facad50d5e628b22d522b2cb8`; các workflow Build/Test và Pages Deploy tự chạy lại. Chỉ xác nhận phát hành sau khi cả hai workflow thành công.
 
 ## 26/11/2026 – làm rõ trạng thái mẫu và chuyển trình sửa Checklist thành hộp thoại
 - Giữ nguyên Tổng quan theo xác nhận người dùng: bốn kỳ Ngày/Tuần/Tháng/Quý và khu vực Công việc nên làm hôm nay.
