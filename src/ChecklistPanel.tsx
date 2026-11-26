@@ -191,8 +191,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const beginTask=async(task:ChecklistTask,item:ChecklistDefinition)=>{
     if(!canExecute)return
+    await ensureChecklistOccurrences(organizationId)
     const current=await db.checklistTasks.get(task.id)
     if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist'||current.status==='Quá hạn')return
+    if(Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){await refresh();return}
     const group=isGroupAssignee(current.assignee)
     if(group&&(current.status!=='Đang thực hiện'||current.claimedByUserId!==userId))return
     if(!group&&current.assignee!==userLabel&&!canManage)return
