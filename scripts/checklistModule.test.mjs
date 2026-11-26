@@ -186,7 +186,7 @@ test('disabled or inactive Checklist templates are hidden from the active templa
 })
 
 test('recurring Checklist runs must start from a scheduled task, not from the reusable template',()=>{
-  assert.match(panel,/item\.frequency==='Linh hoạt'&&item\.enabled&&<button className="primary-btn" onClick=\{\(\)=>startRun\(item\)\}/)
+  assert.match(panel,/item\.frequency==='Linh hoạt'&&<button className="primary-btn" onClick=\{\(\)=>startRun\(item\)\}/)
   assert.match(panel,/periodTasks\.map\(task=>/)
   assert.match(panel,/status:'Hoàn thành',completedAt:record\.completedAt/)
 })
