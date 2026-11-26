@@ -182,7 +182,7 @@ test('period tabs only show tasks and missed counts for the matching Checklist c
   assert.match(panel,/periodFrequency:Record<typeof workPeriod,ChecklistFrequency>=\{day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý',year:'Hàng năm'\}/)
   assert.match(panel,/item\.frequency===selectedFrequency&&\(item\.status==='Chờ thực hiện'\|\|item\.status==='Đang thực hiện'\)/)
   assert.match(panel,/item\.frequency===selectedFrequency&&item\.status==='Không Checklist'/)
-  assert.match(panel,/Hàng năm: Hàng năm/)
+  assert.match(panel,/year:'Hàng năm'/)
 })
 
 
@@ -494,7 +494,7 @@ test('phase-one Checklist assignment remains Admin-only in UI and server RPC',as
 test('Checklist Không đạt creates a real linked Cloud maintenance request idempotently',async()=>{
   const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
   const cloud=await readFile(new URL('../src/lib/maintenanceCloud.ts',import.meta.url),'utf8')
-  const migration=await readFile(new URL('../supabase/migrations/20261126234000_checklist_to_cloud_maintenance_requests.sql',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../supabase/migrations/20261126162954_checklist_to_cloud_maintenance_requests.sql',import.meta.url),'utf8')
   assert.match(panel,/createMaintenanceRequestFromChecklist\(supabase,organizationId,savedCloudRunId\)/)
   assert.match(panel,/Tạo Phiếu yêu cầu từ Checklist này/)
   assert.match(cloud,/maintenance_create_request_from_checklist/)
@@ -507,7 +507,7 @@ test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited 
   const panel=await readFile(new URL('../src/MaintenancePanel.tsx',import.meta.url),'utf8')
   const cloud=await readFile(new URL('../src/lib/maintenanceCloud.ts',import.meta.url),'utf8')
   const report=await readFile(new URL('../src/ReportsPanel.tsx',import.meta.url),'utf8')
-  const requestMigration=await readFile(new URL('../supabase/migrations/20261126234100_maintenance_request_cloud_rpcs.sql',import.meta.url),'utf8')
+  const requestMigration=await readFile(new URL('../supabase/migrations/20261126163024_maintenance_request_cloud_rpcs.sql',import.meta.url),'utf8')
   const scheduleMigration=await readFile(new URL('../supabase/migrations/20261126234200_maintenance_schedule_cloud_rpcs.sql',import.meta.url),'utf8')
   assert.match(panel,/loadMaintenanceRequests\(supabaseClient,organizationId\)/)
   assert.match(panel,/saveMaintenanceRequest\(supabaseClient,organizationId,value/)
