@@ -57,7 +57,7 @@ export async function ensureChecklistOccurrences(organizationId: string) {
   const definitions = await db.checklistDefinitions.where('organizationId').equals(organizationId).toArray()
   const active = definitions.filter(item => item.enabled && item.frequency !== 'Linh hoạt')
   const current = new Date()
-  const horizon = new Date(current.getFullYear() + 1, 0, 1, 0, 0, 0, 0)
+  const horizon = new Date(current.getFullYear() + 1, current.getMonth(), current.getDate(), 23, 59, 59, 999)
   const existing = await db.checklistTasks.where('organizationId').equals(organizationId).toArray()
   const known = new Set(existing.map(item => item.id))
   const additions: ChecklistTask[] = []
