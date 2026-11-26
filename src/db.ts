@@ -17,7 +17,7 @@ export type ChecklistDefinition = {
 export type ChecklistRun = {
   id: string; organizationId: string; checklistId: string; checklistTitle: string
   categoryLabel: string; targetLabel: string; frequency: ChecklistFrequency
-  answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Không áp dụng'; note: string }>
+  answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Bỏ qua'; note: string }>
   outcome: 'Đạt' | 'Không đạt'; inspector: string; completedAt: string
   repairRequestCreated: boolean; noRepairReason?: string
   assignmentHistory?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; actorUserId?: string; at: string }>
