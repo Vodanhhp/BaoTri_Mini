@@ -3,6 +3,9 @@ import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, S
 import { downloadExcelReport } from './lib/excelExport'
 import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
 import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERIOD_MS } from './lib/checklistSchedule'
+import { supabase } from './lib/supabase'
+import { isPcPlatform } from './lib/platform'
+import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun } from './lib/checklistCloud'
 
 type Props = {
   organizationId: string
@@ -255,36 +258,40 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [reportTo,setReportTo]=useState('')
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
-  const [isMobileViewport,setIsMobileViewport]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(max-width: 680px)').matches)
-  const canExecuteHere=canExecute&&isOnline&&isMobileViewport
+  const canExecuteHere=canExecute&&isOnline&&!isPcPlatform()
   useEffect(()=>{
     const updateOnline=()=>setIsOnline(navigator.onLine)
-    const media=window.matchMedia('(max-width: 680px)')
-    const updateViewport=()=>setIsMobileViewport(media.matches)
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
-    media.addEventListener('change',updateViewport)
-    return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline);media.removeEventListener('change',updateViewport)}
+    return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
 
   const refresh=async()=>{
     setLoading(true)
     try{
-      await ensureChecklistOccurrences(organizationId)
-      const [settingRows,definitionRows,runRows,taskRows]=await Promise.all([
-        db.checklistCategorySettings.where('organizationId').equals(organizationId).toArray(),
-        db.checklistDefinitions.where('organizationId').equals(organizationId).toArray(),
-        db.checklistRuns.where('organizationId').equals(organizationId).toArray(),
-        db.checklistTasks.where('organizationId').equals(organizationId).toArray()
-      ])
-      const merged=CATEGORIES.map(item=>settingRows.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
-      setSettings(merged);setDefinitions(definitionRows.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
-      setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
-      setTasks(taskRows.sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
+      if(organizationId!=='local-preview'){
+        if(!supabase)throw new Error('Chưa kết nối Supabase. Không thể tải Checklist Cloud.')
+        const bundle=await loadChecklistCloud(supabase,organizationId,canManage)
+        const merged=CATEGORIES.map(item=>bundle.settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
+        setSettings(merged);setDefinitions(bundle.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
+        setRuns(bundle.runs);setTasks(bundle.tasks)
+      }else{
+        await ensureChecklistOccurrences(organizationId)
+        const [settingRows,definitionRows,runRows,taskRows]=await Promise.all([
+          db.checklistCategorySettings.where('organizationId').equals(organizationId).toArray(),
+          db.checklistDefinitions.where('organizationId').equals(organizationId).toArray(),
+          db.checklistRuns.where('organizationId').equals(organizationId).toArray(),
+          db.checklistTasks.where('organizationId').equals(organizationId).toArray()
+        ])
+        const merged=CATEGORIES.map(item=>settingRows.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
+        setSettings(merged);setDefinitions(definitionRows.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
+        setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
+        setTasks(taskRows.sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
+      }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setLoading(false)}
   }
-  useEffect(()=>{void refresh()},[organizationId])
-  useEffect(()=>{const timer=window.setInterval(()=>{void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})},60_000);return()=>window.clearInterval(timer)},[organizationId])
+  useEffect(()=>{void refresh()},[organizationId,userId,canManage])
+  useEffect(()=>{const timer=window.setInterval(()=>{if(organizationId==='local-preview'){void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})}else if(navigator.onLine){void refresh()}},60_000);return()=>window.clearInterval(timer)},[organizationId,canManage,userId])
   useEffect(()=>{
     if(!printingRun)return
     const handleAfterPrint=()=>setPrintingRun(null)
@@ -321,10 +328,19 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(!canManage)return
     const current=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const next={...current,...patch,updatedAt:now()}
-    await db.checklistCategorySettings.put(next)
-    if((patch.frequency&&patch.frequency!==current.frequency)||(patch.executionTime&&patch.executionTime!==(current.executionTime||'09:00'))){
-      const defs=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
-      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
+    if(organizationId!=='local-preview'){
+      if(!supabase)throw new Error('Chưa kết nối Supabase.')
+      await saveChecklistCategorySetting(supabase,organizationId,userId,next)
+      if((patch.frequency&&patch.frequency!==current.frequency)||(patch.executionTime&&patch.executionTime!==(current.executionTime||'09:00'))){
+        const defs=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
+        await Promise.all(defs.map(item=>saveChecklistDefinition(supabase,organizationId,{...item,...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
+      }
+    }else{
+      await db.checklistCategorySettings.put(next)
+      if((patch.frequency&&patch.frequency!==current.frequency)||(patch.executionTime&&patch.executionTime!==(current.executionTime||'09:00'))){
+        const defs=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
+        await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
+      }
     }
     await refresh()
   }
@@ -332,9 +348,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(!canManage)return
     if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
     const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),...(data.targetAssetId?{targetAssetId:data.targetAssetId}:{}),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
-    await db.checklistDefinitions.add(record)
+    const saved=organizationId!=='local-preview'
+      ? await (supabase?saveChecklistDefinition(supabase,organizationId,record):Promise.reject(new Error('Chưa kết nối Supabase.')))
+      : (await db.checklistDefinitions.add(record),record)
     await refresh()
-    return record
+    return saved
   }
   const toggleCategory=async(key:ChecklistCategoryKey)=>{
     const setting=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
