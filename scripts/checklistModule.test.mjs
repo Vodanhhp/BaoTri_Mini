@@ -308,7 +308,7 @@ test('every equipment Checklist automatically includes four mandatory locked com
  assert.match(source,/targetKind==='equipment'\?\[\.\.\.MANDATORY_EQUIPMENT_CHECKS,\.\.\.optionalQuestions\]:optionalQuestions/)
  assert.match(source,/filter\(label=>!MANDATORY_EQUIPMENT_CHECKS\.some/)
  assert.match(source,/không thể sửa hoặc xóa/)
- assert.match(source,/requestAnimationFrame\(\(\)=>requestAnimationFrame\(\(\)=>window\.print\(\)\)\)/)
+ assert.match(source,/window\.requestAnimationFrame\(\(\)=>window\.requestAnimationFrame\(\(\)=>window\.print\(\)\)\)/)
 })
 
 test('Checklist print uses the equipment A4 print-sheet wrapper and full structured form',async()=>{
