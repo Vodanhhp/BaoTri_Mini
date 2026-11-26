@@ -20,7 +20,7 @@ function mapRequest(row:Row,organizationId:string):MaintenanceRequest{
 }
 function mapEvent(row:Row,organizationId:string):MaintenanceHistory{
  return {id:String(row.id),organizationId,recordType:'request',recordId:String(row.request_id),
-  eventType:row.event_type==='completed'?'completed':row.event_type==='created'?'created':'updated',
+  eventType:row.event_type==='completed'?'completed':row.event_type==='created'?'created':row.event_type==='status_changed'?'status_changed':'updated',
   summary:String(row.summary||''),...(row.actor_user_id?{actorUserId:String(row.actor_user_id)}:{}),
   actorLabel:String(row.actor_label||''),occurredAt:String(row.occurred_at),
   ...(row.before_snapshot?{beforeSnapshot:JSON.stringify(row.before_snapshot)}:{}),
