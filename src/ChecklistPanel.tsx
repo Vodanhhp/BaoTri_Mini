@@ -122,7 +122,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const current=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const next={...current,...patch,updatedAt:now()}
     await db.checklistCategorySettings.put(next)
-    if(patch.frequency){
+    if(patch.frequency&&patch.frequency!==current.frequency){
       const defs=definitions.filter(item=>item.categoryKey===key)
       await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{frequency:patch.frequency,scheduleStartedAt:now(),updatedAt:now()})))
     }
