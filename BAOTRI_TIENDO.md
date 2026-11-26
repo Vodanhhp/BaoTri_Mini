@@ -640,3 +640,6 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Đây là cơ chế nhận việc cơ bản theo tên nhóm/người phụ trách. Chưa có danh bạ nhóm thành viên được quản trị tập trung, thông báo đẩy, timeout tự động hoặc cơ chế bàn giao khi người nhận mất kết nối.
 - Bổ sung source tests cho trạng thái nhận việc, trả lại và lưu sự kiện. Chờ GitHub Actions xác nhận; chưa kiểm tra nhiều tài khoản thực tế trên trình duyệt.
 - Không thay đổi Supabase, Auth, RLS, Storage hoặc Cloud Sync. PR #21 vẫn không merge.
+
+
+- Bổ sung hiển thị lịch sử phân công trên lượt đang chờ/đang làm; khi hoàn thành, sự kiện nhận việc/trả lại/hủy được sao chép vào lịch sử kết quả Checklist để vẫn tra cứu được sau khi lượt rời khỏi danh sách công việc.
