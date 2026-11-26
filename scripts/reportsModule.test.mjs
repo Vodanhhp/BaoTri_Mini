@@ -98,3 +98,23 @@ test('equipment activity report filters by selected period and search query', ()
 test('standalone checklist data is not fabricated when no checklist module exists', () => {
   assert.match(panel, /chưa phải Checklist độc lập/)
 })
+
+
+test('maintenance report separates created, completed, open and overdue work for all five report periods', () => {
+  assert.match(panel,/loadMaintenanceRequests\(supabaseClient,organizationId\)/)
+  assert.match(panel,/requestsCreatedInPeriod/)
+  assert.match(panel,/requestsCompletedInPeriod/)
+  assert.match(panel,/openMaintenanceRequests/)
+  assert.match(panel,/overdueMaintenanceRequests/)
+  assert.match(panel,/scheduledTasksInPeriod/)
+  assert.match(panel,/\['Ngày','Tuần','Tháng','Quý','Năm'\]/)
+  assert.match(panel,/Báo cáo bảo trì – sửa chữa/)
+  assert.match(panel,/Công việc bảo dưỡng định kỳ/)
+})
+
+test('maintenance Cloud loading failures do not blank the existing inventory report', () => {
+  assert.match(panel,/db\.inventoryItems\.where\('organizationId'\)/)
+  assert.match(panel,/db\.inventoryMovements\.where\('organizationId'\)/)
+  assert.match(panel,/Không tải được dữ liệu báo cáo bảo trì/)
+  assert.match(panel,/Phiếu yêu cầu và lịch bảo dưỡng lấy từ Cloud/)
+})
