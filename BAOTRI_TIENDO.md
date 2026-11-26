@@ -616,3 +616,15 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung nhóm **Công việc nên làm hôm nay** trong tab Tổng quan Checklist: gợi ý tối đa 3 loại kiểm tra dựa trên thiết bị quan trọng đã khai báo; KTV có quyền thực hiện ngay, kết quả lưu vào lịch sử Checklist độc lập.
 - Gợi ý linh hoạt không tạo lịch định kỳ, không tạo lượt đến hạn và không bị tính quá hạn nếu bỏ qua. Gợi ý đã có kết quả cùng đối tượng trong ngày sẽ tạm ẩn khỏi danh sách hôm nay.
 - Source tests bổ sung kiểm tra hành vi gợi ý linh hoạt; chưa xác nhận CI/build/deploy và chưa kiểm thử trình duyệt.
+
+
+## 26/11/2026 – cấu hình giờ thực hiện Checklist
+
+- Bổ sung trường giờ thực hiện riêng cho từng Checklist; mặc định 09:00 để tương thích các cấu hình đã tạo trước đó.
+- Trong bốn nhóm khởi tạo, Admin có thể chọn chu kỳ gợi ý và giờ thực hiện. Với Checklist tự tạo/chỉnh sửa, giờ được cấu hình trực tiếp trong Checklist Builder.
+- Bộ sinh lịch sử dụng giờ đã cấu hình cho các chu kỳ ngày/tuần/tháng/quý/năm; giờ thực hiện được lưu trong snapshot của từng lượt.
+- Khi thay đổi giờ, các lượt tương lai chưa hoàn thành được sinh lại theo giờ mới; lượt đã hoàn thành và các lượt quá hạn cũ được giữ nguyên. Không thay đổi bảng lịch sử thiết bị hoặc lịch sử bảo trì.
+- Không cần thêm migration/index Dexie vì đây là các thuộc tính tùy chọn của bản ghi hiện có; dữ liệu cũ mặc định 09:00.
+- Bổ sung source test cho trường giờ, giao diện cấu hình và bộ sinh lịch. Chưa xác nhận CI/build hoặc kiểm tra trình duyệt thực tế; chưa deploy.
+- Chưa triển khai phân công/nhận việc theo nhóm KTV, lọc báo cáo theo kỳ, in A4 riêng từng kết quả, tích hợp tạo Phiếu YC thật hoặc Cloud sync.
+- Không thay đổi Supabase; PR #21 vẫn để nguyên, không merge.
