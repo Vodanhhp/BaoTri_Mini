@@ -58,6 +58,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'>('day')
   const [showSuggestions,setShowSuggestions]=useState(false)
   const [showStarterGroups,setShowStarterGroups]=useState(false)
+  const [showBuilderForm,setShowBuilderForm]=useState(false)
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
@@ -153,9 +154,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }
     await refresh()
   }
-  const openNew=()=>{setEditing(null);setTitle('');setTarget('');setCategory('custom');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setTab('builder')}
+  const openNew=()=>{setEditing(null);setTitle('');setTarget('');setCategory('custom');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
-    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setTab('builder')
+    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setShowBuilderForm(true);setTab('builder')
   }
   const saveEditor=async(event:FormEvent)=>{
     event.preventDefault()
@@ -164,10 +165,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       const questions=makeQuestions(questionText.split('\n').filter(line=>line.trim()))
       if(editing){
         await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,executionTime,assignee,questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()})
-        await refresh();setEditing(null);setNotice('Đã cập nhật Checklist.')
+        await refresh();setEditing(null);setShowBuilderForm(false);setNotice('Đã cập nhật Checklist.')
       }else{
         await createDefinition({title,targetLabel:target,categoryKey:category,frequency,executionTime,questions,source:category==='equipment'?'equipment-suggestion':'custom'})
-        setTitle('');setTarget('');setQuestionText('');setNotice('Đã tạo Checklist.')
+        setTitle('');setTarget('');setQuestionText('');setShowBuilderForm(false);setNotice('Đã tạo Checklist.')
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
@@ -328,46 +329,48 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
             <button className="soft-btn" disabled={!canExecute} onClick={()=>startRun({id:uid(),organizationId,title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Linh hoạt',enabled:true,assignee:userLabel,questions:makeQuestions(item.questions),source:'equipment-suggestion',createdAt:now(),updatedAt:now()})}>Thực hiện ngay</button>
           </div>)}
         </section>}
+        
+      </>}
+      {tab==='builder'&&<>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Các nhóm mẫu ban đầu, có thể bật hoặc tắt theo nhu cầu.</p></div><button className="soft-btn" type="button" onClick={()=>setShowStarterGroups(value=>!value)}>{showStarterGroups?'Thu gọn':'Xem nhóm khởi tạo'}</button></div>
+          <div className="panel-head"><div><h2>Quản lý mẫu Checklist</h2><p>Chọn mẫu để sửa nội dung, hoặc tạo mẫu mới. Mẫu đã tắt được giữ ở đây để có thể bật lại.</p></div>{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div>
+          <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm theo tên mẫu hoặc đối tượng kiểm tra…"/></div>
+          <div className="checklist-definition-list">{definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))).map(item=><article className="checklist-definition-row" key={item.id}>
+            <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.enabled?'Đang áp dụng':'Đã tắt'}</span></div>
+            <div className="top-actions">{canManage&&<><button className="primary-btn" onClick={()=>openEdit(item)}>Sửa nội dung</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt mẫu':'Bật mẫu'}</button></>}</div>
+          </article>)}{definitions.length===0&&<div className="table-empty-state">Chưa có mẫu Checklist. Bạn có thể tạo mẫu mới hoặc bật nhóm khởi tạo bên dưới.</div>}</div>
+        </section>
+        <section className="panel checklist-section">
+          <div className="panel-head"><div><h2>Nhóm mẫu khởi tạo</h2><p>Các mẫu có sẵn để tham khảo. Chỉ bật nhóm thực sự cần dùng; sau đó có thể sửa nội dung như mẫu bình thường.</p></div><button className="soft-btn" type="button" onClick={()=>setShowStarterGroups(value=>!value)}>{showStarterGroups?'Thu gọn':'Cấu hình nhóm mẫu'}</button></div>
           {showStarterGroups&&<div className="checklist-category-grid">{CATEGORIES.map(item=>{
             const setting=settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key)
             return <article className={'checklist-category-card'+(setting.enabled?' enabled':'')} key={item.key}>
               <div className="checklist-category-top"><span className="checklist-category-icon">{item.icon}</span><span className={'checklist-enabled-tag'+(setting.enabled?' on':'')}>{setting.enabled?'Đang bật':'Chưa bật'}</span></div>
               <h3>{item.label}</h3><p>{item.description}</p>
-              <label className="checklist-inline-field"><span>Chu kỳ gợi ý</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency})}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+              <label className="checklist-inline-field"><span>Chu kỳ</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency})}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
               <label className="checklist-inline-field"><span>Giờ thực hiện</span><input type="time" value={setting.executionTime||'09:00'} disabled={!canManage} onChange={event=>void saveSetting(item.key,{executionTime:event.target.value})}/></label>
               <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void toggleCategory(item.key)}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
             </article>
           })}</div>}
         </section>
-        <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Mẫu Checklist đang áp dụng</h2><p>Đây là biểu mẫu dùng để sinh công việc theo lịch. Hoàn thành một lượt không xóa mẫu; công việc đã hoàn thành sẽ biến mất khỏi danh sách Công việc cần thực hiện. Chỉ Checklist Linh hoạt mới thực hiện trực tiếp từ đây.</p></div><div className="top-actions">{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div></div>
-          <div className="checklist-search"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Tìm Checklist hoặc đối tượng kiểm tra…"/></div>
-          <div className="checklist-definition-list">{visibleDefinitions.map(item=><article className="checklist-definition-row" key={item.id}>
-            <div><b>{item.title}</b><small>{item.targetLabel} · {dueText(item.frequency)} · Phụ trách: {item.assignee}</small><span>{item.questions.length} nội dung kiểm tra · {item.enabled?'Đang hoạt động':'Đã tắt'}</span></div>
-            <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&item.frequency==='Linh hoạt'&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canExecute}>Thực hiện</button>}</div>
-          </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
-        </section>
-        {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Gợi ý tự động dựa trên thiết bị đã khai báo.</p></div><button className="soft-btn" type="button" onClick={()=>setShowSuggestions(value=>!value)}>{showSuggestions?'Thu gọn':'Xem gợi ý thiết bị'}</button></div>
-          {showSuggestions&&suggestions.map(item=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',executionTime:'09:00',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
+        {showBuilderForm&&<section className="panel checklist-section">
+          <div className="panel-head"><div><h2>{editing?'Sửa nội dung Checklist':'Tạo mẫu Checklist'}</h2><p>Thêm, sửa hoặc xóa từng nội dung kiểm tra. Các lượt đã phát sinh vẫn giữ nguyên bản chụp cũ.</p></div><button className="soft-btn" onClick={()=>{setShowBuilderForm(false);setEditing(null)}}>Đóng</button></div>
+          {!canManage?<p>Tài khoản chỉ có quyền xem cấu hình.</p>:<form className="checklist-builder-form" onSubmit={saveEditor}>
+            <label className="field">Tên Checklist *<input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="Ví dụ: Kiểm tra máy nén khí"/></label>
+            <label className="field">Đối tượng kiểm tra *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Tên hệ thống, khu vực hoặc loại thiết bị"/></label>
+            <label className="field">Nhóm<input value={category} onChange={event=>setCategory(event.target.value as typeof category)} list="checklist-category-options" /><datalist id="checklist-category-options">{CATEGORIES.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}<option value="equipment">Thiết bị</option><option value="custom">Tùy chỉnh</option></datalist></label>
+            <label className="field">Chu kỳ<select value={frequency} onChange={event=>setFrequency(event.target.value as ChecklistFrequency)}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="field">Giờ thực hiện<input type="time" value={executionTime} onChange={event=>setExecutionTime(event.target.value)}/></label>
+            <label className="field">Người phụ trách<input value={assignee} onChange={event=>setAssignee(event.target.value)} placeholder="Admin, tên KTV hoặc Nhóm KTV"/></label>
+            <div className="field full-field"><span>Nội dung kiểm tra *</span><p>Mỗi dòng là một mục. Có thể sửa trực tiếp, thêm dòng hoặc xóa mục không cần thiết.</p>
+              <div className="checklist-question-editor">{(questionText?questionText.split('\n'):['']).map((line,index)=><div className="checklist-question-edit-row" key={index}><span>{index+1}.</span><input value={line} onChange={event=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines[index]=event.target.value;return lines.join('\n')})} placeholder="Nhập nội dung cần kiểm tra"/><button type="button" className="soft-btn" disabled={(questionText?questionText.split('\n'):['']).length<=1} onClick={()=>setQuestionText(current=>{const lines=current?current.split('\n'):[''];lines.splice(index,1);return lines.join('\n')})}>Xóa</button></div>)}</div>
+              <button type="button" className="soft-btn" onClick={()=>setQuestionText(current=>current?current+'\n':'')}>+ Thêm nội dung kiểm tra</button>
+            </div>
+            <div className="checklist-builder-note"><ShieldCheck size={16}/> Thay đổi biểu mẫu chỉ áp dụng cho lần kiểm tra sau. Kết quả cũ giữ nguyên nội dung đã thực hiện.</div>
+            <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setEditing(null);setTitle('');setTarget('');setQuestionText('')}}>Làm mới</button><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu nội dung Checklist':'Tạo Checklist'}</button></div>
+          </form>}
         </section>}
-      </>}
-      {tab==='builder'&&<section className="panel checklist-section">
-        <div className="panel-head"><div><h2>{editing?'Chỉnh sửa Checklist':'Checklist Builder'}</h2><p>Tạo biểu mẫu từ các nhóm gợi ý, loại thiết bị hoặc nội dung riêng của doanh nghiệp.</p></div>{editing&&<button className="soft-btn" onClick={()=>setEditing(null)}>Checklist mới</button>}</div>
-        {!canManage?<p>Tài khoản chỉ có quyền xem cấu hình.</p>:<form className="checklist-builder-form" onSubmit={saveEditor}>
-          <label className="field">Tên Checklist *<input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="Ví dụ: Kiểm tra máy nén khí"/></label>
-          <label className="field">Đối tượng kiểm tra *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Tên hệ thống, khu vực hoặc loại thiết bị"/></label>
-          <label className="field">Nhóm<input value={category} onChange={event=>setCategory(event.target.value as typeof category)} list="checklist-category-options" /><datalist id="checklist-category-options">{CATEGORIES.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}<option value="equipment">Thiết bị</option><option value="custom">Tùy chỉnh</option></datalist></label>
-          <label className="field">Chu kỳ<select value={frequency} onChange={event=>setFrequency(event.target.value as ChecklistFrequency)}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
-          <label className="field">Giờ thực hiện<input type="time" value={executionTime} onChange={event=>setExecutionTime(event.target.value)}/></label>
-          <label className="field">Người phụ trách<input value={assignee} onChange={event=>setAssignee(event.target.value)} placeholder="Admin, tên KTV hoặc Nhóm KTV"/></label>
-          <label className="field full-field">Nội dung kiểm tra *<textarea required rows={7} value={questionText} onChange={event=>setQuestionText(event.target.value)} placeholder={'Mỗi dòng là một nội dung kiểm tra.\nVí dụ: Kiểm tra rò rỉ dầu?\nKiểm tra tiếng ồn bất thường?'} /></label>
-          <div className="checklist-builder-note"><ShieldCheck size={16}/> Thay đổi biểu mẫu chỉ áp dụng cho lần kiểm tra sau. Kết quả cũ giữ nguyên nội dung đã thực hiện.</div>
-          <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>{setEditing(null);setTitle('');setTarget('');setQuestionText('')}}>Làm mới</button><button type="submit" className="primary-btn"><Check size={15}/> {editing?'Lưu thay đổi':'Tạo Checklist'}</button></div>
-        </form>}
-      </section>}
-      {tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử Checklist</h2><p>Lưu độc lập theo tổ chức. Phân biệt lượt không thực hiện với kết quả kiểm tra Không đạt.</p></div></div>
+      </>}{tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử Checklist</h2><p>Lưu độc lập theo tổ chức. Phân biệt lượt không thực hiện với kết quả kiểm tra Không đạt.</p></div></div>
         {missedTasks.length>0&&<><h3 className="checklist-history-subtitle">Không Checklist ({missedTasks.length})</h3><div className="checklist-missed-history">{missedTasks.map(task=><article className="checklist-history-row checklist-missed-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className="checklist-outcome fail">Không Checklist</span><small>Không thực hiện trong thời gian cho phép (24 giờ).</small></div></article>)}</div></>}
         <h3 className="checklist-history-subtitle">Kết quả đã kiểm tra ({runs.length})</h3>
         <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><button className="soft-btn" onClick={()=>setPrintingRun(row)}>In A4</button><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.assignmentHistory&&row.assignmentHistory.length>0&&<><b>Lịch sử phân công</b><ul>{row.assignmentHistory.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></>}{row.outcome==='Không đạt'&&<p>{row.repairRequestCreated?'Đã đánh dấu có tạo Phiếu yêu cầu sửa chữa.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
