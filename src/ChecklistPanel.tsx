@@ -271,6 +271,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
 
+  useEffect(()=>{if(!canExecuteHere)setQrOpen(false)},[canExecuteHere])
+
   const refresh=async(ensureCloudSchedule=false)=>{
     setLoading(true)
     try{
@@ -485,7 +487,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       if(!current||current.status==='Hoàn thành'||current.status==='Không Checklist')return
       if(Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){await refresh();return}
       if(current.status==='Đang thực hiện'&&current.claimedByUserId!==userId){setNotice('Công việc đang được một tài khoản khác thực hiện.');return}
-      try{if(current.status!=='Đang thực hiện')await claimChecklistTask(supabase,organizationId,current.id);await refresh();startRun(item,current.id)}
+      try{if(current.status!=='Đang thực hiện')await claimChecklistTask(supabase,organizationId,current.id);startRun(item,current.id);void refresh()}
       catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
       return
     }
