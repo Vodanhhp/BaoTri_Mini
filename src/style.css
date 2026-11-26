@@ -3308,3 +3308,13 @@ html,body,#root,.app-shell{
 .checklist-missed-report h3{font-size:12px;margin:0 0 10px}
 .checklist-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:680px){.checklist-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.checklist-upcoming-panel{padding:10px}.checklist-upcoming-filters .soft-btn{flex:1;min-width:0}}
+
+/* Checklist: quản lý mẫu và chỉnh sửa từng nội dung rõ ràng */
+.checklist-question-editor{display:grid;gap:8px;margin:4px 0 10px}
+.checklist-question-edit-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px}
+.checklist-question-edit-row>span{font-size:11px;color:var(--muted);text-align:center}
+.checklist-question-edit-row input{width:100%;min-width:0;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel);color:var(--text);font-size:11px}
+.checklist-question-edit-row .soft-btn{padding:9px 12px}
+.checklist-question-edit-row .soft-btn:disabled{opacity:.45;cursor:not-allowed}
+.checklist-builder-form .field>p{line-height:1.6}
+@media(max-width:520px){.checklist-question-edit-row{grid-template-columns:20px minmax(0,1fr) auto;gap:5px}.checklist-question-edit-row .soft-btn{padding:8px}}
