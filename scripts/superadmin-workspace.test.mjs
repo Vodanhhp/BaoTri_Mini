@@ -57,9 +57,9 @@ test('destructive platform decisions still require password re-authentication', 
 
 
 test('permanent organization deletion removes all newly added tenant audit metadata before the organization row', async () => {
-  const migration = await readFile(new URL('../supabase/migrations/20261126233000_fix_platform_delete_catalog_history_dependencies.sql', import.meta.url), 'utf8')
+  const migration = await readFile(new URL('../docs/drafts/20261126233000_fix_platform_delete_catalog_history_dependencies.sql', import.meta.url), 'utf8')
   const historyDelete = migration.indexOf("delete from public.organization_equipment_catalog_history")
-  const catalogDelete = migration.indexOf("delete from public.organization_equipment_catalog")
+  const catalogDelete = migration.indexOf("\n  delete from public.organization_equipment_catalog\n")
   const seedDelete = migration.indexOf("delete from private.platform_data_seed_runs")
   const membersDelete = migration.indexOf("delete from public.organization_members")
   const organizationDelete = migration.indexOf("delete from public.organizations")
