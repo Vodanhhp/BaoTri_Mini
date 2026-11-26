@@ -51,7 +51,7 @@ test('failed inspection cannot be recorded as pass and requires repair decision'
 
 test('Checklist keeps a snapshot of the checked questions and exposes history and reporting', () => {
   assert.match(panel, /checklistSnapshot:running\.questions\.map/)
-  assert.match(panel, /Lịch sử kiểm tra/)
+  assert.match(panel, /Lịch sử Checklist/)
   assert.match(panel, /Báo cáo Checklist/)
   assert.match(panel, /exportExcel/)
   assert.match(panel, /writeBuffer/)
@@ -74,7 +74,7 @@ test('recurring Checklist occurrences are stored independently and preserve each
   assert.match(schedule, /CHECKLIST_GRACE_PERIOD_MS = 24 \* 60 \* 60 \* 1000/)
   assert.match(schedule, /status:missed\?'Không Checklist':'Chờ thực hiện'/)
   assert.match(schedule, /status:'Không Checklist' as const/)
-  assert.match(schedule, /scheduleStartedAt \|\| definition\.createdAt/)
+  assert.match(schedule, /definition\.scheduleStartedAt\|\|definition\.createdAt/)
   assert.match(schedule, /bulkDelete\(obsolete\.map/)
   assert.match(panel, /status:'Hoàn thành',completedAt:record\.completedAt,runId:record\.id/)
 })
@@ -87,7 +87,7 @@ test('Dashboard shows period-based Checklist counts and does not treat flexible 
   assert.match(panel, /Tuần tới/)
   assert.match(panel, /Tháng tới/)
   assert.match(panel, /Quý tới/)
-  assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
+  assert.match(schedule, /item\.frequency!=='Linh hoạt'/)
 })
 
 test('optional daily suggestions can be executed but never create scheduled overdue tasks', () => {
@@ -104,10 +104,10 @@ test('Checklist execution time is configurable and future task snapshots use it'
   assert.match(panel, /Giờ thực hiện/)
   assert.match(panel, /type="time"/)
   assert.match(panel, /executionTime!==\(editing\.executionTime\|\|'09:00'\)/)
-  assert.match(schedule, /atExecutionTime\(anchor, executionTime\)/)
-  assert.match(schedule, /executionTime, assignee: definition\.assignee/)
-  assert.match(schedule, /definition\.executionTime \|\| '09:00'/)
-  assert.match(schedule, /task\.executionTime \|\| '09:00'/)
+  assert.match(schedule, /atExecutionTime\(anchor,executionTime\)/)
+  assert.match(schedule, /executionTime,assignee:definition\.assignee/)
+  assert.match(schedule, /definition\.executionTime\|\|'09:00'/)
+  assert.match(schedule, /task\.executionTime\|\|'09:00'/)
 })
 
 
@@ -137,7 +137,7 @@ test('assignment events remain visible after an inspection is completed', () => 
 test('future scheduled tasks refresh their snapshots after definition edits without deleting in-progress work', () => {
   assert.match(schedule, /definition.assignee!==task.assignee/)
   assert.match(schedule, /definition.title!==task.title/)
-  assert.match(schedule, /JSON\.stringify\(definition\.questions\) !== JSON\.stringify\(task\.definitionSnapshot\.questions\)/)
+  assert.match(schedule, /JSON\.stringify\(definition\.questions\)!==JSON\.stringify\(task\.definitionSnapshot\.questions\)/)
   assert.match(schedule, /task.status!=='Đang thực hiện'/)
 })
 
