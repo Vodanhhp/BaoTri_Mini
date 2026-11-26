@@ -3377,3 +3377,8 @@ html,body,#root,.app-shell{
 #root .app-shell .checklist-qr-modal .field{display:grid;gap:7px;margin-top:14px}
 #root .app-shell .checklist-qr-modal .field input{width:100%;min-height:42px;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel);color:var(--text)}
 @media(max-width:600px){#root .app-shell .checklist-qr-actions{align-items:stretch}#root .app-shell .checklist-qr-actions .primary-btn{width:100%;justify-content:center}#root .app-shell .checklist-qr-camera{min-height:180px}}
+
+
+#root .maintenance-legacy-warning{display:grid;gap:8px;border-left:3px solid var(--warning,#d97706)}
+#root .maintenance-legacy-warning p{margin:0;color:var(--muted,#64748b)}
+#root .maintenance-success-notice{margin:10px 0;padding:10px 12px;border-radius:8px;background:var(--surface-soft,#f1f5f9);color:var(--text,#1e293b)}
