@@ -32,6 +32,7 @@ const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>(
 export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
  const [tasks,setTasks]=useState<ChecklistTask[]>([])
  useEffect(()=>{let active=true;void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(rows=>{if(active)setTasks(rows)}).catch(()=>{});return()=>{active=false}},[organizationId])
+ useEffect(()=>{const timer=window.setInterval(()=>{void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})},60_000);return()=>window.clearInterval(timer)},[organizationId])
  const currentMs=Date.now()
  const actionable=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&new Date(item.dueAt).getTime()<=currentMs&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS)
  const missed=tasks.filter(item=>item.status==='Không Checklist')
@@ -85,6 +86,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     finally{setLoading(false)}
   }
   useEffect(()=>{void refresh()},[organizationId])
+  useEffect(()=>{const timer=window.setInterval(()=>{void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})},60_000);return()=>window.clearInterval(timer)},[organizationId])
   useEffect(()=>{if(printingRun){window.print();setPrintingRun(null)}},[printingRun])
 
   const enabledCount=settings.filter(item=>item.enabled).length
