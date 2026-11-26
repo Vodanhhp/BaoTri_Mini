@@ -55,6 +55,23 @@ test('destructive platform decisions still require password re-authentication', 
   }
 })
 
+
+test('permanent organization deletion removes all newly added tenant audit metadata before the organization row', async () => {
+  const migration = await readFile(new URL('../docs/drafts/20261126233000_fix_platform_delete_catalog_history_dependencies.sql', import.meta.url), 'utf8')
+  const historyDelete = migration.indexOf("delete from public.organization_equipment_catalog_history")
+  const catalogDelete = migration.indexOf("\n  delete from public.organization_equipment_catalog\n")
+  const seedDelete = migration.indexOf("delete from private.platform_data_seed_runs")
+  const membersDelete = migration.indexOf("delete from public.organization_members")
+  const organizationDelete = migration.indexOf("delete from public.organizations")
+  assert.ok(historyDelete > -1 && historyDelete < catalogDelete)
+  assert.ok(seedDelete > -1 && seedDelete < membersDelete)
+  assert.ok(membersDelete < organizationDelete)
+  assert.match(migration, /to_regclass\('public\.organization_equipment_catalog_history'\)/)
+  assert.match(migration, /'organization_equipment_catalog_history', v_catalog_history/)
+  assert.match(migration, /'platform_data_seed_runs', v_seed_runs/)
+  assert.doesNotMatch(migration, /delete from auth\.users|delete from public\.profiles/)
+})
+
 test('organization member management has no unused Super Admin identity bypass', async () => {
   const source = await readFile(new URL('../supabase/functions/manage-organization-members/index.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /OWNER_EMAIL/)
