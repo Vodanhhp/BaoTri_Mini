@@ -14,7 +14,8 @@ test('Checklist is a first-class module reachable from navigation and overview',
   assert.match(app, /'dashboard'\|'assets'\|'inventory'\|'maintenance'\|'checklist'\|'reports'/)
   assert.match(app, /activeModule==='checklist'/)
   assert.match(app, /<ChecklistPanel/)
-  assert.match(app, /Mở Checklist/)
+  assert.match(app, /Kiểm tra định kỳ/)
+  assert.match(panel, /Mở Checklist/)
 })
 
 test('four starter inspection groups are optional and disabled by default', () => {
