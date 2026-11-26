@@ -173,13 +173,13 @@ test('Checklist A4 print renders one selected result with answers and follow-up 
 })
 
 test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/'Kết quả':'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
-test('scheduled Checklist tasks are grouped into current day, week, month, and quarter tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
+test('scheduled Checklist tasks are grouped into current day, week, month, quarter, and year tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.match(panel,/workPeriod==='year'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
 
 test('period tabs only show tasks and missed counts for the matching Checklist cycle',()=>{
-  assert.match(panel,/periodFrequency:Record<typeof workPeriod,ChecklistFrequency>=\{day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý'\}/)
+  assert.match(panel,/periodFrequency:Record<typeof workPeriod,ChecklistFrequency>=\{day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý',year:'Hàng năm'\}/)
   assert.match(panel,/item\.frequency===selectedFrequency&&\(item\.status==='Chờ thực hiện'\|\|item\.status==='Đang thực hiện'\)/)
   assert.match(panel,/item\.frequency===selectedFrequency&&item\.status==='Không Checklist'/)
-  assert.match(panel,/Checklist Hàng năm xem trong Lịch sử và Báo cáo/)
+  assert.match(panel,/Hàng năm: Hàng năm/)
 })
 
 
