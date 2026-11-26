@@ -34,7 +34,7 @@ const checklistPeriodRange = (period:'day'|'week'|'month'|'quarter',reference=ne
  else if(period==='week'){const day=end.getDay()||7;start.setDate(start.getDate()-day+1);end.setTime(start.getTime());end.setDate(end.getDate()+7)}
  else if(period==='month'){start.setDate(1);end.setFullYear(start.getFullYear(),start.getMonth()+1,1)}
  else {const quarter=Math.floor(start.getMonth()/3);start.setMonth(quarter*3,1);end.setFullYear(start.getFullYear(),quarter*3+3,1)}
- return {start:localDateKey(start),end:localDateKey(end)}
+ return {start:checklistLocalDateKey(start),end:checklistLocalDateKey(end)}
 }
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
