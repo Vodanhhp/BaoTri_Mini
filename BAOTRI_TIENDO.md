@@ -643,3 +643,6 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 
 
 - Bổ sung hiển thị lịch sử phân công trên lượt đang chờ/đang làm; khi hoàn thành, sự kiện nhận việc/trả lại/hủy được sao chép vào lịch sử kết quả Checklist để vẫn tra cứu được sau khi lượt rời khỏi danh sách công việc.
+
+
+- Rà soát vòng đời lịch: khi Admin sửa tên, đối tượng, người phụ trách, nhóm, câu hỏi, chu kỳ hoặc giờ, các lượt tương lai chưa bắt đầu được tạo lại theo cấu hình mới. Lượt đã hoàn thành, lượt quá hạn cũ và lượt đang được KTV nhận xử lý không bị xóa.
