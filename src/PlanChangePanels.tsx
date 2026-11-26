@@ -246,6 +246,9 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
  const [loading,setLoading]=useState(true)
  const [busy,setBusy]=useState(false)
  const [confirmed,setConfirmed]=useState(false)
+ const [resetAssets,setResetAssets]=useState(true)
+ const [resetInventory,setResetInventory]=useState(false)
+ const [resetChecklist,setResetChecklist]=useState(false)
  const [error,setError]=useState('')
  const [message,setMessage]=useState('')
  const load=useCallback(async()=>{
@@ -262,7 +265,7 @@ export function OrganizationAssetResetRequestPanel({client,organizationId}:{clie
  const openRequest=requests.some(request=>request.status==='pending'||request.status==='approved')
  const submit=async(event:FormEvent)=>{
   event.preventDefault()
-  if(busy||openRequest||!confirmed||(!resetAssets&&!resetInventory&&!resetChecklist))
+  if(busy||openRequest||!confirmed||(!resetAssets&&!resetInventory&&!resetChecklist))return
   setBusy(true);setError('');setMessage('')
   try{
    const {data,error:invokeError}=await client.functions.invoke('organization-asset-reset-requests',{body:{action:'submit',organizationId,note:note.trim(),resetAssets,resetInventory,resetChecklist}})
@@ -304,9 +307,6 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
  const [password,setPassword]=useState('')
  const [reviewNote,setReviewNote]=useState('')
  const [confirmed,setConfirmed]=useState(false)
- const [resetAssets,setResetAssets]=useState(true)
- const [resetInventory,setResetInventory]=useState(false)
- const [resetChecklist,setResetChecklist]=useState(false)
  const [busy,setBusy]=useState(false)
  const load=useCallback(async()=>{
   setLoading(true);setError('')
@@ -337,9 +337,9 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
  return <section style={{marginTop:20}}>
   <div className="panel-head"><div><h3>Yêu cầu Reset thiết bị, vật tư và Checklist</h3><p>Admin doanh nghiệp gửi yêu cầu; chỉ Superadmin mới có quyền phê duyệt và thực hiện Reset.</p></div><button className="soft-btn" onClick={()=>void load()} disabled={loading}>{loading?'Đang tải…':'Làm mới'}</button></div>
   {error&&<div className="auth-error">{error}</div>}{message&&<div className="cloud-message">{message}</div>}
-  {loading?<div className="auth-note">Đang tải yêu cầu Reset…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset từ doanh nghiệp.</div>:<div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Doanh nghiệp / ngày gửi</th><th>Người gửi</th><th>Dữ liệu tại thời điểm yêu cầu</th><th>Lý do / phản hồi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
+  {loading?<div className="auth-note">Đang tải yêu cầu Reset…</div>:requests.length===0?<div className="table-empty-state">Chưa có yêu cầu Reset từ doanh nghiệp.</div>:<div className="table-wrap table-standard-wrap"><table className="table-standard"><thead><tr><th>Doanh nghiệp / ngày gửi</th><th>Người gửi</th><th>Phạm vi / dữ liệu tại thời điểm yêu cầu</th><th>Lý do / phản hồi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{requests.map(request=><tr key={request.id}>
    <td><b>{(request as AssetResetRequest&{organization_name?:string}).organization_name||request.organization_id}</b><small className="table-subtext">{dateTime(request.requested_at)}</small></td>
-   <td>{request.requester_email||request.requester_user_id}</td><td>{number(request.cloud_assets_at_request)} thiết bị · {number(request.cloud_inventory_items_at_request)} vật tư · {number(request.cloud_inventory_movements_at_request)} giao dịch vật tư<br />{number(request.registered_devices_at_request)} thiết bị Local đã đăng ký</td>
+   <td>{request.requester_email||request.requester_user_id}</td><td><b>{[request.reset_assets&&'Thiết bị',request.reset_inventory&&'Vật tư',request.reset_checklist&&'Checklist'].filter(Boolean).join(' + ')||'—'}</b><small className="table-subtext">{request.reset_assets?number(request.cloud_assets_at_request)+' thiết bị · ':''}{request.reset_inventory?number(request.cloud_inventory_items_at_request)+' vật tư · '+number(request.cloud_inventory_movements_at_request)+' giao dịch · ':''}{request.reset_checklist?number(request.cloud_checklist_templates_at_request??0)+' mẫu · '+number(request.cloud_checklist_results_at_request??0)+' kết quả':''}</small><small className="table-subtext">{number(request.registered_devices_at_request)} thiết bị Local</small></td>
    <td className="table-note-cell">{request.requester_note&&<small>Lý do: {request.requester_note}</small>}{request.review_note&&<small>Phản hồi: {request.review_note}</small>}{request.execution_error&&<small style={{color:'var(--danger,#b91c1c)'}}>Lỗi: {request.execution_error}</small>}{!request.requester_note&&!request.review_note&&!request.execution_error?'—':null}</td>
    <td><span className={'status '+resetStatusClass(request.status)}>{resetStatusLabel(request.status)}</span>{request.assets_deleted!==undefined&&<small className="table-subtext">Đã xóa {number(request.assets_deleted)} thiết bị + {number(request.inventory_items_deleted??0)} vật tư + {number(request.inventory_movements_deleted??0)} giao dịch · Gen {request.reset_generation}</small>}</td>
    <td><div className="table-action-group">{request.status==='pending'&&<><button className="primary-btn small" onClick={()=>begin(request,'approve')}>Duyệt và Reset</button><button className="soft-btn small" onClick={()=>begin(request,'reject')}>Từ chối</button></>}</div></td>
@@ -347,7 +347,7 @@ export function PlatformAssetResetRequestsPanel({client}:{client:SupabaseClient}
   {selected&&<div className="platform-action-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)cancel()}}>
    <section className="platform-action-dialog" role="dialog" aria-modal="true" aria-labelledby="asset-reset-review-title">
     <div className="platform-action-head"><div><span className="platform-action-kicker">DUYỆT YÊU CẦU RESET</span><h3 id="asset-reset-review-title">{decision==='approve'?'Phê duyệt và thực hiện Reset':'Từ chối yêu cầu Reset'}</h3><p>{(selected as AssetResetRequest&{organization_name?:string}).organization_name||selected.organization_id}</p></div><button className="icon-btn" onClick={cancel} disabled={busy}>×</button></div>
-    <div className="platform-action-danger"><b>{number(selected.cloud_assets_at_request)} thiết bị Cloud</b>, <b>{number(selected.cloud_inventory_items_at_request)} vật tư</b>, <b>{number(selected.cloud_inventory_movements_at_request)} giao dịch vật tư</b> và {number(selected.registered_devices_at_request)} thiết bị Local đã đăng ký tại thời điểm gửi yêu cầu. {decision==='approve'?'Khi xác nhận, hệ thống xóa toàn bộ dữ liệu thiết bị và vật tư trên Cloud ngay; Local sẽ xóa cả danh mục vật tư, tồn kho, lịch sử giao dịch, hàng đợi đồng bộ và toàn bộ cấu hình/mẫu/lịch/lịch sử Checklist khi từng thiết bị kết nối lại.':'Yêu cầu sẽ được đóng mà không thay đổi dữ liệu.'}</div>
+    <div className="platform-action-danger"><b>Phạm vi:</b> {[selected.reset_assets&&'Thiết bị',selected.reset_inventory&&'Vật tư',selected.reset_checklist&&'Checklist'].filter(Boolean).join(' + ')}. <b>Dữ liệu ghi nhận:</b> {selected.reset_assets?number(selected.cloud_assets_at_request)+' thiết bị; ':''}{selected.reset_inventory?number(selected.cloud_inventory_items_at_request)+' vật tư, '+number(selected.cloud_inventory_movements_at_request)+' giao dịch; ':''}{selected.reset_checklist?number(selected.cloud_checklist_templates_at_request??0)+' mẫu, '+number(selected.cloud_checklist_results_at_request??0)+' kết quả; ':''}{number(selected.registered_devices_at_request)} thiết bị Local. {decision==='approve'?'Khi xác nhận, hệ thống chỉ xóa đúng các mục đã được doanh nghiệp chọn; thiết bị Local áp dụng cùng phạm vi khi kết nối lại.':'Yêu cầu sẽ được đóng mà không thay đổi dữ liệu.'}</div>
     {selected.requester_note&&<div className="platform-action-note">Lý do doanh nghiệp: {selected.requester_note}</div>}
     <form className="platform-action-form" onSubmit={submit}>
      <label className="field">{decision==='reject'?'Lý do từ chối *':'Phản hồi / ghi chú xử lý'}<textarea rows={3} maxLength={1000} required={decision==='reject'} value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder={decision==='reject'?'Nêu rõ lý do từ chối yêu cầu này…':'Ghi chú xử lý (không bắt buộc)…'}/></label>
