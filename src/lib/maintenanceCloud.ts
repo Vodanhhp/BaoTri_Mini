@@ -99,9 +99,9 @@ export async function importMaintenanceHistory(client:SupabaseClient,organizatio
  return imported
 }
 export type LegacyMaintenanceImportResult={requestsImported:number;tasksImported:number;historyImported:number;needsReview:number;errors:string[]}
-export async function importLegacyMaintenanceData(client:SupabaseClient,organizationId:string,requests:MaintenanceRequest[],tasks:MaintenanceTask[],history:MaintenanceHistory[]):Promise<LegacyMaintenanceImportResult>{
+export async function importLegacyMaintenanceData(client:SupabaseClient,organizationId:string,requests:MaintenanceRequest[],tasks:MaintenanceTask[],history:MaintenanceHistory[],existingRequestIds:string[]=[],existingTaskIds:string[]=[]):Promise<LegacyMaintenanceImportResult>{
  const result:LegacyMaintenanceImportResult={requestsImported:0,tasksImported:0,historyImported:0,needsReview:0,errors:[]}
- const readyRequestIds=new Set<string>(),readyTaskIds=new Set<string>()
+ const readyRequestIds=new Set<string>(existingRequestIds),readyTaskIds=new Set<string>(existingTaskIds)
  for(const row of requests){
   try{
    const saved=await saveMaintenanceRequest(client,organizationId,row,true)
