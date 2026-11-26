@@ -280,3 +280,22 @@ test('Checklist Builder offers extensive target-specific suggestions and custom 
   assert.match(panel,/onClick=\{\(\)=>setQuestionText\(current=>\{const lines=current\?current\.split\('\\n'\):\[''\];lines\.splice\(index,1\);return lines\.join\('\\n'\)\}\)\}>Xóa/)
   assert.equal(panel.includes('>Làm mới</button>'),false)
 })
+
+
+test('Checklist print action is available in Reports only, not History',()=>{
+  const history=panel.split("{tab==='history'&&")[1]?.split("{tab==='reports'&&")[0]||''
+  const reports=panel.split("{tab==='reports'&&")[1]||''
+  assert.doesNotMatch(history,/In A4|In phiếu A4|setPrintingRun\(row\)/)
+  assert.match(reports,/Phiếu Checklist/)
+  assert.match(reports,/onClick=\{\(\)=>setPrintingRun\(row\)\}>In phiếu A4/)
+  assert.match(panel,/window\.requestAnimationFrame\(\(\)=>window\.print\(\)\)/)
+  assert.match(panel,/addEventListener\('afterprint'/)
+  assert.match(panel,/removeEventListener\('afterprint'/)
+})
+
+test('Checklist selected-suggestion action uses compact separated styling',()=>{
+  assert.match(panel,/className="soft-btn checklist-add-selected-btn"/)
+  assert.match(css,/checklist-suggestion-actions/)
+  assert.match(css,/checklist-add-selected-btn/)
+  assert.match(css,/padding:7px 12px/)
+})
