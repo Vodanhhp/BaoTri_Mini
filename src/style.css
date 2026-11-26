@@ -3363,3 +3363,5 @@ html,body,#root,.app-shell{
   .checklist-print-sheet .checklist-print-signatures{break-inside:avoid;page-break-inside:avoid}
   .checklist-print-sheet .checklist-print-result-stamp{font-size:9pt}
 }
+
+.checklist-connectivity-notice{margin:0 0 12px;padding:10px 13px;border:1px solid var(--border);border-radius:9px;font-size:11px;line-height:1.5;background:var(--panel-alt);color:var(--muted)}.checklist-connectivity-notice[data-online-guard='offline']{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-text)}.checklist-connectivity-notice[data-online-guard='desktop']{background:var(--warning-bg);color:var(--warning-text)}.checklist-connectivity-notice[data-online-guard='online']{background:var(--success-bg);color:var(--success-text)}.checklist-run-form button:disabled,.checklist-definition-row button:disabled{opacity:.42;cursor:not-allowed}
