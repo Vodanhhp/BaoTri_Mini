@@ -56,6 +56,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
   const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'>('day')
+  const [showSuggestions,setShowSuggestions]=useState(false)
+  const [showStarterGroups,setShowStarterGroups]=useState(false)
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
@@ -319,15 +321,15 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           </div>
         </section>
         {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện từ một số thiết bị quan trọng đã khai báo. Bỏ qua không bị tính quá hạn và không tạo lịch bắt buộc.</p></div></div>
-          {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).map(item=><div className="checklist-suggestion-row" key={item.title}>
+          <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện, không tạo lịch bắt buộc.</p></div><button className="soft-btn" type="button" onClick={()=>setShowSuggestions(value=>!value)}>{showSuggestions?'Thu gọn':'Xem gợi ý thiết bị'}</button></div>
+          {showSuggestions&&suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).map(item=><div className="checklist-suggestion-row" key={item.title}>
             <div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>
             <button className="soft-btn" disabled={!canExecute} onClick={()=>startRun({id:uid(),organizationId,title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Linh hoạt',enabled:true,assignee:userLabel,questions:makeQuestions(item.questions),source:'equipment-suggestion',createdAt:now(),updatedAt:now()})}>Thực hiện ngay</button>
           </div>)}
         </section>}
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Bật những nhóm phù hợp với đơn vị. Đây là gợi ý cấu hình, không phải kết luận về nghĩa vụ pháp lý.</p></div></div>
-          <div className="checklist-category-grid">{CATEGORIES.map(item=>{
+          <div className="panel-head"><div><h2>Nhóm kiểm tra khởi tạo</h2><p>Các nhóm mẫu ban đầu, có thể bật hoặc tắt theo nhu cầu.</p></div><button className="soft-btn" type="button" onClick={()=>setShowStarterGroups(value=>!value)}>{showStarterGroups?'Thu gọn':'Xem nhóm khởi tạo'}</button></div>
+          {showStarterGroups&&<div className="checklist-category-grid">{CATEGORIES.map(item=>{
             const setting=settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key)
             return <article className={'checklist-category-card'+(setting.enabled?' enabled':'')} key={item.key}>
               <div className="checklist-category-top"><span className="checklist-category-icon">{item.icon}</span><span className={'checklist-enabled-tag'+(setting.enabled?' on':'')}>{setting.enabled?'Đang bật':'Chưa bật'}</span></div>
@@ -336,7 +338,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               <label className="checklist-inline-field"><span>Giờ thực hiện</span><input type="time" value={setting.executionTime||'09:00'} disabled={!canManage} onChange={event=>void saveSetting(item.key,{executionTime:event.target.value})}/></label>
               <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void toggleCategory(item.key)}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
             </article>
-          })}</div>
+          })}</div>}
         </section>
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Danh sách Checklist</h2><p>Mỗi Checklist có đối tượng, chu kỳ và biểu mẫu riêng.</p></div><div className="top-actions">{canManage&&<button className="primary-btn" onClick={openNew}><Plus size={15}/> Tạo Checklist</button>}</div></div>
@@ -346,8 +348,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
             <div className="top-actions">{canManage&&<><button className="soft-btn" onClick={()=>openEdit(item)}>Sửa</button><button className="soft-btn" onClick={()=>void db.checklistDefinitions.update(item.id,{enabled:!item.enabled,updatedAt:now()}).then(refresh)}>{item.enabled?'Tắt':'Bật'}</button></>}{item.enabled&&<button className="primary-btn" onClick={()=>startRun(item)} disabled={!canExecute}>Thực hiện</button>}</div>
           </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
         </section>
-        {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Chỉ đề xuất một số loại thiết bị quan trọng đã có trong danh mục; Admin quyết định thêm hay bỏ qua.</p></div></div>
-          {suggestions.map((item,index)=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',executionTime:'09:00',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
+        {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Gợi ý tự động dựa trên thiết bị đã khai báo.</p></div><button className="soft-btn" type="button" onClick={()=>setShowSuggestions(value=>!value)}>{showSuggestions?'Thu gọn':'Xem gợi ý thiết bị'}</button></div>
+          {showSuggestions&&suggestions.map(item=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',executionTime:'09:00',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
         </section>}
       </>}
       {tab==='builder'&&<section className="panel checklist-section">
