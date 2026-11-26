@@ -392,7 +392,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         await saveChecklistDefinition(supabase,organizationId,updated)
       }else await db.checklistDefinitions.update(item.id,{enabled:updated.enabled,updatedAt:updated.updatedAt})
       await refresh(true)
-    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
   }
 
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId)
@@ -460,7 +460,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(!canExecuteHere||!userId||!isGroupAssignee(task.assignee))return
     if(organizationId!=='local-preview'){
       if(!supabase)return
-      try{await claimChecklistTask(supabase,organizationId,task.id);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      try{await claimChecklistTask(supabase,organizationId,task.id);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
       return
     }
     await ensureChecklistOccurrences(organizationId)
@@ -477,7 +477,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const releaseTask=async(taskId:string)=>{
     if(organizationId!=='local-preview'){
       if(!supabase)return
-      try{await releaseChecklistTask(supabase,organizationId,taskId);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      try{await releaseChecklistTask(supabase,organizationId,taskId);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
       return
     }
     const current=await db.checklistTasks.get(taskId)
@@ -500,7 +500,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       if(Date.now()-new Date(current.dueAt).getTime()>=CHECKLIST_GRACE_PERIOD_MS){await refresh();return}
       if(current.status==='Đang thực hiện'&&current.claimedByUserId!==userId){setNotice('Công việc đang được một tài khoản khác thực hiện.');return}
       try{if(current.status!=='Đang thực hiện')await claimChecklistTask(supabase,organizationId,current.id);startRun(item,current.id);void refresh()}
-      catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+      catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
       return
     }
     await ensureChecklistOccurrences(organizationId)
