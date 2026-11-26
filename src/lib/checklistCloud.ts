@@ -30,29 +30,56 @@ const addMonths = (anchor: Date, offset: number, time: string) => {
   value.setDate(Math.min(anchor.getDate(),new Date(value.getFullYear(),value.getMonth()+1,0).getDate()))
   return atTime(value,time)
 }
+function calendarDayDistance(from:Date,to:Date):number{
+  const fromUtc=Date.UTC(from.getFullYear(),from.getMonth(),from.getDate())
+  const toUtc=Date.UTC(to.getFullYear(),to.getMonth(),to.getDate())
+  return Math.round((toUtc-fromUtc)/86400000)
+}
 function occurrenceDates(definition: ChecklistDefinition,end: Date): Date[] {
   const anchor=new Date(definition.scheduleStartedAt||definition.createdAt)
   if(Number.isNaN(anchor.getTime()))return []
-  const time=definition.executionTime||'09:00',out:Date[]=[]
-  const push=(date:Date)=>{if(date.getTime()>=anchor.getTime()-GRACE_MS&&date<=end)out.push(date)}
+  const time=definition.executionTime||'09:00'
+  const cutoff=new Date(Date.now()-366*86400000)
+  const out:Date[]=[]
+  const push=(date:Date)=>{if(date>=anchor&&date>=cutoff&&date<=end)out.push(new Date(date))}
   if(definition.frequency==='Hàng ngày'){
-    const first=atTime(anchor,time)
+    let first=atTime(anchor,time)
     if(first<anchor&&Date.now()-first.getTime()>=GRACE_MS)first.setDate(first.getDate()+1)
-    for(const d=new Date(first);d<=end;d.setDate(d.getDate()+1))out.push(new Date(d))
-  }else if(definition.frequency==='Hàng tuần'){
-    let d=atTime(anchor,time)
-    if(d<anchor&&Date.now()-d.getTime()>=GRACE_MS)d.setDate(d.getDate()+7)
-    for(;d<=end;d=new Date(d.getTime()+7*86400000))out.push(new Date(d))
-  }else if(definition.frequency==='Hàng tháng'){
-    for(let i=0;i<=18;i++)push(addMonths(anchor,i,time))
-  }else if(definition.frequency==='Hàng quý'){
-    for(let i=0;i<=6;i++)push(addMonths(anchor,i*3,time))
-  }else if(definition.frequency==='Hàng năm'){
-    for(let i=0;i<=2;i++){
-      const d=new Date(anchor.getFullYear()+i,anchor.getMonth(),1)
-      d.setDate(Math.min(anchor.getDate(),new Date(d.getFullYear(),d.getMonth()+1,0).getDate()))
-      push(atTime(d,time))
+    if(first<cutoff){
+      first.setDate(first.getDate()+Math.max(0,calendarDayDistance(first,cutoff)))
+      while(first<cutoff)first.setDate(first.getDate()+1)
     }
+    for(let d=new Date(first);d<=end;d.setDate(d.getDate()+1))push(d)
+  }else if(definition.frequency==='Hàng tuần'){
+    let first=atTime(anchor,time)
+    if(first<anchor&&Date.now()-first.getTime()>=GRACE_MS)first.setDate(first.getDate()+7)
+    if(first<cutoff){
+      const weeks=Math.max(0,Math.ceil(calendarDayDistance(first,cutoff)/7))
+      first.setDate(first.getDate()+weeks*7)
+      while(first<cutoff)first.setDate(first.getDate()+7)
+    }
+    for(let d=new Date(first);d<=end;d.setDate(d.getDate()+7))push(d)
+  }else if(definition.frequency==='Hàng tháng'){
+    let index=Math.max(0,(cutoff.getFullYear()-anchor.getFullYear())*12+cutoff.getMonth()-anchor.getMonth()-1)
+    let first=addMonths(anchor,index,time)
+    while(first<cutoff){index++;first=addMonths(anchor,index,time)}
+    for(let d=first;d<=end;index++,d=addMonths(anchor,index,time))push(d)
+  }else if(definition.frequency==='Hàng quý'){
+    const monthDelta=(cutoff.getFullYear()-anchor.getFullYear())*12+cutoff.getMonth()-anchor.getMonth()
+    let index=Math.max(0,Math.floor(monthDelta/3)-1)
+    let first=addMonths(anchor,index*3,time)
+    while(first<cutoff){index++;first=addMonths(anchor,index*3,time)}
+    for(let d=first;d<=end;index++,d=addMonths(anchor,index*3,time))push(d)
+  }else if(definition.frequency==='Hàng năm'){
+    let index=Math.max(0,cutoff.getFullYear()-anchor.getFullYear()-1)
+    const annual=(n:number)=>{
+      const date=new Date(anchor.getFullYear()+n,anchor.getMonth(),1)
+      date.setDate(Math.min(anchor.getDate(),new Date(date.getFullYear(),date.getMonth()+1,0).getDate()))
+      return atTime(date,time)
+    }
+    let first=annual(index)
+    while(first<cutoff){index++;first=annual(index)}
+    for(let d=first;d<=end;index++,d=annual(index))push(d)
   }
   return out
 }
