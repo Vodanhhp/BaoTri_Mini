@@ -71,7 +71,9 @@ test('recurring Checklist occurrences are stored independently and preserve each
   assert.match(schedule, /Hàng tháng/)
   assert.match(schedule, /Hàng quý/)
   assert.match(schedule, /Hàng năm/)
-  assert.match(schedule, /status: dueAt\.getTime\(\) < current\.getTime\(\) \? 'Quá hạn' : 'Chờ thực hiện'/)
+  assert.match(schedule, /CHECKLIST_GRACE_PERIOD_MS = 24 \* 60 \* 60 \* 1000/)
+  assert.match(schedule, /status:missed\?'Không Checklist':'Chờ thực hiện'/)
+  assert.match(schedule, /status:'Không Checklist' as const/)
   assert.match(schedule, /scheduleStartedAt \|\| definition\.createdAt/)
   assert.match(schedule, /bulkDelete\(obsolete\.map/)
   assert.match(panel, /status:'Hoàn thành',completedAt:record\.completedAt,runId:record\.id/)
@@ -79,10 +81,12 @@ test('recurring Checklist occurrences are stored independently and preserve each
 
 test('Dashboard shows period-based Checklist counts and does not treat flexible tasks as overdue', () => {
   assert.match(app, /<ChecklistDashboardSummary/)
-  assert.match(panel, /Đến hạn hôm nay/)
-  assert.match(panel, /Trong tuần/)
-  assert.match(panel, /Trong tháng/)
-  assert.match(panel, /Trong năm/)
+  assert.match(panel, /Đến hạn cần làm/)
+  assert.match(panel, /Không Checklist/)
+  assert.match(panel, /Lịch sắp tới/)
+  assert.match(panel, /Tuần tới/)
+  assert.match(panel, /Tháng tới/)
+  assert.match(panel, /Quý tới/)
   assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
 })
 
@@ -165,3 +169,6 @@ test('Checklist A4 print renders one selected result with answers and follow-up 
   assert.match(panel, /printingRun\.noRepairReason/)
   assert.match(panel, /window\.print\(\)/)
 })
+
+test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/outcome:'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
+test('future schedule is hidden by default and opened separately by week, month, or quarter',()=>{assert.match(panel,/const \[upcomingOpen,setUpcomingOpen\]=useState\(false\)/);assert.match(panel,/const upcomingTasks=tasks\.filter/);assert.match(panel,/upcomingOpen&&/);assert.match(panel,/setUpcomingPeriod\('week'\)/);assert.match(panel,/setUpcomingPeriod\('month'\)/);assert.match(panel,/setUpcomingPeriod\('quarter'\)/);assert.match(panel,/actionableTasks\.map/)})
