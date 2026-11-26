@@ -41,7 +41,7 @@ function occurrenceDates(definition: ChecklistDefinition,end: Date): Date[] {
   const time=definition.executionTime||'09:00'
   const cutoff=new Date(Date.now()-366*86400000)
   const out:Date[]=[]
-  const push=(date:Date)=>{if(date>=anchor&&date>=cutoff&&date<=end)out.push(new Date(date))}
+  const push=(date:Date)=>{if(date.getTime()>=anchor.getTime()-GRACE_MS&&date>=cutoff&&date<=end)out.push(new Date(date))}
   if(definition.frequency==='Hàng ngày'){
     let first=atTime(anchor,time)
     if(first<anchor&&Date.now()-first.getTime()>=GRACE_MS)first.setDate(first.getDate()+1)
