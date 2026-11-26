@@ -1,7 +1,7 @@
 export function isPcPlatform():boolean{
  if(typeof navigator==='undefined')return true
  const ua=navigator.userAgent||''
- // Checklist execution is phone-only: tablets (including iPadOS desktop-mode UA) are not phones.
+ // Checklist execution is limited to phone user-agent patterns.
  const phone=/iPhone|iPod|Android.*Mobile|Windows Phone|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
  return !phone
 }
