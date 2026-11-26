@@ -17,6 +17,7 @@ export type ChecklistDefinition = {
 }
 export type ChecklistRun = {
   id: string; organizationId: string; checklistId: string; checklistTitle: string
+  maintenanceRequestId?: string
   categoryLabel: string; targetLabel: string; frequency: ChecklistFrequency
   answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Bỏ qua' | 'Không áp dụng'; note: string }>
   outcome: 'Đạt' | 'Không đạt' | 'Bỏ qua'; inspector: string; completedAt: string
@@ -164,6 +165,7 @@ export type AssetHistory = {
 
 export type MaintenanceRequest = {
   id: string; organizationId: string; assetId: string; requestDate: string; dueDate?: string
+  checklistRunId?: string
   kind: 'Bảo dưỡng' | 'Sửa chữa'; description: string; parts: string; readings: string
   /** Parameters recorded after the maintenance/repair work is completed. */
   completionReadings?: string; conditionAfterRepair?: string
