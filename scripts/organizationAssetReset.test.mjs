@@ -221,7 +221,7 @@ test('reset request and Superadmin confirmation explicitly describe full invento
 test('approved organization reset also removes all organization-scoped Checklist data locally',async()=>{
  const source=await read('../src/lib/assetReset.ts')
  for(const store of ['checklistCategorySettings','checklistDefinitions','checklistRuns','checklistTasks']){
-  assert.match(source,new RegExp('db\\.'+store+'\\.where\\(\\'organizationId\\'\\)\\.equals\\(organizationId\\)\\.delete\\(\\)'))
+  assert.ok(source.includes(`db.${store}.where('organizationId').equals(organizationId).delete()`))
   assert.match(source,new RegExp('db\\.'+store))
  }
  assert.match(source,/Checklist is device-local/)
