@@ -84,3 +84,11 @@ test('Dashboard shows period-based Checklist counts and does not treat flexible 
   assert.match(panel, /Trong năm/)
   assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
 })
+
+test('optional daily suggestions can be executed but never create scheduled overdue tasks', () => {
+  assert.match(panel, /Công việc nên làm hôm nay/)
+  assert.match(panel, /Bỏ qua không bị tính quá hạn/)
+  assert.match(panel, /frequency:'Linh hoạt'/)
+  assert.match(panel, /Thực hiện ngay/)
+  assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
+})
