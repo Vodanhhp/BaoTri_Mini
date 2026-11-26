@@ -232,6 +232,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [runs,setRuns]=useState<ChecklistRun[]>([])
   const [tasks,setTasks]=useState<ChecklistTask[]>([])
   const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
+  const [runningManualRunId,setRunningManualRunId]=useState<string|null>(null)
+  const [savingRun,setSavingRun]=useState(false)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
   const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'>('day')
   const [showSuggestions,setShowSuggestions]=useState(false)
@@ -426,7 +428,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
   const startRun=(item:ChecklistDefinition, taskId:string|null=null)=>{
-    setRunning(item);setRunningTaskId(taskId);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
+    setRunning(item);setRunningTaskId(taskId);setRunningManualRunId(taskId?null:uid());setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
     setRepairCreated(false);setNoRepairReason('');setError('')
   }
   const handleQrDetected=async(code:string)=>{
@@ -524,7 +526,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
   const cancelRun=async()=>{
     if(runningTaskId)await releaseTask(runningTaskId)
-    setRunning(null);setRunningTaskId(null);await refresh()
+    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null);await refresh()
   }
   const completeRun=async(event:FormEvent)=>{
     event.preventDefault()
@@ -546,12 +548,15 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
     if(organizationId!=='local-preview'){
+      if(savingRun)return
+      setSavingRun(true)
       try{
         if(!supabase)throw new Error('Chưa kết nối Supabase.')
-        const payload={answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
+        const payload={run_id:runningManualRunId,answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
         if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
         else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
-      }catch(cause){setError(cause instanceof Error?cause.message:String(cause));return}
+      }catch(cause){setError(cause instanceof Error?cause.message:String(cause));setSavingRun(false);return}
+      setSavingRun(false)
     }else if(runningTaskId){
       const saved=await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
         const latest=await db.checklistTasks.get(runningTaskId)
@@ -725,7 +730,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       <form onSubmit={completeRun} className="checklist-run-form">
         {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} disabled={!canExecuteHere} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} disabled={!canExecuteHere} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
         {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Đã tạo Phiếu yêu cầu sửa chữa riêng</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Phiếu Checklist vẫn lưu kết quả Không đạt. Việc đánh dấu này không tự tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa.</small></div>}
-        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere}><Check size={15}/> Lưu kết quả</button></div>
+        <div className="modal-actions"><button type="button" className="soft-btn" onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere||savingRun}><Check size={15}/> {savingRun?'Đang lưu…':'Lưu kết quả'}</button></div>
       </form>
     </section></div>}
   </div>
