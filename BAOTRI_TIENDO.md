@@ -551,3 +551,47 @@ Phân biệt rõ hai nhóm:
 - Đây mới là quyết định/định hướng thiết kế; chưa có code, schema, migration hay thay đổi dữ liệu nào cho Checklist.
 - Tiếp tục thảo luận và thống nhất đầy đủ nghiệp vụ, trải nghiệm Admin/KTV, lịch, phân công, xử lý bỏ dở và báo cáo trước khi triển khai.
 - Không tạo nhánh, PR hoặc bắt đầu code Checklist nếu chưa có phê duyệt rõ ràng của người dùng sau khi hoàn tất thiết kế.
+
+
+## 26/11/2026 – bắt đầu triển khai Checklist trực tiếp trên main
+
+Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm chính; không tạo nhánh Checklist riêng. PR #21 giữ nguyên trạng thái OPEN, không merge.
+
+### Đã triển khai bước đầu
+- `src/db.ts`: nâng Dexie lên version 13; bổ sung ba bảng Local riêng `checklistCategorySettings`, `checklistDefinitions`, `checklistRuns`. Dữ liệu Checklist chỉ phân vùng theo organizationId, không liên kết assetId và không ghi vào assetHistory/maintenanceHistory.
+- `src/ChecklistPanel.tsx`: thêm giao diện phân hệ Checklist gồm Tổng quan, Checklist Builder, Lịch sử và Báo cáo.
+- Bốn nhóm khởi tạo Cơ sở hạ tầng, Hệ thống điện, Hệ thống nước, PCCC mặc định tắt; Admin bật/tắt và chọn chu kỳ gợi ý.
+- Builder tạo/sửa Checklist riêng, khai báo đối tượng, chu kỳ, người phụ trách và các nội dung kiểm tra.
+- Gợi ý một số Checklist cho nhóm máy nén khí, động cơ điện, máy bơm, máy phát điện khi phát hiện loại thiết bị tương ứng trong danh mục. Đây là gợi ý theo loại, không tự tạo cho mọi thiết bị.
+- KTV/Admin có thể thực hiện biểu mẫu; bắt buộc trả lời các mục, ghi Đạt/Không đạt/Không áp dụng, ghi chú và lưu người kiểm tra/thời gian cùng snapshot nội dung biểu mẫu.
+- Nếu có mục Không đạt, phải ghi nhận đã tạo Phiếu YC riêng hoặc nêu lý do chưa tạo. Hiện tại đây mới là ghi nhận quyết định trong Checklist; **chưa tự động tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa**.
+- Có lịch sử riêng và báo cáo tổng hợp; xuất Excel bằng ExcelJS.
+- Tích hợp mục “Kiểm tra định kỳ” vào menu và đường dẫn từ Trang tổng quan.
+- `scripts/checklistModule.test.mjs`: thêm kiểm thử source cho phạm vi dữ liệu độc lập, nhóm khởi tạo, quyền và luồng kết quả.
+- `src/style.css`: bổ sung bố cục responsive PC/mobile và quy tắc in.
+
+### Commit đã ghi trên main
+- `8870acb` – Dexie v13 và các bảng Checklist độc lập.
+- `4dee500` – giao diện Checklist đầu tiên.
+- `d38ecad` – tách quyền cấu hình và quyền thực hiện.
+- `3666c69` – CSS Checklist.
+- `e500b9d` – tích hợp menu và Trang tổng quan.
+- `7086ba4` – cập nhật source test của module Báo cáo cho module Checklist mới.
+- `e983d46` – thêm source tests Checklist.
+
+### Kiểm thử đã xác nhận
+- GitHub Actions Build and test tại commit `e983d46`: SUCCESS.
+- 218/218 unit/source tests PASS.
+- `tsc -b` và `vite build` đều hoàn tất thành công.
+- Chưa kiểm thử thao tác thực tế trên trình duyệt PC/mobile hoặc dữ liệu Local sau migration Dexie v13.
+- Workflow GitHub Pages cho commit `e983d46` đang được triển khai tại thời điểm cập nhật; cần xác nhận hoàn tất và mở URL thực tế.
+
+### Chưa hoàn thiện – không được hiểu là đã có
+- Chưa có bộ sinh lịch/đợt kiểm tra đến hạn theo ngày, tuần, tháng, quý, năm; tần suất hiện mới là cấu hình trên Checklist.
+- Chưa đưa danh sách nhiệm vụ Checklist đến hạn/quá hạn vào Trang tổng quan; Trang tổng quan hiện mới có liên kết mở phân hệ.
+- Chưa có luồng “Công việc nên làm hôm nay” cho Checklist linh hoạt.
+- Chưa có xử lý nhóm KTV nhận việc, đang thực hiện, hủy/hoàn trả hoặc quy tắc timeout.
+- Chưa có lọc báo cáo theo khoảng thời gian và chưa có bản in A4 riêng cho từng kết quả đã thực hiện.
+- Chưa tích hợp thao tác tạo Phiếu YC thật từ kết quả Không đạt.
+- Chưa có đồng bộ Cloud cho Checklist. Toàn bộ dữ liệu hiện là Local IndexedDB theo trình duyệt; chưa thay đổi Supabase schema, RLS, Auth, Storage hoặc migration.
+- Chưa kiểm thử Viewer/KTV/Admin bằng các tài khoản thật trên trình duyệt; quyền hiện tại đang tạm dựa vào quyền xem thiết bị và vai trò Admin/KTV sẵn có.
