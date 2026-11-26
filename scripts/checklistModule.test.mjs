@@ -175,14 +175,14 @@ test('missed Checklist occurrences are red history records, not failed inspectio
 test('scheduled Checklist tasks are grouped into current day, week, month, and quarter tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
 
 
-test('Checklist suggestions and starter groups are collapsed behind explicit buttons',()=>{assert.match(panel,/Xem gợi ý thiết bị/);assert.match(panel,/Xem nhóm khởi tạo/);assert.match(panel,/showSuggestions&&suggestions\.map/);assert.match(panel,/showStarterGroups&&<div className="checklist-category-grid"/)});
+test('Checklist suggestions and starter groups are collapsed behind explicit buttons',()=>{assert.match(panel,/Xem gợi ý thiết bị/);assert.match(panel,/Cấu hình nhóm mẫu/);assert.match(panel,/showSuggestions&&suggestions\.map/);assert.match(panel,/showStarterGroups&&<div className="checklist-category-grid"/)});
 test('Disabling a Checklist removes all uncompleted tasks even when their due time has passed',()=>{assert.match(schedule,/!activeIds\.has\(task\.checklistId\)/);assert.match(schedule,/task\.status!=='Hoàn thành'&&task\.status!=='Không Checklist'/);assert.match(panel,/Sửa nội dung/);assert.match(panel,/openEdit\(definition\)/)});
 
 
 test('disabled or inactive Checklist templates are hidden from the active template list',()=>{
   assert.match(panel,/const visibleDefinitions=useMemo\(\(\)=>definitions\.filter\(item=>item\.enabled&&\(item\.source!=='starter'\|\|settings\.some\(setting=>setting\.categoryKey===item\.categoryKey&&setting\.enabled\)\)/)
-  assert.ok(panel.includes('<h2>Mẫu Checklist đang áp dụng</h2>'))
-  assert.match(panel,/Chỉ Checklist Linh hoạt mới thực hiện trực tiếp từ đây/)
+  assert.ok(panel.includes('<h2>Quản lý mẫu Checklist</h2>'))
+  assert.match(panel,/showBuilderForm&&<section className="panel checklist-section"/);assert.match(panel,/Sửa nội dung Checklist/);assert.match(panel,/\+ Thêm nội dung kiểm tra/);assert.match(panel,/questionText\.split\('\\n'\)/)
 })
 
 test('recurring Checklist runs must start from a scheduled task, not from the reusable template',()=>{
@@ -197,4 +197,16 @@ test('previously saved manual runs close their matching scheduled task within th
   assert.match(schedule,/run\.checklistId===task\.checklistId&&sameSchedulePeriod\(task\.frequency,task\.dueDate,run\.completedAt\)/)
   assert.match(schedule,/new Date\(run\.completedAt\)\.getTime\(\)<=dueMs\+CHECKLIST_GRACE_PERIOD_MS/)
   assert.match(schedule,/status:'Hoàn thành' as const,completedAt:matchingRun\.completedAt,runId:matchingRun\.id/)
+})
+
+
+test('Checklist overview has one optional suggestion area and template editing is managed in Builder',()=>{
+  assert.equal((panel.match(/Công việc nên làm hôm nay/g)||[]).length,1)
+  assert.equal((panel.match(/Gợi ý từ danh mục thiết bị/g)||[]).length,0)
+  assert.match(panel,/Quản lý mẫu Checklist/)
+  assert.match(panel,/onClick=\{\(\)=>openEdit\(item\)\}>Sửa nội dung/)
+  assert.match(panel,/Cấu hình nhóm mẫu/)
+  assert.match(panel,/showBuilderForm&&<section/)
+  assert.match(panel,/setQuestionText\(current=>current\?current\+'\\\\n':''\)/)
+  assert.match(panel,/lines\.splice\(index,1\)/)
 })
