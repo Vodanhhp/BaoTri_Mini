@@ -190,3 +190,11 @@ test('recurring Checklist runs must start from a scheduled task, not from the re
   assert.match(panel,/periodTasks\.map\(task=>/)
   assert.match(panel,/status:'Hoàn thành',completedAt:record\.completedAt/)
 })
+
+
+test('previously saved manual runs close their matching scheduled task within the same period and grace window',()=>{
+  assert.match(schedule,/const sameSchedulePeriod=\(frequency:ChecklistFrequency,dueDate:string,completedAt:string\)/)
+  assert.match(schedule,/run\.checklistId===task\.checklistId&&sameSchedulePeriod\(task\.frequency,task\.dueDate,run\.completedAt\)/)
+  assert.match(schedule,/new Date\(run\.completedAt\)\.getTime\(\)<=dueMs\+CHECKLIST_GRACE_PERIOD_MS/)
+  assert.match(schedule,/status:'Hoàn thành' as const,completedAt:matchingRun\.completedAt,runId:matchingRun\.id/)
+})
