@@ -776,3 +776,14 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Cập nhật nội dung yêu cầu/duyệt Reset để nói rõ Checklist cũng bị xóa. Bổ sung regression tests. Chưa chạy browser E2E hoặc hộp thoại in vật lý; reset destructive chưa được thực hiện trên tổ chức nào.
 
 - Điều chỉnh assertion test cũ theo wrapper in A4 mới `asset-print-sheet print-checklist`; assertion cũ còn kiểm tra class `checklist-print-sheet` đã được thay bằng cấu trúc in chuẩn dùng chung với phiếu thiết bị.
+
+
+## 26/11/2026 — Reset theo phạm vi độc lập và sửa in phiếu Checklist A4
+
+- Admin doanh nghiệp gửi yêu cầu Reset với ba lựa chọn độc lập: Thiết bị, Vật tư, Checklist; bắt buộc chọn ít nhất một. Superadmin nhìn thấy chính xác phạm vi và số lượng dữ liệu, duyệt/từ chối như trước; Edge Functions chỉ nhận phạm vi đã chọn.
+- Supabase migration `20261126140900_selective_reset_scope_optional_checklist.sql` đã áp dụng cho BAOTRI-Mini-Test và BAOTRI-Mini-New. Bổ sung `inventory_generation` và `checklist_generation` bên cạnh generation thiết bị; mỗi phạm vi chỉ tăng generation và xóa dữ liệu của chính phạm vi đó. Checklist Cloud tables là tùy chọn vì phân hệ Checklist hiện Local-first; migration kiểm tra `to_regclass` trước khi đọc/xóa bảng legacy.
+- Local reset helper áp dụng từng generation riêng trong một Dexie transaction: chỉ xóa các store thiết bị/vật tư/Checklist tương ứng; xác nhận cả ba generation sau khi purge thành công. Không còn việc chọn Reset thiết bị mà tự động xóa kho vật tư và Checklist.
+- Edge Functions `organization-asset-reset-requests` và `platform-manage-asset-reset-requests` đã deploy lên Test và Production; verify_jwt vẫn bật, xác thực Admin doanh nghiệp/Superadmin và mật khẩu Superadmin giữ nguyên.
+- Sửa phiếu in Checklist: nguyên nhân trắng là DOM dùng class `asset-print-sheet print-checklist` trong khi CSS in tìm `checklist-print-sheet`. Đã đổi DOM sang selector riêng mà CSS đã định nghĩa, bố cục A4 riêng, không còn phụ thuộc selector in thiết bị.
+- Test an toàn trên Test: tạo yêu cầu Reset chỉ vật tư trong transaction rồi rollback; RPC trả về đúng `reset_inventory=true`, hai phạm vi còn lại false. Không thực hiện xóa dữ liệu kiểm thử. Không thực hiện reset thật trên doanh nghiệp nào.
+- Migration được ghi vào lịch sử cả Test và Production. Production schema thay đổi, nhưng không có dữ liệu doanh nghiệp nào bị reset. Chưa chạy browser/E2E thực tế hoặc hộp thoại in trên thiết bị người dùng.
