@@ -124,14 +124,14 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     await db.checklistCategorySettings.put(next)
     if(patch.frequency){
       const defs=definitions.filter(item=>item.categoryKey===key)
-      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{frequency:patch.frequency,updatedAt:now()})))
+      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{frequency:patch.frequency,scheduleStartedAt:now(),updatedAt:now()})))
     }
     await refresh()
   }
   const createDefinition=async(data:{title:string;targetLabel:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
     if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
-    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now()}
+    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
     await db.checklistDefinitions.add(record)
     await refresh()
     return record
@@ -140,6 +140,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const setting=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const enable=!setting.enabled
     await saveSetting(key,{enabled:enable})
+    await Promise.all(definitions.filter(item=>item.categoryKey===key&&item.source==='starter').map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
     if(enable&&!definitions.some(item=>item.categoryKey===key)){
       const meta=CATEGORIES.find(item=>item.key===key)!
       await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,questions:makeQuestions(meta.questions),source:'starter'})
@@ -157,7 +158,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     try{
       const questions=makeQuestions(questionText.split('\n').filter(line=>line.trim()))
       if(editing){
-        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,assignee,questions,updatedAt:now()})
+        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,assignee,questions,...(frequency!==editing.frequency?{scheduleStartedAt:now()}:{}),updatedAt:now()})
         await refresh();setEditing(null);setNotice('Đã cập nhật Checklist.')
       }else{
         await createDefinition({title,targetLabel:target,categoryKey:category,frequency,questions,source:category==='equipment'?'equipment-suggestion':'custom'})
