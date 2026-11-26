@@ -189,7 +189,7 @@ test('Disabling a Checklist removes all uncompleted tasks even when their due ti
 
 test('Checklist templates remain manageable when disabled and can be edited from the management tab',()=>{
   assert.ok(panel.includes('<h2>Quản lý mẫu Checklist</h2>'))
-  assert.match(panel,/definitions\.filter\(item=>!search\.trim\(\)/)
+  assert.match(panel,/visibleDefinitions=definitions\.filter\(item=>Boolean\(item\.archivedAt\)===showArchivedDefinitions/)
   assert.match(panel,/item\.enabled\?'Tạm ngừng lịch':'Tiếp tục lịch'/)
   assert.match(panel,/showBuilderForm&&<div className="checklist-modal-backdrop"/);assert.match(panel,/role="dialog" aria-modal="true"/)
   assert.match(panel,/Sửa nội dung Checklist/)
@@ -243,7 +243,7 @@ test('Checklist template editor opens in a separate accessible modal and explain
   assert.match(panel,/className="checklist-modal-backdrop"/)
   assert.match(panel,/className="checklist-editor-modal" role="dialog" aria-modal="true"/)
   assert.match(panel,/Trạng thái lịch là gì\?/)
-  assert.match(panel,/không sinh lượt mới từ mẫu này/)
+  assert.match(panel,/Mẫu lưu trữ không sinh lượt mới/)
   assert.match(panel,/Tạm ngừng lịch/)
   assert.match(panel,/Tiếp tục lịch/)
 })
