@@ -354,7 +354,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const createDefinition=async(data:{title:string;targetLabel:string;targetAssetId?:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
     if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
-    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),...(data.targetAssetId?{targetAssetId:data.targetAssetId}:{}),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
+    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),...(data.targetAssetId?{targetAssetId:data.targetAssetId}:{}),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee:organizationId==='local-preview'?assignee:'Admin',executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
     const saved=organizationId!=='local-preview'
       ? await (supabase?saveChecklistDefinition(supabase,organizationId,record):Promise.reject(new Error('Chưa kết nối Supabase.')))
       : (await db.checklistDefinitions.add(record),record)
