@@ -6,11 +6,11 @@ export type ChecklistCategoryKey = 'infrastructure' | 'electrical' | 'water' | '
 export type ChecklistQuestion = { id: string; label: string; required: boolean }
 export type ChecklistCategorySetting = {
   id: string; organizationId: string; categoryKey: ChecklistCategoryKey
-  enabled: boolean; frequency: ChecklistFrequency; assignee: string; updatedAt: string
+  enabled: boolean; frequency: ChecklistFrequency; assignee: string; executionTime?: string; updatedAt: string
 }
 export type ChecklistDefinition = {
   id: string; organizationId: string; title: string; categoryKey: ChecklistCategoryKey | 'equipment' | 'custom'
-  targetLabel: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string
+  targetLabel: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string; executionTime?: string
   questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
   createdAt: string; updatedAt: string; lastCompletedAt?: string; scheduleStartedAt?: string
 }
