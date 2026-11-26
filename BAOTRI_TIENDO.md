@@ -751,3 +751,11 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Báo cáo Checklist chuyển sang dùng chung hàm `downloadExcelReport` của toàn website: tiêu đề/đơn vị/ngày xuất/tổng bản ghi, header định dạng, zebra rows, bộ lọc, cố định phần đầu, căn lề và thiết lập in A4 ngang. Giữ nguyên dữ liệu kết quả và các lượt **Không Checklist** trong phạm vi lọc báo cáo.
 - Sửa bộ sinh lịch: khi Admin tạo hoặc bật mẫu sau giờ thực hiện trong ngày, lượt đến hạn của ngày hiện tại vẫn được sinh nếu còn trong cửa sổ 24 giờ. Nếu đã quá 24 giờ trước thời điểm kích hoạt thì không tạo ngược một lượt bỏ lỡ trước khi mẫu được bật. Áp dụng độc lập cho lịch ngày/tuần/tháng/quý/năm.
 - Không thay đổi quan hệ Checklist với thiết bị, chu kỳ bảo trì, Dexie schema hoặc dữ liệu Supabase. Bổ sung source regression tests cho định dạng Excel chung và trường hợp kích hoạt sau giờ đến hạn.
+
+
+## 26/11/2026 – hoàn thiện trải nghiệm biên soạn nội dung Checklist
+- Tab Tổng quan chỉ còn thao tác xem công việc, nhận việc và Thực hiện; bỏ nút Sửa nội dung khỏi từng công việc. Chỉnh sửa biểu mẫu tập trung tại tab Quản lý mẫu.
+- Trình tạo/sửa mẫu có thư viện nội dung gợi ý theo loại đối tượng: máy bơm, máy nén khí, động cơ, máy phát điện, hệ thống điện, hệ thống nước, PCCC, cơ sở hạ tầng/khu vực và thiết bị chung. Người dùng chọn nhiều mục phù hợp rồi thêm vào biểu mẫu; có thể bỏ chọn mục không cần.
+- Mở rộng thư viện lên nhiều nội dung chuyên biệt cho từng nhóm; vẫn cho phép sửa/xóa từng dòng, thêm câu hỏi riêng. Các câu hỏi đã lưu của mẫu không bị thay thế khi mở trình biên soạn.
+- Bỏ nút Làm mới gây nhầm lẫn; xóa nội dung bằng nút Xóa ngay trên dòng câu hỏi. Lịch sử Checklist đã hoàn thành vẫn giữ snapshot cũ.
+- Chỉ thay đổi giao diện và dữ liệu mẫu nội dung trong mã nguồn; không thay đổi Dexie schema, dữ liệu người dùng hoặc Supabase.
