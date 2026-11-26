@@ -3341,3 +3341,24 @@ html,body,#root,.app-shell{
 #root .app-shell .checklist-suggestion-actions small{flex:1 1 220px;min-width:0;line-height:1.5;color:var(--muted)}
 #root .app-shell .checklist-print-action{white-space:nowrap}
 @media(max-width:600px){#root .app-shell .checklist-suggestion-actions{align-items:flex-start;gap:8px}#root .app-shell .checklist-suggestion-actions .checklist-add-selected-btn{width:auto}}
+
+
+/* Checklist: câu hỏi bắt buộc dùng chung cho mọi thiết bị, không chỉnh sửa */
+.checklist-mandatory-block{border:1px solid #b8d9ca;background:#f2faf5;border-radius:9px;padding:12px 14px;margin:10px 0 14px}
+.checklist-mandatory-heading{display:flex;align-items:center;gap:7px;color:#176044;font-size:11px;font-weight:800;letter-spacing:.25px}
+.checklist-mandatory-block p{margin:7px 0;color:#53675e;font-size:11px;line-height:1.5}
+.checklist-mandatory-block ol{margin:8px 0 0;padding-left:24px;display:grid;gap:7px}
+.checklist-mandatory-block li{font-size:12px;line-height:1.5;color:#243a31}
+.checklist-print-report{width:100%;max-width:100%;box-sizing:border-box}
+.checklist-print-result-stamp{flex:0 0 auto;border:2px solid #333;padding:8px 12px;font-size:10pt;font-weight:800;text-align:center;align-self:flex-start}
+.checklist-print-signatures{display:flex;flex-direction:column;gap:8mm;margin-top:10mm}
+.checklist-print-signature-grid{display:grid;grid-template-columns:1fr 1fr;gap:20mm;text-align:center;break-inside:avoid;page-break-inside:avoid}
+@media print{
+  .asset-print-sheet.print-checklist .checklist-print-report{width:100%!important;max-width:100%!important;padding:0!important;margin:0!important;box-sizing:border-box!important}
+  .asset-print-sheet.print-checklist .checklist-print-table{table-layout:fixed!important;width:100%!important;border-collapse:collapse!important}
+  .asset-print-sheet.print-checklist .checklist-print-table th,.asset-print-sheet.print-checklist .checklist-print-table td{font-family:Tahoma,sans-serif!important;font-size:8pt!important;line-height:1.35!important;padding:4px!important;border:1px solid #555!important;white-space:normal!important;overflow-wrap:anywhere!important;vertical-align:top!important}
+  .asset-print-sheet.print-checklist .checklist-print-table thead{display:table-header-group}
+  .asset-print-sheet.print-checklist .checklist-print-table tr{break-inside:avoid;page-break-inside:avoid}
+  .asset-print-sheet.print-checklist .checklist-print-signatures{break-inside:avoid;page-break-inside:avoid}
+  .asset-print-sheet.print-checklist .checklist-print-result-stamp{font-size:9pt}
+}
