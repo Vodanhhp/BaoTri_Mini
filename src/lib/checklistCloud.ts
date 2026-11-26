@@ -125,6 +125,21 @@ function mapRun(row: Row, organizationId: string, events: Row[]): ChecklistRun {
 function assertOnline(): void {
   if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Mất Internet. Checklist chỉ hoạt động khi có kết nối Cloud.')
 }
+async function fetchAllRows(
+  client:SupabaseClient,table:string,organizationId:string,orderColumn:string,ascending=true,minimumDueAt?:string
+):Promise<Row[]>{
+  const rows:Row[]=[]
+  for(let offset=0;;offset+=PAGE_SIZE){
+    let query=client.from(table as any).select('*').eq('organization_id',organizationId)
+    if(minimumDueAt)query=query.gte('due_at',minimumDueAt)
+    query=query.order(orderColumn,{ascending}).range(offset,offset+PAGE_SIZE-1)
+    const {data,error}=await query
+    if(error)throw new Error('Tải '+table+' từ Cloud: '+error.message)
+    const batch=asRows(data);rows.push(...batch)
+    if(batch.length<PAGE_SIZE)break
+  }
+  return rows
+}
 async function checked<T>(promise: PromiseLike<{data:T|null;error:any}>, label: string): Promise<T> {
   const {data,error}=await promise
   if(error)throw new Error(label+': '+error.message)
@@ -162,16 +177,16 @@ export async function loadChecklistCloud(
   client: SupabaseClient,organizationId: string,canManageOccurrences = false
 ): Promise<CloudBundle> {
   assertOnline()
-  const [settingData,definitionData]=await Promise.all([
-    checked(client.from('checklist_category_settings').select('*').eq('organization_id',organizationId),'Tải cấu hình Checklist'),
-    checked(client.from('checklist_definitions').select('*').eq('organization_id',organizationId).order('title'),'Tải mẫu Checklist')
+  const [settingRows,definitionRows]=await Promise.all([
+    fetchAllRows(client,'checklist_category_settings',organizationId,'category_key'),
+    fetchAllRows(client,'checklist_definitions',organizationId,'title')
   ])
-  const settings=asRows(settingData).map(row=>({
+  const settings=settingRows.map(row=>({
     id:organizationId+':'+String(row.category_key),organizationId,categoryKey:String(row.category_key) as ChecklistCategoryKey,
     enabled:Boolean(row.enabled),frequency:row.frequency as ChecklistFrequency,assignee:String(row.assignee||'Admin'),
     executionTime:String(row.execution_time||'09:00'),updatedAt:String(row.updated_at)
   }))
-  const definitions=asRows(definitionData).map(row=>mapDefinition(row,organizationId))
+  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId))
   const active=definitions.filter(def=>def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
   const horizon=new Date();horizon.setFullYear(horizon.getFullYear()+1);horizon.setHours(23,59,59,999)
   if(canManageOccurrences){
@@ -181,16 +196,16 @@ export async function loadChecklistCloud(
       await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:batch}),'Tạo lịch Checklist trên Cloud')
     }
   }
-  const [taskData,runData,eventData]=await Promise.all([
-    checked(client.from('checklist_tasks').select('*').eq('organization_id',organizationId).order('due_at'),'Tải lịch công việc Checklist'),
-    checked(client.from('checklist_runs').select('*').eq('organization_id',organizationId).order('completed_at',{ascending:false}),'Tải lịch sử Checklist'),
-    checked(client.from('checklist_task_events').select('*').eq('organization_id',organizationId).order('occurred_at'),'Tải lịch sử phân công')
+  const minimumDueAt=new Date(Date.now()-366*86400000).toISOString()
+  const [taskRows,runRows,events]=await Promise.all([
+    fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,minimumDueAt),
+    fetchAllRows(client,'checklist_runs',organizationId,'completed_at',false),
+    fetchAllRows(client,'checklist_task_events',organizationId,'occurred_at')
   ])
-  const events=asRows(eventData)
   return {
     settings,definitions,
-    tasks:asRows(taskData).map(row=>mapTask(row,organizationId,events,definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)),
-    runs:asRows(runData).map(row=>mapRun(row,organizationId,events)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
+    tasks:taskRows.map(row=>mapTask(row,organizationId,events,definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)),
+    runs:runRows.map(row=>mapRun(row,organizationId,events)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
   }
 }
 export async function claimChecklistTask(client:SupabaseClient,organizationId:string,taskId:string):Promise<void>{
