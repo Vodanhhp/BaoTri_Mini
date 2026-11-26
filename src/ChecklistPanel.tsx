@@ -330,7 +330,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     })
   },[assets])
 
-  const saveSetting=async(key:ChecklistCategoryKey,patch:Partial<ChecklistCategorySetting>)=>{
+  const saveSetting=async(key:ChecklistCategoryKey,patch:Partial<ChecklistCategorySetting>,refreshAfterSave=true)=>{
     if(!canManage)return
     const current=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const next={...current,...patch,updatedAt:now()}
@@ -349,7 +349,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
       }
     }
-    await refresh(true)
+    if(refreshAfterSave)await refresh(true)
   }
   const createDefinition=async(data:{title:string;targetLabel:string;targetAssetId?:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
@@ -364,7 +364,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const toggleCategory=async(key:ChecklistCategoryKey)=>{
     const setting=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const enable=!setting.enabled
-    await saveSetting(key,{enabled:enable})
+    await saveSetting(key,{enabled:enable},false)
     const starters=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
     if(organizationId!=='local-preview'&&supabase){const client=supabase;await Promise.all(starters.map(item=>saveChecklistDefinition(client,organizationId,{...item,scheduleStartedAt:now(),updatedAt:now()})))}
     else await Promise.all(starters.map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
@@ -383,7 +383,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         if(!supabase)throw new Error('Chưa kết nối Supabase.')
         await saveChecklistDefinition(supabase,organizationId,updated)
       }else await db.checklistDefinitions.update(item.id,{enabled:updated.enabled,updatedAt:updated.updatedAt})
-      await refresh()
+      await refresh(true)
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
 
