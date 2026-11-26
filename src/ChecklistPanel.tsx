@@ -279,7 +279,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
     <div className="checklist-tabs">
       <button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><ClipboardCheck size={15}/> Tổng quan</button>
-      <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Checklist Builder</button>
+      <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Quản lý mẫu</button>
       <button className={tab==='history'?'active':''} onClick={()=>setTab('history')}><History size={15}/> Lịch sử</button>
       <button className={tab==='reports'?'active':''} onClick={()=>setTab('reports')}><BarChart3 size={15}/> Báo cáo</button>
     </div>
