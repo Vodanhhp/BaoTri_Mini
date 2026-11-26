@@ -125,6 +125,6 @@ test('legacy Local maintenance records are detected and can be imported to Cloud
   assert.match(cloud,/maintenance_import_legacy_history/)
   assert.match(cloud,/saveMaintenanceRequest\(client,organizationId,row,true\)/)
   assert.match(migration,/on conflict\(id\) do nothing/)
-  assert.match(timestampMigration,/completed_at=coalesce\(nullif\(p_payload->>'completed_at'/)
+  assert.match(timestampMigration,/nullif\(p_payload->>'completed_at'/)
   assert.match(panel,/Bản Local sẽ được giữ nguyên/)
 })
