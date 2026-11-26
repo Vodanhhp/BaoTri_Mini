@@ -347,7 +347,7 @@ export function MaintenanceDashboardSummary({organizationId,assets,onOpen,supaba
 export function MaintenanceAssetHistory({organizationId,assetId,supabaseClient}:{organizationId:string;assetId:string;supabaseClient?:SupabaseClient|null}) {
   const [rows,setRows]=useState<MaintenanceRequest[]>([])
   useEffect(()=>{
-    let active=true
+    let active=true;
     (supabaseClient&&organizationId!=='local-preview'
       ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests.filter(row=>row.assetId===assetId))
       : db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray())
