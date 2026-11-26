@@ -944,7 +944,7 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - SQL smoke test trước đó xác nhận Admin-only, tối thiểu 5 tiêu chí hệ thống, từ chối KTV, atomic claim/complete và quyền ghi bảng.
 - Smoke test bổ sung xác nhận server từ chối question ID trùng, label rỗng, required flag sai kiểu; mẫu hợp lệ 5 tiêu chí vẫn được chấp nhận. Server cũng từ chối thiết bị Thanh lý làm target Checklist.
 - Không giữ lại dữ liệu smoke test vì tất cả chạy trong transaction rollback.
-- CI Build and test và Validate đã xanh tại commit `adab593b4070b9d0f02ab7298152599dc2aef03a`; các thay đổi cảnh báo dữ liệu Dexie cũ đang chạy CI mới.
+- CI Build and test và Validate đều xanh tại head `3cc303baada7bcd163bd3adbd40968596e018dc4` (Build and test run `45852450473`, Validate run `45852450546`).
 
 ### Việc vẫn chặn nghiệm thu/Production
 - **Dữ liệu Checklist Local cũ:** nhánh `main` hiện tại lưu cấu hình/mẫu/lượt/kết quả theo từng trình duyệt bằng Dexie. Nhánh Cloud không tự động nhập dữ liệu cũ. Đã thêm cảnh báo Admin nếu trình duyệt hiện tại còn dữ liệu local chưa chuyển Cloud; cảnh báo chỉ kiểm tra được thiết bị đang đăng nhập, không quét được các điện thoại/PC khác. Cần thống nhất phương án gom/chuyển dữ liệu cũ trước Production; tuyệt đối không tự động xóa Dexie.
@@ -958,7 +958,7 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Thêm server-side validation cho từng câu hỏi: object hợp lệ, ID không rỗng/không trùng, label không rỗng và tối đa 1.000 ký tự, ID tối đa 128 ký tự, required nếu có phải là boolean.
 - RPC lưu mẫu thiết bị chỉ chấp nhận thiết bị còn hoạt động, chưa archive/delete và trạng thái không phải Thanh lý.
 - Thêm cảnh báo Admin về dữ liệu Checklist Dexie cũ trên chính trình duyệt hiện tại; không tự nhập và không xóa dữ liệu.
-- Migration Checklist Test hiện có 20 bản ghi. CI tại commit code trước hai thay đổi cuối đã xanh; run cho head mới đang chạy.
+- Migration Checklist Test hiện có 20 bản ghi. CI đã xanh tại head hiện tại `3cc303baada7bcd163bd3adbd40968596e018dc4`.
 
 
 ### Hai điểm nghiệp vụ cần chốt trước nghiệm thu – 26/11/2026
