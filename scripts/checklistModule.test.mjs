@@ -147,3 +147,21 @@ test('Checklist group claims are atomic and ownership uses stable user IDs, not 
   assert.match(panel, /Quyền nhận việc đã thay đổi/)
   assert.doesNotMatch(panel, /claimedBy!==userLabel/)
 })
+
+
+test('Checklist reports filter by local date range and Excel exports the filtered result set', () => {
+  assert.match(panel, /const \[reportFrom,setReportFrom\]=useState\(''\)/)
+  assert.match(panel, /const \[reportTo,setReportTo\]=useState\(''\)/)
+  assert.match(panel, /const reportRuns=useMemo\(/)
+  assert.match(panel, /checklistLocalDateKey\(new Date\(item\.completedAt\)\)/)
+  assert.match(panel, /sheet\.addRows\(reportRuns\.map/)
+  assert.match(panel, /reportRuns\.map\(row=>/)
+})
+
+test('Checklist A4 print renders one selected result with answers and follow-up decision', () => {
+  assert.match(panel, /setPrintingRun\(row\)/)
+  assert.match(panel, /checklist-print-sheet/)
+  assert.match(panel, /printingRun\.answers\.map/)
+  assert.match(panel, /printingRun\.noRepairReason/)
+  assert.match(panel, /window\.print\(\)/)
+})
