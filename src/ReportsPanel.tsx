@@ -121,16 +121,19 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
     })
     .sort((a, b) => (b.completedAt || b.updatedAt).localeCompare(a.completedAt || a.updatedAt)), [requests, range, query, assets])
   const todayKey = localDateKey(new Date().toISOString())
-  const requestsCreatedInPeriod = requests.filter(row=>row.requestDate>=range.startDate&&row.requestDate<=range.endDate)
-  const requestsCompletedInPeriod = requests.filter(row=>row.status==='Hoàn thành'&&row.completedAt&&localDateKey(row.completedAt)>=range.startDate&&localDateKey(row.completedAt)<=range.endDate)
-  const openMaintenanceRequests = requests.filter(row=>row.status!=='Hoàn thành')
+  const matchingMaintenanceRequests=requests.filter(row=>{
+    const asset=assets.find(item=>item.id===row.assetId)
+    return (row.kind+' '+row.description+' '+row.requestedBy+' '+row.performedBy+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query)
+  })
+  const requestsCreatedInPeriod = matchingMaintenanceRequests.filter(row=>row.requestDate>=range.startDate&&row.requestDate<=range.endDate)
+  const requestsCompletedInPeriod = matchingMaintenanceRequests.filter(row=>row.status==='Hoàn thành'&&row.completedAt&&localDateKey(row.completedAt)>=range.startDate&&localDateKey(row.completedAt)<=range.endDate)
+  const openMaintenanceRequests = matchingMaintenanceRequests.filter(row=>row.status!=='Hoàn thành')
   const overdueMaintenanceRequests = openMaintenanceRequests.filter(row=>Boolean(row.dueDate)&&String(row.dueDate)<todayKey)
-  const maintenanceRequestRows = requests.filter(row=>{
+  const maintenanceRequestRows = matchingMaintenanceRequests.filter(row=>{
     const created=row.requestDate>=range.startDate&&row.requestDate<=range.endDate
     const completed=Boolean(row.completedAt)&&localDateKey(row.completedAt!)>=range.startDate&&localDateKey(row.completedAt!)<=range.endDate
     const overdue= row.status!=='Hoàn thành'&&Boolean(row.dueDate)&&String(row.dueDate)<todayKey
-    const asset=assets.find(item=>item.id===row.assetId)
-    return (created||completed||overdue)&&((row.kind+' '+row.description+' '+row.requestedBy+' '+row.performedBy+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query))
+    return created||completed||overdue
   }).sort((a,b)=>(b.completedAt||b.requestDate).localeCompare(a.completedAt||a.requestDate))
   const scheduledTasksInPeriod=tasks.filter(row=>(row.dueDate>=range.startDate&&row.dueDate<=range.endDate)||(Boolean(row.completedAt)&&localDateKey(row.completedAt!)>=range.startDate&&localDateKey(row.completedAt!)<=range.endDate))
     .filter(row=>{const asset=assets.find(item=>item.id===row.assetId);return (row.title+' '+row.frequency+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query)})
