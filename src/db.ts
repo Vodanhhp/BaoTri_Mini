@@ -12,7 +12,7 @@ export type ChecklistDefinition = {
   id: string; organizationId: string; title: string; categoryKey: ChecklistCategoryKey | 'equipment' | 'custom'
   targetLabel: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string
   questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
-  createdAt: string; updatedAt: string; lastCompletedAt?: string
+  createdAt: string; updatedAt: string; lastCompletedAt?: string; scheduleStartedAt?: string
 }
 export type ChecklistRun = {
   id: string; organizationId: string; checklistId: string; checklistTitle: string
