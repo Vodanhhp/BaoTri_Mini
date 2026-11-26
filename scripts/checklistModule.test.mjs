@@ -343,7 +343,7 @@ test('Checklist execution is locked without Internet and on desktop while manage
   assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
   assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
   assert.match(panel,/const runManagementAction=async/)
-  assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);setSavingRun\(false\);return/)
+  assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);setSavingRun\(false\);await refresh\(\);return/)
 })
 
 
