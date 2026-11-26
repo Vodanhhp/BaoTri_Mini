@@ -1,5 +1,28 @@
 import Dexie, { type Table } from 'dexie'
 
+
+export type ChecklistFrequency = 'Hàng ngày' | 'Hàng tuần' | 'Hàng tháng' | 'Hàng quý' | 'Hàng năm' | 'Linh hoạt'
+export type ChecklistCategoryKey = 'infrastructure' | 'electrical' | 'water' | 'fire'
+export type ChecklistQuestion = { id: string; label: string; required: boolean }
+export type ChecklistCategorySetting = {
+  id: string; organizationId: string; categoryKey: ChecklistCategoryKey
+  enabled: boolean; frequency: ChecklistFrequency; assignee: string; updatedAt: string
+}
+export type ChecklistDefinition = {
+  id: string; organizationId: string; title: string; categoryKey: ChecklistCategoryKey | 'equipment' | 'custom'
+  targetLabel: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string
+  questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
+  createdAt: string; updatedAt: string; lastCompletedAt?: string
+}
+export type ChecklistRun = {
+  id: string; organizationId: string; checklistId: string; checklistTitle: string
+  categoryLabel: string; targetLabel: string; frequency: ChecklistFrequency
+  answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Không áp dụng'; note: string }>
+  outcome: 'Đạt' | 'Không đạt'; inspector: string; completedAt: string
+  repairRequestCreated: boolean; noRepairReason?: string
+  checklistSnapshot: ChecklistQuestion[]
+}
+
 export type AssetStatus = 'Đang hoạt động' | 'Đang sửa chữa' | 'Ngừng sử dụng' | 'Thanh lý' | 'Lưu kho'
 export type CloudLinkStatus = 'linked' | 'conflict'
 export type AssetMutationStatus = 'pending' | 'processing' | 'applied' | 'conflict' | 'discarded'
@@ -318,6 +341,9 @@ class BaoTriDatabase extends Dexie {
   maintenanceRequests!: Table<MaintenanceRequest, string>
   maintenanceTasks!: Table<MaintenanceTask, string>
   maintenanceHistory!: Table<MaintenanceHistory, string>
+  checklistCategorySettings!: Table<ChecklistCategorySetting, string>
+  checklistDefinitions!: Table<ChecklistDefinition, string>
+  checklistRuns!: Table<ChecklistRun, string>
 
   constructor() {
     super('baotri-mini-device-only')
@@ -455,6 +481,30 @@ class BaoTriDatabase extends Dexie {
       maintenanceRequests: 'id, organizationId, assetId, [organizationId+assetId], requestDate, dueDate, status, updatedAt',
       maintenanceTasks: 'id, organizationId, assetId, [organizationId+assetId], dueDate, status, updatedAt',
       maintenanceHistory: 'id, organizationId, recordType, recordId, [organizationId+recordId], occurredAt'
+    })
+    // v13: independent Local-first Checklist data; intentionally not linked to equipment history.
+    this.version(13).stores({
+      assets: 'id, code, name, category, location, status, archivedAt, localScope, [localScope+code], updatedAt',
+      assetCloudLinks: 'id, organizationId, assetId, [organizationId+assetId], status',
+      assetMutations: 'mutationId, organizationId, assetId, [organizationId+assetId], status, updatedAt',
+      assetGroupChanges: 'id, organizationId, assetId, [organizationId+assetId], changedAt, syncStatus',
+      assetDrafts: 'id, organizationId, userId, [organizationId+userId], reservationId, updatedAt',
+      assetHistory: 'id, organizationId, assetId, assetCode, eventType, occurredAt, syncStatus, [organizationId+assetId]',
+      organizationAssetResetStates: 'organizationId, generation',
+      assetSyncCursors: 'organizationId, lastSequence, resetGeneration, updatedAt',
+      assetImportQueue: 'id, organizationId, assetId, [organizationId+assetId], status, nextAttemptAt, updatedAt',
+      inventoryGroups: 'id, organizationId, [organizationId+nameNormalized], createdAt',
+      inventoryItems: 'id, organizationId, [organizationId+codeNormalized], [organizationId+name], [organizationId+group], archivedAt, updatedAt',
+      inventoryMovements: 'id, organizationId, itemId, [organizationId+itemId], date, type, mutationId',
+      inventoryMutations: 'mutationId, organizationId, itemId, [organizationId+itemId], status, updatedAt, nextAttemptAt',
+      inventoryCloudLinks: 'id, organizationId, itemId, [organizationId+itemId], status',
+      inventorySyncCursors: 'organizationId, lastSequence, updatedAt',
+      maintenanceRequests: 'id, organizationId, assetId, [organizationId+assetId], requestDate, dueDate, status, updatedAt',
+      maintenanceTasks: 'id, organizationId, assetId, [organizationId+assetId], dueDate, status, updatedAt',
+      maintenanceHistory: 'id, organizationId, recordType, recordId, [organizationId+recordId], occurredAt',
+      checklistCategorySettings: 'id, organizationId, categoryKey, [organizationId+categoryKey], enabled',
+      checklistDefinitions: 'id, organizationId, categoryKey, enabled, updatedAt',
+      checklistRuns: 'id, organizationId, checklistId, completedAt, outcome'
     })
   }
 }
