@@ -676,3 +676,11 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Dashboard rút gọn còn số lượt đến hạn cần làm và số lượt Không Checklist.
 - Không thay đổi Local-first, không liên kết Checklist với lịch sử thiết bị, không sửa Supabase, không đụng PR #21.
 - CI Build/Test đã thành công (230 bài test); GitHub Pages Deploy đã thành công tại commit `577b2dd9`. Chưa thực hiện browser E2E/PC-mobile hoặc in giấy thật.
+
+
+## 26/11/2026 – tổ chức danh sách công việc Checklist theo kỳ hiện tại
+- Thay phần Lịch sắp tới bằng bốn tab Ngày / Tuần / Tháng / Quý ngay trong khu vực Công việc cần thực hiện.
+- Checklist tuần/tháng/quý xuất hiện từ đầu kỳ tương ứng, kể cả khi giờ đến hạn nằm ở ngày sau trong kỳ. Công việc thuộc kỳ nào chỉ nằm trong tab kỳ đó.
+- Khi hoàn thành, lượt chuyển Hoàn thành và ẩn khỏi danh sách công việc; kết quả vẫn giữ trong Lịch sử và Báo cáo.
+- Mốc Không Checklist vẫn tính 24 giờ sau giờ đến hạn riêng của từng lượt; lượt quá hạn bị loại khỏi danh sách đang làm và được giữ trong mục Không Checklist/Lịch sử/Báo cáo.
+- Không thay đổi bộ sinh lịch, dữ liệu Local, Supabase, Auth, RLS, Storage, Cloud Sync hoặc PR #21. Chờ CI và deploy xác nhận; chưa kiểm thử giao diện trình duyệt thực tế.
