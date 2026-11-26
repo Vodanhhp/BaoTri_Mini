@@ -174,7 +174,7 @@ export async function saveChecklistDefinition(
   return mapDefinition(data as Row,organizationId)
 }
 export async function loadChecklistCloud(
-  client: SupabaseClient,organizationId: string,canManageOccurrences = false
+  client: SupabaseClient,organizationId: string,canManageOccurrences = false,ensureSchedule = false
 ): Promise<CloudBundle> {
   assertOnline()
   const [settingRows,definitionRows]=await Promise.all([
@@ -190,10 +190,14 @@ export async function loadChecklistCloud(
   const active=definitions.filter(def=>def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
   const horizon=new Date();horizon.setFullYear(horizon.getFullYear()+1);horizon.setHours(23,59,59,999)
   if(canManageOccurrences){
-    const occurrenceInputs=active.flatMap(def=>occurrenceDates(def,horizon).map(d=>({definition_id:def.id,due_at:d.toISOString(),due_date:dateKey(d)})))
-    for(let i=0;i<occurrenceInputs.length;i+=PAGE_SIZE){
-      const batch=occurrenceInputs.slice(i,i+PAGE_SIZE)
-      await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:batch}),'Tạo lịch Checklist trên Cloud')
+    const occurrenceInputs=ensureSchedule?active.flatMap(def=>occurrenceDates(def,horizon).map(d=>({definition_id:def.id,due_at:d.toISOString(),due_date:dateKey(d)}))):[]
+    if(occurrenceInputs.length===0){
+      await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:[]}),'Cập nhật trạng thái lịch Checklist trên Cloud')
+    }else{
+      for(let i=0;i<occurrenceInputs.length;i+=PAGE_SIZE){
+        const batch=occurrenceInputs.slice(i,i+PAGE_SIZE)
+        await checked(client.rpc('checklist_ensure_occurrences',{p_organization_id:organizationId,p_occurrences:batch}),'Tạo lịch Checklist trên Cloud')
+      }
     }
   }
   const minimumDueAt=new Date(Date.now()-366*86400000).toISOString()
