@@ -357,3 +357,23 @@ test('Checklist Cloud is the live organization source and execution writes use s
   assert.match(cloud,/checklist_complete_task/)
   assert.match(cloud,/navigator\.onLine/)
 })
+
+
+test('equipment Checklist starts only from QR scan while system Checklist remains manual',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  assert.match(panel,/supabase\.from\('assets'\)\.select\('id,code,name'\)/)
+  assert.match(panel,/Boolean\(definition\?\.targetAssetId\)/)
+  assert.match(panel,/Thực hiện thủ công/)
+  assert.match(scanner,/getUserMedia/)
+  assert.match(scanner,/BarcodeDetector/)
+  assert.match(scanner,/onDetected\(manualCode\.trim\(\)\)/)
+})
+
+test('phase-one Checklist assignment remains Admin-only in UI and server RPC',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const scannerPanel=panel
+  assert.match(scannerPanel,/value="Admin" readOnly/)
+  assert.match(scannerPanel,/assignee:organizationId==='local-preview'\?assignee:'Admin'/)
+  assert.match(cloud,/checklist_save_definition/)
+  assert.match(cloud,/checklist_claim_task/)
+})
