@@ -52,7 +52,8 @@ const appliedMigrationFiles = [
   "20261124130401_inventory_cloud_sync_hardening.sql",
   "20261124150248_reset_equipment_and_inventory.sql",
   "20261124153541_organization_name_change_requests.sql",
-  "20261125115908_platform_superadmin_data_tools.sql"
+  "20261125115908_platform_superadmin_data_tools.sql",
+  "20261126140900_selective_reset_scope_optional_checklist.sql"
 ]
 
 test('BAOTRI Mini New source migration inventory exactly matches applied database history', async () => {
