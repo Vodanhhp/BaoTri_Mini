@@ -137,10 +137,24 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
   }).sort((a,b)=>(b.completedAt||b.requestDate).localeCompare(a.completedAt||a.requestDate))
   const scheduledTasksInPeriod=tasks.filter(row=>(row.dueDate>=range.startDate&&row.dueDate<=range.endDate)||(Boolean(row.completedAt)&&localDateKey(row.completedAt!)>=range.startDate&&localDateKey(row.completedAt!)<=range.endDate))
     .filter(row=>{const asset=assets.find(item=>item.id===row.assetId);return (row.title+' '+row.frequency+' '+(asset?.code||'')+' '+(asset?.name||'')).toLocaleLowerCase('vi').includes(query)})
-  const exportMaintenanceReport=()=>downloadExcelReport(maintenanceRequestRows.map(row=>{
-    const asset=assets.find(item=>item.id===row.assetId)
-    return {'Ngày phát sinh':dateLabel(row.requestDate),'Hạn xử lý':dateLabel(row.dueDate),'Ngày hoàn thành':dateTimeLabel(row.completedAt),'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Loại phiếu':row.kind,'Nội dung':row.description,'Trạng thái':row.status,'Người yêu cầu':row.requestedBy,'Người thực hiện':row.performedBy||'','Kết quả':row.result||''}
-  }),'bao-cao-phieu-bao-tri-'+range.startDate+'.xlsx','BÁO CÁO PHIẾU BẢO DƯỠNG – SỬA CHỮA · '+rangeLabel(period,range).toLocaleUpperCase('vi'),'Phiếu bảo trì',['Ngày phát sinh','Hạn xử lý','Ngày hoàn thành','Mã thiết bị','Tên thiết bị','Loại phiếu','Nội dung','Trạng thái','Người yêu cầu','Người thực hiện','Kết quả'],'landscape',organizationName)
+  const exportMaintenanceReport=()=>{
+    const requestRows=maintenanceRequestRows.map(row=>{
+      const asset=assets.find(item=>item.id===row.assetId)
+      return {'Loại bản ghi':'Phiếu yêu cầu','Ngày phát sinh':dateLabel(row.requestDate),'Hạn xử lý':dateLabel(row.dueDate),'Ngày hoàn thành':dateTimeLabel(row.completedAt),
+        'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Loại':row.kind,'Nội dung':row.description,'Trạng thái':row.status,
+        'Người yêu cầu':row.requestedBy,'Người thực hiện':row.performedBy||'','Kết quả':row.result||''}
+    })
+    const taskRows=scheduledTasksInPeriod.map(row=>{
+      const asset=assets.find(item=>item.id===row.assetId)
+      const completionEvent=maintenanceHistory.find(event=>event.recordType==='task'&&event.recordId===row.id&&event.eventType==='completed')
+      return {'Loại bản ghi':'Bảo dưỡng định kỳ','Ngày phát sinh':'','Hạn xử lý':dateLabel(row.dueDate),'Ngày hoàn thành':dateTimeLabel(row.completedAt),
+        'Mã thiết bị':asset?.code||'','Tên thiết bị':asset?.name||'','Loại':row.frequency,'Nội dung':row.title,
+        'Trạng thái':row.status,'Người yêu cầu':'','Người thực hiện':completionEvent?.actorLabel||'','Kết quả':row.readings||row.notes||''}
+    })
+    const headers=['Loại bản ghi','Ngày phát sinh','Hạn xử lý','Ngày hoàn thành','Mã thiết bị','Tên thiết bị','Loại','Nội dung','Trạng thái','Người yêu cầu','Người thực hiện','Kết quả']
+    downloadExcelReport([...requestRows,...taskRows],'bao-cao-bao-tri-sua-chua-'+range.startDate+'.xlsx',
+      'BÁO CÁO BẢO TRÌ – SỬA CHỮA · '+rangeLabel(period,range).toLocaleUpperCase('vi'),'Báo cáo bảo trì',headers,'landscape',organizationName)
+  }
   const materialUsage = useMemo(() => {
     const grouped = new Map<string, {
       itemId: string
