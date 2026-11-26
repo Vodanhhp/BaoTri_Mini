@@ -167,6 +167,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
+  const startRun=(item:ChecklistDefinition, taskId:string|null=null)=>{
+    setRunning(item);setRunningTaskId(taskId);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
+    setRepairCreated(false);setNoRepairReason('');setError('')
+  }
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
     if(!canExecute||!isGroupAssignee(task.assignee))return
@@ -199,10 +203,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const cancelRun=async()=>{
     if(runningTaskId)await releaseTask(runningTaskId)
     setRunning(null);setRunningTaskId(null);await refresh()
-  }
-  const startRun=(item:ChecklistDefinition, taskId:string|null=null)=>{
-    setRunning(item);setRunningTaskId(taskId);setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
-    setRepairCreated(false);setNoRepairReason('');setError('')
   }
   const completeRun=async(event:FormEvent)=>{
     event.preventDefault()
