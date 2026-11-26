@@ -92,3 +92,15 @@ test('optional daily suggestions can be executed but never create scheduled over
   assert.match(panel, /Thực hiện ngay/)
   assert.match(schedule, /item\.frequency !== 'Linh hoạt'/)
 })
+
+
+test('Checklist execution time is configurable and future task snapshots use it', () => {
+  assert.match(db, /executionTime\?: string/)
+  assert.match(panel, /Giờ thực hiện/)
+  assert.match(panel, /type="time"/)
+  assert.match(panel, /executionTime!==\(editing\.executionTime\|\|'09:00'\)/)
+  assert.match(schedule, /atExecutionTime\(anchor, executionTime\)/)
+  assert.match(schedule, /executionTime, assignee: definition\.assignee/)
+  assert.match(schedule, /currentById\.get\(task\.checklistId\)!\.executionTime/)
+  assert.match(schedule, /task\.executionTime \|\| '09:00'/)
+})
