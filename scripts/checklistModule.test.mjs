@@ -179,10 +179,14 @@ test('Checklist suggestions and starter groups are collapsed behind explicit but
 test('Disabling a Checklist removes all uncompleted tasks even when their due time has passed',()=>{assert.match(schedule,/!activeIds\.has\(task\.checklistId\)/);assert.match(schedule,/task\.status!=='Hoàn thành'&&task\.status!=='Không Checklist'/);assert.match(panel,/Sửa nội dung/);assert.match(panel,/openEdit\(definition\)/)});
 
 
-test('disabled or inactive Checklist templates are hidden from the active template list',()=>{
-  assert.match(panel,/const visibleDefinitions=useMemo\(\(\)=>definitions\.filter\(item=>item\.enabled&&\(item\.source!=='starter'\|\|settings\.some\(setting=>setting\.categoryKey===item\.categoryKey&&setting\.enabled\)\)/)
+test('Checklist templates remain manageable when disabled and can be edited from the management tab',()=>{
   assert.ok(panel.includes('<h2>Quản lý mẫu Checklist</h2>'))
-  assert.match(panel,/showBuilderForm&&<section className="panel checklist-section"/);assert.match(panel,/Sửa nội dung Checklist/);assert.match(panel,/\+ Thêm nội dung kiểm tra/);assert.match(panel,/questionText\.split\('\\n'\)/)
+  assert.match(panel,/definitions\.filter\(item=>!search\.trim\(\)/)
+  assert.match(panel,/item\.enabled\?'Tắt mẫu':'Bật mẫu'/)
+  assert.match(panel,/showBuilderForm&&<section className="panel checklist-section"/)
+  assert.match(panel,/Sửa nội dung Checklist/)
+  assert.match(panel,/\+ Thêm nội dung kiểm tra/)
+  assert.match(panel,/questionText\.split\('\\n'\)/)
 })
 
 test('recurring Checklist runs are launched from scheduled tasks; templates are edited in the management tab',()=>{
