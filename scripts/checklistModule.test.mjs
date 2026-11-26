@@ -432,7 +432,7 @@ test('Checklist templates can be archived and restored without deleting history'
   assert.match(cloud,/checklist_archive_definition/)
   assert.match(cloud,/checklist_restore_definition/)
   assert.match(cloud,/!def\.archivedAt&&def\.enabled/)
-  assert.match(cloud,/excludeCancelled=true/)
+  assert.match(cloud,/fetchAllRows\\(client,'checklist_tasks',[^\\n]*minimumDueAt,true\\)/)
   assert.match(types,/archivedAt\?: string/)
   assert.match(types,/cancelledAt\?: string/)
   assert.match(panel,/Mẫu đã lưu trữ/)
