@@ -233,7 +233,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               }
               return <article className="checklist-definition-row" key={task.id}>
                 <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div>
-                <div className="top-actions"><button className="primary-btn" disabled={!canExecute||!definition?.enabled} onClick={()=>startRun(runnable,task.id)}>Thực hiện</button></div>
+                <div className="top-actions"><button className="primary-btn" disabled={!canExecute} onClick={()=>startRun(runnable,task.id)}>Thực hiện</button></div>
               </article>
             })}
             {tasks.filter(item=>item.status!=='Hoàn thành').length===0&&<div className="table-empty-state">Không có Checklist định kỳ đang chờ thực hiện. Checklist linh hoạt không tạo hạn bắt buộc.</div>}
