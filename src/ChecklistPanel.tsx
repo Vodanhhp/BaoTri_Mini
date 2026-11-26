@@ -211,11 +211,13 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     if(missing.length){setError('Còn '+missing.length+' nội dung chưa có kết quả.');return}
     const failed=running.questions.some(q=>answers[q.id]?.result==='Không đạt')
     if(failed&&!repairCreated&&!noRepairReason.trim()){setError('Checklist có mục Không đạt. Hãy ghi lý do chưa tạo Phiếu yêu cầu sửa chữa.');return}
+    const taskSnapshot=runningTaskId?await db.checklistTasks.get(runningTaskId):undefined
     const record:ChecklistRun={
       id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
       targetLabel:running.targetLabel,frequency:running.frequency,
       answers:running.questions.map(q=>({questionId:q.id,question:q.label,result:answers[q.id]?.result as 'Đạt'|'Không đạt'|'Không áp dụng',note:answers[q.id]?.note||''})),
       outcome:failed?'Không đạt':'Đạt',inspector:userLabel,completedAt:now(),repairRequestCreated:failed&&repairCreated,noRepairReason:failed&&!repairCreated?noRepairReason.trim():undefined,
+      assignmentHistory:taskSnapshot?.assignmentEvents||[],
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
     await db.checklistRuns.add(record)
@@ -270,6 +272,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               return <article className="checklist-definition-row" key={task.id}>
                 <div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}{task.claimedBy?' · Đang nhận: '+task.claimedBy:''}</small><span className={task.status==='Quá hạn'?'checklist-outcome fail':'checklist-outcome'}>{task.status}</span></div>
                 <div className="top-actions">
+                  {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
                   {groupTask&&task.status!=='Đang thực hiện'&&<button className="primary-btn" disabled={!canExecute} onClick={()=>void claimTask(task)}>Nhận việc</button>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedBy===userLabel&&<><button className="primary-btn" disabled={!canExecute} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(refresh)}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedBy!==userLabel&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
@@ -329,7 +332,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         </form>}
       </section>}
       {tab==='history'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Lịch sử kiểm tra</h2><p>Lưu độc lập theo tổ chức, không phụ thuộc hồ sơ hoặc lịch sử thiết bị.</p></div></div>
-        <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><button className="soft-btn" onClick={()=>window.print()}>In A4</button><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.outcome==='Không đạt'&&<p>{row.repairRequestCreated?'Đã đánh dấu có tạo Phiếu yêu cầu sửa chữa.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
+        <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><button className="soft-btn" onClick={()=>window.print()}>In A4</button><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.assignmentHistory&&row.assignmentHistory.length>0&&<><b>Lịch sử phân công</b><ul>{row.assignmentHistory.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></>}{row.outcome==='Không đạt'&&<p>{row.repairRequestCreated?'Đã đánh dấu có tạo Phiếu yêu cầu sửa chữa.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
       </section>}
       {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và quyết định tạo Phiếu yêu cầu sửa chữa.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={!runs.length}><Download size={15}/> Xuất Excel</button></div>
         <div className="checklist-report-summary"><div><small>Tổng lượt kiểm tra</small><b>{runs.length}</b></div><div><small>Đạt</small><b>{runs.filter(row=>row.outcome==='Đạt').length}</b></div><div><small>Không đạt</small><b>{runs.filter(row=>row.outcome==='Không đạt').length}</b></div><div><small>Đã tạo Phiếu YC</small><b>{runs.filter(row=>row.repairRequestCreated).length}</b></div><div><small>Không tạo Phiếu YC</small><b>{runs.filter(row=>row.outcome==='Không đạt'&&!row.repairRequestCreated).length}</b></div></div>
