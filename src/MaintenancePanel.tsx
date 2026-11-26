@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Check, ClipboardList, Download, History, Plus, Printer, Wrench, X } from 'lucide-react'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadMaintenanceRequests, saveMaintenanceRequest, completeMaintenanceRequest } from './lib/maintenanceCloud'
 
 type Props = {
   organizationId: string
@@ -10,6 +12,7 @@ type Props = {
   userLabel: string
   canView: boolean
   canManage: boolean
+  supabaseClient?: SupabaseClient | null
 }
 
 const today = () => { const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); const part=(type:string)=>parts.find(item=>item.type===type)?.value||''; return part('year')+'-'+part('month')+'-'+part('day') }
@@ -24,7 +27,7 @@ const emptyTask = (organizationId: string): MaintenanceTask => ({
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
 })
 
-export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canManage }: Props) {
+export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canManage, supabaseClient }: Props) {
   const [tab, setTab] = useState<'requests'|'schedule'>('requests')
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [tasks, setTasks] = useState<MaintenanceTask[]>([])
@@ -52,9 +55,13 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       return
     }
     const [requestRows, taskRows, historyRows] = await Promise.all([
-      db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+      supabaseClient && organizationId!=='local-preview'
+        ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests)
+        : db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
       db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
-      db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
+      supabaseClient && organizationId!=='local-preview'
+        ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.history)
+        : db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
     ])
     // A previous organization's IndexedDB read may finish after the user switches tenants.
     // Never let that stale result replace the currently selected organization's view.
@@ -91,12 +98,16 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     if(!requestEditor.assetId||!requestEditor.description.trim()||!requestEditor.requestedBy.trim()){setError('Chọn thiết bị, nhập nội dung và người yêu cầu.');return}
     setBusy(true);setError('')
     try{
-      const previous=await db.maintenanceRequests.get(requestEditor.id)
       const value:MaintenanceRequest={...requestEditor,organizationId,description:requestEditor.description.trim(),requestedBy:requestEditor.requestedBy.trim(),performedBy:requestEditor.performedBy.trim(),dueDate:requestEditor.dueDate||undefined,updatedAt:now()}
-      await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
-        await db.maintenanceRequests.put(value)
-        await addHistory('request',value.id,previous?(previous.status!==value.status?'status_changed':'updated'):'created',previous?'Cập nhật Phiếu YC Bảo dưỡng – Sửa chữa':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa',previous,value)
-      })
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await saveMaintenanceRequest(supabaseClient,organizationId,value)
+      }else{
+        const previous=await db.maintenanceRequests.get(requestEditor.id)
+        await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
+          await db.maintenanceRequests.put(value)
+          await addHistory('request',value.id,previous?(previous.status!==value.status?'status_changed':'updated'):'created',previous?'Cập nhật Phiếu YC Bảo dưỡng – Sửa chữa':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa',previous,value)
+        })
+      }
       setRequestEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
@@ -134,10 +145,14 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     try{
       const row=completionEditor.row
       const value:MaintenanceRequest={...row,status:'Hoàn thành',result:completionEditor.result,performedBy,completionReadings,conditionAfterRepair,completedAt:now(),updatedAt:now()}
-      await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
-        await db.maintenanceRequests.put(value)
-        await addHistory('request',row.id,'completed','Hoàn thành Phiếu YC – đã ghi nhận thông số và tình trạng sau xử lý',row,value)
-      })
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await completeMaintenanceRequest(supabaseClient,organizationId,row.id,{performedBy,completionReadings,conditionAfterRepair,result:completionEditor.result})
+      }else{
+        await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
+          await db.maintenanceRequests.put(value)
+          await addHistory('request',row.id,'completed','Hoàn thành Phiếu YC – đã ghi nhận thông số và tình trạng sau xử lý',row,value)
+        })
+      }
       setCompletionEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
@@ -173,7 +188,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
   return <div className="maintenance-workspace">
-    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Dữ liệu hiện được lưu Local trên thiết bị này; đồng bộ Cloud chưa triển khai.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
+    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu được lưu trên Cloud và dùng chung trong tổ chức. Lịch bảo dưỡng định kỳ hiện vẫn lưu Local.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
     <div className="maintenance-alert-grid">
       <div className="stat-card"><div className="stat-icon red"><ClipboardList size={19}/></div><div><small>Phiếu chưa hoàn thành</small><strong>{openRequests.length}</strong><span>Luôn cần theo dõi đến khi xác nhận</span></div></div>
       <div className="stat-card"><div className="stat-icon orange"><CalendarDays size={19}/></div><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>{dateLabel(today())}</span></div></div>
