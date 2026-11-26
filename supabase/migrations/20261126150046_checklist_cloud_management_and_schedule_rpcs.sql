@@ -1,4 +1,3 @@
-begin;
 CREATE OR REPLACE FUNCTION private.claim_checklist_task(p_organization_id uuid, p_task_id uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
