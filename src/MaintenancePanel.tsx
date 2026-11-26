@@ -56,13 +56,18 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     }
     const cloudBundle=supabaseClient&&organizationId!=='local-preview'
       ? await loadMaintenanceRequests(supabaseClient,organizationId) : null
-    const [requestRows,taskRows,historyRows]=cloudBundle
-      ? [cloudBundle.requests,cloudBundle.tasks,cloudBundle.history]
-      : await Promise.all([
-          db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
-          db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
-          db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
-        ])
+    let requestRows:MaintenanceRequest[]
+    let taskRows:MaintenanceTask[]
+    let historyRows:MaintenanceHistory[]
+    if(cloudBundle){
+      requestRows=cloudBundle.requests;taskRows=cloudBundle.tasks;historyRows=cloudBundle.history
+    }else{
+      [requestRows,taskRows,historyRows]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
+      ])
+    }
     // A previous organization's IndexedDB read may finish after the user switches tenants.
     // Never let that stale result replace the currently selected organization's view.
     if (!isCurrent()) return
@@ -76,7 +81,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     refresh()
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
-  },[organizationId])
+  },[organizationId,supabaseClient])
 
   const assetName = (id:string) => { const asset=assets.find(item=>item.id===id); return asset ? asset.code+' · '+asset.name : 'Thiết bị không còn trong danh sách' }
   const visibleRequests = useMemo(()=>requests.filter(row=>filter==='all'||(filter==='open'?row.status!=='Hoàn thành':row.status==='Hoàn thành')),[requests,filter])
