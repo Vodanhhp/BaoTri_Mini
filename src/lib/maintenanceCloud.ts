@@ -6,7 +6,7 @@ const asRows=(value:unknown):Row[]=>Array.isArray(value)?value as Row[]:[]
 function mapRequest(row:Row,organizationId:string):MaintenanceRequest{
  if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả Phiếu yêu cầu sai tổ chức.')
  return {
-  id:String(row.id),organizationId,assetId:String(row.asset_id),requestDate:String(row.request_date),
+  id:String(row.id),organizationId,assetId:String(row.asset_id),requestDate:String(row.request_date),...(row.checklist_run_id?{checklistRunId:String(row.checklist_run_id)}:{ }),
   ...(row.due_date?{dueDate:String(row.due_date)}:{}),kind:row.kind as MaintenanceRequest['kind'],
   description:String(row.description||''),parts:String(row.parts||''),readings:String(row.readings||''),
   ...(row.completion_readings?{completionReadings:String(row.completion_readings)}:{}),
