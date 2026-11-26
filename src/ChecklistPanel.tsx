@@ -440,11 +440,14 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       const latest=await loadChecklistCloud(supabase,organizationId,canManage,canManage)
       setDefinitions(latest.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
       setTasks(latest.tasks)
-      const matched=latest.definitions.filter(definition=>definition.enabled&&definition.targetAssetId===asset.id)
-      const candidates=matched.flatMap(definition=>latest.tasks.filter(task=>{
+      const candidates=latest.tasks.filter(task=>{
         const due=Date.parse(task.dueAt),nowMs=Date.now()
-        return task.checklistId===definition.id&&(task.status==='Chờ thực hiện'||task.status==='Đang thực hiện')&&due<=nowMs&&nowMs-due<CHECKLIST_GRACE_PERIOD_MS
-      }).map(task=>({definition:{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,questions:task.definitionSnapshot.questions},task})))
+        return task.definitionSnapshot.targetKind==='equipment'&&task.definitionSnapshot.targetAssetId===asset.id&&(task.status==='Chờ thực hiện'||task.status==='Đang thực hiện')&&due<=nowMs&&nowMs-due<CHECKLIST_GRACE_PERIOD_MS
+      }).flatMap(task=>{
+        const definition=latest.definitions.find(item=>item.id===task.checklistId)
+        if(!definition)return []
+        return [{definition:{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,targetAssetId:task.definitionSnapshot.targetAssetId,questions:task.definitionSnapshot.questions},task}]
+      })
       if(!candidates.length)throw new Error('Đã tìm thấy thiết bị '+asset.code+' – '+asset.name+', nhưng hiện không có Checklist thiết bị đến hạn để thực hiện.')
       setQrAssetLabel(asset.code+' – '+asset.name);setQrCandidates(candidates)
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
