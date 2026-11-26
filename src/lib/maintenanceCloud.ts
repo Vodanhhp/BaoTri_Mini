@@ -3,6 +3,7 @@ import type { MaintenanceRequest, MaintenanceHistory, MaintenanceTask } from '..
 
 type Row=Record<string,any>
 const asRows=(value:unknown):Row[]=>Array.isArray(value)?value as Row[]:[]
+const todayVietnam=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 function mapRequest(row:Row,organizationId:string):MaintenanceRequest{
  if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả Phiếu yêu cầu sai tổ chức.')
  return {
@@ -41,7 +42,7 @@ export async function loadMaintenanceRequests(client:SupabaseClient,organization
  if(events.error)throw new Error('Tải lịch sử Phiếu yêu cầu Cloud: '+events.error.message)
  if(tasks.error)throw new Error('Tải lịch bảo dưỡng Cloud: '+tasks.error.message)
  if(taskEvents.error)throw new Error('Tải lịch sử bảo dưỡng Cloud: '+taskEvents.error.message)
- const mappedTasks=asRows(tasks.data).map(row=>({id:String(row.id),organizationId,assetId:String(row.asset_id),title:String(row.title),dueDate:String(row.due_date),frequency:String(row.frequency),status:row.status as MaintenanceTask['status'],checklist:String(row.checklist||''),readings:String(row.readings||''),notes:String(row.notes||''),...(row.completed_at?{completedAt:String(row.completed_at)}:{}),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}))
+ const mappedTasks=asRows(tasks.data).map(row=>({id:String(row.id),organizationId,assetId:String(row.asset_id),title:String(row.title),dueDate:String(row.due_date),frequency:String(row.frequency),status:(row.status!=='Hoàn thành'&&String(row.due_date)<todayVietnam()?'Quá hạn':row.status) as MaintenanceTask['status'],checklist:String(row.checklist||''),readings:String(row.readings||''),notes:String(row.notes||''),...(row.completed_at?{completedAt:String(row.completed_at)}:{}),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}))
  const mappedTaskEvents=asRows(taskEvents.data).map(row=>({...mapEvent({...row,request_id:row.task_id},organizationId),recordType:'task' as const}))
  return {requests:asRows(requests.data).map(row=>mapRequest(row,organizationId)),tasks:mappedTasks,history:[...asRows(events.data).map(row=>mapEvent(row,organizationId)),...mappedTaskEvents]}
 }
