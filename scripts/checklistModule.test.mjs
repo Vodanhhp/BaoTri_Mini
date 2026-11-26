@@ -122,7 +122,7 @@ test('group-assigned Checklist tasks can be claimed, worked, and returned with a
   assert.match(panel, /Trả lại nhóm/)
   assert.match(panel, /Đang xử lý bởi/)
   assert.match(panel, /Chỉ người được giao hoặc Admin thực hiện/)
-  assert.match(schedule, /item\.status !== 'Đang thực hiện'/)
+  assert.match(schedule, /task.status!=='Đang thực hiện'/)
 })
 
 
@@ -135,10 +135,10 @@ test('assignment events remain visible after an inspection is completed', () => 
 
 
 test('future scheduled tasks refresh their snapshots after definition edits without deleting in-progress work', () => {
-  assert.match(schedule, /definition\.assignee !== task\.assignee/)
-  assert.match(schedule, /definition\.title !== task\.title/)
+  assert.match(schedule, /definition.assignee!==task.assignee/)
+  assert.match(schedule, /definition.title!==task.title/)
   assert.match(schedule, /JSON\.stringify\(definition\.questions\) !== JSON\.stringify\(task\.definitionSnapshot\.questions\)/)
-  assert.match(schedule, /task\.status !== 'Đang thực hiện'/)
+  assert.match(schedule, /task.status!=='Đang thực hiện'/)
 })
 
 
@@ -158,7 +158,7 @@ test('Checklist reports filter by local date range and Excel exports the filtere
   assert.match(panel, /const \[reportTo,setReportTo\]=useState\(''\)/)
   assert.match(panel, /const reportRuns=useMemo\(/)
   assert.match(panel, /checklistLocalDateKey\(new Date\(item\.completedAt\)\)/)
-  assert.match(panel, /sheet\.addRows\(reportRuns\.map/)
+  assert.match(panel, /sheet\.addRows\(\[\.\.\.reportRuns\.map/)
   assert.match(panel, /reportRuns\.map\(row=>/)
 })
 
