@@ -42,6 +42,8 @@ export type ChecklistTask = {
   status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn' | 'Không Checklist'
   definitionSnapshot: {
     categoryKey: ChecklistDefinition['categoryKey']
+    targetKind?: 'equipment' | 'system'
+    targetAssetId?: string
     questions: ChecklistQuestion[]
   }
   completedAt?: string
