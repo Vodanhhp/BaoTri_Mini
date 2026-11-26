@@ -1,0 +1,1 @@
+revoke insert,update,delete on public.checklist_definitions from anon,authenticated;
