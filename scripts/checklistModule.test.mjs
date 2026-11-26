@@ -347,6 +347,13 @@ test('Checklist execution is locked without Internet and on desktop while manage
 })
 
 
+test('Admin is warned before legacy local Checklist data is hidden by the Cloud source switch',()=>{
+  assert.match(panel,/db\.checklistRuns\.where\('organizationId'\)\.equals\(organizationId\)\.count\(\)/)
+  assert.match(panel,/Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này/)
+  assert.match(panel,/chưa được chuyển lên Cloud/)
+  assert.match(panel,/Không xóa dữ liệu trình duyệt/)
+})
+
 test('Checklist Cloud is the live organization source and execution writes use server RPCs',async()=>{
   const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
   assert.match(panel,/loadChecklistCloud\(supabase,organizationId,canManage,ensureCloudSchedule\)/)
