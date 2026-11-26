@@ -691,3 +691,12 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung lối tắt sửa nội dung Checklist ngay từ dòng công việc đang thực hiện; chức năng Builder hiện có hỗ trợ sửa tên, đối tượng, chu kỳ, người phụ trách và danh sách câu hỏi (thêm/bớt qua nội dung nhiều dòng).
 - Khi tắt nhóm hoặc Checklist, các task chưa hoàn thành của định nghĩa không còn hoạt động được loại khỏi danh sách, kể cả task có giờ đến hạn đã qua; bản ghi đã hoàn thành và bản ghi Không Checklist được giữ để bảo toàn lịch sử.
 - Chưa xác nhận build/deploy và chưa thực hiện kiểm tra trình duyệt PC/mobile sau thay đổi.
+
+
+## Checklist – phân biệt mẫu đang áp dụng và công việc đến hạn (26/11/2026)
+- Sửa danh sách mẫu: chỉ hiển thị định nghĩa còn bật; mẫu thuộc nhóm khởi tạo bị tắt không còn xuất hiện trong danh sách mẫu đang áp dụng.
+- Đổi tên khu vực thành **Mẫu Checklist đang áp dụng**, giải thích rõ mẫu là biểu mẫu tái sử dụng, không phải lượt công việc đến hạn.
+- Bỏ nút thực hiện trực tiếp khỏi mẫu có chu kỳ Ngày/Tuần/Tháng/Quý. Các lượt định kỳ chỉ bắt đầu từ danh sách **Công việc cần thực hiện** để khi lưu kết quả có thể đóng đúng task và ẩn khỏi danh sách.
+- Chỉ Checklist **Linh hoạt** mới cho phép thực hiện trực tiếp từ mẫu.
+- Bổ sung source tests cho việc ẩn mẫu tắt và luồng thực hiện theo task định kỳ.
+- Chưa xác nhận CI, GitHub Pages deploy hoặc kiểm thử trình duyệt thực tế; không thay đổi Supabase và không đụng PR #21.
