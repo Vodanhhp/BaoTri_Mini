@@ -20,6 +20,7 @@ export type ChecklistRun = {
   answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Không áp dụng'; note: string }>
   outcome: 'Đạt' | 'Không đạt'; inspector: string; completedAt: string
   repairRequestCreated: boolean; noRepairReason?: string
+  assignmentHistory?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; at: string }>
   checklistSnapshot: ChecklistQuestion[]
 }
 
