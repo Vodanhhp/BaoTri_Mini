@@ -595,3 +595,17 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Chưa tích hợp thao tác tạo Phiếu YC thật từ kết quả Không đạt.
 - Chưa có đồng bộ Cloud cho Checklist. Toàn bộ dữ liệu hiện là Local IndexedDB theo trình duyệt; chưa thay đổi Supabase schema, RLS, Auth, Storage hoặc migration.
 - Chưa kiểm thử Viewer/KTV/Admin bằng các tài khoản thật trên trình duyệt; quyền hiện tại đang tạm dựa vào quyền xem thiết bị và vai trò Admin/KTV sẵn có.
+
+
+## 26/11/2026 – triển khai bộ sinh lịch Checklist và Tổng quan
+
+- Nâng Dexie Local lên version 14, bổ sung bảng độc lập `checklistTasks`; không liên kết `assetId`, không ghi vào lịch sử thiết bị hoặc lịch sử bảo trì, không thay đổi Supabase.
+- Bộ sinh lịch tạo từng lượt riêng cho chu kỳ ngày/tuần/tháng/quý/năm; Checklist linh hoạt không sinh nhiệm vụ đến hạn.
+- Mỗi lượt lưu ảnh chụp tên Checklist, đối tượng, người phụ trách, chu kỳ và nội dung câu hỏi tại thời điểm sinh lịch. Việc sửa biểu mẫu sau đó không làm thay đổi nội dung của lượt đã được lên lịch.
+- Lượt chưa thực hiện được giữ nguyên theo ngày đến hạn; khi quá thời điểm, trạng thái chuyển thành **Quá hạn**, không tự chuyển sang kỳ sau và không bị ghi nhận là **Không đạt**.
+- Tắt Checklist sẽ dừng sinh lượt tương lai; các lượt đã quá hạn vẫn được giữ để truy vết. Khi đổi chu kỳ, mốc bắt đầu lịch được cập nhật.
+- Khi hoàn thành một lượt từ danh sách công việc, kết quả được lưu vào lịch sử Checklist riêng và lượt tương ứng chuyển Hoàn thành.
+- Trang Tổng quan hiển thị số lượt đến hạn hôm nay, trong tuần, tháng, năm và danh sách lượt quá hạn/sắp đến hạn.
+- Bổ sung source tests cho schema v14, các chu kỳ, trạng thái quá hạn, snapshot biểu mẫu và bộ đếm trên Tổng quan.
+- Các thay đổi đang được GitHub Actions kiểm tra; chưa tuyên bố build/test/deploy thành công cho các commit mới cho đến khi có kết quả workflow. Chưa kiểm tra thao tác thực tế trên trình duyệt PC/mobile.
+- Các phần chưa hoàn thiện: lịch giờ thực hiện có thể tùy chỉnh (hiện mặc định 09:00); gợi ý linh hoạt “Công việc nên làm hôm nay”; phân công/nhận việc theo nhóm KTV; lọc báo cáo theo kỳ; bản in A4 riêng từng kết quả; tích hợp tạo Phiếu YC thật; Cloud sync Checklist.
