@@ -612,3 +612,7 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 
 - Rà soát bổ sung: mốc lịch được đặt lại khi đổi chu kỳ hoặc bật/tắt cấu hình; các lượt tương lai của Checklist đã tắt được loại khỏi hàng chờ, còn lượt quá hạn cũ vẫn giữ lại và có thể mở để thực hiện bằng snapshot nội dung cũ.
 - Không tự động tạo Phiếu YC; không bật Cloud sync. PR #21 vẫn không được merge.
+
+- Bổ sung nhóm **Công việc nên làm hôm nay** trong tab Tổng quan Checklist: gợi ý tối đa 3 loại kiểm tra dựa trên thiết bị quan trọng đã khai báo; KTV có quyền thực hiện ngay, kết quả lưu vào lịch sử Checklist độc lập.
+- Gợi ý linh hoạt không tạo lịch định kỳ, không tạo lượt đến hạn và không bị tính quá hạn nếu bỏ qua. Gợi ý đã có kết quả cùng đối tượng trong ngày sẽ tạm ẩn khỏi danh sách hôm nay.
+- Source tests bổ sung kiểm tra hành vi gợi ý linh hoạt; chưa xác nhận CI/build/deploy và chưa kiểm thử trình duyệt.
