@@ -70,42 +70,42 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
   useEffect(() => {
     let active = true
     if (!organizationId) {
-      setInventory([])
-      setMovements([])
-      setRequests([])
-      setTasks([])
-      setMaintenanceHistory([])
+      setInventory([]);setMovements([]);setRequests([]);setTasks([]);setMaintenanceHistory([])
       return () => { active = false }
     }
     setLoadError('')
     void Promise.all([
       db.inventoryItems.where('organizationId').equals(organizationId).toArray(),
-      db.inventoryMovements.where('organizationId').equals(organizationId).toArray(),
-      supabaseClient&&organizationId!=='local-preview'
+      db.inventoryMovements.where('organizationId').equals(organizationId).toArray()
+    ]).then(([items,rows])=>{
+      if(!active)return
+      setInventory(items.filter(item=>!item.archivedAt))
+      setMovements(rows)
+    }).catch(error=>{
+      if(!active)return
+      setLoadError('Không tải được dữ liệu báo cáo vật tư: '+(error instanceof Error?error.message:String(error)))
+    })
+    if(canViewAssets){
+      const maintenanceLoad=supabaseClient&&organizationId!=='local-preview'
         ? loadMaintenanceRequests(supabaseClient,organizationId)
         : Promise.all([
             db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
             db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
             db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
           ]).then(([work,scheduledTasks,historyRows])=>({requests:work,tasks:scheduledTasks,history:historyRows}))
-    ]).then(([items, rows, maintenance]) => {
-      if (!active) return
-      setInventory(items.filter(item => !item.archivedAt))
-      setMovements(rows)
-      setRequests(maintenance.requests)
-      setTasks(maintenance.tasks)
-      setMaintenanceHistory(maintenance.history)
-    }).catch(error => {
-      if (!active) return
-      setLoadError(error instanceof Error ? error.message : 'Không thể tải dữ liệu báo cáo.')
-      setInventory([])
-      setMovements([])
-      setRequests([])
-      setTasks([])
-      setMaintenanceHistory([])
-    })
+      void maintenanceLoad.then(bundle=>{
+        if(!active)return
+        setRequests(bundle.requests);setTasks(bundle.tasks);setMaintenanceHistory(bundle.history)
+      }).catch(error=>{
+        if(!active)return
+        setLoadError('Không tải được dữ liệu báo cáo bảo trì: '+(error instanceof Error?error.message:String(error)))
+        setRequests([]);setTasks([]);setMaintenanceHistory([])
+      })
+    }else{
+      setRequests([]);setTasks([]);setMaintenanceHistory([])
+    }
     return () => { active = false }
-  }, [organizationId,supabaseClient])
+  }, [organizationId,supabaseClient,canViewAssets])
 
   const range = useMemo(() => periodRange(period, anchorDate), [period, anchorDate])
   const query = search.trim().toLocaleLowerCase('vi')
