@@ -298,6 +298,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setLoading(false)}
   }
+  const runManagementAction=async(action:()=>Promise<unknown>)=>{
+    try{setError('');await action()}
+    catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
+  }
   useEffect(()=>{void refresh(true)},[organizationId,userId,canManage])
   useEffect(()=>{const timer=window.setInterval(()=>{if(organizationId==='local-preview'){void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})}else if(navigator.onLine){void refresh()}},60_000);return()=>window.clearInterval(timer)},[organizationId,canManage,userId])
   useEffect(()=>{
@@ -539,10 +543,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
     if(organizationId!=='local-preview'){
-      if(!supabase)throw new Error('Chưa kết nối Supabase.')
-      const payload={answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
-      if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
-      else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
+      try{
+        if(!supabase)throw new Error('Chưa kết nối Supabase.')
+        const payload={answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
+        if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
+        else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
+      }catch(cause){setError(cause instanceof Error?cause.message:String(cause));return}
     }else if(runningTaskId){
       const saved=await db.transaction('rw',db.checklistRuns,db.checklistTasks,db.checklistDefinitions,async()=>{
         const latest=await db.checklistTasks.get(runningTaskId)
@@ -659,9 +665,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
             return <article className={'checklist-category-card'+(setting.enabled?' enabled':'')} key={item.key}>
               <div className="checklist-category-top"><span className="checklist-category-icon">{item.icon}</span><span className={'checklist-enabled-tag'+(setting.enabled?' on':'')}>{setting.enabled?'Đang bật':'Chưa bật'}</span></div>
               <h3>{item.label}</h3><p>{item.description}</p>
-              <label className="checklist-inline-field"><span>Chu kỳ</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency})}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
-              <label className="checklist-inline-field"><span>Giờ thực hiện</span><input type="time" value={setting.executionTime||'09:00'} disabled={!canManage} onChange={event=>void saveSetting(item.key,{executionTime:event.target.value})}/></label>
-              <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void toggleCategory(item.key)}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
+              <label className="checklist-inline-field"><span>Chu kỳ</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void runManagementAction(()=>saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency}))}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+              <label className="checklist-inline-field"><span>Giờ thực hiện</span><input type="time" value={setting.executionTime||'09:00'} disabled={!canManage} onChange={event=>void runManagementAction(()=>saveSetting(item.key,{executionTime:event.target.value}))}/></label>
+              <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void runManagementAction(()=>toggleCategory(item.key))}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
             </article>
           })}</div>}
         </section>
