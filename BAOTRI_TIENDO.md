@@ -780,7 +780,7 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 
 ## 26/11/2026 — Reset theo phạm vi độc lập và sửa in phiếu Checklist A4
 
-- Admin doanh nghiệp gửi yêu cầu Reset với ba lựa chọn độc lập: Thiết bị, Vật tư, Checklist; bắt buộc chọn ít nhất một. Superadmin nhìn thấy chính xác phạm vi và số lượng dữ liệu, duyệt/từ chối như trước; Edge Functions chỉ nhận phạm vi đã chọn.
+- Admin doanh nghiệp gửi yêu cầu Reset với ba lựa chọn độc lập: Thiết bị, Vật tư, Checklist; mặc định cả ba đều bỏ chọn và bắt buộc chọn ít nhất một. Superadmin nhìn thấy chính xác phạm vi và số lượng dữ liệu, duyệt/từ chối như trước; Edge Functions chỉ nhận phạm vi đã chọn.
 - Supabase migration `20261126140900_selective_reset_scope_optional_checklist.sql` đã áp dụng cho BAOTRI-Mini-Test và BAOTRI-Mini-New. Bổ sung `inventory_generation` và `checklist_generation` bên cạnh generation thiết bị; mỗi phạm vi chỉ tăng generation và xóa dữ liệu của chính phạm vi đó. Checklist Cloud tables là tùy chọn vì phân hệ Checklist hiện Local-first; migration kiểm tra `to_regclass` trước khi đọc/xóa bảng legacy.
 - Local reset helper áp dụng từng generation riêng trong một Dexie transaction: chỉ xóa các store thiết bị/vật tư/Checklist tương ứng; xác nhận cả ba generation sau khi purge thành công. Không còn việc chọn Reset thiết bị mà tự động xóa kho vật tư và Checklist.
 - Edge Functions `organization-asset-reset-requests` và `platform-manage-asset-reset-requests` đã deploy lên Test và Production; verify_jwt vẫn bật, xác thực Admin doanh nghiệp/Superadmin và mật khẩu Superadmin giữ nguyên.
