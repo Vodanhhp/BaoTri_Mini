@@ -44,7 +44,7 @@ test('Viewer can inspect configuration and reports but cannot configure or execu
 })
 
 test('failed inspection cannot be recorded as pass and requires repair decision', () => {
-  assert.match(panel, /outcome:failed\?'Không đạt':'Đạt'/)
+  assert.match(panel, /outcome:failed\?'Không đạt':passed\?'Đạt':'Bỏ qua'/)
   assert.match(panel, /Có nội dung kiểm tra Không đạt/)
   assert.match(panel, /Lý do chưa tạo Phiếu yêu cầu/)
   assert.match(panel, /repairRequestCreated:failed&&repairCreated/)
@@ -333,7 +333,7 @@ test('system Checklist starter templates have at least five meaningful criteria 
   assert.match(panel,/Mẫu Checklist theo hệ thống phải có tối thiểu 5 tiêu chí kiểm tra/)
   assert.match(panel,/\['Đạt','Không đạt','Bỏ qua'\]/)
   assert.match(db,/'Bỏ qua'/)
-  assert.match(panel,/answer\.result==='Bỏ qua'\?'☑ Bỏ qua'/)
+  assert.match(panel,/answer\.result==='Bỏ qua'\|\|answer\.result==='Không áp dụng'/)
 })
 
 test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
