@@ -322,3 +322,24 @@ test('Checklist print uses the equipment A4 print-sheet wrapper and full structu
  assert.match(styles,/\.checklist-print-sheet \.checklist-print-table thead\{display:table-header-group\}/)
  assert.match(styles,/\.checklist-print-sheet \.checklist-print-table thead\{display:table-header-group\}/)
 })
+
+
+test('system Checklist starter templates have at least five meaningful criteria and a third Bỏ qua answer',()=>{
+  const categoryBlock=panel.split('const CATEGORIES:')[1]?.split('const CATEGORY_LABEL')[0]||''
+  for(const key of ["infrastructure","electrical","water","fire"]){
+    const entry=categoryBlock.split("key:'"+key+"'")[1]?.split("},")[0]||''
+    assert.ok((entry.match(/\?'/g)||[]).length>=5, key+' must have at least five criteria')
+  }
+  assert.match(panel,/Mẫu Checklist theo hệ thống phải có tối thiểu 5 tiêu chí kiểm tra/)
+  assert.match(panel,/\['Đạt','Không đạt','Bỏ qua'\]/)
+  assert.match(db,/'Bỏ qua'/)
+  assert.match(panel,/answer\.result==='Bỏ qua'\?'☑ Bỏ qua'/)
+})
+
+test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
+  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&isMobileViewport/)
+  assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
+  assert.match(panel,/disabled=\{!canExecuteHere\}/)
+  assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
+  assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
+})
