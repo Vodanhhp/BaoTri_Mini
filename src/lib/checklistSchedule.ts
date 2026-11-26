@@ -21,7 +21,31 @@ export async function ensureChecklistOccurrences(organizationId:string){
  const active=definitions.filter(item=>item.enabled&&item.frequency!=='Linh hoạt'&&(item.source!=='starter'||settings.some(setting=>setting.categoryKey===item.categoryKey&&setting.enabled)))
  const activeIds=new Set(active.map(item=>item.id));const current=new Date();const currentMs=current.getTime()
  const horizon=new Date(current.getFullYear()+1,current.getMonth(),current.getDate(),23,59,59,999)
- const existing=await db.checklistTasks.where('organizationId').equals(organizationId).toArray()
+ const storedTasks=await db.checklistTasks.where('organizationId').equals(organizationId).toArray()
+ const runs=await db.checklistRuns.where('organizationId').equals(organizationId).toArray()
+ const sameSchedulePeriod=(frequency:ChecklistFrequency,dueDate:string,completedAt:string)=>{
+  const completedDate=localDateKey(new Date(completedAt))
+  if(frequency==='Hàng ngày')return completedDate===dueDate
+  if(frequency==='Hàng tháng')return completedDate.slice(0,7)===dueDate.slice(0,7)
+  if(frequency==='Hàng quý'){
+   const due=new Date(dueDate+'T12:00:00');const completed=new Date(completedDate+'T12:00:00')
+   return due.getFullYear()===completed.getFullYear()&&Math.floor(due.getMonth()/3)===Math.floor(completed.getMonth()/3)
+  }
+  if(frequency==='Hàng năm')return completedDate.slice(0,4)===dueDate.slice(0,4)
+  if(frequency==='Hàng tuần'){
+   const weekStart=(value:string)=>{const date=new Date(value+'T12:00:00');date.setDate(date.getDate()-((date.getDay()+6)%7));return localDateKey(date)}
+   return weekStart(completedDate)===weekStart(dueDate)
+  }
+  return false
+ }
+ const existing=storedTasks.map(task=>{
+  if(!activeIds.has(task.checklistId)||task.status==='Hoàn thành'||task.status==='Không Checklist')return task
+  const dueMs=new Date(task.dueAt).getTime()
+  const matchingRun=runs.filter(run=>run.checklistId===task.checklistId&&sameSchedulePeriod(task.frequency,task.dueDate,run.completedAt)&&new Date(run.completedAt).getTime()<=dueMs+CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))[0]
+  return matchingRun?{...task,status:'Hoàn thành' as const,completedAt:matchingRun.completedAt,runId:matchingRun.id,claimedBy:undefined,claimedByUserId:undefined,claimedAt:undefined,updatedAt:matchingRun.completedAt}:task
+ })
+ const reconciled=existing.filter((task,index)=>task.status==='Hoàn thành'&&storedTasks[index].status!=='Hoàn thành')
+ if(reconciled.length)await db.checklistTasks.bulkPut(reconciled)
  const currentById=new Map(active.map(item=>[item.id,item]))
  const obsolete=existing.filter(task=>task.status!=='Hoàn thành'&&task.status!=='Không Checklist'&&(!activeIds.has(task.checklistId)||(task.status!=='Đang thực hiện'&&currentById.has(task.checklistId)&&(()=>{const definition=currentById.get(task.checklistId)!;return definition.frequency!==task.frequency||(definition.executionTime||'09:00')!==(task.executionTime||'09:00')||definition.title!==task.title||definition.targetLabel!==task.targetLabel||definition.assignee!==task.assignee||definition.categoryKey!==task.definitionSnapshot.categoryKey||JSON.stringify(definition.questions)!==JSON.stringify(task.definitionSnapshot.questions)})())))
  if(obsolete.length)await db.checklistTasks.bulkDelete(obsolete.map(item=>item.id))
