@@ -136,3 +136,14 @@ test('future scheduled tasks refresh their snapshots after definition edits with
   assert.match(schedule, /JSON\.stringify\(definition\.questions\) !== JSON\.stringify\(task\.definitionSnapshot\.questions\)/)
   assert.match(schedule, /task\.status !== 'Đang thực hiện'/)
 })
+
+
+test('Checklist group claims are atomic and ownership uses stable user IDs, not display labels', () => {
+  assert.match(db, /claimedByUserId\?: string/)
+  assert.match(panel, /db\.transaction\('rw',db\.checklistTasks/)
+  assert.match(panel, /claimedByUserId!==userId/)
+  assert.match(panel, /claimedByUserId===userId/)
+  assert.match(panel, /actorUserId:userId/)
+  assert.match(panel, /Quyền nhận việc đã thay đổi/)
+  assert.doesNotMatch(panel, /claimedBy!==userLabel/)
+})
