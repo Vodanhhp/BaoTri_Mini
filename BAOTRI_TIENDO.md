@@ -666,3 +666,13 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Nút In A4 ở từng kết quả lịch sử mở bản in riêng của đúng phiếu đó, gồm thông tin đơn vị, tên Checklist, đối tượng, thời gian, người kiểm tra, từng nội dung/kết quả/ghi chú, quyết định xử lý Không đạt và khu vực ký xác nhận. Không còn gọi in toàn bộ màn hình lịch sử.
 - Bổ sung source tests cho lọc theo ngày, dữ liệu Excel sau lọc và nội dung phiếu A4. Chưa thực hiện kiểm tra trực tiếp hộp thoại in hoặc máy in vật lý.
 - Không thay đổi Supabase, dữ liệu nghiệp vụ Cloud, Auth, RLS, Storage hoặc migrations. PR #21 vẫn để nguyên, không merge.
+
+## 2026-11-26 – Điều chỉnh trạng thái và cách xem lịch Checklist
+- Thời gian cho phép mặc định: 24 giờ tính từ giờ đến hạn của từng lượt Checklist.
+- Sau 24 giờ chưa hoàn thành: tự chuyển trạng thái sang **Không Checklist**, hiển thị màu đỏ và giữ bản ghi lượt lịch độc lập; không ghi thành kết quả **Không đạt**.
+- Trong 24 giờ cho phép, lượt đã đến giờ vẫn nằm trong danh sách cần thực hiện. Hết thời gian cho phép thì không thể bắt đầu/lưu kết quả muộn.
+- Tab Lịch sử tách riêng danh sách **Không Checklist** khỏi kết quả đã kiểm tra (Đạt/Không đạt). Báo cáo và Excel cũng thống kê các lượt Không Checklist.
+- Màn hình Tổng quan không liệt kê lịch tương lai. Nút **Lịch sắp tới** mở riêng, cho xem Tuần tới / Tháng tới / Quý tới; mặc định đóng.
+- Dashboard rút gọn còn số lượt đến hạn cần làm và số lượt Không Checklist.
+- Không thay đổi Local-first, không liên kết Checklist với lịch sử thiết bị, không sửa Supabase, không đụng PR #21.
+- Cần kiểm tra CI Build/Test và GitHub Pages Deploy; chưa thực hiện browser E2E/PC-mobile hoặc in giấy thật.
