@@ -925,7 +925,7 @@ Kiểm tra:
 11. **Phân trang Cloud:** bổ sung sắp xếp phụ theo ID để kết quả phân trang ổn định khi nhiều dòng trùng timestamp.
 
 ### SQL/RLS đã cập nhật trên Supabase Test
-Project `oyzhxgzltpdebpymuicb` có tổng cộng 18 migration Checklist (11 migration nền ban đầu và 7 migration rà soát/sửa lỗi tiếp theo). Các migration bổ sung:
+Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migration nền ban đầu và 9 migration rà soát/sửa lỗi tiếp theo). Các migration bổ sung:
 - `20261126222000_checklist_equipment_requires_qr_task_flow`
 - `20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot`
 - `20261126224000_checklist_policy_and_fk_index_review`
@@ -933,6 +933,8 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 18 migration Checklist (11 migr
 - `20261126226000_checklist_manual_run_idempotency`
 - `20261126227000_checklist_manual_run_idempotency_persist_run_id`
 - `20261126228000_checklist_claim_owner_null_safe_checks`
+- `20261126229000_checklist_definition_question_validation`
+- `20261126230000_checklist_equipment_target_must_be_active`
 - Tách policy SELECT và policy ghi cho bảng cấu hình/mẫu; UPDATE có cả USING và WITH CHECK. Bổ sung index cho các foreign key Checklist.
 - Kiểm tra quyền sau migration: 6 bảng bật RLS; anon không có quyền đọc; authenticated chỉ đọc bảng lịch sử/task/version; bảng cấu hình cho phép ghi qua RLS; bảng definitions không cho ghi trực tiếp; public RPC wrappers là SECURITY INVOKER, anon không có EXECUTE, authenticated có EXECUTE.
 - Security Advisor không còn phát hiện vấn đề thuộc 6 bảng/RPC Checklist mới; không còn multiple permissive policies ở 2 bảng Checklist. Các cảnh báo definer/RLS còn lại thuộc các bảng/hàm cũ ngoài phạm vi này. Performance Advisor còn báo các index mới chưa được dùng do chưa có tải thực tế.
@@ -940,6 +942,7 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 18 migration Checklist (11 migr
 ### Kiểm thử bổ sung
 - SQL smoke test trong transaction rollback đã xác nhận: manual RPC từ chối mẫu thiết bị; task QR lưu đúng target asset snapshot; hoàn thành task lấy tiêu đề/đối tượng/câu hỏi từ snapshot Cloud dù payload client bị sửa; manual Checklist hệ thống với tất cả Bỏ qua trả outcome Bỏ qua; gọi lại cùng run ID trả đúng run cũ và chỉ có một bản ghi.
 - SQL smoke test trước đó xác nhận Admin-only, tối thiểu 5 tiêu chí hệ thống, từ chối KTV, atomic claim/complete và quyền ghi bảng.
+- Smoke test bổ sung xác nhận server từ chối question ID trùng, label rỗng, required flag sai kiểu; mẫu hợp lệ 5 tiêu chí vẫn được chấp nhận. Server cũng từ chối thiết bị Thanh lý làm target Checklist.
 - Không giữ lại dữ liệu smoke test vì tất cả chạy trong transaction rollback.
 - CI Build and test và Validate đã xanh tại commit `adab593b4070b9d0f02ab7298152599dc2aef03a`; các thay đổi cảnh báo dữ liệu Dexie cũ đang chạy CI mới.
 
@@ -949,3 +952,10 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 18 migration Checklist (11 migr
 - Chưa E2E trên điện thoại vật lý: camera permission, QR đúng/sai, task đang có người nhận, task hết hạn, nhiều Checklist cùng thiết bị, mất mạng giữa thao tác.
 - Trình duyệt không thể chứng minh tuyệt đối thiết bị là điện thoại; server bảo vệ role/quyền/task nhưng không thể xác minh vật lý camera đã quét.
 - Chưa áp dụng bất kỳ migration Checklist nào lên Production. PR #75 tiếp tục Draft, không merge.
+
+
+### Kiểm tra cuối bổ sung – 26/11/2026
+- Thêm server-side validation cho từng câu hỏi: object hợp lệ, ID không rỗng/không trùng, label không rỗng và tối đa 1.000 ký tự, ID tối đa 128 ký tự, required nếu có phải là boolean.
+- RPC lưu mẫu thiết bị chỉ chấp nhận thiết bị còn hoạt động, chưa archive/delete và trạng thái không phải Thanh lý.
+- Thêm cảnh báo Admin về dữ liệu Checklist Dexie cũ trên chính trình duyệt hiện tại; không tự nhập và không xóa dữ liệu.
+- Migration Checklist Test hiện có 20 bản ghi. CI tại commit code trước hai thay đổi cuối đã xanh; run cho head mới đang chạy.
