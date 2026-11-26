@@ -7,6 +7,7 @@ import ChecklistQrScanner from './ChecklistQrScanner'
 import { supabase } from './lib/supabase'
 import { isPcPlatform } from './lib/platform'
 import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun } from './lib/checklistCloud'
+import { createMaintenanceRequestFromChecklist } from './lib/maintenanceCloud'
 
 type Props = {
   organizationId: string
@@ -593,18 +594,21 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       id:uid(),organizationId,checklistId:running.id,checklistTitle:running.title,categoryLabel:running.categoryKey in CATEGORY_LABEL?CATEGORY_LABEL[running.categoryKey as ChecklistCategoryKey]:running.categoryKey==='equipment'?'Thiết bị':'Tùy chỉnh',
       targetLabel:running.targetLabel,frequency:running.frequency,
       answers:running.questions.map(q=>({questionId:q.id,question:q.label,result:(answers[q.id]?.result||'Bỏ qua') as 'Đạt'|'Không đạt'|'Bỏ qua',note:answers[q.id]?.note||''})),
-      outcome:failed?'Không đạt':passed?'Đạt':'Bỏ qua',inspector:userLabel,completedAt:now(),repairRequestCreated:failed&&repairCreated,noRepairReason:failed&&!repairCreated?noRepairReason.trim():undefined,
+      outcome:failed?'Không đạt':passed?'Đạt':'Bỏ qua',inspector:userLabel,completedAt:now(),repairRequestCreated:false,noRepairReason:failed&&!repairCreated?noRepairReason.trim():undefined,
       assignmentHistory:taskSnapshot?.assignmentEvents||[],
       checklistSnapshot:running.questions.map(q=>({...q}))
     }
+    let savedCloudRunId=''
     if(organizationId!=='local-preview'){
       if(savingRun)return
       setSavingRun(true)
       try{
         if(!supabase)throw new Error('Chưa kết nối Supabase.')
         const payload={run_id:runningManualRunId,answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
-        if(runningTaskId)await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
-        else await completeChecklistManualRun(supabase,organizationId,running.id,payload)
+        const saved=runningTaskId
+          ? await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
+          : await completeChecklistManualRun(supabase,organizationId,running.id,payload)
+        savedCloudRunId=saved.run_id
       }catch(cause){setError(cause instanceof Error?cause.message:String(cause));setSavingRun(false);await refresh();return}
       setSavingRun(false)
     }else if(runningTaskId){
@@ -621,7 +625,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       await db.checklistRuns.add(record)
       await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
     }
-    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null);setNotice('Đã lưu kết quả kiểm tra lên Cloud và cập nhật lịch sử Checklist.');await refresh()
+    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null)
+    if(organizationId!=='local-preview'&&failed&&repairCreated&&savedCloudRunId&&supabase){
+      try{await createMaintenanceRequestFromChecklist(supabase,organizationId,savedCloudRunId);setNotice('Đã lưu Checklist và tạo Phiếu yêu cầu sửa chữa trên Cloud.')}
+      catch(cause){setError('Checklist đã lưu, nhưng chưa tạo được Phiếu yêu cầu: '+(cause instanceof Error?cause.message:String(cause)))}
+    }else setNotice('Đã lưu kết quả kiểm tra và cập nhật lịch sử Checklist.')
+    await refresh()
   }
   const exportExcel=async()=>{
     const headers=['Ngày giờ','Tên Checklist','Đối tượng kiểm tra','Kết quả','Người kiểm tra','Phiếu yêu cầu sửa chữa','Lý do chưa tạo phiếu']
@@ -780,7 +789,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!savingRun)void cancelRun()}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" disabled={savingRun} onClick={()=>void cancelRun()}><X size={17}/></button></div>
       <form onSubmit={completeRun} className="checklist-run-form">
         {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} disabled={!canExecuteHere} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} disabled={!canExecuteHere} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
-        {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Đã tạo Phiếu yêu cầu sửa chữa riêng</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Phiếu Checklist vẫn lưu kết quả Không đạt. Việc đánh dấu này không tự tạo Phiếu YC trong phân hệ Bảo dưỡng – Sửa chữa.</small></div>}
+        {running.questions.some(q=>answers[q.id]?.result==='Không đạt')&&<div className="checklist-failure-box"><b>Có nội dung kiểm tra Không đạt</b><label><input type="checkbox" checked={repairCreated} onChange={event=>setRepairCreated(event.target.checked)}/> Tạo Phiếu yêu cầu sửa chữa trên Cloud</label>{!repairCreated&&<label className="field">Lý do chưa tạo Phiếu yêu cầu *<textarea rows={2} value={noRepairReason} onChange={event=>setNoRepairReason(event.target.value)} required/></label>}<small>Khi lưu Checklist, hệ thống sẽ tự tạo Phiếu yêu cầu gắn với thiết bị và liên kết hai hồ sơ. Nếu không tạo, bạn phải ghi lý do.</small></div>}
         <div className="modal-actions"><button type="button" className="soft-btn" disabled={savingRun} onClick={()=>void cancelRun()}>Hủy</button><button type="submit" className="primary-btn" disabled={!canExecuteHere||savingRun}><Check size={15}/> {savingRun?'Đang lưu…':'Lưu kết quả'}</button></div>
       </form>
     </section></div>}
