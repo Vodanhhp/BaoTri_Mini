@@ -907,3 +907,45 @@ Kiểm tra:
   4. Rà soát nhận diện PC/mobile trên thiết bị lai (tablet, trình duyệt desktop giả lập mobile); hiện là kiểm soát phía giao diện, server RPC vẫn kiểm soát quyền Admin và trạng thái task nhưng không xác minh loại thiết bị.
   5. Chưa triển khai migration lên Production; chỉ làm sau khi Preview/E2E được nghiệm thu và có xác nhận riêng.
 - Không được hiểu CI xanh là đã kiểm thử camera, giao diện thực tế hoặc Production.
+
+
+## Rà soát lỗi và sửa Checklist Cloud/QR – 26/11/2026
+
+### Các lỗi đã phát hiện và sửa
+1. **Lịch định kỳ cũ:** bộ sinh lịch trước đây chỉ xét 18 tháng cho chu kỳ tháng, 6 chu kỳ cho quý, 2 năm cho năm; mẫu tạo lâu hơn có thể không sinh lượt. Chu kỳ ngày/tuần cũng có thể gửi lịch quá cũ khiến RPC từ chối. Đã tính điểm bắt đầu trong cửa sổ 366 ngày quá khứ, giữ đúng ngày/tuần/tháng/quý/năm và grace period 24 giờ.
+2. **Checklist thiết bị đi vòng QR:** RPC lưu Checklist thủ công trước đây cho phép lưu mẫu thiết bị không qua task QR. Đã chặn đường manual RPC đối với `target_kind='equipment'`; thiết bị phải đi qua lượt task. UI chỉ tìm task theo mã thiết bị đã quét.
+3. **Sai thiết bị sau khi sửa mẫu:** task snapshot trước đây thiếu target asset ID/type, khiến task cũ có thể bị ghép theo thiết bị mới sau khi Admin sửa mẫu. Đã bổ sung `targetKind` và `targetAssetId` vào snapshot task, map vào model và dùng target ID snapshot khi tìm task từ QR.
+4. **Snapshot kết quả có thể bị client giả mạo:** RPC hoàn thành task trước đây nhận tiêu đề/đối tượng/snapshot từ payload client. Đã chuyển sang lấy toàn bộ metadata và danh sách câu hỏi từ `definition_snapshot` đã lưu trên Cloud.
+5. **Gửi trùng Checklist hệ thống:** lưu manual run trước đây tạo ID mới ở mỗi lần gọi, có thể sinh phiếu trùng khi mạng timeout rồi người dùng bấm lưu lại. Đã thêm idempotency key ổn định cho mỗi lượt mở form, lưu key làm primary key của run và trả lại kết quả cũ khi retry; UI khóa nút lưu trong lúc chờ và không cho đóng form khi đang lưu.
+6. **Camera QR rò stream:** bấm mở lại camera có thể để stream cũ chạy; callback detect có thể tiếp tục tạo animation frame sau khi đóng modal. Đã dừng stream/frame trước khi mở lại, dùng active ref và dừng cả luồng getUserMedia/play còn pending khi modal đóng.
+7. **Máy tính bảng bị coi là điện thoại:** bộ nhận diện trước đây cho phép tablet/iPad. Đã đổi sang chỉ cho phép user-agent điện thoại; tablet/iPad bị khóa. Đây vẫn là guard phía trình duyệt, không phải bằng chứng thiết bị an toàn phía server.
+8. **KTV có quyền execute tùy chỉnh:** UI trước đây dựa vào canExecute permission. Đã yêu cầu đồng thời canManage/Admin, phù hợp giai đoạn 1; RPC tiếp tục kiểm tra role Admin.
+9. **Tiêu chí tùy chọn bỏ trống:** UI cho phép bỏ trống tiêu chí optional nhưng gửi kết quả rỗng, khiến RPC từ chối. Đã chuẩn hóa câu optional chưa chọn thành Bỏ qua.
+10. **Lỗi RPC và trạng thái UI:** bổ sung xử lý lỗi và refresh lại dữ liệu sau các thao tác quản lý/nhận/trả/hoàn thành để tránh hiển thị trạng thái cũ khi phản hồi mạng không chắc chắn.
+11. **Phân trang Cloud:** bổ sung sắp xếp phụ theo ID để kết quả phân trang ổn định khi nhiều dòng trùng timestamp.
+
+### SQL/RLS đã cập nhật trên Supabase Test
+Project `oyzhxgzltpdebpymuicb` có tổng cộng 18 migration Checklist (11 migration nền ban đầu và 7 migration rà soát/sửa lỗi tiếp theo). Các migration bổ sung:
+- `20261126222000_checklist_equipment_requires_qr_task_flow`
+- `20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot`
+- `20261126224000_checklist_policy_and_fk_index_review`
+- `20261126225000_checklist_task_snapshot_target_identity`
+- `20261126226000_checklist_manual_run_idempotency`
+- `20261126227000_checklist_manual_run_idempotency_persist_run_id`
+- `20261126228000_checklist_claim_owner_null_safe_checks`
+- Tách policy SELECT và policy ghi cho bảng cấu hình/mẫu; UPDATE có cả USING và WITH CHECK. Bổ sung index cho các foreign key Checklist.
+- Kiểm tra quyền sau migration: 6 bảng bật RLS; anon không có quyền đọc; authenticated chỉ đọc bảng lịch sử/task/version; bảng cấu hình cho phép ghi qua RLS; bảng definitions không cho ghi trực tiếp; public RPC wrappers là SECURITY INVOKER, anon không có EXECUTE, authenticated có EXECUTE.
+- Security Advisor không còn phát hiện vấn đề thuộc 6 bảng/RPC Checklist mới; không còn multiple permissive policies ở 2 bảng Checklist. Các cảnh báo definer/RLS còn lại thuộc các bảng/hàm cũ ngoài phạm vi này. Performance Advisor còn báo các index mới chưa được dùng do chưa có tải thực tế.
+
+### Kiểm thử bổ sung
+- SQL smoke test trong transaction rollback đã xác nhận: manual RPC từ chối mẫu thiết bị; task QR lưu đúng target asset snapshot; hoàn thành task lấy tiêu đề/đối tượng/câu hỏi từ snapshot Cloud dù payload client bị sửa; manual Checklist hệ thống với tất cả Bỏ qua trả outcome Bỏ qua; gọi lại cùng run ID trả đúng run cũ và chỉ có một bản ghi.
+- SQL smoke test trước đó xác nhận Admin-only, tối thiểu 5 tiêu chí hệ thống, từ chối KTV, atomic claim/complete và quyền ghi bảng.
+- Không giữ lại dữ liệu smoke test vì tất cả chạy trong transaction rollback.
+- CI Build and test và Validate đã xanh tại commit `adab593b4070b9d0f02ab7298152599dc2aef03a`; các thay đổi cảnh báo dữ liệu Dexie cũ đang chạy CI mới.
+
+### Việc vẫn chặn nghiệm thu/Production
+- **Dữ liệu Checklist Local cũ:** nhánh `main` hiện tại lưu cấu hình/mẫu/lượt/kết quả theo từng trình duyệt bằng Dexie. Nhánh Cloud không tự động nhập dữ liệu cũ. Đã thêm cảnh báo Admin nếu trình duyệt hiện tại còn dữ liệu local chưa chuyển Cloud; cảnh báo chỉ kiểm tra được thiết bị đang đăng nhập, không quét được các điện thoại/PC khác. Cần thống nhất phương án gom/chuyển dữ liệu cũ trước Production; tuyệt đối không tự động xóa Dexie.
+- Chưa chạy Preview thực tế kết nối Supabase Test với tài khoản Admin.
+- Chưa E2E trên điện thoại vật lý: camera permission, QR đúng/sai, task đang có người nhận, task hết hạn, nhiều Checklist cùng thiết bị, mất mạng giữa thao tác.
+- Trình duyệt không thể chứng minh tuyệt đối thiết bị là điện thoại; server bảo vệ role/quyền/task nhưng không thể xác minh vật lý camera đã quét.
+- Chưa áp dụng bất kỳ migration Checklist nào lên Production. PR #75 tiếp tục Draft, không merge.
