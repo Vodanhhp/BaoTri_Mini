@@ -271,12 +271,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
 
-  const refresh=async()=>{
+  const refresh=async(ensureCloudSchedule=false)=>{
     setLoading(true)
     try{
       if(organizationId!=='local-preview'){
         if(!supabase)throw new Error('Chưa kết nối Supabase. Không thể tải Checklist Cloud.')
-        const bundle=await loadChecklistCloud(supabase,organizationId,canManage)
+        const bundle=await loadChecklistCloud(supabase,organizationId,canManage,ensureCloudSchedule)
         const merged=CATEGORIES.map(item=>bundle.settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
         setSettings(merged);setDefinitions(bundle.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
         setRuns(bundle.runs);setTasks(bundle.tasks)
@@ -296,7 +296,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
     finally{setLoading(false)}
   }
-  useEffect(()=>{void refresh()},[organizationId,userId,canManage])
+  useEffect(()=>{void refresh(true)},[organizationId,userId,canManage])
   useEffect(()=>{const timer=window.setInterval(()=>{if(organizationId==='local-preview'){void ensureChecklistOccurrences(organizationId).then(()=>db.checklistTasks.where('organizationId').equals(organizationId).toArray()).then(setTasks).catch(()=>{})}else if(navigator.onLine){void refresh()}},60_000);return()=>window.clearInterval(timer)},[organizationId,canManage,userId])
   useEffect(()=>{
     if(!printingRun)return
@@ -349,7 +349,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
       }
     }
-    await refresh()
+    await refresh(true)
   }
   const createDefinition=async(data:{title:string;targetLabel:string;targetAssetId?:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
@@ -358,7 +358,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const saved=organizationId!=='local-preview'
       ? await (supabase?saveChecklistDefinition(supabase,organizationId,record):Promise.reject(new Error('Chưa kết nối Supabase.')))
       : (await db.checklistDefinitions.add(record),record)
-    await refresh()
+    await refresh(true)
     return saved
   }
   const toggleCategory=async(key:ChecklistCategoryKey)=>{
@@ -373,7 +373,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,executionTime:setting.executionTime||'09:00',questions:makeQuestions(meta.questions),source:'starter'})
       setNotice('Đã bật nhóm gợi ý. Hãy rà soát nội dung và chu kỳ trước khi áp dụng chính thức.')
     }
-    await refresh()
+    await refresh(true)
   }
   const toggleDefinitionEnabled=async(item:ChecklistDefinition)=>{
     if(!canManage)return
@@ -409,7 +409,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const updated:ChecklistDefinition={...editing,title:title.trim(),targetLabel,...(selectedAsset?{targetAssetId:selectedAsset.id}:{targetAssetId:undefined}),categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,assignee:organizationId==='local-preview'?assignee:'Admin',questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()}
         if(organizationId!=='local-preview'){if(!supabase)throw new Error('Chưa kết nối Supabase.');await saveChecklistDefinition(supabase,organizationId,updated)}
         else await db.checklistDefinitions.update(editing.id,updated)
-        await refresh();setEditing(null);setShowBuilderForm(false);setNotice('Đã cập nhật Checklist.')
+        await refresh(true);setEditing(null);setShowBuilderForm(false);setNotice('Đã cập nhật Checklist.')
       }else{
         const selectedAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
         const targetLabel=selectedAsset?assetTargetLabel(selectedAsset):target.trim()
