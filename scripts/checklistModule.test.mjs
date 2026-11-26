@@ -84,7 +84,7 @@ test('Dashboard shows period-based Checklist counts and does not treat flexible 
   assert.match(app, /<ChecklistDashboardSummary/)
   assert.match(panel, /Đến hạn cần làm/)
   assert.match(panel, /Không Checklist/)
-  assert.match(panel, /Công việc trong kỳ/)
+  assert.match(panel, /Công việc \{selectedFrequency\.toLocaleLowerCase\('vi'\)\} trong kỳ/)
   assert.match(panel, /setWorkPeriod\('day'\)/)
   assert.match(panel, /setWorkPeriod\('week'\)/)
   assert.match(panel, /setWorkPeriod\('month'\)/)
