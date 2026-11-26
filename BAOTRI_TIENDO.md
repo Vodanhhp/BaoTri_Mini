@@ -812,7 +812,7 @@ PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
 - Bổ sung thông báo trạng thái kết nối và hướng dẫn sử dụng điện thoại.
 
 ### Supabase Test
-- Đã áp dụng migration `20261126144630_checklist_cloud_online_foundation` trên Supabase Test `oyzhxgzltpdebpymuicb` בלבד.
+- Đã áp dụng migration `20261126144630_checklist_cloud_online_foundation` trên Supabase Test `oyzhxgzltpdebpymuicb` (chỉ môi trường Test).
 - Tạo các bảng mới: `checklist_category_settings`, `checklist_definitions`, `checklist_definition_versions`, `checklist_tasks`, `checklist_runs`, `checklist_task_events`.
 - Các bảng mới đều bật RLS và có policy theo `checklist.view` / `checklist.template.manage`; task claim và complete đi qua RPC trong schema private, kiểm tra `checklist.result.create` và cập nhật atomic.
 - Smoke test trong transaction rollback: tạo mẫu hệ thống 5 tiêu chí thành công; mẫu 4 tiêu chí bị constraint từ chối; không giữ lại dữ liệu thử nghiệm.
