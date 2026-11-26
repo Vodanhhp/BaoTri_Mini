@@ -834,3 +834,6 @@ PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
 - Đã sửa lỗi JSX trùng thuộc tính disabled và cập nhật các kiểm thử để phản ánh chính sách thực hiện Checklist trên điện thoại, online-only.
 - Migration đã áp dụng ở Supabase Test được lưu tại `docs/drafts/20261126144630_checklist_cloud_online_foundation.sql`, không nằm trong `supabase/migrations/` vì chưa áp dụng Production và bộ kiểm thử migration yêu cầu đồng bộ chính xác với lịch sử Production.
 - Trạng thái vẫn là PR Draft #75; không merge, không deploy Production.
+
+
+- Bổ sung migration Test `20261126145323_checklist_phase1_admin_only`: RPC nhận việc/hoàn thành kiểm tra role Admin khi task được giao `Admin`, phù hợp giai đoạn 1. Đã kiểm tra định nghĩa hai RPC sau cập nhật trên Supabase Test; file nguồn lưu tại `docs/drafts/20261126145323_checklist_phase1_admin_only.sql`.
