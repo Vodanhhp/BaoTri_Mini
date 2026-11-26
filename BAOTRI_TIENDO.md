@@ -609,3 +609,6 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Bổ sung source tests cho schema v14, các chu kỳ, trạng thái quá hạn, snapshot biểu mẫu và bộ đếm trên Tổng quan.
 - Các thay đổi đang được GitHub Actions kiểm tra; chưa tuyên bố build/test/deploy thành công cho các commit mới cho đến khi có kết quả workflow. Chưa kiểm tra thao tác thực tế trên trình duyệt PC/mobile.
 - Các phần chưa hoàn thiện: lịch giờ thực hiện có thể tùy chỉnh (hiện mặc định 09:00); gợi ý linh hoạt “Công việc nên làm hôm nay”; phân công/nhận việc theo nhóm KTV; lọc báo cáo theo kỳ; bản in A4 riêng từng kết quả; tích hợp tạo Phiếu YC thật; Cloud sync Checklist.
+
+- Rà soát bổ sung: mốc lịch được đặt lại khi đổi chu kỳ hoặc bật/tắt cấu hình; các lượt tương lai của Checklist đã tắt được loại khỏi hàng chờ, còn lượt quá hạn cũ vẫn giữ lại và có thể mở để thực hiện bằng snapshot nội dung cũ.
+- Không tự động tạo Phiếu YC; không bật Cloud sync. PR #21 vẫn không được merge.
