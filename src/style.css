@@ -3214,7 +3214,7 @@ html,body,#root,.app-shell{
 #root .app-shell .checklist-builder-form .field{display:grid;gap:6px;font-size:11px;color:var(--muted)}
 #root .app-shell .checklist-builder-form input,#root .app-shell .checklist-builder-form select,#root .app-shell .checklist-builder-form textarea{width:100%;min-width:0;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel);color:var(--text);font:inherit}
 #root .app-shell .checklist-builder-form .full-field{grid-column:1/-1}
-#root .app-shell .checklist-builder-form .field small{font-size:10px;line-height:1.45;color:var(--muted)}
+
 #root .app-shell .checklist-builder-form .field small{font-size:10px;line-height:1.45;color:var(--muted)}
 #root .app-shell .checklist-builder-note{grid-column:1/-1;display:flex;align-items:flex-start;gap:8px;padding:10px;border-radius:8px;background:var(--panel-alt);font-size:10px;line-height:1.5;color:var(--muted)}
 #root .app-shell .checklist-outcome{display:inline-flex;width:max-content;padding:4px 8px;border-radius:20px;font-size:10px;font-weight:700}
