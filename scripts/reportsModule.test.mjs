@@ -110,6 +110,8 @@ test('maintenance report separates created, completed, open and overdue work for
   assert.match(panel,/\['Ngày','Tuần','Tháng','Quý','Năm'\]/)
   assert.match(panel,/Báo cáo bảo trì – sửa chữa/)
   assert.match(panel,/Công việc bảo dưỡng định kỳ/)
+  assert.match(panel,/const taskRows=scheduledTasksInPeriod/)
+  assert.match(panel,/Bảo dưỡng định kỳ/)
 })
 
 test('maintenance Cloud loading failures do not blank the existing inventory report', () => {
