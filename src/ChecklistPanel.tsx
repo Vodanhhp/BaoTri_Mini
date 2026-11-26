@@ -27,6 +27,15 @@ const blankSetting = (organizationId:string,key:ChecklistCategoryKey):ChecklistC
 const dueText = (frequency:ChecklistFrequency) => frequency==='Linh hoạt'?'Không có lịch cố định':frequency
 const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
 const dateOnly = () => new Date().toLocaleDateString('en-CA')
+const checklistPeriodRange = (period:'day'|'week'|'month'|'quarter',reference=new Date()) => {
+ const start=new Date(reference);start.setHours(0,0,0,0)
+ const end=new Date(start)
+ if(period==='day')end.setDate(end.getDate()+1)
+ else if(period==='week'){const day=end.getDay()||7;start.setDate(start.getDate()-day+1);end.setTime(start.getTime());end.setDate(end.getDate()+7)}
+ else if(period==='month'){start.setDate(1);end.setFullYear(start.getFullYear(),start.getMonth()+1,1)}
+ else {const quarter=Math.floor(start.getMonth()/3);start.setMonth(quarter*3,1);end.setFullYear(start.getFullYear(),quarter*3+3,1)}
+ return {start:localDateKey(start),end:localDateKey(end)}
+}
 const makeQuestions = (lines:string[]):ChecklistQuestion[] => lines.map(label=>({id:uid(),label:label.trim(),required:true})).filter(item=>item.label)
 
 export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationId:string;onOpen:()=>void}) {
@@ -46,8 +55,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [tasks,setTasks]=useState<ChecklistTask[]>([])
   const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
-  const [upcomingOpen,setUpcomingOpen]=useState(false)
-  const [upcomingPeriod,setUpcomingPeriod]=useState<'week'|'month'|'quarter'>('week')
+  const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'>('day')
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
@@ -94,10 +102,9 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const reportRuns=useMemo(()=>runs.filter(item=>{const day=checklistLocalDateKey(new Date(item.completedAt));return (!reportFrom||day>=reportFrom)&&(!reportTo||day<=reportTo)}),[runs,reportFrom,reportTo])
   const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&(!reportFrom||item.dueDate>=reportFrom)&&(!reportTo||item.dueDate<=reportTo)),[tasks,reportFrom,reportTo])
   const currentMs=Date.now()
-  const actionableTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&new Date(item.dueAt).getTime()<=currentMs&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
+  const periodRange=checklistPeriodRange(workPeriod)
+  const periodTasks=tasks.filter(item=>(item.status==='Chờ thực hiện'||item.status==='Đang thực hiện')&&item.dueDate>=periodRange.start&&item.dueDate<periodRange.end&&currentMs-new Date(item.dueAt).getTime()<CHECKLIST_GRACE_PERIOD_MS).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const missedTasks=tasks.filter(item=>item.status==='Không Checklist').sort((a,b)=>b.dueAt.localeCompare(a.dueAt))
-  const upcomingRange=useMemo(()=>{const start=new Date();start.setHours(0,0,0,0);let end=new Date(start);if(upcomingPeriod==='week'){const day=end.getDay()||7;start.setDate(start.getDate()+(8-day));end=new Date(start);end.setDate(end.getDate()+6);end.setHours(23,59,59,999)}else if(upcomingPeriod==='month'){start.setDate(1);start.setMonth(start.getMonth()+1);end=new Date(start.getFullYear(),start.getMonth()+1,0,23,59,59,999)}else{const quarter=Math.floor(start.getMonth()/3);start.setMonth((quarter+1)*3,1);end=new Date(start.getFullYear(),start.getMonth()+3,0,23,59,59,999)}return {start,end}},[upcomingPeriod])
-  const upcomingTasks=tasks.filter(item=>item.status==='Chờ thực hiện'&&new Date(item.dueAt)>=upcomingRange.start&&new Date(item.dueAt)<=upcomingRange.end).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   const visibleDefinitions=useMemo(()=>definitions.filter(item=>!search.trim()||[item.title,item.targetLabel,item.categoryKey].join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'))),[definitions,search])
   const suggestions=useMemo(()=>{
     const active=assets.filter(asset=>!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')
@@ -284,10 +291,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="stat-card"><div><small>Không đạt</small><strong>{runs.filter(item=>item.outcome==='Không đạt').length}</strong><span>Không tự chuyển thành đạt</span></div></div>
         </div>
         <section className="panel checklist-section">
-          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị lượt đã đến hạn trong 24 giờ cho phép. Quá thời gian này, lượt được ghi nhận là Không Checklist.</p></div></div>
-          <div className="checklist-report-summary"><div><small>Đến hạn cần làm</small><b>{actionableTasks.length}</b></div><div><small>Không Checklist</small><b>{missedTasks.length}</b></div></div>
+          <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chọn kỳ để xem công việc từ đầu kỳ. Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist.</p></div></div>
+          <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button></div>
+          <div className="checklist-report-summary"><div><small>Công việc trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
-            {actionableTasks.map(task=>{
+            {periodTasks.map(task=>{
               const definition=definitions.find(item=>item.id===task.checklistId)
               const runnable:ChecklistDefinition=definition?{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,questions:task.definitionSnapshot.questions}:{
                 id:task.checklistId,organizationId,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,enabled:true,assignee:task.assignee,questions:task.definitionSnapshot.questions,categoryKey:task.definitionSnapshot.categoryKey,source:'custom',createdAt:task.createdAt,updatedAt:task.updatedAt
@@ -307,10 +315,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 </div>
               </article>
             })}
-            {actionableTasks.length===0&&<div className="table-empty-state">Hiện không có lượt Checklist đến hạn cần thực hiện.</div>}
+            {periodTasks.length===0&&<div className="table-empty-state">Không có công việc Checklist cần thực hiện trong kỳ này.</div>}
           </div>
-          <div className="checklist-upcoming-toggle"><button type="button" className="soft-btn" onClick={()=>setUpcomingOpen(value=>!value)}>{upcomingOpen?'Ẩn lịch sắp tới':'Lịch sắp tới'}</button></div>
-          {upcomingOpen&&<section className="checklist-upcoming-panel"><div className="checklist-upcoming-filters"><button type="button" className={upcomingPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('week')}>Tuần tới</button><button type="button" className={upcomingPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('month')}>Tháng tới</button><button type="button" className={upcomingPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setUpcomingPeriod('quarter')}>Quý tới</button></div><div className="checklist-definition-list">{upcomingTasks.map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · Phụ trách: {task.assignee}</small><span className="checklist-outcome">{task.status}</span></div></article>)}{upcomingTasks.length===0&&<div className="table-empty-state">Không có lịch Checklist trong khoảng thời gian này.</div>}</div></section>}
         </section>
         {suggestions.filter(item=>!todayRuns.some(run=>run.checklistTitle===item.title&&run.targetLabel===item.target)).slice(0,3).length>0&&<section className="panel checklist-section">
           <div className="panel-head"><div><h2>Công việc nên làm hôm nay</h2><p>Gợi ý tự nguyện từ một số thiết bị quan trọng đã khai báo. Bỏ qua không bị tính quá hạn và không tạo lịch bắt buộc.</p></div></div>
