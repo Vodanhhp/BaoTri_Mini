@@ -144,7 +144,7 @@ function mapRun(row: Row, organizationId: string, events: Row[]): ChecklistRun {
     categoryLabel:CATEGORY_LABELS[String(row.category_label)]||String(row.category_label),
     targetLabel:String(row.target_label),frequency:row.frequency as ChecklistFrequency,answers,
     outcome:row.outcome as ChecklistRun['outcome'],inspector:String(row.inspector),completedAt:String(row.completed_at),
-    repairRequestCreated:Boolean(row.repair_request_created),...(row.no_repair_reason?{noRepairReason:String(row.no_repair_reason)}:{}),
+    repairRequestCreated:Boolean(row.repair_request_created),...(row.maintenance_request_id?{maintenanceRequestId:String(row.maintenance_request_id)}:{}),...(row.no_repair_reason?{noRepairReason:String(row.no_repair_reason)}:{}),
     assignmentHistory:taskEvents.filter(event=>event.event_type!=='Hoàn thành').map(event=>({
       action:String(event.event_type) as 'Nhận việc'|'Trả lại nhóm'|'Hủy thực hiện',
       actor:String(event.actor_label||''),actorUserId:event.actor_user_id?String(event.actor_user_id):undefined,
@@ -262,13 +262,13 @@ export async function releaseChecklistTask(client:SupabaseClient,organizationId:
 }
 export async function completeChecklistTask(
   client:SupabaseClient,organizationId:string,taskId:string,payload:Record<string,unknown>
-):Promise<void>{
+):Promise<{run_id:string;outcome:string;completed_at:string}>{
   assertOnline()
-  await checked(client.rpc('checklist_complete_task',{p_organization_id:organizationId,p_task_id:taskId,p_payload:payload}),'Lưu kết quả Checklist')
+  return await checked(client.rpc('checklist_complete_task',{p_organization_id:organizationId,p_task_id:taskId,p_payload:payload}),'Lưu kết quả Checklist') as {run_id:string;outcome:string;completed_at:string}
 }
 export async function completeChecklistManualRun(
   client:SupabaseClient,organizationId:string,definitionId:string,payload:Record<string,unknown>
-):Promise<void>{
+):Promise<{run_id:string;outcome:string;completed_at:string}>{
   assertOnline()
-  await checked(client.rpc('checklist_complete_manual_run',{p_organization_id:organizationId,p_definition_id:definitionId,p_payload:payload}),'Lưu kết quả Checklist')
+  return await checked(client.rpc('checklist_complete_manual_run',{p_organization_id:organizationId,p_definition_id:definitionId,p_payload:payload}),'Lưu kết quả Checklist') as {run_id:string;outcome:string;completed_at:string}
 }
