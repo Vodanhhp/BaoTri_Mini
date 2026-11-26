@@ -3365,3 +3365,15 @@ html,body,#root,.app-shell{
 }
 
 .checklist-connectivity-notice{margin:0 0 12px;padding:10px 13px;border:1px solid var(--border);border-radius:9px;font-size:11px;line-height:1.5;background:var(--panel-alt);color:var(--muted)}.checklist-connectivity-notice[data-online-guard='offline']{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-text)}.checklist-connectivity-notice[data-online-guard='desktop']{background:var(--warning-bg);color:var(--warning-text)}.checklist-connectivity-notice[data-online-guard='online']{background:var(--success-bg);color:var(--success-text)}.checklist-run-form button:disabled,.checklist-definition-row button:disabled{opacity:.42;cursor:not-allowed}
+
+/* Checklist QR camera and mobile execution */
+#root .app-shell .checklist-qr-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}
+#root .app-shell .checklist-qr-actions small{font-size:11px;color:var(--muted);line-height:1.5}
+#root .app-shell .checklist-qr-modal{width:min(560px,100%)}
+#root .app-shell .checklist-qr-camera{position:relative;display:grid;place-items:center;min-height:220px;overflow:hidden;border:1px solid var(--border);border-radius:12px;background:#101827}
+#root .app-shell .checklist-qr-camera video{display:block;width:100%;max-height:52vh;object-fit:cover}
+#root .app-shell .checklist-qr-camera-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#cbd5e1;font-size:12px}
+#root .app-shell .checklist-qr-results{width:min(680px,100%)}
+#root .app-shell .checklist-qr-modal .field{display:grid;gap:7px;margin-top:14px}
+#root .app-shell .checklist-qr-modal .field input{width:100%;min-height:42px;border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel);color:var(--text)}
+@media(max-width:600px){#root .app-shell .checklist-qr-actions{align-items:stretch}#root .app-shell .checklist-qr-actions .primary-btn{width:100%;justify-content:center}#root .app-shell .checklist-qr-camera{min-height:180px}}
