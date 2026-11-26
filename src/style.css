@@ -3270,3 +3270,29 @@ html,body,#root,.app-shell{
  #root .app-shell .checklist-workspace .panel-head .top-actions{display:none!important}
  #root .app-shell .checklist-history-row{break-inside:avoid}
 }
+
+
+/* Checklist report filters and dedicated A4 result sheet */
+#root .app-shell .checklist-report-filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+#root .app-shell .checklist-report-filters label{display:grid;gap:5px;font-size:10px;color:var(--muted)}
+#root .app-shell .checklist-report-filters input{min-width:155px;border:1px solid var(--border);border-radius:7px;padding:8px;background:var(--panel);color:var(--text)}
+#root .app-shell .checklist-print-sheet{display:none}
+@media print{
+ @page{size:A4 portrait;margin:12mm}
+ body *{visibility:hidden!important}
+ #root .app-shell .checklist-print-sheet,
+ #root .app-shell .checklist-print-sheet *{visibility:visible!important}
+ #root .app-shell .checklist-print-sheet{display:block!important;position:fixed!important;inset:0!important;width:100%!important;min-height:0!important;padding:0!important;margin:0!important;background:#fff!important;color:#111!important;font-family:Tahoma,Arial,sans-serif!important;font-size:10pt!important;z-index:999999!important}
+ #root .app-shell .checklist-print-sheet header{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;border-bottom:2px solid #333;padding-bottom:5mm;margin-bottom:7mm}
+ #root .app-shell .checklist-print-sheet header strong{font-size:12pt}
+ #root .app-shell .checklist-print-sheet h1{font-size:15pt;text-align:center;margin:5mm 0 0}
+ #root .app-shell .checklist-print-sheet h2{font-size:13pt;margin:0 0 4mm}
+ #root .app-shell .checklist-print-sheet p{margin:2mm 0 4mm;line-height:1.45}
+ #root .app-shell .checklist-print-meta{display:grid;gap:2mm;text-align:right;font-size:8pt}
+ #root .app-shell .checklist-print-meta b{font-size:12pt}
+ #root .app-shell .checklist-print-sheet table{width:100%;border-collapse:collapse;margin-top:6mm;font-size:9pt}
+ #root .app-shell .checklist-print-sheet th,#root .app-shell .checklist-print-sheet td{border:1px solid #777;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+ #root .app-shell .checklist-print-sheet th{background:#eee!important}
+ #root .app-shell .checklist-print-failure{margin-top:6mm;padding:4mm;border:1px solid #777}
+ #root .app-shell .checklist-print-sheet footer{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:18mm;text-align:center}
+}
