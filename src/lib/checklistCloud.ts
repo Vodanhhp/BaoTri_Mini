@@ -159,7 +159,7 @@ async function fetchAllRows(
   for(let offset=0;;offset+=PAGE_SIZE){
     let query=client.from(table as any).select('*').eq('organization_id',organizationId)
     if(minimumDueAt)query=query.gte('due_at',minimumDueAt)
-    query=query.order(orderColumn,{ascending}).range(offset,offset+PAGE_SIZE-1)
+    query=query.order(orderColumn,{ascending}).order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1)
     const {data,error}=await query
     if(error)throw new Error('Tải '+table+' từ Cloud: '+error.message)
     const batch=asRows(data);rows.push(...batch)
