@@ -718,3 +718,5 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Tab **Quản lý mẫu** hiển thị toàn bộ mẫu đang bật/tắt; mỗi mẫu có nút **Sửa nội dung** rõ ràng, có thể bật/tắt lại mẫu.
 - Form sửa mẫu chỉ mở khi người dùng chọn sửa hoặc tạo mới. Nội dung kiểm tra được chỉnh từng dòng; có nút thêm và xóa từng mục. Thay đổi biểu mẫu chỉ ảnh hưởng các lượt phát sinh sau; lịch sử cũ giữ snapshot.
 - Không thay đổi mô hình Local-first, lịch sử độc lập hoặc dữ liệu Supabase. Cần chờ CI Build/Test và Pages Deploy; chưa xác nhận thao tác trình duyệt PC/mobile.
+
+- Xác nhận GitHub Actions tại commit mã nguồn `08a718cd`: Build/Test thành công, 236/236 tests PASS; Pages build và deploy thành công. Chưa thực hiện browser E2E/kiểm tra trực tiếp PC-mobile.
