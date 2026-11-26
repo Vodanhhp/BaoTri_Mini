@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { formatDateVN, formatDateTimeVN } from './lib/dateTime'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package } from 'lucide-react'
+import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package, ClipboardCheck } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
 import MaintenancePanel, { MaintenanceAssetHistory, MaintenanceDashboardSummary } from './MaintenancePanel'
 import ReportsPanel from './ReportsPanel'
+import ChecklistPanel from './ChecklistPanel'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -76,7 +77,7 @@ export default function App() {
   const [profileDisplayName, setProfileDisplayName] = useState('')
   const [organizationContexts,setOrganizationContexts]=useState<OrganizationContext[]>([])
   const [organizationId,setOrganizationId]=useState('')
-  const [activeModule,setActiveModule]=useState<'dashboard'|'assets'|'inventory'|'maintenance'|'reports'>('dashboard')
+  const [activeModule,setActiveModule]=useState<'dashboard'|'assets'|'inventory'|'maintenance'|'checklist'|'reports'>('dashboard')
   const [organizationReady,setOrganizationReady]=useState(false)
   const [equipmentCatalog,setEquipmentCatalog]=useState<OrganizationEquipmentCatalogRecord|null>(null)
   const [equipmentCatalogLoading,setEquipmentCatalogLoading]=useState(false)
@@ -1281,6 +1282,7 @@ export default function App() {
       <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
       {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
       {(session||localPreview)&&(localPreview||canView)&&<button className={'nav-item'+(activeModule==='maintenance'?' active':'')} onClick={()=>{setActiveModule('maintenance');setMobileMenuOpen(false)}}><Wrench size={17}/><span>Bảo dưỡng – Sửa chữa</span></button>}
+      {(session||localPreview)&&(localPreview||canView)&&<button className={'nav-item'+(activeModule==='checklist'?' active':'')} onClick={()=>{setActiveModule('checklist');setMobileMenuOpen(false)}}><ClipboardCheck size={17}/><span>Kiểm tra định kỳ</span></button>}
       {(session||localPreview)&&(localPreview||canView||canInventoryView)&&<button className={'nav-item'+(activeModule==='reports'?' active':'')} onClick={()=>{setActiveModule('reports');setMobileMenuOpen(false)}}><BarChart3 size={17}/><span>Báo cáo</span></button>}
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
@@ -1296,11 +1298,13 @@ export default function App() {
     <main className="main">
       <header className="topbar">
         <button type="button" className="mobile-menu-toggle" aria-label="Mở menu" aria-expanded={mobileMenuOpen} onClick={()=>setMobileMenuOpen(true)}><Menu size={20}/></button>
-        <div className="page-heading"><div className="eyebrow">{activeModule==='dashboard'?'TỔNG QUAN HỆ THỐNG':activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':activeModule==='maintenance'?'BẢO DƯỠNG – SỬA CHỮA':activeModule==='reports'?'BÁO CÁO HOẠT ĐỘNG':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='dashboard'?'Trang tổng quan':activeModule==='inventory'?'Kho vật tư':activeModule==='maintenance'?'Bảo dưỡng – Sửa chữa':activeModule==='reports'?'Báo cáo':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
+        <div className="page-heading"><div className="eyebrow">{activeModule==='dashboard'?'TỔNG QUAN HỆ THỐNG':activeModule==='inventory'?'QUẢN LÝ KHO VẬT TƯ':activeModule==='maintenance'?'BẢO DƯỠNG – SỬA CHỮA':activeModule==='checklist'?'KIỂM TRA ĐỊNH KỲ':activeModule==='reports'?'BÁO CÁO HOẠT ĐỘNG':'QUẢN LÝ TÀI SẢN & THIẾT BỊ'}</div><h1>{activeModule==='dashboard'?'Trang tổng quan':activeModule==='inventory'?'Kho vật tư':activeModule==='maintenance'?'Bảo dưỡng – Sửa chữa':activeModule==='checklist'?'Kiểm tra định kỳ':activeModule==='reports'?'Báo cáo':'Danh mục thiết bị'}</h1>{cloudSyncMessage&&<div className="auth-note" style={{marginTop:6,fontSize:11}}>{cloudSyncMessage}</div>}{session&&currentOrganization?.name&&<div className="organization-name" title={currentOrganization.name}><Building2 size={13}/><span>{currentOrganization.name}</span></div>}</div>
         <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
-        {activeModule==='reports'
+        {activeModule==='checklist'
+          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets}/>
+          : activeModule==='reports'
           ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport}/>
           : activeModule==='maintenance'
           ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||''} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate}/>
@@ -1318,6 +1322,7 @@ export default function App() {
                   </div>
                 </section>
                 {(localPreview||canView)&&<MaintenanceDashboardSummary organizationId={localPreview?'local-preview':organizationId} assets={assets} onOpen={()=>setActiveModule('maintenance')}/>}
+                {(localPreview||canView)&&<section className="overview-section overview-future"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập các nhóm kiểm tra, thực hiện biểu mẫu và theo dõi kết quả độc lập với lịch sử thiết bị.</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('checklist')}>Mở Checklist →</button></section>}
                 {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
