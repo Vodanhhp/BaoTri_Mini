@@ -837,3 +837,44 @@ PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
 
 
 - Bổ sung migration Test `20261126145323_checklist_phase1_admin_only`: RPC nhận việc/hoàn thành kiểm tra role Admin khi task được giao `Admin`, phù hợp giai đoạn 1. Đã kiểm tra định nghĩa hai RPC sau cập nhật trên Supabase Test; file nguồn lưu tại `docs/drafts/20261126145323_checklist_phase1_admin_only.sql`.
+
+
+## Cập nhật tiếp tục Checklist Cloud – 26/11/2026
+
+### Đã triển khai trên nhánh PR #75
+- Thêm `src/lib/checklistCloud.ts`: tải cấu hình, mẫu, lịch công việc, kết quả và lịch sử sự kiện trực tiếp từ Supabase; không dùng Dexie làm nguồn chính cho tổ chức thật.
+- Admin lưu mẫu qua RPC Cloud; mỗi lần sửa mẫu tăng version và lưu snapshot ở `checklist_definition_versions`.
+- Cloud sinh lượt công việc từ lịch chu kỳ, giữ snapshot nội dung tại thời điểm sinh lượt; khi sửa mẫu, các lượt tương lai chưa nhận sẽ được tạo lại theo mẫu mới, còn lượt đang làm/đã hoàn thành giữ nguyên snapshot.
+- Nhận việc, trả việc và hoàn thành dùng RPC server-side; claim được khóa hàng trong PostgreSQL để tránh hai máy nhận cùng lượt.
+- Kết quả được ghi vào `checklist_runs`; kiểm tra server xác nhận đúng từng question ID/label, không nhận câu trả lời trùng hoặc thiếu.
+- Khi tất cả câu trả lời là Bỏ qua, kết quả tổng thể là Bỏ qua.
+- Thêm `ChecklistQrScanner.tsx`: camera QR dùng BarcodeDetector trên trình duyệt hỗ trợ, có ô nhập mã dự phòng. QR hiện có trên tem thiết bị đang mã hóa mã quản lý; luồng mới dùng mã đó tra thiết bị Cloud rồi tìm Checklist đến hạn.
+- Checklist thiết bị chỉ mở qua QR; Checklist hệ thống tiếp tục thực hiện thủ công trên điện thoại.
+- Giai đoạn 1 khóa người phụ trách ở Admin cả giao diện và server RPC; phân công KTV để giai đoạn 2.
+- PC nhận diện theo nền tảng/user-agent và không được thực hiện Checklist; quản lý mẫu, lịch sử, báo cáo, in vẫn giữ.
+- Offline: các thao tác thực hiện và quét QR bị khóa; không ghi Local rồi đồng bộ sau.
+
+### Supabase Test đã áp dụng
+Project `BAOTRI-Mini-Test` / `oyzhxgzltpdebpymuicb`:
+- `20261126144630 checklist_cloud_online_foundation`
+- `20261126145323 checklist_phase1_admin_only`
+- `20261126150046 checklist_cloud_management_and_schedule_rpcs`
+- `20261126150054 checklist_public_rpc_wrappers`
+- `20261126150203 checklist_task_snapshot_metadata`
+- `20261126150642 checklist_definition_edit_reschedules_pending_tasks`
+- `20261126150723 checklist_cloud_cleans_disabled_future_occurrences`
+- `20261126150817 checklist_phase_one_admin_only_guards`
+- `20261126150853 checklist_result_validates_question_identity`
+
+Kiểm tra:
+- 6 bảng Checklist mới bật RLS; mỗi bảng có policy phù hợp theo quyền xem/quản lý.
+- Public RPC wrapper chỉ cấp EXECUTE cho authenticated; anon không được gọi. Wrapper là SECURITY INVOKER, phần nghiệp vụ nhạy cảm nằm trong private SECURITY DEFINER đã kiểm tra quyền.
+- Smoke test chạy trong transaction rollback: tạo mẫu hệ thống 5 tiêu chí, sinh task, nhận task, hoàn thành với tất cả Bỏ qua và xác nhận outcome Bỏ qua; mẫu 4 tiêu chí và người phụ trách KTV bị từ chối. Không giữ dữ liệu thử nghiệm.
+- Security Advisor không báo thiếu policy ở 6 bảng Checklist mới; các cảnh báo hiện hữu khác thuộc những bảng/hàm ngoài phạm vi Checklist.
+
+### Kiểm thử và giới hạn
+- CI Build and test + Validate đã thành công ở các commit triển khai Cloud/QR gần nhất; cần chờ xác nhận cuối cùng cho commit hiện tại sau thay đổi mới nhất.
+- Chưa kiểm thử camera QR trên điện thoại vật lý; BarcodeDetector không có trên mọi trình duyệt, đã có nhập mã dự phòng.
+- Chưa kiểm thử E2E UI với tài khoản Admin thực tế trên trình duyệt.
+- Chưa áp dụng bất kỳ migration Checklist nào lên Production; PR #75 vẫn Draft, chưa merge.
+- Giao diện Cloud chưa được chạy trên môi trường preview gắn Supabase Test; CI build/test không thay thế kiểm thử vận hành.
