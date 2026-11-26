@@ -597,7 +597,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         {reportMissedTasks.length>0&&<div className="checklist-report-table-wrap checklist-missed-report"><h3>Danh sách Không Checklist</h3><table className="table-standard"><thead><tr><th>Hạn thực hiện</th><th>Checklist</th><th>Đối tượng</th><th>Trạng thái</th><th>Phụ trách</th></tr></thead><tbody>{reportMissedTasks.map(row=><tr key={row.id}><td>{dateTime(row.dueAt)}</td><td>{row.title}</td><td>{row.targetLabel}</td><td className="danger">Không Checklist</td><td>{row.assignee}</td></tr>)}</tbody></table></div>}
       </section>}
     </>}
-    {printingRun&&<div className="asset-print-sheet print-checklist"><div className="asset-print-report equipment-print-report checklist-print-report">
+    {printingRun&&<div className="checklist-print-sheet"><div className="asset-print-report equipment-print-report checklist-print-report">
       <header className="equipment-print-org"><div className="equipment-print-org-name">{organizationName||'Đơn vị sử dụng'}</div><div className="equipment-print-brand">BAOTRI MINI · PHIẾU KIỂM TRA ĐỊNH KỲ</div></header>
       <div className="equipment-print-title-row"><div><h1 className="asset-print-form-title">PHIẾU KẾT QUẢ KIỂM TRA ĐỊNH KỲ</h1><h2 className="asset-print-device-name">{printingRun.checklistTitle}</h2><p className="equipment-print-code">Mã phiếu: <strong>{printingRun.id}</strong></p></div><div className="checklist-print-result-stamp">{printingRun.outcome.toLocaleUpperCase('vi')}</div></div>
       <h3 className="equipment-print-section">I. THÔNG TIN KIỂM TRA</h3>
