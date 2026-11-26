@@ -83,10 +83,10 @@ function mapTask(row: Row, organizationId: string, events: Row[]): ChecklistTask
     at:String(event.occurred_at)
   })).filter(event=>event.action!=='Hoàn thành')
   return {
-    id:String(row.id),organizationId,checklistId:String(row.definition_id),title:String(row.title||''),
-    targetLabel:String(row.target_label||''),frequency:row.frequency as ChecklistFrequency,
-    dueAt:String(row.due_at),dueDate:String(row.due_date),executionTime:String(row.execution_time||'09:00'),
-    assignee:String(row.assignee||'Admin'),...(row.claimed_by_user_id?{claimedByUserId:String(row.claimed_by_user_id)}:{}),
+    id:String(row.id),organizationId,checklistId:String(row.definition_id),title:String(snapshot.title||''),
+    targetLabel:String(snapshot.targetLabel||''),frequency:snapshot.frequency as ChecklistFrequency,
+    dueAt:String(row.due_at),dueDate:String(row.due_date),executionTime:String(snapshot.executionTime||'09:00'),
+    assignee:String(row.assignee||snapshot.assignee||'Admin'),...(row.claimed_by_user_id?{claimedByUserId:String(row.claimed_by_user_id)}:{}),
     ...(row.claimed_at?{claimedAt:String(row.claimed_at)}:{}),
     ...(latestClaim?.actor_label?{claimedBy:String(latestClaim.actor_label)}:{}),
     assignmentEvents,status:row.status as ChecklistTask['status'],
