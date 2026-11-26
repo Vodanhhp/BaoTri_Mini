@@ -33,6 +33,7 @@ test('Checklist records use organization scope and independent Dexie tables, not
   assert.match(panel, /checklistRuns\.where\('organizationId'\)\.equals\(organizationId\)/)
   assert.doesNotMatch(panel, /assetHistory|maintenanceHistory/)
   assert.doesNotMatch(panel, /assetId:/)
+  assert.match(db, /targetAssetId\?: string/)
 })
 
 test('Viewer can inspect configuration and reports but cannot configure or execute', () => {
@@ -216,6 +217,19 @@ test('Checklist overview has one optional suggestion area and template editing i
   assert.match(panel,/lines\.splice\(index,1\)/)
 })
 
+
+test('Checklist can be created from an equipment record or from the module using the asset selector',()=>{
+  assert.match(app,/checklistInitialAssetId/)
+  assert.match(app,/Tạo Checklist cho thiết bị này/)
+  assert.match(app,/initialAssetId=\{checklistInitialAssetId\}/)
+  assert.match(panel,/activeEquipment=assets\.filter/)
+  assert.match(panel,/Chọn thiết bị đã khai báo/)
+  assert.match(panel,/targetAssetId/)
+  assert.match(panel,/Chu kỳ Checklist được Admin chọn riêng, không lấy theo chu kỳ bảo trì/)
+  assert.match(panel,/Hạ tầng \/ khu vực \/ hệ thống khác/)
+  assert.doesNotMatch(panel,/\.cycle/)
+  assert.doesNotMatch(panel,/cycleStartedAt/)
+})
 
 test('Checklist template editor opens in a separate accessible modal and explains schedule pause',()=>{
   assert.match(panel,/className="checklist-modal-backdrop"/)
