@@ -128,3 +128,11 @@ test('assignment events remain visible after an inspection is completed', () => 
   assert.match(panel, /Lịch sử phân công/)
   assert.match(panel, /row\.assignmentHistory\.map/)
 })
+
+
+test('future scheduled tasks refresh their snapshots after definition edits without deleting in-progress work', () => {
+  assert.match(schedule, /definition\.assignee !== task\.assignee/)
+  assert.match(schedule, /definition\.title !== task\.title/)
+  assert.match(schedule, /JSON\.stringify\(definition\.questions\) !== JSON\.stringify\(task\.definitionSnapshot\.questions\)/)
+  assert.match(schedule, /task\.status !== 'Đang thực hiện'/)
+})
