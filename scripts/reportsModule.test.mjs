@@ -18,7 +18,7 @@ test('Báo cáo is a first-class module and is available to users with read acce
 test('reports are scoped to the selected organization and stale reads are ignored', () => {
   assert.match(panel, /where\('organizationId'\)\.equals\(organizationId\)/)
   assert.match(panel, /let active = true/)
-  assert.match(panel, /if \(!active\) return/)
+  assert.match(panel, /if\(!active\)return/)
   assert.match(panel, /return \(\) => \{ active = false \}/)
 })
 
