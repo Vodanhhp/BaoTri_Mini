@@ -22,7 +22,7 @@ const CATEGORIES: Array<{key:ChecklistCategoryKey;label:string;description:strin
   {key:'fire',label:'Phòng cháy chữa cháy',description:'Lối thoát nạn, phương tiện PCCC và dấu hiệu mất an toàn.',icon:'🧯',questions:['Lối thoát nạn và đường tiếp cận phương tiện chữa cháy thông thoáng?','Bình chữa cháy và phương tiện PCCC ở đúng vị trí, dễ tiếp cận?','Thiết bị/đèn báo PCCC không có dấu hiệu hư hỏng hoặc cảnh báo bất thường?']}
 ]
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(item=>[item.key,item.label])) as Record<ChecklistCategoryKey,string>
-const blankSetting = (organizationId:string,key:ChecklistCategoryKey):ChecklistCategorySetting => ({id:organizationId+':'+key,organizationId,categoryKey:key,enabled:false,frequency:key==='infrastructure'?'Hàng tuần':'Hàng ngày',assignee:'Admin',updatedAt:now()})
+const blankSetting = (organizationId:string,key:ChecklistCategoryKey):ChecklistCategorySetting => ({id:organizationId+':'+key,organizationId,categoryKey:key,enabled:false,frequency:key==='infrastructure'?'Hàng tuần':'Hàng ngày',assignee:'Admin',executionTime:'09:00',updatedAt:now()})
 const dueText = (frequency:ChecklistFrequency) => frequency==='Linh hoạt'?'Không có lịch cố định':frequency
 const dateTime = (value:string) => new Date(value).toLocaleString('vi-VN')
 const dateOnly = () => new Date().toLocaleDateString('en-CA')
@@ -77,6 +77,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [target,setTarget]=useState('')
   const [category,setCategory]=useState<ChecklistCategoryKey|'equipment'|'custom'>('custom')
   const [frequency,setFrequency]=useState<ChecklistFrequency>('Hàng tháng')
+  const [executionTime,setExecutionTime]=useState('09:00')
   const [questionText,setQuestionText]=useState('')
   const [assignee,setAssignee]=useState('Admin')
   const [search,setSearch]=useState('')
@@ -122,16 +123,16 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const current=settings.find(item=>item.categoryKey===key)||blankSetting(organizationId,key)
     const next={...current,...patch,updatedAt:now()}
     await db.checklistCategorySettings.put(next)
-    if(patch.frequency&&patch.frequency!==current.frequency){
-      const defs=definitions.filter(item=>item.categoryKey===key)
-      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{frequency:patch.frequency,scheduleStartedAt:now(),updatedAt:now()})))
+    if((patch.frequency&&patch.frequency!==current.frequency)||(patch.executionTime&&patch.executionTime!==(current.executionTime||'09:00'))){
+      const defs=definitions.filter(item=>item.categoryKey===key&&item.source==='starter')
+      await Promise.all(defs.map(item=>db.checklistDefinitions.update(item.id,{...(patch.frequency?{frequency:patch.frequency}:{}),...(patch.executionTime?{executionTime:patch.executionTime}:{}),scheduleStartedAt:now(),updatedAt:now()})))
     }
     await refresh()
   }
-  const createDefinition=async(data:{title:string;targetLabel:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
+  const createDefinition=async(data:{title:string;targetLabel:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
     if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
-    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
+    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee,executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
     await db.checklistDefinitions.add(record)
     await refresh()
     return record
@@ -143,14 +144,14 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     await Promise.all(definitions.filter(item=>item.categoryKey===key&&item.source==='starter').map(item=>db.checklistDefinitions.update(item.id,{scheduleStartedAt:now(),updatedAt:now()})))
     if(enable&&!definitions.some(item=>item.categoryKey===key)){
       const meta=CATEGORIES.find(item=>item.key===key)!
-      await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,questions:makeQuestions(meta.questions),source:'starter'})
+      await createDefinition({title:'Kiểm tra '+meta.label.toLocaleLowerCase('vi'),targetLabel:meta.label,categoryKey:key,frequency:setting.frequency,executionTime:setting.executionTime||'09:00',questions:makeQuestions(meta.questions),source:'starter'})
       setNotice('Đã bật nhóm gợi ý. Hãy rà soát nội dung và chu kỳ trước khi áp dụng chính thức.')
     }
     await refresh()
   }
-  const openNew=()=>{setEditing(null);setTitle('');setTarget('');setCategory('custom');setFrequency('Hàng tháng');setAssignee('Admin');setQuestionText('');setTab('builder')}
+  const openNew=()=>{setEditing(null);setTitle('');setTarget('');setCategory('custom');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
-    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setCategory(item.categoryKey);setFrequency(item.frequency);setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setTab('builder')
+    setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).join('\n'));setTab('builder')
   }
   const saveEditor=async(event:FormEvent)=>{
     event.preventDefault()
@@ -158,10 +159,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     try{
       const questions=makeQuestions(questionText.split('\n').filter(line=>line.trim()))
       if(editing){
-        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,assignee,questions,...(frequency!==editing.frequency?{scheduleStartedAt:now()}:{}),updatedAt:now()})
+        await db.checklistDefinitions.update(editing.id,{title:title.trim(),targetLabel:target.trim(),categoryKey:category,frequency,executionTime,assignee,questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()})
         await refresh();setEditing(null);setNotice('Đã cập nhật Checklist.')
       }else{
-        await createDefinition({title,targetLabel:target,categoryKey:category,frequency,questions,source:category==='equipment'?'equipment-suggestion':'custom'})
+        await createDefinition({title,targetLabel:target,categoryKey:category,frequency,executionTime,questions,source:category==='equipment'?'equipment-suggestion':'custom'})
         setTitle('');setTarget('');setQuestionText('');setNotice('Đã tạo Checklist.')
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
@@ -254,6 +255,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
               <div className="checklist-category-top"><span className="checklist-category-icon">{item.icon}</span><span className={'checklist-enabled-tag'+(setting.enabled?' on':'')}>{setting.enabled?'Đang bật':'Chưa bật'}</span></div>
               <h3>{item.label}</h3><p>{item.description}</p>
               <label className="checklist-inline-field"><span>Chu kỳ gợi ý</span><select value={setting.frequency} disabled={!canManage} onChange={event=>void saveSetting(item.key,{frequency:event.target.value as ChecklistFrequency})}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+              <label className="checklist-inline-field"><span>Giờ thực hiện</span><input type="time" value={setting.executionTime||'09:00'} disabled={!canManage} onChange={event=>void saveSetting(item.key,{executionTime:event.target.value})}/></label>
               <button className={setting.enabled?'soft-btn':'primary-btn'} disabled={!canManage} onClick={()=>void toggleCategory(item.key)}>{setting.enabled?'Tắt nhóm':'Bật nhóm'}</button>
             </article>
           })}</div>
@@ -267,7 +269,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           </article>)}{visibleDefinitions.length===0&&<div className="table-empty-state">Chưa có Checklist phù hợp. Bật nhóm khởi tạo hoặc dùng Checklist Builder.</div>}</div>
         </section>
         {suggestions.length>0&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Gợi ý từ danh mục thiết bị</h2><p>Chỉ đề xuất một số loại thiết bị quan trọng đã có trong danh mục; Admin quyết định thêm hay bỏ qua.</p></div></div>
-          {suggestions.map((item,index)=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
+          {suggestions.map((item,index)=><div className="checklist-suggestion-row" key={item.title}><div><b>{item.title}</b><small>{item.count} thiết bị phù hợp: {item.target}</small></div>{canManage&&<button className="soft-btn" onClick={()=>void createDefinition({title:item.title,targetLabel:item.target,categoryKey:'equipment',frequency:'Hàng tuần',executionTime:'09:00',questions:makeQuestions(item.questions),source:'equipment-suggestion'}).then(()=>setNotice('Đã thêm gợi ý vào danh sách Checklist.')).catch(e=>setError(String(e)))}>Thêm Checklist</button>}</div>)}
         </section>}
       </>}
       {tab==='builder'&&<section className="panel checklist-section">
@@ -277,6 +279,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <label className="field">Đối tượng kiểm tra *<input required value={target} onChange={event=>setTarget(event.target.value)} placeholder="Tên hệ thống, khu vực hoặc loại thiết bị"/></label>
           <label className="field">Nhóm<input value={category} onChange={event=>setCategory(event.target.value as typeof category)} list="checklist-category-options" /><datalist id="checklist-category-options">{CATEGORIES.map(item=><option key={item.key} value={item.key}>{item.label}</option>)}<option value="equipment">Thiết bị</option><option value="custom">Tùy chỉnh</option></datalist></label>
           <label className="field">Chu kỳ<select value={frequency} onChange={event=>setFrequency(event.target.value as ChecklistFrequency)}>{FREQUENCIES.map(value=><option key={value}>{value}</option>)}</select></label>
+          <label className="field">Giờ thực hiện<input type="time" value={executionTime} onChange={event=>setExecutionTime(event.target.value)}/></label>
           <label className="field">Người phụ trách<input value={assignee} onChange={event=>setAssignee(event.target.value)} placeholder="Mặc định: Admin"/></label>
           <label className="field full-field">Nội dung kiểm tra *<textarea required rows={7} value={questionText} onChange={event=>setQuestionText(event.target.value)} placeholder={'Mỗi dòng là một nội dung kiểm tra.\nVí dụ: Kiểm tra rò rỉ dầu?\nKiểm tra tiếng ồn bất thường?'} /></label>
           <div className="checklist-builder-note"><ShieldCheck size={16}/> Thay đổi biểu mẫu chỉ áp dụng cho lần kiểm tra sau. Kết quả cũ giữ nguyên nội dung đã thực hiện.</div>
