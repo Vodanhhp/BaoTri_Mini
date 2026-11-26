@@ -646,3 +646,14 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 
 
 - Rà soát vòng đời lịch: khi Admin sửa tên, đối tượng, người phụ trách, nhóm, câu hỏi, chu kỳ hoặc giờ, các lượt tương lai chưa bắt đầu được tạo lại theo cấu hình mới. Lượt đã hoàn thành, lượt quá hạn cũ và lượt đang được KTV nhận xử lý không bị xóa.
+
+
+## 26/11/2026 – gia cố nhận việc Checklist theo định danh tài khoản
+
+- Bổ sung `claimedByUserId` và `actorUserId` vào bản ghi lượt/lịch sử phân công; tiếp tục giữ tên hiển thị để người quản lý dễ đọc. Bản ghi cũ không có ID vẫn được đọc an toàn, nhưng không được tự nhận là quyền sở hữu hợp lệ.
+- Nhận việc và trả lại được thực hiện trong Dexie read-write transaction, đọc lại bản ghi mới nhất trước khi cập nhật để tránh hai thao tác cạnh tranh trên cùng Local database.
+- Loại bỏ quyền Admin ghi đè người đang nhận: Admin vẫn có thể cấu hình, nhưng không thể mở/hoàn thành lượt đang do KTV khác nhận nếu chưa có quy trình bàn giao rõ ràng.
+- Trước khi lưu kết quả, kiểm tra lại tổ chức, trạng thái và user ID của người nhận; ghi kết quả, đóng lượt và cập nhật lần hoàn thành trong cùng transaction để tránh lưu kết quả nhưng không đóng được lượt.
+- Giới hạn rõ: transaction IndexedDB chỉ bảo đảm nhất quán trong cùng database Local trên một trình duyệt/thiết bị. Chưa có Cloud sync/atomic claim giữa nhiều thiết bị; không tuyên bố phân công nhóm liên thiết bị đã được bảo đảm. Muốn giải quyết cần thiết kế và phê duyệt backend/Cloud riêng.
+- Bổ sung source test cho định danh tài khoản, transaction và quyền sở hữu. Chờ CI/build/deploy xác nhận; chưa kiểm thử nhiều tài khoản trên trình duyệt.
+- Không thay đổi Supabase, Auth, RLS, Storage, migration hoặc PR #21.
