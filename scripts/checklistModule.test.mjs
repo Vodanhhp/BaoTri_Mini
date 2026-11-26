@@ -184,7 +184,7 @@ test('period tabs only show tasks and missed counts for the matching Checklist c
 
 
 test('Checklist suggestions and starter groups are collapsed behind explicit buttons',()=>{assert.match(panel,/Xem gợi ý thiết bị/);assert.match(panel,/Cấu hình nhóm mẫu/);assert.match(panel,/showSuggestions&&suggestions\.filter[\s\S]*?\.map/);assert.match(panel,/showStarterGroups&&<div className="checklist-category-grid"/)});
-test('Disabling a Checklist removes all uncompleted tasks even when their due time has passed',()=>{assert.match(schedule,/!activeIds\.has\(task\.checklistId\)/);assert.match(schedule,/task\.status!=='Hoàn thành'&&task\.status!=='Không Checklist'/);assert.match(panel,/Sửa nội dung/);assert.match(panel,/openEdit\(definition\)/)});
+test('Disabling a Checklist removes all uncompleted tasks even when their due time has passed',()=>{assert.match(schedule,/!activeIds\.has\(task\.checklistId\)/);assert.match(schedule,/task\.status!=='Hoàn thành'&&task\.status!=='Không Checklist'/);assert.doesNotMatch(panel,/openEdit\(definition\)/)});
 
 
 test('Checklist templates remain manageable when disabled and can be edited from the management tab',()=>{
@@ -217,6 +217,7 @@ test('Checklist overview has one optional suggestion area and template editing i
   assert.equal((panel.match(/Công việc nên làm hôm nay/g)||[]).length,1)
   assert.equal((panel.match(/Gợi ý từ danh mục thiết bị/g)||[]).length,0)
   assert.match(panel,/Quản lý mẫu Checklist/)
+  assert.doesNotMatch(panel,/openEdit\(definition\)/)
   assert.match(panel,/onClick=\{\(\)=>openEdit\(item\)\}>Sửa nội dung/)
   assert.match(panel,/Cấu hình nhóm mẫu/)
   assert.match(panel,/showBuilderForm&&<div className="checklist-modal-backdrop"/)
@@ -260,4 +261,22 @@ test('newly activated recurring Checklists still show the current occurrence wit
   assert.match(schedule,/candidate\.getTime\(\)>=anchor\.getTime\(\)-CHECKLIST_GRACE_PERIOD_MS/)
   assert.match(schedule,/Date\.now\(\)-first\.getTime\(\)>=CHECKLIST_GRACE_PERIOD_MS/)
   assert.match(schedule,/Date\.now\(\)-candidate\.getTime\(\)>=CHECKLIST_GRACE_PERIOD_MS/)
+})
+
+
+test('Checklist overview contains no edit action; all template edits live in Builder',()=>{
+  const overview=panel.split("{tab==='builder'&&<>")[0]
+  assert.doesNotMatch(overview,/Sửa nội dung/)
+  assert.match(panel,/tab==='builder'/)
+  assert.match(panel,/onClick=\{\(\)=>openEdit\(item\)\}>Sửa nội dung/)
+})
+
+test('Checklist Builder offers extensive target-specific suggestions and custom editable questions',()=>{
+  for(const key of ['pump','compressor','motor','generator','electrical','water','fire','infrastructure','generalEquipment','generalArea']) assert.match(panel,new RegExp(key+':\\['))
+  assert.match(panel,/checklistSuggestionSet\(targetKind,suggestionAsset,category,target\)/)
+  assert.match(panel,/selectedSuggestionLabels\.includes\(item\)/)
+  assert.match(panel,/addSelectedSuggestions/)
+  assert.match(panel,/Thêm nội dung kiểm tra riêng/)
+  assert.match(panel,/onClick=\{\(\)=>setQuestionText\(current=>\{const lines=current\?current\.split\('\\n'\):\[''\];lines\.splice\(index,1\);return lines\.join\('\\n'\)\}\)\}>Xóa/)
+  assert.doesNotMatch(panel,/>Làm mới<\\/button>/)
 })
