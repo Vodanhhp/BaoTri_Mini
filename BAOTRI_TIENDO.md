@@ -657,3 +657,12 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Giới hạn rõ: transaction IndexedDB chỉ bảo đảm nhất quán trong cùng database Local trên một trình duyệt/thiết bị. Chưa có Cloud sync/atomic claim giữa nhiều thiết bị; không tuyên bố phân công nhóm liên thiết bị đã được bảo đảm. Muốn giải quyết cần thiết kế và phê duyệt backend/Cloud riêng.
 - Bổ sung source test cho định danh tài khoản, transaction và quyền sở hữu. Chờ CI/build/deploy xác nhận; chưa kiểm thử nhiều tài khoản trên trình duyệt.
 - Không thay đổi Supabase, Auth, RLS, Storage, migration hoặc PR #21.
+
+
+## 26/11/2026 – lọc báo cáo Checklist và in riêng kết quả A4
+
+- Tab Báo cáo Checklist có bộ lọc Từ ngày / Đến ngày; số liệu tổng hợp và bảng chi tiết chỉ tính các kết quả trong khoảng ngày đã chọn. Có nút trở về toàn bộ thời gian.
+- Xuất Excel sử dụng đúng tập kết quả đang lọc; trạng thái Phiếu yêu cầu phân biệt đã tạo, không tạo sau kết quả Không đạt và không phát sinh với kết quả Đạt.
+- Nút In A4 ở từng kết quả lịch sử mở bản in riêng của đúng phiếu đó, gồm thông tin đơn vị, tên Checklist, đối tượng, thời gian, người kiểm tra, từng nội dung/kết quả/ghi chú, quyết định xử lý Không đạt và khu vực ký xác nhận. Không còn gọi in toàn bộ màn hình lịch sử.
+- Bổ sung source tests cho lọc theo ngày, dữ liệu Excel sau lọc và nội dung phiếu A4. Chưa thực hiện kiểm tra trực tiếp hộp thoại in hoặc máy in vật lý.
+- Không thay đổi Supabase, dữ liệu nghiệp vụ Cloud, Auth, RLS, Storage hoặc migrations. PR #21 vẫn để nguyên, không merge.
