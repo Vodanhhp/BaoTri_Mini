@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Check, ClipboardList, Download, History, Plus, Printer, Wrench, X } from 'lucide-react'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadMaintenanceRequests, saveMaintenanceRequest, completeMaintenanceRequest, saveMaintenanceTask, updateMaintenanceTaskStatus } from './lib/maintenanceCloud'
+import { loadMaintenanceRequests, saveMaintenanceRequest, completeMaintenanceRequest, saveMaintenanceTask, updateMaintenanceTaskStatus, importLegacyMaintenanceData } from './lib/maintenanceCloud'
 
 type Props = {
   organizationId: string
@@ -40,6 +40,8 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   const [busy, setBusy] = useState(false)
   const [printRequest, setPrintRequest] = useState<MaintenanceRequest|null>(null)
   const [completionEditor, setCompletionEditor] = useState<{row:MaintenanceRequest;performedBy:string;completionReadings:string;conditionAfterRepair:string;result:MaintenanceRequest['result']}|null>(null)
+  const [legacyLocalCounts,setLegacyLocalCounts]=useState<{requests:number;tasks:number;history:number}|null>(null)
+  const [importingLegacy,setImportingLegacy]=useState(false)
 
   useEffect(()=>{
     if(!printRequest)return
@@ -51,7 +53,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 
   const reload = async (isCurrent: () => boolean = () => true) => {
     if (!organizationId) {
-      if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]) }
+      if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]);setLegacyLocalCounts(null) }
       return
     }
     const cloudBundle=supabaseClient&&organizationId!=='local-preview'
@@ -74,6 +76,20 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     setRequests(requestRows.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)||b.updatedAt.localeCompare(a.updatedAt)))
     setTasks(taskRows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)))
     setHistory(historyRows.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
+    if(cloudBundle){
+      const [localRequests,localTasks,localHistory]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
+      ])
+      if(!isCurrent())return
+      const cloudRequestIds=new Set(requestRows.map(row=>row.id)),cloudTaskIds=new Set(taskRows.map(row=>row.id)),cloudHistoryIds=new Set(historyRows.map(row=>row.id))
+      setLegacyLocalCounts({
+        requests:localRequests.filter(row=>!cloudRequestIds.has(row.id)).length,
+        tasks:localTasks.filter(row=>!cloudTaskIds.has(row.id)).length,
+        history:localHistory.filter(row=>!cloudHistoryIds.has(row.id)).length
+      })
+    }else setLegacyLocalCounts(null)
   }
   useEffect(()=>{
     let active=true
@@ -82,6 +98,28 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
   },[organizationId,supabaseClient])
+
+  const importLegacyData=async()=>{
+    if(!supabaseClient||organizationId==='local-preview'||!canManage||importingLegacy)return
+    setImportingLegacy(true);setError('');setNotice('')
+    try{
+      const [localRequests,localTasks,localHistory,cloud]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray(),
+        loadMaintenanceRequests(supabaseClient,organizationId)
+      ])
+      const cloudRequestIds=new Set(cloud.requests.map(row=>row.id)),cloudTaskIds=new Set(cloud.tasks.map(row=>row.id)),cloudHistoryIds=new Set(cloud.history.map(row=>row.id))
+      const requestsToImport=localRequests.filter(row=>!cloudRequestIds.has(row.id))
+      const tasksToImport=localTasks.filter(row=>!cloudTaskIds.has(row.id))
+      const historyToImport=localHistory.filter(row=>!cloudHistoryIds.has(row.id))
+      const result=await importLegacyMaintenanceData(supabaseClient,organizationId,requestsToImport,tasksToImport,historyToImport,[...cloudRequestIds],[...cloudTaskIds])
+      setNotice('Đã chuyển lên Cloud: '+result.requestsImported+' Phiếu yêu cầu, '+result.tasksImported+' lịch bảo dưỡng và '+result.historyImported+' sự kiện lịch sử.')
+      if(result.errors.length)setError(result.errors.slice(0,4).join(' · ')+(result.errors.length>4?' · …':''))
+      await reload()
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    finally{setImportingLegacy(false)}
+  }
 
   const assetName = (id:string) => { const asset=assets.find(item=>item.id===id); return asset ? asset.code+' · '+asset.name : 'Thiết bị không còn trong danh sách' }
   const visibleRequests = useMemo(()=>requests.filter(row=>filter==='all'||(filter==='open'?row.status!=='Hoàn thành':row.status==='Hoàn thành')),[requests,filter])
@@ -212,7 +250,12 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
         <button type="button" className="soft-btn" onClick={()=>void (tab==='requests'?exportRequests():exportTasks())}><Download size={15}/> Xuất Excel</button>
         {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
-      <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
+      {legacyLocalCounts&&(legacyLocalCounts.requests+legacyLocalCounts.tasks+legacyLocalCounts.history)>0&&<section className="panel maintenance-legacy-warning">
+      <b>Phát hiện dữ liệu bảo trì cũ chỉ lưu trên trình duyệt này</b>
+      <p>{legacyLocalCounts.requests} Phiếu yêu cầu · {legacyLocalCounts.tasks} lịch bảo dưỡng · {legacyLocalCounts.history} sự kiện lịch sử chưa có trên Cloud. Bản Local sẽ được giữ nguyên; không xóa dữ liệu trình duyệt cho đến khi đối chiếu xong.</p>
+      {canManage&&<button type="button" className="primary-btn" onClick={()=>void importLegacyData()} disabled={importingLegacy}>{importingLegacy?'Đang chuyển dữ liệu…':'Chuyển dữ liệu cũ lên Cloud'}</button>}
+    </section>}
+    <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
       {tab==='requests'?<>
         <div className="maintenance-toolbar"><label>Trạng thái <select value={filter} onChange={event=>setFilter(event.target.value as typeof filter)}><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="done">Hoàn thành</option></select></label></div>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày YC</th><th>Hạn hoàn thành</th><th>Thiết bị</th><th>Loại</th><th>Nội dung yêu cầu</th><th>Trạng thái</th><th>Kết quả</th><th>Người yêu cầu</th><th>Người hoàn thành</th><th>Thao tác</th></tr></thead><tbody>
