@@ -342,6 +342,8 @@ test('Checklist execution is locked without Internet and on desktop while manage
   assert.match(panel,/disabled=\{!canExecuteHere\}/)
   assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
   assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
+  assert.match(panel,/const runManagementAction=async/)
+  assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);return/)
 })
 
 
@@ -357,6 +359,7 @@ test('Checklist Cloud is the live organization source and execution writes use s
   assert.match(cloud,/checklist_complete_task/)
   assert.match(cloud,/navigator\.onLine/ )
   assert.match(cloud,/fetchAllRows/)
+  assert.match(cloud,/order\('id',\{ascending:true\}\)/)
   assert.match(cloud,/range\(offset,offset\+PAGE_SIZE-1\)/)
   assert.match(cloud,/Date\.now\(\)-366\*86400000/)
 })
