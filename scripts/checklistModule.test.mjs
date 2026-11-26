@@ -337,9 +337,23 @@ test('system Checklist starter templates have at least five meaningful criteria 
 })
 
 test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
-  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&isMobileViewport/)
+  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&!isPcPlatform\(\)/)
   assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
   assert.match(panel,/disabled=\{!canExecuteHere\}/)
   assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
   assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
+})
+
+
+test('Checklist Cloud is the live organization source and execution writes use server RPCs',()=>{
+  const cloud=read('src/lib/checklistCloud.ts')
+  assert.match(panel,/loadChecklistCloud\(supabase,organizationId,canManage\)/)
+  assert.match(panel,/saveChecklistDefinition\(supabase,organizationId/)
+  assert.match(panel,/completeChecklistTask\(supabase,organizationId/)
+  assert.match(panel,/completeChecklistManualRun\(supabase,organizationId/)
+  assert.match(cloud,/checklist_save_definition/)
+  assert.match(cloud,/checklist_ensure_occurrences/)
+  assert.match(cloud,/checklist_claim_task/)
+  assert.match(cloud,/checklist_complete_task/)
+  assert.match(cloud,/navigator\.onLine/)
 })
