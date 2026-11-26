@@ -376,6 +376,25 @@ test('Cloud recurrence generation covers old daily, weekly, monthly, quarterly a
   assert.match(cloud,/for\(let d=first;d<=end;index\+\+,d=addMonths\(anchor,index\*3,time\)\)/)
 })
 
+test('Equipment QR lookup uses the target identity captured by each task version',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
+  const db=await readFile(new URL('../src/db.ts',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../docs/drafts/20261126225000_checklist_task_snapshot_target_identity.sql',import.meta.url),'utf8')
+  assert.match(migration,/'targetAssetId',v_definition\.target_asset_id/)
+  assert.match(cloud,/targetAssetId:String\(snapshot\.targetAssetId\|\|definition\?\.targetAssetId\)/)
+  assert.match(panel,/task\.definitionSnapshot\.targetAssetId===asset\.id/)
+  assert.match(db,/targetAssetId\?: string/)
+})
+
+test('QR scanner stops camera streams and pending animation loops when restarted or closed',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  assert.match(scanner,/const activeRef=useRef\(false\)/)
+  assert.match(scanner,/activeRef\.current=false/)
+  assert.match(scanner,/streamRef\.current\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/)
+  assert.match(scanner,/if\(!activeRef\.current\)\{stream\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\);return\}/)
+})
+
 test('Checklist equipment manual RPC is blocked and completed task history uses the immutable task snapshot',async()=>{
   const migration=await readFile(new URL('../docs/drafts/20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql',import.meta.url),'utf8')
   assert.match(migration,/v_definition\.target_kind='equipment'/)
