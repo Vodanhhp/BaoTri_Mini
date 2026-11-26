@@ -571,7 +571,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       await db.checklistRuns.add(record)
       await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
     }
-    setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra lên Cloud và cập nhật lịch sử Checklist.');await refresh()
+    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null);setNotice('Đã lưu kết quả kiểm tra lên Cloud và cập nhật lịch sử Checklist.');await refresh()
   }
   const exportExcel=async()=>{
     const headers=['Ngày giờ','Tên Checklist','Đối tượng kiểm tra','Kết quả','Người kiểm tra','Phiếu yêu cầu sửa chữa','Lý do chưa tạo phiếu']
