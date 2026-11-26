@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
-import ExcelJS from 'exceljs'
+import { downloadExcelReport } from './lib/excelExport'
 import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
 import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERIOD_MS } from './lib/checklistSchedule'
 
@@ -279,13 +279,28 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     setRunning(null);setRunningTaskId(null);setNotice('Đã lưu kết quả kiểm tra và lịch sử Checklist độc lập.');await refresh()
   }
   const exportExcel=async()=>{
-    const workbook=new ExcelJS.Workbook();const sheet=workbook.addWorksheet('Bao cao Checklist')
-    sheet.columns=[{header:'Thời gian',key:'time',width:22},{header:'Checklist',key:'title',width:30},{header:'Đối tượng',key:'target',width:28},{header:'Kết quả',key:'outcome',width:16},{header:'Người kiểm tra',key:'inspector',width:24},{header:'Phiếu sửa chữa',key:'repair',width:20},{header:'Lý do chưa tạo phiếu',key:'reason',width:32}]
-    sheet.addRows([...reportRuns.map(row=>({time:dateTime(row.completedAt),title:row.checklistTitle,target:row.targetLabel,outcome:row.outcome,inspector:row.inspector,repair:row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',reason:row.noRepairReason||''})),...reportMissedTasks.map(row=>({time:dateTime(row.dueAt),title:row.title,target:row.targetLabel,outcome:'Không Checklist',inspector:'—',repair:'—',reason:'Quá thời gian cho phép; không thực hiện kiểm tra'}))])
-    sheet.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};sheet.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B5C'}}
-    sheet.views=[{state:'frozen',ySplit:1}];sheet.autoFilter={from:'A1',to:'G1'}
-    const buffer=await workbook.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})
-    const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download='Bao-cao-Checklist.xlsx';anchor.click();URL.revokeObjectURL(url)
+    const headers=['Ngày giờ','Tên Checklist','Đối tượng kiểm tra','Kết quả','Người kiểm tra','Phiếu yêu cầu sửa chữa','Lý do chưa tạo phiếu']
+    const rows=[
+      ...reportRuns.map(row=>({
+        'Ngày giờ':dateTime(row.completedAt),
+        'Tên Checklist':row.checklistTitle,
+        'Đối tượng kiểm tra':row.targetLabel,
+        'Kết quả':row.outcome,
+        'Người kiểm tra':row.inspector,
+        'Phiếu yêu cầu sửa chữa':row.repairRequestCreated?'Đã tạo':row.outcome==='Không đạt'?'Không tạo':'Không phát sinh',
+        'Lý do chưa tạo phiếu':row.noRepairReason||''
+      })),
+      ...reportMissedTasks.map(row=>({
+        'Ngày giờ':dateTime(row.dueAt),
+        'Tên Checklist':row.title,
+        'Đối tượng kiểm tra':row.targetLabel,
+        'Kết quả':'Không Checklist',
+        'Người kiểm tra':'—',
+        'Phiếu yêu cầu sửa chữa':'—',
+        'Lý do chưa tạo phiếu':'Quá thời gian cho phép; không thực hiện kiểm tra'
+      }))
+    ]
+    await downloadExcelReport(rows,'bao-cao-checklist.xlsx','BÁO CÁO KIỂM TRA ĐỊNH KỲ (CHECKLIST)','Báo cáo Checklist',headers,'landscape',organizationName)
   }
 
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
