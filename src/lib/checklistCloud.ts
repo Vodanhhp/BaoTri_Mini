@@ -21,7 +21,7 @@ const CATEGORY_LABELS: Record<string,string> = {
 const asRows = (value: unknown): Row[] => Array.isArray(value) ? value as Row[] : []
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
 const atTime = (date: Date, time='09:00') => {
-  const result=new Date(date),match=/^(\\d{2}):(\\d{2})$/.exec(time)
+  const result=new Date(date),match=/^(\d{2}):(\d{2})$/.exec(time)
   result.setHours(match?Math.min(23,Number(match[1])):9,match?Math.min(59,Number(match[2])):0,0,0)
   return result
 }
