@@ -524,12 +524,13 @@ test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited 
   assert.match(report,/scheduledTasksInPeriod/)
 })
 
-test('technicians with Checklist result permission can execute while template management stays separate',()=>{
-  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&!isPcPlatform\(\)/)
-  assert.doesNotMatch(panel,/canExecuteHere=canExecute&&canManage/)
+test('Checklist execution remains Admin-only in Phase 1 and follows the server permission guards',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261126150817_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
   assert.match(app,/canManageChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.template\.manage'\)\)/)
   assert.match(app,/canExecuteChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.result\.create'\)\)/)
   assert.match(app,/canViewChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.view'\)\)/)
+  assert.match(migration,/private\.has_org_role\(p_organization_id,'admin'\)/)
 })
 test('Checklist repair-request controls require maintenance.create permission',()=>{
   assert.match(app,/canCreateMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.create'\)\)/)
