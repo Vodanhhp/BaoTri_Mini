@@ -97,7 +97,8 @@ const pendingMigrationFiles = [
   "20261127032548_checklist_preserve_archived_task_history.sql",
   "20261127032700_checklist_task_run_idempotency.sql",
   "20261127043000_grant_assets_select_to_authenticated.sql",
-  "20261127050000_checklist_allow_manual_equipment_execution.sql"
+  "20261127050000_checklist_allow_manual_equipment_execution.sql",
+  "20261127060000_maintenance_tasks_cloud_schema.sql"
 ]
 
 test('source migration inventory includes Production-applied history plus explicitly pending PR migrations', async () => {
