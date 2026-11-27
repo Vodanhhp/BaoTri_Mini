@@ -555,3 +555,14 @@ test('Cloud Checklist status reflects the 24-hour missed-task rule even without 
   assert.match(cloud,/\['Chờ thực hiện','Đang thực hiện'\]\.includes\(String\(row\.status\)\)/)
   assert.match(cloud,/\?\s*'Không Checklist':row\.status/)
 })
+
+
+test('Legacy Checklist discovery inventories every Local organization scope, including local-preview, without modifying records',()=>{
+  for(const table of ['checklistCategorySettings','checklistDefinitions','checklistRuns','checklistTasks']){
+    assert.match(panel,new RegExp(table+"\\.orderBy\\('organizationId'\\)\\.uniqueKeys\\(\\)"))
+    assert.match(panel,new RegExp(table+"\\.where\\('organizationId'\\)\\.equals\\(scope\\)\\.count\\(\\)"))
+  }
+  assert.match(panel,/legacyLocalScopes/)
+  assert.match(panel,/scope\.organizationId==='local-preview'/)
+  assert.match(panel,/chưa có dữ liệu nào được nhập, sửa hoặc xóa/)
+})
