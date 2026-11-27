@@ -616,3 +616,14 @@ test('Failed historical equipment Checklist retains its original asset target af
   assert.match(panel,/Boolean\(row\.targetAssetId\)/)
   assert.doesNotMatch(panel,/Boolean\(definitions\.find\(item=>item\.id===row\.checklistId\)\?\.targetAssetId\)/)
 })
+ 
+test('equipment Checklist resolves the canonical Cloud asset UUID from the stable equipment code',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(db,/targetAssetCode\?: string/)
+  assert.match(panel,/targetAssetCode:selectedAsset\?\.code/)
+  assert.match(panel,/asset\.code===editing\?\.targetAssetCode/)
+  assert.match(cloud,/loadDefinitionAssetCodes/)
+  assert.match(cloud,/\.select\('id,code'\)\.eq\('organization_id',organizationId\)\.in\('id',ids\)/)
+  assert.match(cloud,/\.eq\('code',definition\.targetAssetCode\)/)
+  assert.match(cloud,/target_asset_id:cloudTargetAssetId/)
+})

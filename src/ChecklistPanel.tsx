@@ -453,10 +453,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }
     if(refreshAfterSave)await refresh(true)
   }
-  const createDefinition=async(data:{title:string;targetLabel:string;targetAssetId?:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
+  const createDefinition=async(data:{title:string;targetLabel:string;targetAssetId?:string;targetAssetCode?:string;categoryKey:ChecklistDefinition['categoryKey'];frequency:ChecklistFrequency;executionTime?:string;questions:ChecklistQuestion[];source:ChecklistDefinition['source']})=>{
     if(!canManage)return
     if(!data.title.trim()||!data.targetLabel.trim()||!data.questions.length)throw new Error('Cần nhập tên Checklist, đối tượng kiểm tra và ít nhất một nội dung kiểm tra.')
-    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),...(data.targetAssetId?{targetAssetId:data.targetAssetId}:{}),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee:organizationId==='local-preview'?assignee:'Admin',executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
+    const record:ChecklistDefinition={id:uid(),organizationId,title:data.title.trim(),targetLabel:data.targetLabel.trim(),...(data.targetAssetId?{targetAssetId:data.targetAssetId}:{}),...(data.targetAssetCode?{targetAssetCode:data.targetAssetCode}:{}),categoryKey:data.categoryKey,frequency:data.frequency,enabled:true,assignee:organizationId==='local-preview'?assignee:'Admin',executionTime:data.executionTime||executionTime,questions:data.questions,source:data.source,createdAt:now(),updatedAt:now(),scheduleStartedAt:now()}
     const saved=organizationId!=='local-preview'
       ? await (supabase?saveChecklistDefinition(supabase,organizationId,record):Promise.reject(new Error('Chưa kết nối Supabase.')))
       : (await db.checklistDefinitions.add(record),record)
@@ -521,11 +521,11 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
   }
 
-  const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId)
+  const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId||asset.code===editing?.targetAssetCode)
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
   const openNew=(asset?:Asset)=>{setEditing(null);setSelectedSuggestionLabels([]);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
-    setSelectedSuggestionLabels([]);setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setTargetKind(item.targetAssetId?'equipment':'other');setTargetAssetId(item.targetAssetId||'');setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).filter(label=>!MANDATORY_EQUIPMENT_CHECKS.some(required=>normalizeChecklistText(required)===normalizeChecklistText(label))).join('\n'));setShowBuilderForm(true);setTab('builder')
+    const linkedAsset=assets.find(asset=>(item.targetAssetCode&&asset.code===item.targetAssetCode)||asset.id===item.targetAssetId);setSelectedSuggestionLabels([]);setEditing(item);setTitle(item.title);setTarget(item.targetLabel);setTargetKind(item.targetAssetId?'equipment':'other');setTargetAssetId(linkedAsset?.id||'');setCategory(item.categoryKey);setFrequency(item.frequency);setExecutionTime(item.executionTime||'09:00');setAssignee(item.assignee);setQuestionText(item.questions.map(q=>q.label).filter(label=>!MANDATORY_EQUIPMENT_CHECKS.some(required=>normalizeChecklistText(required)===normalizeChecklistText(label))).join('\n'));setShowBuilderForm(true);setTab('builder')
   }
   useEffect(()=>{if(!initialAssetId)return;const selected=assets.find(asset=>asset.id===initialAssetId&&!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý');if(!selected)return;openNew(selected);onInitialAssetHandled?.()},[initialAssetId,assets]);
   const suggestionAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
@@ -538,9 +538,10 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       const optionalQuestions=questionText.split('\n').filter(line=>line.trim());const questionLabels=targetKind==='equipment'?[...MANDATORY_EQUIPMENT_CHECKS,...optionalQuestions]:optionalQuestions;const questions=makeQuestions(questionLabels);if(targetKind==='other'&&questions.length<5)throw new Error('Mẫu Checklist theo hệ thống phải có tối thiểu 5 tiêu chí kiểm tra.')
       if(editing){
         const selectedAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
+        if(targetKind==='equipment'&&!selectedAsset)throw new Error('Thiết bị liên kết không còn trong danh mục. Hãy chọn lại thiết bị trước khi lưu.')
         const targetLabel=selectedAsset?assetTargetLabel(selectedAsset):target.trim()
         if(!targetLabel)throw new Error('Hãy chọn thiết bị hoặc nhập đối tượng kiểm tra.')
-        const updated:ChecklistDefinition={...editing,title:title.trim(),targetLabel,...(selectedAsset?{targetAssetId:selectedAsset.id}:{targetAssetId:undefined}),categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,assignee:organizationId==='local-preview'?assignee:'Admin',questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()}
+        const updated:ChecklistDefinition={...editing,title:title.trim(),targetLabel,...(selectedAsset?{targetAssetId:selectedAsset.id,targetAssetCode:selectedAsset.code}:{targetAssetId:undefined,targetAssetCode:undefined}),categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,assignee:organizationId==='local-preview'?assignee:'Admin',questions,...(frequency!==editing.frequency||executionTime!==(editing.executionTime||'09:00')?{scheduleStartedAt:now()}:{}),updatedAt:now()}
         if(organizationId!=='local-preview'){if(!supabase)throw new Error('Chưa kết nối Supabase.');await saveChecklistDefinition(supabase,organizationId,updated)}
         else await db.checklistDefinitions.update(editing.id,updated)
         await refresh(true);setEditing(null);setShowBuilderForm(false);setNotice('Đã cập nhật Checklist.')
@@ -548,7 +549,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const selectedAsset=targetKind==='equipment'?activeEquipment.find(asset=>asset.id===targetAssetId):undefined
         const targetLabel=selectedAsset?assetTargetLabel(selectedAsset):target.trim()
         if(!targetLabel)throw new Error('Hãy chọn thiết bị hoặc nhập đối tượng kiểm tra.')
-        await createDefinition({title,targetLabel,targetAssetId:selectedAsset?.id,categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,questions,source:targetKind==='equipment'?'equipment-suggestion':'custom'})
+        await createDefinition({title,targetLabel,targetAssetId:selectedAsset?.id,targetAssetCode:selectedAsset?.code,categoryKey:targetKind==='equipment'?'equipment':category,frequency,executionTime,questions,source:targetKind==='equipment'?'equipment-suggestion':'custom'})
         setTitle('');setTarget('');setQuestionText('');setShowBuilderForm(false);setNotice('Đã tạo Checklist.')
       }
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
