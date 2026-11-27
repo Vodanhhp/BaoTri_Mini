@@ -572,6 +572,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     else setNotice('Công việc đã được người khác nhận hoặc không còn khả dụng. Hãy tải lại danh sách.')
   }
   const releaseTask=async(taskId:string)=>{
+    if(!canExecuteHere)return
     if(organizationId!=='local-preview'){
       if(!supabase)return
       try{await releaseChecklistTask(supabase,organizationId,taskId);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:String(cause));await refresh()}
@@ -754,7 +755,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                 <div className="top-actions">
                   {task.assignmentEvents&&task.assignmentEvents.length>0&&<details><summary>Lịch sử phân công ({task.assignmentEvents.length})</summary><ul>{task.assignmentEvents.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></details>}
                   {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void claimTask(task)}>Nhận việc</button>}
-                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" onClick={()=>void releaseTask(task.id).then(()=>refresh())}>Trả lại nhóm</button></>}
+                  {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" disabled={!canExecuteHere} onClick={()=>void releaseTask(task.id).then(()=>refresh())}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
                   {!groupTask&&Boolean(definition?.targetAssetId)&&<small>Checklist thiết bị: quét mã QR trên tem để thực hiện</small>}
                   {!groupTask&&!definition?.targetAssetId&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
