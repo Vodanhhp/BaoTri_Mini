@@ -258,8 +258,12 @@ export async function loadChecklistTasksForReport(client:SupabaseClient,organiza
   assertOnline()
   const startIso=new Date(startDate+'T00:00:00+07:00').toISOString()
   const endIso=new Date(endDateExclusive+'T00:00:00+07:00').toISOString()
-  const rows=await fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,startIso,true,endIso)
-  return rows.map(row=>mapTask(row,organizationId,[],[])).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
+  const [rows,definitionRows]=await Promise.all([
+    fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,startIso,true,endIso),
+    fetchAllRows(client,'checklist_definitions',organizationId,'title')
+  ])
+  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId))
+  return rows.map(row=>mapTask(row,organizationId,[],definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
 }
 
 export async function claimChecklistTask(client:SupabaseClient,organizationId:string,taskId:string):Promise<void>{
