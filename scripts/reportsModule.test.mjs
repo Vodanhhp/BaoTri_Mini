@@ -137,3 +137,9 @@ test('maintenance report reads only with maintenance.view and does not change ma
 test('reports clear stale organization data before loading a new tenant',()=>{
   assert.match(panel,/setInventory\(\[\]\);setMovements\(\[\]\);setRequests\(\[\]\);setTasks\(\[\]\);setMaintenanceHistory\(\[\]\)/)
 })
+
+test('periodic maintenance report exposes performer and outcome details in the on-screen table',()=>{
+  assert.match(panel,/Người thực hiện<\/th><th>Kết quả \/ ghi chú/)
+  assert.match(panel,/completionEvent\?\.actorLabel/)
+  assert.match(panel,/row\.readings\|\|row\.notes\|\|'—'/)
+})
