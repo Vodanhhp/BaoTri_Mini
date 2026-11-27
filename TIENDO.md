@@ -2237,3 +2237,64 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Người dùng trực tiếp xác nhận trên giao diện: Checklist đã tạo thành công Phiếu yêu cầu cho hạng mục **Cơ sở hạ tầng không gắn với thiết bị**.
 - Kết quả này xác nhận luồng Checklist → Phiếu yêu cầu cho đối tượng hệ thống/khu vực hoạt động thực tế, bổ sung cho việc migration và RPC đã triển khai thành công.
 - Phạm vi xác nhận hiện tại chỉ là tạo Phiếu yêu cầu cho hạng mục Cơ sở hạ tầng không gắn thiết bị; chưa suy rộng thành đã nghiệm thu toàn bộ các kịch bản Reset hoặc toàn bộ Checklist.
+
+
+## 27/11/2026 — Tạm dừng dự án và kế hoạch hoàn thiện tiếp theo
+
+### Trạng thái tổng quan
+- Phần lõi BAOTRI Mini đã được xây dựng qua nhiều giai đoạn: nền tảng tổ chức/tài khoản/3 vai trò và RBAC; quản lý tài sản; đồng bộ và khóa chỉnh sửa Cloud; lịch sử thao tác; Checklist; Phiếu yêu cầu bảo trì; lịch bảo dưỡng; báo cáo; quản trị nền tảng và các công cụ Reset.
+- Ngày 27/11/2026, người dùng trực tiếp kiểm tra và xác nhận Checklist tạo được Phiếu yêu cầu cho hạng mục **Cơ sở hạ tầng không gắn với thiết bị**. Đây là kết quả kiểm thử UI thực tế đã xác nhận.
+- PR #85 đã merge vào main; hai migration liên quan đã áp dụng thành công trên Supabase Production; CI Build/Test và GitHub Pages Deploy của commit merge đều SUCCESS.
+- Chức năng Reset vẫn **chưa được nghiệm thu bằng thao tác thật trên UI**. Không chạy Reset khi quay lại nếu chưa có xác nhận riêng cho lần thử và phạm vi dữ liệu.
+- Không được hiểu rằng toàn bộ ứng dụng đã nghiệm thu/production-ready chỉ từ các kết quả CI hoặc một luồng UI đã kiểm tra.
+
+### Các hạng mục dự kiến triển khai khi quay lại
+1. **Kế hoạch bảo trì**
+   - Thiết kế chức năng lập kế hoạch bảo trì theo tài sản/hệ thống, chu kỳ hoặc thời điểm, người/nhóm phụ trách, hạn thực hiện và trạng thái tiến độ.
+   - Liên kết kế hoạch với Checklist, lịch bảo dưỡng, Phiếu yêu cầu và lịch sử thực hiện; tránh tạo hai nguồn lịch công việc trùng nhau.
+   - Trước khi code cần khảo sát các chức năng lịch bảo dưỡng/Checklist hiện có và thống nhất ranh giới nghiệp vụ.
+
+2. **Checklist truy cập bằng QR hoặc nhập mã thủ công**
+   - Cho phép KTV quét QR trên thiết bị/khu vực để mở đúng hồ sơ và Checklist phù hợp.
+   - Có phương án nhập mã định danh thủ công khi camera không hoạt động, thiết bị không hỗ trợ hoặc không thể quét.
+   - Kiểm tra quyền truy cập, tổ chức, trạng thái tài sản và trường hợp mã không tồn tại/trùng; không tự ghép sai đối tượng.
+   - Phân biệt QR mở hồ sơ tài sản với QR khởi chạy đúng lượt/mẫu Checklist; chốt luồng trước khi triển khai.
+
+3. **Kho ảnh dùng chung cho ứng dụng**
+   - Hoàn thiện giải pháp lưu ảnh dùng chung, dự kiến tiếp tục đánh giá Cloudflare R2 đã định hướng trước đó.
+   - Ảnh có thể đọc theo chính sách phù hợp, nhưng upload/xóa phải qua backend xác thực và kiểm tra quyền; không để secret/service-role ở frontend.
+   - Xác định giới hạn dung lượng, nén/định dạng, quyền xem, vòng đời và cách xử lý khi upload lỗi/mất mạng.
+   - Chưa tạo bucket hoặc thay đổi cấu hình R2 cho đến khi thiết kế được thống nhất và có phê duyệt.
+
+4. **Ảnh hồ sơ thiết bị**
+   - Lưu ảnh tổng thể, nhãn máy/serial, thông số và chi tiết nhận diện; gắn đúng asset, tổ chức, người tải và thời gian.
+   - Ghi chú hiện trạng: ứng dụng đã có hỗ trợ ảnh thiết bị ở một số luồng Local; phần cần hoàn thiện là phương án lưu trữ Cloud/dùng chung, đồng bộ và quản lý ảnh bền vững. Cần khảo sát code hiện tại trước khi viết lại.
+
+5. **Ảnh bằng chứng Checklist và sửa chữa**
+   - Khi Checklist phát hiện hỏng hóc/Không đạt, cho phép chụp hoặc tải ảnh hiện trạng và gắn với đúng lần thực hiện, tiêu chí và thiết bị/khu vực.
+   - Trong Phiếu yêu cầu/công việc sửa chữa, cho phép lưu ảnh trước sửa, ảnh trong quá trình nếu cần và ảnh sau sửa để chứng minh kết quả.
+   - Lưu metadata: loại ảnh (hiện trạng/trước sửa/trong sửa/sau sửa), người tải, thời điểm, đối tượng liên quan; giữ liên kết lịch sử khi phiếu hoặc thiết bị thay đổi trạng thái.
+   - Người dùng đã thống nhất trước đây rằng ảnh chưa cần đưa vào audit-history theo kiểu lưu ảnh phiên bản; tuy nhiên thao tác thêm/xóa ảnh và metadata cần được cân nhắc ghi nhận để truy vết.
+
+### Thứ tự triển khai đề xuất
+- Bước 0: Khi quay lại, đọc cả `TIENDO.md` và `BAOTRI_TIENDO.md`, kiểm tra trạng thái main/PR/CI và môi trường trước khi thao tác.
+- Bước 1: Khảo sát hiện trạng code ảnh thiết bị, QR/Checklist, lịch bảo dưỡng và Phiếu yêu cầu; lập thiết kế tổng thể và chốt nghiệp vụ.
+- Bước 2: Thiết kế kho ảnh và quyền truy cập trước, vì đây là nền cho ảnh thiết bị, Checklist và sửa chữa.
+- Bước 3: Hoàn thiện QR + nhập mã thủ công và kiểm thử trên PC/điện thoại thật.
+- Bước 4: Thiết kế/triển khai Kế hoạch bảo trì, tích hợp với các module hiện có.
+- Bước 5: Tích hợp ảnh bằng chứng vào Checklist và quy trình sửa chữa; kiểm thử upload, xem ảnh, quyền truy cập, retry và liên kết lịch sử.
+
+### Việc còn tồn tại phải kiểm tra riêng
+- Nghiệm thu Reset trên UI theo kịch bản đã ghi ở checkpoint PR #85; không tự chạy và không xóa dữ liệu thật.
+- PR #75 (Checklist Cloud/QR cùng các thay đổi Bảo dưỡng/Báo cáo) từng được ghi nhận OPEN/Draft trong checkpoint trước; phải kiểm tra trạng thái hiện tại và phạm vi PR khi quay lại, không giả định đã merge.
+- Kiểm tra lại import dữ liệu Checklist Local/Dexie cũ lên Cloud và scope `local-preview`; chưa coi là đã hoàn tất.
+- Chưa xác nhận đầy đủ E2E trên điện thoại vật lý, đặc biệt camera QR.
+- Lịch bảo dưỡng hiện chưa tự sinh lượt kế tiếp sau khi hoàn thành; cần chốt nghiệp vụ trước khi làm.
+- Các cảnh báo Advisor tổng thể ngoài phạm vi các migration đã xử lý vẫn cần được rà soát riêng, không tự ý mở rộng sửa.
+
+### Nguyên tắc tiếp tục
+- Tạm dừng BAOTRI Mini tại checkpoint ngày 27/11/2026; chuyển sang dự án khác theo yêu cầu người dùng.
+- Khi quay lại, bắt đầu bằng việc đọc hai file tiến độ này và xác nhận trạng thái thực tế; không yêu cầu người dùng nhắc lại các quyết định đã ghi.
+- Làm từng phần nhỏ, khảo sát → thống nhất yêu cầu → triển khai nhánh/PR → CI → kiểm thử Test/UI → xin duyệt.
+- Tuyệt đối không tự merge PR, không chạy Reset/xóa dữ liệu, không áp dụng migration hoặc thay đổi Supabase Production, không tạo bucket/cấu hình kho ảnh nếu chưa có phê duyệt rõ ràng.
+- Supabase Production: `dskeaiyvldiwlsfqkboq`; Test: `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác.
