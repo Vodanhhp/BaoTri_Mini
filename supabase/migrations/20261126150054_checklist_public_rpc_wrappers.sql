@@ -4,32 +4,26 @@ CREATE OR REPLACE FUNCTION public.checklist_claim_task(p_organization_id uuid, p
  SET search_path TO ''
 AS $function$
   select private.claim_checklist_task(p_organization_id,p_task_id);
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.checklist_complete_manual_run(p_organization_id uuid, p_definition_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE sql
  SET search_path TO ''
 AS $function$
   select private.complete_checklist_manual_run(p_organization_id,p_definition_id,p_payload);
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.checklist_complete_task(p_organization_id uuid, p_task_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE sql
  SET search_path TO ''
 AS $function$
   select private.complete_checklist_task(p_organization_id,p_task_id,p_payload);
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.checklist_ensure_occurrences(p_organization_id uuid, p_occurrences jsonb)
  RETURNS jsonb
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select private.ensure_checklist_occurrences(p_organization_id,p_occurrences); $function$
+AS $function$ select private.ensure_checklist_occurrences(p_organization_id,p_occurrences); $function$;
 
 
 CREATE OR REPLACE FUNCTION public.checklist_release_task(p_organization_id uuid, p_task_id uuid)
@@ -38,17 +32,14 @@ CREATE OR REPLACE FUNCTION public.checklist_release_task(p_organization_id uuid,
  SET search_path TO ''
 AS $function$
   select private.release_checklist_task(p_organization_id,p_task_id);
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.checklist_save_definition(p_organization_id uuid, p_definition_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE sql
  SET search_path TO ''
 AS $function$
   select private.save_checklist_definition(p_organization_id,p_definition_id,p_payload);
-$function$
-
+$function$;
 revoke all on function private.save_checklist_definition(uuid,uuid,jsonb) from public,anon;
 revoke all on function private.ensure_checklist_occurrences(uuid,jsonb) from public,anon;
 revoke all on function private.claim_checklist_task(uuid,uuid) from public,anon;
