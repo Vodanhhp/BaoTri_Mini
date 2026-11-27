@@ -571,3 +571,8 @@ test('Checklist release action is blocked on PC in both UI and handler',()=>{
   assert.match(panel,/const releaseTask=async\(taskId:string\)=>\{\s*if\(!canExecuteHere\)return/)
   assert.match(panel,/disabled=\{!canExecuteHere\} onClick=\{\(\)=>void releaseTask\(task\.id\)/)
 })
+
+test('QR scanner resets camera-ready UI when camera startup or detector initialization fails',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  assert.match(scanner,/catch\(cause\)=>\{[\s\S]*?activeRef\.current=false[\s\S]*?setCameraReady\(false\)/)
+})
