@@ -1031,3 +1031,29 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Trước khi triển khai import, xác định rõ nguồn Local và tổ chức Cloud đích; nếu có nhiều nguồn hoặc nhiều tổ chức thì hỏi người dùng xác nhận, không tự hợp nhất. Chỉ thử trên Supabase Test và rollback dữ liệu thử.
 - Các việc còn treo khác: import Local Preview của Bảo dưỡng chưa được nhận diện; lịch bảo dưỡng chưa tự sinh lượt tiếp theo sau khi hoàn thành (cần chốt nghiệp vụ); chưa Preview/E2E trên trình duyệt thật và chưa thử điện thoại vật lý.
 - Không tuyên bố nghiệm thu/Production-ready chỉ dựa trên CI. Không deploy, merge PR hoặc áp dụng Production migration nếu chưa có phê duyệt riêng.
+
+
+## 27/11/2026 — Rà soát sâu Checklist trước khi đưa lên main
+
+- Nhánh hiện tại: `feature/checklist-cloud-online-qr`; HEAD `606761e5d8c97704da0c73c5aecfcee23108fd5b`. PR #75 vẫn OPEN/Draft, chưa merge.
+- Đối chiếu GitHub: PR có 76 file thay đổi, khoảng 6.963 additions / 220 deletions; gồm Checklist Cloud/QR, Bảo dưỡng Cloud, Báo cáo và các migration liên quan, không chỉ riêng màn hình Checklist. Nhánh đang ahead 306 commits, behind 0 so với main; phải review phạm vi này trước khi merge.
+- Đã sửa các lỗi phát hiện trong rà soát:
+  1. Giờ thực hiện Checklist trước đây luôn rơi về 09:00 do regex parse giờ sai; đã sửa để dùng đúng execution_time.
+  2. Hành động Trả lại nhóm có guard PC chưa đồng nhất; đã chặn ở handler và nút UI.
+  3. QR scanner có thể giữ cameraReady=true khi khởi tạo detector thất bại; đã reset trạng thái trong catch.
+  4. Kết quả Checklist thiết bị phải giữ targetAssetId theo snapshot gốc, không phụ thuộc mẫu hiện tại sau khi chỉnh sửa.
+  5. Lượt hoàn thành Checklist theo lịch đã có run_id ổn định và RPC idempotent; retry sau timeout không tạo kết quả thứ hai.
+  6. Phát hiện migration lưu trữ mẫu đánh dấu cancelled_at nhưng hàm tạo lịch/chỉnh mẫu có thể xóa các lượt đã hủy; thêm partial unique index cho lượt chưa hủy và cập nhật RPC để giữ bản ghi cancelled. Đồng thời khôi phục kiểm tra không cho gắn mẫu với thiết bị Thanh lý (một migration trước đã bị migration sau ghi đè mất điều kiện).
+- Đã áp dụng hai migration mới CHỈ trên Supabase Test `BAOTRI-Mini-Test` (`oyzhxgzltpdebpymuicb`):
+  - `20261127032548_checklist_preserve_archived_task_history`
+  - `20261127032700_checklist_task_run_idempotency`
+- Smoke test SQL trong transaction rollback trên Test: xác nhận bản ghi cancelled được giữ lại, vẫn tạo được lượt active cùng ngày và không tạo trùng lượt active; xác nhận retry cùng run_id trả cùng một kết quả và chỉ có một checklist_run. Các bản ghi thử đã rollback, không để lại dữ liệu.
+- CI tại HEAD `606761e...`: **289/289 Unit tests PASS, Build PASS; Validate BAOTRI Mini PASS**.
+- Supabase Advisor Test: không phát hiện cảnh báo SECURITY DEFINER mới cho các RPC Checklist; còn 34 cảnh báo SECURITY DEFINER tổng thể, 13 bảng RLS không policy (nhóm bảng nội bộ), leaked-password protection và các cảnh báo index chưa dùng. Chưa tự ý thay đổi phạm vi nền tảng.
+- Vercel project `baotri-mini-new`: Production deployment gần nhất vẫn ở commit `d1c6dbf6...`; chưa có deployment cho main HEAD `e996850...`. Không tạo deployment hoặc promote Production trong lượt này.
+- Việc còn chặn nghiệm thu:
+  - Chưa có luồng import Checklist Dexie/Local cũ lên Cloud; dữ liệu Local vẫn được giữ nguyên.
+  - Chưa chạy Preview/E2E trên trình duyệt thật và điện thoại vật lý; camera QR cần kiểm tra trên thiết bị thật.
+  - Cần chốt có cho phép nhập mã thiết bị thủ công khi camera không hỗ trợ QR hay bắt buộc quét camera.
+  - PR #75 bao gồm cả thay đổi Bảo dưỡng/Báo cáo; cần quyết định có đưa toàn bộ phạm vi này vào main hay tách riêng.
+- Không merge PR #75, không deploy/promote Production, không áp dụng migration lên Production. Main đang là nhánh phát hành gắn với lịch sử Production; cần xác nhận rõ trước bước phát hành.
