@@ -584,3 +584,12 @@ test('Cloud recurrence uses the configured execution time instead of silently fa
   assert.ok(cloud.includes("match=/^(\\d{2}):(\\d{2})$/.exec(time)"))
   assert.ok(!cloud.includes("match=/^(\\\\d{2}):(\\\\d{2})$/.exec(time)"))
 })
+
+test('Archived Checklist task rows survive schedule refresh and template edits while new active occurrences can reuse the same due date',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261127032548_checklist_preserve_archived_task_history.sql',import.meta.url),'utf8')
+  assert.match(migration,/create unique index if not exists checklist_tasks_active_definition_due_date_uidx[\s\S]*?where cancelled_at is null/i)
+  assert.match(migration,/on conflict\(organization_id,definition_id,due_date\) where cancelled_at is null do nothing/i)
+  assert.match(migration,/and t\.cancelled_at is null/)
+  assert.match(migration,/and cancelled_at is null/)
+  assert.match(migration,/a\.status<>'Thanh lý'/)
+})
