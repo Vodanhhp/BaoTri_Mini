@@ -121,7 +121,7 @@ function mapTask(row: Row, organizationId: string, events: Row[], definitions: C
     assignee:String(row.assignee||snapshot.assignee||definition?.assignee||'Admin'),...(row.claimed_by_user_id?{claimedByUserId:String(row.claimed_by_user_id)}:{}),
     ...(row.claimed_at?{claimedAt:String(row.claimed_at)}:{}),
     ...(row.status==='Đang thực hiện'&&latestClaim?.actor_label?{claimedBy:String(latestClaim.actor_label)}:{}),
-    assignmentEvents,status:((['Chờ thực hiện','Đang thực hiện'].includes(String(row.status))&&new Date(String(row.due_at)).getTime()<=Date.now()-CHECKLIST_GRACE_PERIOD_MS)?'Không Checklist':row.status) as ChecklistTask['status'],
+    assignmentEvents,status:((['Chờ thực hiện','Đang thực hiện'].includes(String(row.status))&&new Date(String(row.due_at)).getTime()<=Date.now()-GRACE_MS)?'Không Checklist':row.status) as ChecklistTask['status'],
     definitionSnapshot:{
       categoryKey:String(snapshot.categoryKey||definition?.categoryKey||'custom') as ChecklistDefinition['categoryKey'],
       targetKind:(snapshot.targetKind||snapshot.target_kind||(snapshot.targetAssetId||snapshot.target_asset_id||definition?.targetAssetId?'equipment':'system')) as 'equipment'|'system',
