@@ -2231,3 +2231,9 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Không được tự động chạy Reset, không xóa dữ liệu tổ chức `Bao Trì Test 03` hoặc tổ chức thật.
 - Môi trường: Production `dskeaiyvldiwlsfqkboq`; Test `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác. Không thay đổi Production thêm nếu chưa có xác nhận rõ ràng cho phạm vi tiếp theo.
 - Có thể tạm dừng dự án tại checkpoint này và chuyển sang dự án khác; khi quay lại đọc cả `TIENDO.md` và `BAOTRI_TIENDO.md` trước khi tiếp tục.
+
+
+### Bổ sung kết quả kiểm thử thực tế — 27/11/2026
+- Người dùng trực tiếp xác nhận trên giao diện: Checklist đã tạo thành công Phiếu yêu cầu cho hạng mục **Cơ sở hạ tầng không gắn với thiết bị**.
+- Kết quả này xác nhận luồng Checklist → Phiếu yêu cầu cho đối tượng hệ thống/khu vực hoạt động thực tế, bổ sung cho việc migration và RPC đã triển khai thành công.
+- Phạm vi xác nhận hiện tại chỉ là tạo Phiếu yêu cầu cho hạng mục Cơ sở hạ tầng không gắn thiết bị; chưa suy rộng thành đã nghiệm thu toàn bộ các kịch bản Reset hoặc toàn bộ Checklist.
