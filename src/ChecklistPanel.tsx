@@ -755,7 +755,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                   {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void claimTask(task)}>Nhận việc</button>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" disabled={!canExecuteHere} onClick={()=>void releaseTask(task.id).then(()=>refresh())}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
-                  {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
+                  {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere||(task.status==='Đang thực hiện'&&task.claimedByUserId!==userId)} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
                   {!groupTask&&!directAllowed&&<small>Chỉ người được giao hoặc Admin thực hiện</small>}
                   {!groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy}</small>}
                 </div>
