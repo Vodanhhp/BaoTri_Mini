@@ -75,6 +75,7 @@ export default function ReportsPanel({ organizationId, organizationName, assets,
       return () => { active = false }
     }
     setLoadError('')
+    setInventory([]);setMovements([]);setRequests([]);setTasks([]);setMaintenanceHistory([])
     void Promise.all([
       db.inventoryItems.where('organizationId').equals(organizationId).toArray(),
       db.inventoryMovements.where('organizationId').equals(organizationId).toArray()
