@@ -593,3 +593,14 @@ test('Archived Checklist task rows survive schedule refresh and template edits w
   assert.match(migration,/and cancelled_at is null/)
   assert.match(migration,/a\.status<>'Thanh lý'/)
 })
+
+test('Scheduled Checklist completion reuses one stable run ID so a timed-out Cloud response can be retried safely',()=>{
+  assert.match(panel,/setRunningRunId\(uid\(\)\)/)
+  assert.match(panel,/run_id:runningRunId/)
+  const migration=readFile(new URL('../supabase/migrations/20261127032700_checklist_task_run_idempotency.sql',import.meta.url),'utf8')
+  return migration.then(sql=>{
+    assert.match(sql,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
+    assert.match(sql,/v_task\.run_id is distinct from v_run_id/)
+    assert.match(sql,/return jsonb_build_object\([\s\S]*?'run_id',v_existing\.id/)
+  })
+})
