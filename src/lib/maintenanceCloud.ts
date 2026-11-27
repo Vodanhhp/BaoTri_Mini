@@ -7,7 +7,7 @@ const todayVietnam=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Mi
 function mapRequest(row:Row,organizationId:string):MaintenanceRequest{
  if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả Phiếu yêu cầu sai tổ chức.')
  return {
-  id:String(row.id),organizationId,assetId:String(row.asset_id),requestDate:String(row.request_date),...(row.checklist_run_id?{checklistRunId:String(row.checklist_run_id)}:{ }),
+  id:String(row.id),organizationId,assetId:String(row.asset_id||''),targetKind:(row.target_kind|| (row.asset_id?'equipment':'system')) as MaintenanceRequest['targetKind'],targetLabel:String(row.target_label||''),targetLocation:String(row.target_location||''),requestDate:String(row.request_date),...(row.checklist_run_id?{checklistRunId:String(row.checklist_run_id)}:{ }),
   ...(row.due_date?{dueDate:String(row.due_date)}:{}),kind:row.kind as MaintenanceRequest['kind'],
   description:String(row.description||''),parts:String(row.parts||''),readings:String(row.readings||''),
   ...(row.completion_readings?{completionReadings:String(row.completion_readings)}:{}),
@@ -59,7 +59,7 @@ export async function loadMaintenanceRequests(client:SupabaseClient,organization
 export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest,isExisting=false):Promise<MaintenanceRequest>{
  online()
  const row=await checked(client.rpc('maintenance_save_request',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_payload:{
-  asset_id:request.assetId,request_date:request.requestDate,due_date:request.dueDate||null,kind:request.kind,
+  asset_id:request.assetId||null,target_kind:request.targetKind||(request.assetId?'equipment':'system'),target_label:request.targetLabel||'',target_location:request.targetLocation||'',request_date:request.requestDate,due_date:request.dueDate||null,kind:request.kind,
   description:request.description,parts:request.parts,readings:request.readings,requested_by:request.requestedBy
  }}),'Lưu Phiếu yêu cầu')
  return mapRequest(row as Row,organizationId)
