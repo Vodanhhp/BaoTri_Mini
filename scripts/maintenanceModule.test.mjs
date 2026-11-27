@@ -146,3 +146,7 @@ test('maintenance controls follow explicit create and update permissions and exp
   assert.match(panel,/history\.filter\(item=>item\.recordType==='task'&&item\.recordId===historyFor\)/)
   assert.match(panel,/catch\(cause\)\{setError\(cause instanceof Error\?cause\.message:String\(cause\)\)\}/)
 })
+test('maintenance panel clears old organization records before loading another organization',async()=>{
+  const panel=await read('../src/MaintenancePanel.tsx')
+  assert.match(panel,/setRequests\(\[\]\);setTasks\(\[\]\);setHistory\(\[\]\);setLegacyLocalCounts\(null\)/)
+})
