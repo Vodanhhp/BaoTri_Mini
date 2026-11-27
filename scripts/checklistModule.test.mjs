@@ -523,3 +523,11 @@ test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited 
   assert.match(report,/overdueMaintenanceRequests/)
   assert.match(report,/scheduledTasksInPeriod/)
 })
+
+test('technicians with Checklist result permission can execute while template management stays separate',()=>{
+  assert.match(panel,/const canExecuteHere=canExecute&&isOnline&&!isPcPlatform\(\)/)
+  assert.doesNotMatch(panel,/canExecuteHere=canExecute&&canManage/)
+  assert.match(app,/canManageChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.template\.manage'\)\)/)
+  assert.match(app,/canExecuteChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.result\.create'\)\)/)
+  assert.match(app,/canViewChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.view'\)\)/)
+})
