@@ -990,3 +990,32 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Đã đăng ký các migration Checklist và Cloud maintenance đã áp dụng trên Test vào `supabase/migrations` theo đúng version trong `supabase_migrations.schema_migrations`; bổ sung migration harden tạo phiếu từ Checklist (`20261126165000`).
 - Đã đồng bộ nhánh PR với `main` bằng merge commit; PR không còn behind.
 - Còn việc phải hoàn tất: có CI Build/Unit mới và kiểm tra TypeScript; kiểm tra Preview giao diện thực tế trên Supabase Test; kiểm thử E2E trên điện thoại vật lý; kiểm tra luồng tạo Phiếu yêu cầu từ Checklist trong UI.
+
+
+## 27/11/2026 — Rà soát toàn bộ Checklist / Bảo dưỡng Cloud / Báo cáo
+
+### Các lỗi đã xử lý
+- Quyền giao diện phân hệ Checklist, Bảo dưỡng và Báo cáo được tách theo quyền thực tế: `checklist.view`, `checklist.template.manage`, `checklist.result.create`, `maintenance.view/create/update`; không còn dùng chung quyền xem thiết bị để mở phân hệ khác.
+- Đối chiếu RPC xác nhận Checklist giai đoạn 1 vẫn Admin-only ở cả server. Giữ đúng giới hạn Phase 1; không mở quyền KTV trái với migration. Giao diện hiện khớp với kiểm tra quyền phía DB.
+- Phiếu yêu cầu và lịch bảo dưỡng Cloud được phân trang 500 bản ghi/lượt, tránh Supabase giới hạn mặc định làm mất dữ liệu khi tổ chức có trên 1.000 bản ghi.
+- Báo cáo bảo trì phân biệt dòng phát sinh/đến hạn/hoàn thành trong kỳ với KPI quá hạn hiện tại; không trộn công việc quá hạn ngoài kỳ vào danh sách của một kỳ lịch sử. Bảng bảo dưỡng có người thực hiện và kết quả/ghi chú.
+- Báo cáo Checklist tải riêng các lượt chưa thực hiện trong đúng khoảng ngày được chọn, kể cả dữ liệu cũ hơn 366 ngày; trạng thái quá hạn 24 giờ được tính đúng khi hiển thị, không phụ thuộc Admin vừa mở màn hình.
+- Bổ sung lịch sử thao tác cho từng lịch bảo dưỡng trên giao diện; lỗi cập nhật trạng thái được hiển thị thay vì để Promise bị từ chối không xử lý.
+- Xóa dữ liệu màn hình cũ khi đổi tổ chức để tránh hiển thị tạm dữ liệu của tổ chức trước.
+- Đối chiếu trực tiếp với `main`: logic tính toán Báo cáo vật tư và Báo cáo thiết bị không thay đổi.
+- Phát hiện `maintenance_tasks` cho phép DML trực tiếp, có thể bỏ qua lịch sử. Đã áp dụng migration Test `20261127025051_maintenance_tasks_write_only_via_rpc`: chỉ đọc trực tiếp, mọi ghi phải qua RPC đã kiểm tra quyền và ghi sự kiện.
+- Supabase Advisor phát hiện thiếu index cho 6 FK liên quan Checklist/bảng bảo trì cũ; đã bổ sung migration Test `20261127025535_checklist_maintenance_fk_covering_indexes`. Sau đó Advisor không còn báo FK thiếu index trên các bảng Checklist/Bảo dưỡng đang dùng.
+
+### Kiểm chứng
+- CI tại commit `49c449280a010af15ff578d2aa94ed46a066c04f`: **282/282 Unit tests PASS, Build PASS**.
+- SQL smoke test trong transaction rollback: KTV tạo và hoàn thành lịch qua RPC thành công, tạo đủ sự kiện lịch sử; ghi trực tiếp vào `maintenance_tasks` bị chặn; Viewer không tạo được lịch.
+- Checklist Phase 1 được kiểm tra ở cả quyền DB và giao diện: Admin thực hiện; KTV/Viewer không được thực hiện trong giai đoạn này.
+- Các bảng Phiếu yêu cầu, lịch bảo dưỡng và Checklist trên Test hiện 0 bản ghi sau các lần rollback. Migration inventory: 88/88 file khớp danh sách đã áp dụng + pending.
+- Production chưa áp dụng các migration Checklist/maintenance Cloud mới; migration Production mới nhất vẫn là `20261126160654_fix_platform_delete_catalog_history_dependencies`. Không thay đổi dữ liệu Production.
+
+### Các điểm chưa hoàn tất / cần chốt
+- Chưa có chức năng import dữ liệu Checklist Dexie/Local cũ lên Cloud. Dữ liệu Local vẫn nằm trên trình duyệt nguồn; không bị xóa nhưng chưa đồng bộ sang thiết bị khác. Luồng import bảo trì hiện chỉ phát hiện dữ liệu theo organizationId hiện tại, chưa tự nhận diện dữ liệu ở scope `local-preview`.
+- Lịch bảo dưỡng hiện lưu từng công việc và chu kỳ mô tả; chưa tự sinh lần bảo dưỡng kế tiếp khi hoàn thành. Cần chốt có muốn tự động tạo lượt tiếp theo hay không.
+- Chưa chạy Preview/E2E giao diện thật và chưa kiểm thử trên điện thoại vật lý.
+- Supabase Advisor Test còn cảnh báo tổng thể: 34 hàm SECURITY DEFINER có EXECUTE cho authenticated, 13 bảng nội bộ RLS không có policy, 22 FK khác chưa có index, 4 nhóm policy permissive và Auth chưa bật leaked-password protection. Các cảnh báo FK trên bảng Checklist/Bảo dưỡng đã xử lý; các cảnh báo còn lại thuộc phạm vi nền tảng/nhóm chức năng khác, chưa tự ý sửa.
+- PR #75 vẫn Draft, chưa merge; không triển khai Production khi chưa có xác nhận riêng.
