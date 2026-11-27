@@ -165,7 +165,7 @@ export type AssetHistory = {
 }
 
 export type MaintenanceRequest = {
-  id: string; organizationId: string; assetId: string; requestDate: string; dueDate?: string
+  id: string; organizationId: string; assetId: string; targetKind?: 'equipment' | 'system'; targetLabel?: string; targetLocation?: string; requestDate: string; dueDate?: string
   checklistRunId?: string
   kind: 'Bảo dưỡng' | 'Sửa chữa'; description: string; parts: string; readings: string
   /** Parameters recorded after the maintenance/repair work is completed. */
