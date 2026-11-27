@@ -235,7 +235,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [runs,setRuns]=useState<ChecklistRun[]>([])
   const [tasks,setTasks]=useState<ChecklistTask[]>([])
   const [runningTaskId,setRunningTaskId]=useState<string|null>(null)
-  const [runningManualRunId,setRunningManualRunId]=useState<string|null>(null)
+  const [runningRunId,setRunningRunId]=useState<string|null>(null)
   const [savingRun,setSavingRun]=useState(false)
   const [legacyLocalCounts,setLegacyLocalCounts]=useState<{settings:number;definitions:number;runs:number;tasks:number}|null>(null)
   const [legacyLocalScopes,setLegacyLocalScopes]=useState<Array<{organizationId:string;settings:number;definitions:number;runs:number;tasks:number}>>([])
@@ -525,7 +525,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
   const startRun=(item:ChecklistDefinition, taskId:string|null=null)=>{
-    setRunning(item);setRunningTaskId(taskId);setRunningManualRunId(taskId?null:uid());setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
+    setRunning(item);setRunningTaskId(taskId);setRunningRunId(uid());setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
     setRepairCreated(false);setNoRepairReason('');setError('')
   }
   const handleQrDetected=async(code:string)=>{
@@ -625,7 +625,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const cancelRun=async()=>{
     if(savingRun)return
     if(runningTaskId)await releaseTask(runningTaskId)
-    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null);await refresh()
+    setRunning(null);setRunningTaskId(null);setRunningRunId(null);await refresh()
   }
   const createRequestFromSavedRun=async(row:ChecklistRun)=>{
     if(!canCreateMaintenance||!supabase||organizationId==='local-preview'||row.outcome!=='Không đạt'||row.maintenanceRequestId)return
@@ -661,7 +661,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       setSavingRun(true)
       try{
         if(!supabase)throw new Error('Chưa kết nối Supabase.')
-        const payload={run_id:runningManualRunId,answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
+        const payload={run_id:runningRunId,answers:record.answers,inspector:userLabel,checklist_title:record.checklistTitle,category_label:record.categoryLabel,target_label:record.targetLabel,frequency:record.frequency,repair_request_created:record.repairRequestCreated,no_repair_reason:record.noRepairReason||null,checklist_snapshot:record.checklistSnapshot}
         const saved=runningTaskId
           ? await completeChecklistTask(supabase,organizationId,runningTaskId,payload)
           : await completeChecklistManualRun(supabase,organizationId,running.id,payload)
@@ -682,7 +682,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       await db.checklistRuns.add(record)
       await db.checklistDefinitions.update(running.id,{lastCompletedAt:record.completedAt,updatedAt:record.completedAt})
     }
-    setRunning(null);setRunningTaskId(null);setRunningManualRunId(null)
+    setRunning(null);setRunningTaskId(null);setRunningRunId(null)
     if(organizationId!=='local-preview'&&failed&&repairCreated&&canCreateMaintenance&&savedCloudRunId&&supabase){
       try{await createMaintenanceRequestFromChecklist(supabase,organizationId,savedCloudRunId);setNotice('Đã lưu Checklist và tạo Phiếu yêu cầu sửa chữa trên Cloud.')}
       catch(cause){setError('Checklist đã lưu, nhưng chưa tạo được Phiếu yêu cầu: '+(cause instanceof Error?cause.message:String(cause)))}
