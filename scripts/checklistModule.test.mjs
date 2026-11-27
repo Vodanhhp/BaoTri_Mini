@@ -400,7 +400,7 @@ test('Equipment QR lookup uses the target identity captured by each task version
 test('Manual Checklist saves are idempotent across a timed-out response and retry',async()=>{
   const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
   const migration=await readFile(new URL('../docs/drafts/20261126227000_checklist_manual_run_idempotency_persist_run_id.sql',import.meta.url),'utf8')
-  assert.match(panel,/run_id:runningManualRunId/)
+  assert.match(panel,/run_id:runningRunId/)
   assert.match(panel,/disabled=\{!canExecuteHere\|\|savingRun\}/)
   assert.match(migration,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
   assert.match(migration,/select \* into v_existing from public\.checklist_runs where id=v_run_id/)
