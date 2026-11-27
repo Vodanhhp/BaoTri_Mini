@@ -3382,3 +3382,22 @@ html,body,#root,.app-shell{
 #root .maintenance-legacy-warning{display:grid;gap:8px;border-left:3px solid var(--warning,#d97706)}
 #root .maintenance-legacy-warning p{margin:0;color:var(--muted,#64748b)}
 #root .maintenance-success-notice{margin:10px 0;padding:10px 12px;border-radius:8px;background:var(--surface-soft,#f1f5f9);color:var(--text,#1e293b)}
+
+
+/* Thông báo hệ thống dùng chung: tách lỗi tải dữ liệu khỏi nội dung nghiệp vụ */
+#root .app-shell .system-notification{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:start;gap:12px;margin:0 0 16px;padding:14px 16px;border:1px solid var(--danger-text);border-left:4px solid var(--danger-text);border-radius:10px;background:var(--danger-bg);color:var(--danger-text)}
+#root .app-shell .system-notification-icon{padding-top:1px}
+#root .app-shell .system-notification-content{min-width:0}
+#root .app-shell .system-notification-content>strong{display:block;font-size:13px;line-height:1.4}
+#root .app-shell .system-notification-content>p{margin:4px 0 0;font-size:12px;line-height:1.55}
+#root .app-shell .system-notification-content details{margin-top:8px;font-size:11px}
+#root .app-shell .system-notification-content summary{display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:700}
+#root .app-shell .system-notification-content details[open] summary svg{transform:rotate(180deg)}
+#root .app-shell .system-notification-content pre{max-height:150px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;padding:9px;border-radius:7px;background:rgba(127,29,29,.07);font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:inherit}
+#root .app-shell .system-notification-actions{display:flex;align-items:center;gap:7px}
+#root .app-shell .system-notification-retry,#root .app-shell .system-notification-dismiss{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;border:1px solid currentColor;border-radius:7px;padding:6px 10px;background:transparent;color:inherit;font-size:11px;font-weight:700;cursor:pointer}
+#root .app-shell .system-notification-dismiss{width:34px;padding:0}
+#root .app-shell .system-notification-retry:disabled{opacity:.6;cursor:wait}
+#root .app-shell .system-notification-spin{animation:system-notification-rotate .9s linear infinite}
+@keyframes system-notification-rotate{to{transform:rotate(360deg)}}
+@media(max-width:600px){#root .app-shell .system-notification{grid-template-columns:22px minmax(0,1fr);gap:9px;padding:12px}#root .app-shell .system-notification-actions{grid-column:2;justify-content:flex-start}#root .app-shell .system-notification-content pre{max-height:110px}}

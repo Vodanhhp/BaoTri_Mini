@@ -21,6 +21,8 @@ type Props = {
   assets: Asset[]
   initialAssetId?: string | null
   onInitialAssetHandled?: () => void
+  onDataError?: (message:string,detail:string,retry:()=>Promise<void>) => void
+  onDataLoaded?: () => void
 }
 
 const FREQUENCIES: ChecklistFrequency[] = ['Hàng ngày','Hàng tuần','Hàng tháng','Hàng quý','Hàng năm','Linh hoạt']
@@ -229,7 +231,7 @@ export function ChecklistDashboardSummary({organizationId,onOpen}:{organizationI
  const missed=tasks.filter(item=>item.status==='Không Checklist')
  return <section className="overview-section"><div className="overview-section-head"><div><div className="eyebrow">KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Chỉ hiển thị lượt đã đến hạn; lượt bị bỏ qua được lưu riêng trong lịch sử.</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở Checklist →</button></div><div className="stat-grid checklist-dashboard-stats"><div className="stat-card"><div><small>Đến hạn cần làm</small><strong>{actionable.length}</strong><span>Trong thời gian cho phép</span></div></div><div className="stat-card"><div><small>Không Checklist</small><strong>{missed.length}</strong><span>Đã quá thời gian cho phép</span></div></div></div>{actionable.length>0&&<div className="checklist-definition-list">{actionable.slice(0,5).map(task=><article className="checklist-definition-row" key={task.id}><div><b>{task.title}</b><small>{task.targetLabel} · Hạn: {dateTime(task.dueAt)} · {task.assignee}</small><span className="checklist-outcome">{task.status}</span></div></article>)}</div>}</section>
 }
-export default function ChecklistPanel({organizationId,organizationName,userLabel,userId,canView,canManage,canExecute,canCreateMaintenance,assets,initialAssetId,onInitialAssetHandled}:Props) {
+export default function ChecklistPanel({organizationId,organizationName,userLabel,userId,canView,canManage,canExecute,canCreateMaintenance,assets,initialAssetId,onInitialAssetHandled,onDataError,onDataLoaded}:Props) {
   const [settings,setSettings]=useState<ChecklistCategorySetting[]>([])
   const [definitions,setDefinitions]=useState<ChecklistDefinition[]>([])
   const [runs,setRuns]=useState<ChecklistRun[]>([])
@@ -292,6 +294,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const merged=CATEGORIES.map(item=>bundle.settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
         setSettings(merged);setDefinitions(bundle.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
         setRuns(bundle.runs);setTasks(bundle.tasks)
+        onDataLoaded?.()
       }else{
         await ensureChecklistOccurrences(organizationId)
         const [settingRows,definitionRows,runRows,taskRows]=await Promise.all([
@@ -305,7 +308,19 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         setRuns(runRows.sort((a,b)=>b.completedAt.localeCompare(a.completedAt)))
         setTasks(taskRows.filter(row=>!row.cancelledAt).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
       }
-    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    }catch(cause){
+      const detail=cause instanceof Error?cause.message:String(cause)
+      if(organizationId!=='local-preview'&&onDataError){
+        const missingCategoryTable=/checklist_category_settings/i.test(detail)&&/(schema cache|could not find the table|does not exist)/i.test(detail)
+        onDataError(
+          missingCategoryTable
+            ? 'Cơ sở dữ liệu Checklist trên máy chủ chưa được cập nhật đầy đủ. Thiếu bảng cấu hình nhóm Checklist.'
+            : 'Không tải được dữ liệu Checklist từ máy chủ. Hãy kiểm tra kết nối rồi thử tải lại.',
+          detail,
+          async()=>{await refresh(true)}
+        )
+      }else setError(detail)
+    }
     finally{setLoading(false)}
   }
   const runManagementAction=async(action:()=>Promise<unknown>)=>{
@@ -377,7 +392,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     setReportTasks([]);setReportTasksLoading(true)
     void loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end)
       .then(rows=>{if(active)setReportTasks(rows)})
-      .catch(cause=>{if(active){setReportTasks([]);setError(cause instanceof Error?cause.message:String(cause))}})
+      .catch(cause=>{if(active){
+        setReportTasks([])
+        const detail=cause instanceof Error?cause.message:String(cause)
+        if(onDataError)onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy thử tải lại dữ liệu.',detail,async()=>{await refresh(true)})
+        else setError(detail)
+      }})
       .finally(()=>{if(active)setReportTasksLoading(false)})
     return()=>{active=false}
   },[tab,organizationId,reportRange.start,reportRange.end])
