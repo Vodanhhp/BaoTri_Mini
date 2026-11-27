@@ -146,7 +146,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     if(!requestEditor||busy)return
     const existingRequest=requests.some(row=>row.id===requestEditor.id)
     if(existingRequest?!canUpdate:!canCreate)return
-    if((requestEditor.targetKind==='equipment'&&!requestEditor.assetId)||(requestEditor.targetKind!=='equipment'&&!requestEditor.targetLabel?.trim())||!requestEditor.description.trim()||!requestEditor.requestedBy.trim()){setError('Chọn thiết bị hoặc nhập đối tượng kiểm tra, nội dung và người yêu cầu.');return}
+    if(((requestEditor.targetKind||'equipment')==='equipment'&&!requestEditor.assetId)||((requestEditor.targetKind||'equipment')!=='equipment'&&!requestEditor.targetLabel?.trim())||!requestEditor.description.trim()||!requestEditor.requestedBy.trim()){setError('Chọn thiết bị hoặc nhập đối tượng kiểm tra, nội dung và người yêu cầu.');return}
     setBusy(true);setError('')
     try{
       const value:MaintenanceRequest={...requestEditor,organizationId,description:requestEditor.description.trim(),requestedBy:requestEditor.requestedBy.trim(),performedBy:requestEditor.performedBy.trim(),dueDate:requestEditor.dueDate||undefined,updatedAt:now()}
@@ -252,14 +252,14 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
   return <div className="maintenance-workspace">
-    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu và lịch bảo dưỡng định kỳ được lưu trên Cloud, dùng chung trong tổ chức.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
+    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu sửa chữa cho thiết bị, hệ thống và hạ tầng; theo dõi lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu và lịch bảo dưỡng định kỳ được lưu trên Cloud, dùng chung trong tổ chức.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
     <div className="maintenance-alert-grid">
       <div className="stat-card"><div className="stat-icon red"><ClipboardList size={19}/></div><div><small>Phiếu chưa hoàn thành</small><strong>{openRequests.length}</strong><span>Luôn cần theo dõi đến khi xác nhận</span></div></div>
       <div className="stat-card"><div className="stat-icon orange"><CalendarDays size={19}/></div><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>{dateLabel(today())}</span></div></div>
       <div className="stat-card"><div className="stat-icon red"><Wrench size={19}/></div><div><small>Quá hạn</small><strong>{overdue.length}</strong><span>Cần ưu tiên xử lý</span></div></div>
     </div>
     <div className="panel maintenance-panel">
-      <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
+      <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Phiếu có thể gắn với thiết bị hoặc đối tượng hệ thống / khu vực.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
         <button type="button" className="soft-btn" onClick={()=>void (tab==='requests'?exportRequests():exportTasks())}><Download size={15}/> Xuất Excel</button>
         {canCreate&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
@@ -292,7 +292,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       <h1>PHIẾU YÊU CẦU BẢO DƯỠNG – SỬA CHỮA</h1>
       <p className="maintenance-print-number">Mã phiếu: <b>{printRequest.id.slice(0,8).toUpperCase()}</b> · Ngày yêu cầu: <b>{dateLabel(printRequest.requestDate)}</b></p>
       <h2>1. Thông tin thiết bị và yêu cầu</h2>
-      <table><tbody><tr><th>Mã thiết bị</th><td>{assets.find(item=>item.id===printRequest.assetId)?.code||'—'}</td><th>Tên thiết bị</th><td>{assets.find(item=>item.id===printRequest.assetId)?.name||'—'}</td></tr><tr><th>Loại yêu cầu</th><td>{printRequest.kind}</td><th>Hạn hoàn thành</th><td>{dateLabel(printRequest.dueDate)}</td></tr><tr><th>Người yêu cầu</th><td>{printRequest.requestedBy||'—'}</td><th>Trạng thái</th><td>{printRequest.status}</td></tr></tbody></table>
+      <table><tbody><tr><th>Loại đối tượng</th><td>{printRequest.targetKind==='system'?'Hệ thống / hạ tầng / khu vực':'Thiết bị'}</td><th>Đối tượng</th><td>{requestTargetName(printRequest)}</td></tr><tr><th>Loại yêu cầu</th><td>{printRequest.kind}</td><th>Hạn hoàn thành</th><td>{dateLabel(printRequest.dueDate)}</td></tr><tr><th>Người yêu cầu</th><td>{printRequest.requestedBy||'—'}</td><th>Trạng thái</th><td>{printRequest.status}</td></tr></tbody></table>
       <h2>2. Nội dung yêu cầu</h2><div className="maintenance-print-text">{printRequest.description||'—'}</div>
       <h2>3. Thông số trước khi xử lý</h2><div className="maintenance-print-text">{printRequest.readings||'Chưa ghi nhận.'}</div>
       <h2>4. Vật tư / phụ tùng đề xuất hoặc đã sử dụng</h2><div className="maintenance-print-text">{printRequest.parts||'Không ghi nhận.'}</div>
@@ -300,7 +300,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       <div className="maintenance-print-signatures"><div><b>NGƯỜI YÊU CẦU</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>NGƯỜI TIẾP NHẬN</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>NGƯỜI THỰC HIỆN</b><span>(Ký, ghi rõ họ tên)</span></div><div><b>XÁC NHẬN / NGHIỆM THU</b><span>(Ký, ghi rõ họ tên)</span></div></div>
       <footer>Phiếu được trích xuất từ dữ liệu Bảo dưỡng – Sửa chữa BAOTRI MINI.</footer>
     </section>}
-    {completionEditor&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setCompletionEditor(null)}}><section className="modal maintenance-modal"><div className="modal-head"><div><h2>Ghi nhận kết quả sau sửa chữa / bảo dưỡng</h2><p>{assetName(completionEditor.row.assetId)} · {completionEditor.row.description}</p></div><button type="button" className="icon-btn" disabled={busy} onClick={()=>setCompletionEditor(null)}><X size={17}/></button></div><form className="form-grid" onSubmit={saveCompletion}>
+    {completionEditor&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setCompletionEditor(null)}}><section className="modal maintenance-modal"><div className="modal-head"><div><h2>Ghi nhận kết quả sau sửa chữa / bảo dưỡng</h2><p>{requestTargetName(completionEditor.row)} · {completionEditor.row.description}</p></div><button type="button" className="icon-btn" disabled={busy} onClick={()=>setCompletionEditor(null)}><X size={17}/></button></div><form className="form-grid" onSubmit={saveCompletion}>
       <label className="field full-field">Người thực hiện *<input required value={completionEditor.performedBy} onChange={event=>setCompletionEditor({...completionEditor,performedBy:event.target.value})}/></label>
       <label className="field full-field">Thông số sau sửa chữa / bảo dưỡng *<textarea required rows={4} value={completionEditor.completionReadings} onChange={event=>setCompletionEditor({...completionEditor,completionReadings:event.target.value})} placeholder="Ví dụ: điện áp, dòng điện, áp suất, nhiệt độ, tốc độ, độ rung... Ghi rõ giá trị và đơn vị đo."/></label>
       <label className="field full-field">Tình trạng thiết bị sau sửa chữa / bảo dưỡng *<textarea required rows={3} value={completionEditor.conditionAfterRepair} onChange={event=>setCompletionEditor({...completionEditor,conditionAfterRepair:event.target.value})} placeholder="Mô tả tình trạng chạy thử, hoạt động ổn định hay còn lỗi, các hạng mục đã xử lý..."/></label>
