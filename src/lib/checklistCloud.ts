@@ -88,11 +88,20 @@ function mapQuestionRows(value: unknown): ChecklistQuestion[] {
     id:String(row.id||''),label:String(row.label||''),required:row.required!==false
   })).filter(row=>row.id&&row.label)
 }
-function mapDefinition(row: Row, organizationId: string): ChecklistDefinition {
+async function loadDefinitionAssetCodes(client:SupabaseClient,organizationId:string,rows:Row[]):Promise<Map<string,string>>{
+  const ids=[...new Set(rows.map(row=>String(row.target_asset_id||'')).filter(Boolean))]
+  if(!ids.length)return new Map()
+  const {data,error}=await client.from('assets').select('id,code').eq('organization_id',organizationId).in('id',ids)
+  if(error)throw new Error('Không đối chiếu được mã thiết bị của mẫu Checklist: '+error.message)
+  return new Map(((data||[]) as Array<{id:string;code:string}>).map(row=>[String(row.id),String(row.code)]))
+}
+function mapDefinition(row: Row, organizationId: string,assetCodes:Map<string,string>=new Map()): ChecklistDefinition {
   if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả mẫu Checklist sai tổ chức.')
+  const targetAssetId=row.target_asset_id?String(row.target_asset_id):undefined
+  const targetAssetCode=targetAssetId?assetCodes.get(targetAssetId):undefined
   return {
     id:String(row.id),organizationId,title:String(row.title),categoryKey:String(row.category_key) as ChecklistDefinition['categoryKey'],
-    targetLabel:String(row.target_label),...(row.target_asset_id?{targetAssetId:String(row.target_asset_id)}:{}),
+    targetLabel:String(row.target_label),...(targetAssetId?{targetAssetId}:{}),...(targetAssetCode?{targetAssetCode}:{}),
     frequency:row.frequency as ChecklistFrequency,enabled:Boolean(row.enabled),assignee:String(row.assignee||'Admin'),
     executionTime:String(row.execution_time||'09:00'),questions:mapQuestionRows(row.questions),
     source:row.source as ChecklistDefinition['source'],createdAt:String(row.created_at),updatedAt:String(row.updated_at),
@@ -195,9 +204,17 @@ export async function saveChecklistDefinition(
   client: SupabaseClient,organizationId: string,definition: ChecklistDefinition
 ): Promise<ChecklistDefinition> {
   assertOnline()
+  let cloudTargetAssetId=definition.targetAssetId||null
+  if(definition.targetAssetCode){
+    const {data:asset,error:assetError}=await client.from('assets').select('id').eq('organization_id',organizationId)
+      .eq('code',definition.targetAssetCode).is('archived_at',null).is('deleted_at',null).neq('status','Thanh lý').maybeSingle()
+    if(assetError)throw new Error('Không xác định được thiết bị Cloud khi lưu Checklist: '+assetError.message)
+    if(!asset?.id)throw new Error('Thiết bị '+definition.targetAssetCode+' không còn hoạt động trong tổ chức hoặc đã bị lưu trữ/xóa.')
+    cloudTargetAssetId=String(asset.id)
+  }
   const payload={
-    title:definition.title,target_kind:definition.targetAssetId?'equipment':'system',
-    target_label:definition.targetLabel,target_asset_id:definition.targetAssetId||null,
+    title:definition.title,target_kind:cloudTargetAssetId?'equipment':'system',
+    target_label:definition.targetLabel,target_asset_id:cloudTargetAssetId,
     category_key:definition.categoryKey,frequency:definition.frequency,execution_time:definition.executionTime||'09:00',
     assignee:definition.assignee||'Admin',enabled:definition.enabled,questions:definition.questions,source:definition.source,
     schedule_started_at:definition.scheduleStartedAt||definition.createdAt
@@ -228,7 +245,8 @@ export async function loadChecklistCloud(
     enabled:Boolean(row.enabled),frequency:row.frequency as ChecklistFrequency,assignee:String(row.assignee||'Admin'),
     executionTime:String(row.execution_time||'09:00'),updatedAt:String(row.updated_at)
   }))
-  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId))
+  const assetCodes=await loadDefinitionAssetCodes(client,organizationId,definitionRows)
+  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId,assetCodes))
   const active=definitions.filter(def=>!def.archivedAt&&def.enabled&&def.frequency!=='Linh hoạt'&&(def.source!=='starter'||settings.some(s=>s.categoryKey===def.categoryKey&&s.enabled)))
   const horizon=new Date();horizon.setFullYear(horizon.getFullYear()+1);horizon.setHours(23,59,59,999)
   if(canManageOccurrences){
@@ -263,7 +281,8 @@ export async function loadChecklistTasksForReport(client:SupabaseClient,organiza
     fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,startIso,true,endIso),
     fetchAllRows(client,'checklist_definitions',organizationId,'title')
   ])
-  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId))
+  const assetCodes=await loadDefinitionAssetCodes(client,organizationId,definitionRows)
+  const definitions=definitionRows.map(row=>mapDefinition(row,organizationId,assetCodes))
   return rows.map(row=>mapTask(row,organizationId,[],definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
 }
 
