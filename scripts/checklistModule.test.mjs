@@ -576,3 +576,9 @@ test('QR scanner resets camera-ready UI when camera startup or detector initiali
   const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
   assert.match(scanner,/catch\(cause\)=>\{[\s\S]*?activeRef\.current=false[\s\S]*?setCameraReady\(false\)/)
 })
+
+test('Cloud recurrence uses the configured execution time instead of silently falling back to 09:00',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.ok(cloud.includes("match=/^(\\d{2}):(\\d{2})$/.exec(time)"))
+  assert.ok(!cloud.includes("match=/^(\\\\d{2}):(\\\\d{2})$/.exec(time)"))
+})
