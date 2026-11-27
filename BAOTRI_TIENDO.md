@@ -1019,3 +1019,15 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Chưa chạy Preview/E2E giao diện thật và chưa kiểm thử trên điện thoại vật lý.
 - Supabase Advisor Test còn cảnh báo tổng thể: 34 hàm SECURITY DEFINER có EXECUTE cho authenticated, 13 bảng nội bộ RLS không có policy, 22 FK khác chưa có index, 4 nhóm policy permissive và Auth chưa bật leaked-password protection. Các cảnh báo FK trên bảng Checklist/Bảo dưỡng đã xử lý; các cảnh báo còn lại thuộc phạm vi nền tảng/nhóm chức năng khác, chưa tự ý sửa.
 - PR #75 vẫn Draft, chưa merge; không triển khai Production khi chưa có xác nhận riêng.
+
+
+## 27/11/2026 — Lưu mốc tiếp tục sau rà soát Checklist / Bảo dưỡng Cloud
+
+- Nhánh làm việc tiếp tục: `feature/checklist-cloud-online-qr`; PR #75 vẫn OPEN/Draft, không merge nếu chưa có xác nhận riêng.
+- Mốc mã nguồn gần nhất đã ghi nhận: `b79213372feeabaa038138d0e9763eb6ab87bc76`. Phần code đã được kiểm thử ở commit `49c449280a010af15ff578d2aa94ed46a066c04f`: 282/282 Unit tests và Build PASS; commit `b792133...` chỉ cập nhật tài liệu TIENDO, chưa có kết quả CI riêng cho commit tài liệu này.
+- Không áp dụng migration Checklist/Bảo dưỡng mới lên Production. Supabase Test vẫn là `oyzhxgzltpdebpymuicb`; Production `dskeaiyvldiwlsfqkboq`; tuyệt đối không thao tác dự án Supabase cũ `ahacxsrriwlfzrobrbmc`.
+- Giữ nguyên quyết định Phase 1: chỉ Admin được thực hiện Checklist; không tự mở quyền KTV. Báo cáo vật tư và báo cáo thiết bị không chỉnh sửa logic tính toán.
+- Việc ưu tiên tiếp theo: khảo sát và thiết kế luồng nhập dữ liệu Checklist Local/Dexie lên Cloud. Phải đọc schema Dexie, các RPC/migration Checklist và cách gắn asset; nhập có kiểm tra trùng/idempotent, giữ nguyên dữ liệu Local, không ghi đè âm thầm. Cần xử lý cả dữ liệu theo organizationId và scope `local-preview`; tài sản không ghép được phải đưa ra danh sách rà soát, không tự ghép sai.
+- Trước khi triển khai import, xác định rõ nguồn Local và tổ chức Cloud đích; nếu có nhiều nguồn hoặc nhiều tổ chức thì hỏi người dùng xác nhận, không tự hợp nhất. Chỉ thử trên Supabase Test và rollback dữ liệu thử.
+- Các việc còn treo khác: import Local Preview của Bảo dưỡng chưa được nhận diện; lịch bảo dưỡng chưa tự sinh lượt tiếp theo sau khi hoàn thành (cần chốt nghiệp vụ); chưa Preview/E2E trên trình duyệt thật và chưa thử điện thoại vật lý.
+- Không tuyên bố nghiệm thu/Production-ready chỉ dựa trên CI. Không deploy, merge PR hoặc áp dụng Production migration nếu chưa có phê duyệt riêng.
