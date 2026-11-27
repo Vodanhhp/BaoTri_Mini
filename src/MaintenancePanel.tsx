@@ -11,6 +11,8 @@ type Props = {
   userId?: string
   userLabel: string
   canView: boolean
+  canCreate: boolean
+  canUpdate: boolean
   canManage: boolean
   supabaseClient?: SupabaseClient | null
 }
@@ -27,7 +29,7 @@ const emptyTask = (organizationId: string): MaintenanceTask => ({
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
 })
 
-export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canManage, supabaseClient }: Props) {
+export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canCreate, canUpdate, canManage, supabaseClient }: Props) {
   const [tab, setTab] = useState<'requests'|'schedule'>('requests')
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [tasks, setTasks] = useState<MaintenanceTask[]>([])
@@ -53,6 +55,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   },[printRequest])
 
   const reload = async (isCurrent: () => boolean = () => true) => {
+    if (!canView) { setRequests([]);setTasks([]);setHistory([]);setLegacyLocalCounts(null);return }
     if (!organizationId) {
       if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]);setLegacyLocalCounts(null) }
       return
@@ -98,7 +101,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     refresh()
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
-  },[organizationId,supabaseClient])
+  },[organizationId,supabaseClient,canView])
 
   const importLegacyData=async()=>{
     if(!supabaseClient||organizationId==='local-preview'||!canManage||importingLegacy)return
@@ -138,7 +141,9 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   }
   const saveRequest = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!requestEditor||busy||!canManage)return
+    if(!requestEditor||busy)return
+    const existingRequest=requests.some(row=>row.id===requestEditor.id)
+    if(existingRequest?!canUpdate:!canCreate)return
     if(!requestEditor.assetId||!requestEditor.description.trim()||!requestEditor.requestedBy.trim()){setError('Chọn thiết bị, nhập nội dung và người yêu cầu.');return}
     setBusy(true);setError('')
     try{
@@ -157,7 +162,9 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   }
   const saveTask = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!taskEditor||busy||!canManage)return
+    if(!taskEditor||busy)return
+    const existingTask=tasks.some(row=>row.id===taskEditor.id)
+    if(existingTask?!canUpdate:!canCreate)return
     if(!taskEditor.assetId||!taskEditor.title.trim()){setError('Chọn thiết bị và nhập nội dung công việc.');return}
     setBusy(true);setError('')
     try{
@@ -175,13 +182,13 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const completeRequest = (row:MaintenanceRequest) => {
-    if(!canManage||row.status==='Hoàn thành')return
+    if(!canUpdate||row.status==='Hoàn thành')return
     setError('')
     setCompletionEditor({row,performedBy:userLabel,completionReadings:row.completionReadings||'',conditionAfterRepair:row.conditionAfterRepair||'',result:row.result||'Đạt'})
   }
   const saveCompletion = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!completionEditor||busy||!canManage)return
+    if(!completionEditor||busy||!canUpdate)return
     const performedBy=completionEditor.performedBy.trim()
     const completionReadings=completionEditor.completionReadings.trim()
     const conditionAfterRepair=completionEditor.conditionAfterRepair.trim()
@@ -205,7 +212,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const updateTaskStatus = async (row:MaintenanceTask,status:MaintenanceTask['status']) => {
-    if(!canManage)return
+    if(!canUpdate)return
     const value={...row,status,completedAt:status==='Hoàn thành'?now():undefined,updatedAt:now()}
     if(supabaseClient&&organizationId!=='local-preview'){
       await updateMaintenanceTaskStatus(supabaseClient,organizationId,row.id,status)
@@ -249,7 +256,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     <div className="panel maintenance-panel">
       <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
         <button type="button" className="soft-btn" onClick={()=>void (tab==='requests'?exportRequests():exportTasks())}><Download size={15}/> Xuất Excel</button>
-        {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
+        {canCreate&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
       {legacyLocalCounts&&(legacyLocalCounts.requests+legacyLocalCounts.tasks+legacyLocalCounts.history)>0&&<section className="panel maintenance-legacy-warning">
       <b>Phát hiện dữ liệu bảo trì cũ chỉ lưu trên trình duyệt này</b>
@@ -261,13 +268,13 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
       {tab==='requests'?<>
         <div className="maintenance-toolbar"><label>Trạng thái <select value={filter} onChange={event=>setFilter(event.target.value as typeof filter)}><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="done">Hoàn thành</option></select></label></div>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày YC</th><th>Hạn hoàn thành</th><th>Thiết bị</th><th>Loại</th><th>Nội dung yêu cầu</th><th>Trạng thái</th><th>Kết quả</th><th>Người yêu cầu</th><th>Người hoàn thành</th><th>Thao tác</th></tr></thead><tbody>
-          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}{row.conditionAfterRepair&&<small>{row.conditionAfterRepair}</small>}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canManage&&<>{row.status!=='Hoàn thành'&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button><button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button></>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
+          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}{row.conditionAfterRepair&&<small>{row.conditionAfterRepair}</small>}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canUpdate&&<>{row.status!=='Hoàn thành'&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button><button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button></>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {visibleRequests.length===0&&<tr><td colSpan={10}><div className="table-empty-state">Chưa có Phiếu YC phù hợp.</div></td></tr>}
         </tbody></table></div>
         {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
       </>:<>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày đến hạn</th><th>Thiết bị</th><th>Công việc</th><th>Chu kỳ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canManage&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}</td></tr>)}
+          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canUpdate&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}</td></tr>)}
           {tasks.length===0&&<tr><td colSpan={6}><div className="table-empty-state">Chưa có lịch bảo dưỡng định kỳ.</div></td></tr>}
         </tbody></table></div>
       </>}
