@@ -339,11 +339,12 @@ test('system Checklist starter templates have at least five meaningful criteria 
   assert.match(panel,/answer\.result==='Bỏ qua'\|\|answer\.result==='Không áp dụng'/)
 })
 
-test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
-  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
+test('Checklist manual execution is available on PC when authorized and online, but remains locked offline',()=>{
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline/)
+  assert.doesNotMatch(panel,/const canExecuteHere=[^\\n]*isPcPlatform/)
   assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
   assert.match(panel,/disabled=\{!canExecuteHere\}/)
-  assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
+  assert.match(panel,/Trên PC có thể quản lý mẫu, xem lịch sử, báo cáo, in và thực hiện Checklist thủ công/)
   assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
   assert.match(panel,/const runManagementAction=async/)
   assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);setSavingRun\(false\);await refresh\(\);return/)
@@ -461,10 +462,12 @@ test('Checklist equipment manual RPC is blocked and completed task history uses 
   assert.doesNotMatch(migration,/coalesce\(p_payload->'checklist_snapshot'/)
 })
 
-test('Checklist execution is limited to phones and optional unanswered checks become Bỏ qua',async()=>{
+test('Equipment QR entry remains phone-only while manual Checklist execution can run on PC',async()=>{
   const platform=await readFile(new URL('../src/lib/platform.ts',import.meta.url),'utf8')
   assert.match(platform,/Android\.\*Mobile/)
   assert.doesNotMatch(platform,/iPad|Tablet/)
+  assert.match(panel,/\{!isPcPlatform\(\)&&<div className="checklist-qr-actions">/)
+  assert.match(panel,/Quét QR thiết bị/)
   assert.match(panel,/result:\(answers\[q\.id\]\?\.result\|\|'Bỏ qua'\)/)
 })
 
@@ -524,9 +527,10 @@ test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited 
   assert.match(report,/scheduledTasksInPeriod/)
 })
 
-test('Checklist execution remains Admin-only in Phase 1 and follows the server permission guards',async()=>{
+test('Checklist execution remains permission-gated in the UI and Admin-guarded by server RPCs on every platform',async()=>{
   const migration=await readFile(new URL('../supabase/migrations/20261126150817_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')
-  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline/)
+  assert.doesNotMatch(panel,/const canExecuteHere=[^\\n]*isPcPlatform/)
   assert.match(app,/canManageChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.template\.manage'\)\)/)
   assert.match(app,/canExecuteChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.result\.create'\)\)/)
   assert.match(app,/canViewChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.view'\)\)/)
@@ -567,7 +571,7 @@ test('Legacy Checklist discovery inventories every Local organization scope, inc
   assert.match(panel,/chưa có dữ liệu nào được nhập, sửa hoặc xóa/)
 })
 
-test('Checklist release action is blocked on PC in both UI and handler',()=>{
+test('Checklist release action requires the same execution permission and online guard in UI and handler',()=>{
   assert.match(panel,/const releaseTask=async\(taskId:string\)=>\{\s*if\(!canExecuteHere\)return/)
   assert.match(panel,/disabled=\{!canExecuteHere\} onClick=\{\(\)=>void releaseTask\(task\.id\)/)
 })

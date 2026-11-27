@@ -277,7 +277,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [qrAssetLabel,setQrAssetLabel]=useState('')
   const [qrCandidates,setQrCandidates]=useState<Array<{definition:ChecklistDefinition;task:ChecklistTask}>>([])
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
-  const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform()
+  const canExecuteHere=canExecute&&canManage&&isOnline
   useEffect(()=>{
     const updateOnline=()=>setIsOnline(navigator.onLine)
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
@@ -746,7 +746,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
-    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":isPcPlatform()?"Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in. Thực hiện Checklist bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":isPcPlatform()?"Trên PC có thể quản lý mẫu, xem lịch sử, báo cáo, in và thực hiện Checklist thủ công. Quét QR thiết bị bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
     {canManage&&legacyLocalCounts&&(legacyLocalCounts.settings+legacyLocalCounts.definitions+legacyLocalCounts.runs+legacyLocalCounts.tasks)>0&&<div className="checklist-connectivity-notice">Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này: {legacyLocalCounts.definitions} mẫu, {legacyLocalCounts.runs} kết quả, {legacyLocalCounts.tasks} lượt lịch và {legacyLocalCounts.settings} cấu hình. Dữ liệu này chưa được chuyển lên Cloud. Không xóa dữ liệu trình duyệt hoặc đổi thiết bị trước khi có phương án chuyển đổi.</div>}
     {canManage&&legacyLocalScopes.some(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0)&&<div className="checklist-connectivity-notice"><b>Các nguồn Checklist Local khác trên trình duyệt này:</b>{legacyLocalScopes.filter(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0).map(scope=><div key={scope.organizationId}>{scope.organizationId==='local-preview'?'Local Preview':`Scope tổ chức ${scope.organizationId.slice(0,8)}…`} — {scope.definitions} mẫu, {scope.runs} kết quả, {scope.tasks} lượt lịch, {scope.settings} cấu hình</div>)}<small>Đây chỉ là thống kê đọc dữ liệu Local; chưa có dữ liệu nào được nhập, sửa hoặc xóa.</small></div>}
     <div className="checklist-tabs">
