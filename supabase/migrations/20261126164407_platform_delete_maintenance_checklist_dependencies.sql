@@ -1,0 +1,66 @@
+-- Keep tenant deletion compatible with Cloud Checklist and maintenance records.
+-- The request/run and task/run relationships are circular; detach their nullable back-links first.
+create or replace function private.platform_delete_organization(
+  p_organization_id uuid,
+  p_confirm_name text
+)
+returns jsonb language plpgsql security definer set search_path='' set row_security='off'
+as $$
+declare
+ v_name text;v_import_receipts integer:=0;v_mutation_receipts integer:=0;v_locks integer:=0;
+ v_group_history integer:=0;v_activity_history integer:=0;v_catalog_history integer:=0;v_equipment_catalog integer:=0;
+ v_id_reservations integer:=0;v_id_sequences integer:=0;v_plan_history integer:=0;v_plan_requests integer:=0;v_seed_runs integer:=0;
+ v_maintenance_requests integer:=0;v_maintenance_tasks integer:=0;v_checklist_runs integer:=0;v_checklist_tasks integer:=0;v_checklist_definitions integer:=0;
+ v_members integer:=0;v_roles integer:=0;
+begin
+ select o.name into v_name from public.organizations o where o.id=p_organization_id for update;
+ if v_name is null then raise exception 'Không tìm thấy tổ chức hoặc tổ chức đã bị xóa.'; end if;
+ if btrim(coalesce(p_confirm_name,'')) is distinct from v_name then raise exception 'Tên xác nhận không khớp với tên tổ chức.'; end if;
+ delete from public.asset_import_receipts where organization_id=p_organization_id;get diagnostics v_import_receipts=row_count;
+ delete from public.asset_mutation_receipts where organization_id=p_organization_id;get diagnostics v_mutation_receipts=row_count;
+ delete from public.asset_edit_locks where organization_id=p_organization_id;get diagnostics v_locks=row_count;
+ delete from private.asset_group_change_history where organization_id=p_organization_id;get diagnostics v_group_history=row_count;
+ delete from public.asset_activity_history where organization_id=p_organization_id;get diagnostics v_activity_history=row_count;
+ if to_regclass('public.maintenance_logs') is not null then execute 'delete from public.maintenance_logs where organization_id=$1' using p_organization_id; end if;
+ if to_regclass('public.maintenance_plans') is not null then execute 'delete from public.maintenance_plans where organization_id=$1' using p_organization_id; end if;
+ if to_regclass('public.checklist_runs') is not null and to_regclass('public.checklist_tasks') is not null then
+  execute 'update public.checklist_runs set maintenance_request_id=null where organization_id=$1' using p_organization_id;
+  execute 'update public.checklist_tasks set run_id=null where organization_id=$1' using p_organization_id;
+ end if;
+ if to_regclass('public.maintenance_request_events') is not null then execute 'delete from public.maintenance_request_events where organization_id=$1' using p_organization_id; end if;
+ if to_regclass('public.maintenance_requests') is not null then execute 'delete from public.maintenance_requests where organization_id=$1' using p_organization_id;get diagnostics v_maintenance_requests=row_count;end if;
+ if to_regclass('public.maintenance_task_events') is not null then execute 'delete from public.maintenance_task_events where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.checklist_task_events') is not null then execute 'delete from public.checklist_task_events where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.checklist_runs') is not null then execute 'delete from public.checklist_runs where organization_id=$1' using p_organization_id;get diagnostics v_checklist_runs=row_count;end if;
+ if to_regclass('public.checklist_tasks') is not null then execute 'delete from public.checklist_tasks where organization_id=$1' using p_organization_id;get diagnostics v_checklist_tasks=row_count;end if;
+ if to_regclass('public.checklist_definition_versions') is not null then execute 'delete from public.checklist_definition_versions where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.checklist_definitions') is not null then execute 'delete from public.checklist_definitions where organization_id=$1' using p_organization_id;get diagnostics v_checklist_definitions=row_count;end if;
+ if to_regclass('public.checklist_category_settings') is not null then execute 'delete from public.checklist_category_settings where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.maintenance_tasks') is not null then execute 'delete from public.maintenance_tasks where organization_id=$1' using p_organization_id;get diagnostics v_maintenance_tasks=row_count;end if;
+ if to_regclass('public.checklist_results') is not null then execute 'delete from public.checklist_results where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.checklist_templates') is not null then execute 'delete from public.checklist_templates where organization_id=$1' using p_organization_id;end if;
+ if to_regclass('public.organization_equipment_catalog_history') is not null then execute 'delete from public.organization_equipment_catalog_history where organization_id=$1' using p_organization_id;get diagnostics v_catalog_history=row_count;end if;
+ delete from public.assets where organization_id=p_organization_id;
+ delete from private.asset_id_sequence_reservations where organization_id=p_organization_id;get diagnostics v_id_reservations=row_count;
+ delete from private.asset_id_sequences where organization_id=p_organization_id;get diagnostics v_id_sequences=row_count;
+ delete from public.organization_equipment_catalog where organization_id=p_organization_id;get diagnostics v_equipment_catalog=row_count;
+ delete from private.organization_plan_change_history where organization_id=p_organization_id;get diagnostics v_plan_history=row_count;
+ delete from private.organization_plan_change_requests where organization_id=p_organization_id;get diagnostics v_plan_requests=row_count;
+ delete from private.platform_data_seed_runs where organization_id=p_organization_id;get diagnostics v_seed_runs=row_count;
+ delete from public.organization_members where organization_id=p_organization_id;get diagnostics v_members=row_count;
+ delete from public.roles where organization_id=p_organization_id;get diagnostics v_roles=row_count;
+ delete from public.organizations where id=p_organization_id;
+ return jsonb_build_object('ok',true,'organization_name',v_name,'deleted',jsonb_build_object(
+  'asset_import_receipts',v_import_receipts,'asset_mutation_receipts',v_mutation_receipts,'asset_edit_locks',v_locks,
+  'asset_group_change_history',v_group_history,'asset_activity_history',v_activity_history,
+  'organization_equipment_catalog_history',v_catalog_history,'organization_equipment_catalog',v_equipment_catalog,
+  'asset_id_sequence_reservations',v_id_reservations,'asset_id_sequences',v_id_sequences,'platform_data_seed_runs',v_seed_runs,
+  'maintenance_requests',v_maintenance_requests,'maintenance_tasks',v_maintenance_tasks,'checklist_runs',v_checklist_runs,
+  'checklist_tasks',v_checklist_tasks,'checklist_definitions',v_checklist_definitions,
+  'organization_plan_change_history',v_plan_history,'organization_plan_change_requests',v_plan_requests,
+  'organization_members',v_members,'roles',v_roles,'organizations',1));
+end;
+$$;
+revoke all on function private.platform_delete_organization(uuid,text) from public,anon,authenticated;
+grant usage on schema private to service_role;
+grant execute on function private.platform_delete_organization(uuid,text) to service_role;

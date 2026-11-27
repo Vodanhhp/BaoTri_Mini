@@ -18,7 +18,7 @@ test('Báo cáo is a first-class module and is available to users with read acce
 test('reports are scoped to the selected organization and stale reads are ignored', () => {
   assert.match(panel, /where\('organizationId'\)\.equals\(organizationId\)/)
   assert.match(panel, /let active = true/)
-  assert.match(panel, /if \(!active\) return/)
+  assert.match(panel, /if\(!active\)return/)
   assert.match(panel, /return \(\) => \{ active = false \}/)
 })
 
@@ -97,4 +97,49 @@ test('equipment activity report filters by selected period and search query', ()
 
 test('standalone checklist data is not fabricated when no checklist module exists', () => {
   assert.match(panel, /chưa phải Checklist độc lập/)
+})
+
+
+test('maintenance report separates created, completed, open and overdue work for all five report periods', () => {
+  assert.match(panel,/loadMaintenanceRequests\(supabaseClient,organizationId\)/)
+  assert.match(panel,/requestsCreatedInPeriod/)
+  assert.match(panel,/requestsCompletedInPeriod/)
+  assert.match(panel,/openMaintenanceRequests/)
+  assert.match(panel,/overdueMaintenanceRequests/)
+  assert.match(panel,/scheduledTasksInPeriod/)
+  assert.match(panel,/\['Ngày','Tuần','Tháng','Quý','Năm'\]/)
+  assert.match(panel,/Báo cáo bảo trì – sửa chữa/)
+  assert.match(panel,/Công việc bảo dưỡng định kỳ/)
+  assert.match(panel,/const taskRows=scheduledTasksInPeriod/)
+  assert.match(panel,/Bảo dưỡng định kỳ/)
+})
+
+test('maintenance Cloud loading failures do not blank the existing inventory report', () => {
+  assert.match(panel,/db\.inventoryItems\.where\('organizationId'\)/)
+  assert.match(panel,/db\.inventoryMovements\.where\('organizationId'\)/)
+  assert.match(panel,/Không tải được dữ liệu báo cáo bảo trì/)
+  assert.match(panel,/Phiếu yêu cầu và lịch bảo dưỡng lấy từ Cloud/)
+})
+
+test('maintenance report separates selected-period rows from current overdue totals',()=>{
+  assert.match(panel,/const dueInPeriod=Boolean\(row\.dueDate\)&&String\(row\.dueDate\)>=range\.startDate&&String\(row\.dueDate\)<=range\.endDate/)
+  assert.doesNotMatch(panel,/row\.status!=='Hoàn thành'&&row\.dueDate<todayKey\)\)\s*\.filter/)
+  assert.match(panel,/phiếu quá hạn hiện tại/)
+  assert.match(panel,/lịch bảo dưỡng quá hạn hiện tại/)
+})
+test('maintenance report reads only with maintenance.view and does not change material/device report calculations',()=>{
+  assert.match(panel,/if\(canViewMaintenance\)/)
+  assert.match(panel,/canViewMaintenance && <section className="panel report-data-panel">/)
+  assert.match(app,/canViewMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.view'\)\)/)
+  assert.match(panel,/Báo cáo nhập – xuất vật tư/)
+  assert.match(panel,/Tình trạng thiết bị/)
+})
+test('reports clear stale organization data before loading a new tenant',()=>{
+  assert.match(panel,/setInventory\(\[\]\);setMovements\(\[\]\);setRequests\(\[\]\);setTasks\(\[\]\);setMaintenanceHistory\(\[\]\)/)
+})
+
+test('periodic maintenance report exposes performer and outcome details in the on-screen table',()=>{
+  assert.match(panel,/Người thực hiện<\/th><th>Kết quả \/ ghi chú/)
+  assert.match(panel,/completionEvent\?\.actorLabel/)
+  assert.match(panel,/row\.readings\|\|row\.notes\|\|'—'/)
 })

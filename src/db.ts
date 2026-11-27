@@ -13,12 +13,15 @@ export type ChecklistDefinition = {
   targetLabel: string; targetAssetId?: string; frequency: ChecklistFrequency; enabled: boolean; assignee: string; executionTime?: string
   questions: ChecklistQuestion[]; source: 'starter' | 'equipment-suggestion' | 'custom'
   createdAt: string; updatedAt: string; lastCompletedAt?: string; scheduleStartedAt?: string
+  archivedAt?: string; archivedBy?: string; archivedEnabled?: boolean
 }
 export type ChecklistRun = {
   id: string; organizationId: string; checklistId: string; checklistTitle: string
+  targetAssetId?: string
+  maintenanceRequestId?: string
   categoryLabel: string; targetLabel: string; frequency: ChecklistFrequency
-  answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Không áp dụng'; note: string }>
-  outcome: 'Đạt' | 'Không đạt'; inspector: string; completedAt: string
+  answers: Array<{ questionId: string; question: string; result: 'Đạt' | 'Không đạt' | 'Bỏ qua' | 'Không áp dụng'; note: string }>
+  outcome: 'Đạt' | 'Không đạt' | 'Bỏ qua'; inspector: string; completedAt: string
   repairRequestCreated: boolean; noRepairReason?: string
   assignmentHistory?: Array<{ action: 'Nhận việc' | 'Trả lại nhóm' | 'Hủy thực hiện'; actor: string; actorUserId?: string; at: string }>
   checklistSnapshot: ChecklistQuestion[]
@@ -42,10 +45,13 @@ export type ChecklistTask = {
   status: 'Chờ thực hiện' | 'Đang thực hiện' | 'Hoàn thành' | 'Quá hạn' | 'Không Checklist'
   definitionSnapshot: {
     categoryKey: ChecklistDefinition['categoryKey']
+    targetKind?: 'equipment' | 'system'
+    targetAssetId?: string
     questions: ChecklistQuestion[]
   }
   completedAt?: string
   runId?: string
+  cancelledAt?: string; cancelledBy?: string
   createdAt: string
   updatedAt: string
 }
@@ -160,6 +166,7 @@ export type AssetHistory = {
 
 export type MaintenanceRequest = {
   id: string; organizationId: string; assetId: string; requestDate: string; dueDate?: string
+  checklistRunId?: string
   kind: 'Bảo dưỡng' | 'Sửa chữa'; description: string; parts: string; readings: string
   /** Parameters recorded after the maintenance/repair work is completed. */
   completionReadings?: string; conditionAfterRepair?: string

@@ -53,16 +53,58 @@ const appliedMigrationFiles = [
   "20261124150248_reset_equipment_and_inventory.sql",
   "20261124153541_organization_name_change_requests.sql",
   "20261125115908_platform_superadmin_data_tools.sql",
-  "20261126141059_selective_reset_scope_optional_checklist.sql"
+  "20261126141059_selective_reset_scope_optional_checklist.sql",
+  "20261126160654_fix_platform_delete_catalog_history_dependencies.sql"
 ]
 
-test('BAOTRI Mini New source migration inventory exactly matches applied database history', async () => {
+const pendingMigrationFiles = [
+  "20261126144630_checklist_cloud_online_foundation.sql",
+  "20261126145323_checklist_phase1_admin_only.sql",
+  "20261126150046_checklist_cloud_management_and_schedule_rpcs.sql",
+  "20261126150054_checklist_public_rpc_wrappers.sql",
+  "20261126150203_checklist_task_snapshot_metadata.sql",
+  "20261126150642_checklist_definition_edit_reschedules_pending_tasks.sql",
+  "20261126150723_checklist_cloud_cleans_disabled_future_occurrences.sql",
+  "20261126150817_checklist_phase_one_admin_only_guards.sql",
+  "20261126150853_checklist_result_validates_question_identity.sql",
+  "20261126151227_checklist_definitions_write_only_through_versioned_rpc.sql",
+  "20261126151244_checklist_cloud_minimum_table_privileges.sql",
+  "20261126152057_checklist_equipment_requires_qr_task_flow.sql",
+  "20261126152239_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql",
+  "20261126152612_checklist_policy_and_fk_index_review.sql",
+  "20261126152813_checklist_task_snapshot_target_identity.sql",
+  "20261126153153_checklist_manual_run_idempotency.sql",
+  "20261126153252_checklist_manual_run_idempotency_persist_run_id.sql",
+  "20261126153530_checklist_claim_owner_null_safe_checks.sql",
+  "20261126154308_checklist_definition_question_validation.sql",
+  "20261126154410_checklist_equipment_target_must_be_active.sql",
+  "20261126155414_checklist_template_soft_archive.sql",
+  "20261126155613_checklist_block_editing_archived_templates.sql",
+  "20261126162954_checklist_to_cloud_maintenance_requests.sql",
+  "20261126163024_maintenance_request_cloud_rpcs.sql",
+  "20261126163513_maintenance_schedule_cloud_rpcs.sql",
+  "20261126163940_maintenance_cloud_fk_indexes.sql",
+  "20261126164052_fix_maintenance_task_generated_id.sql",
+  "20261126164407_platform_delete_maintenance_checklist_dependencies.sql",
+  "20261126164557_guard_optional_tenant_cleanup_tables.sql",
+  "20261126164618_fix_optional_cleanup_table_validation.sql",
+  "20261126164704_expand_tenant_dependency_cleanup.sql",
+  "20261126170029_harden_checklist_maintenance_request_creation.sql",
+  "20261126170750_maintenance_legacy_local_import.sql",
+  "20261126170844_preserve_legacy_maintenance_timestamps.sql",
+  "20261127025051_maintenance_tasks_write_only_via_rpc.sql",
+  "20261127025535_checklist_maintenance_fk_covering_indexes.sql",
+  "20261127032548_checklist_preserve_archived_task_history.sql",
+  "20261127032700_checklist_task_run_idempotency.sql"
+]
+
+test('source migration inventory includes Production-applied history plus explicitly pending PR migrations', async () => {
   const files = (await readdir(new URL('../supabase/migrations/', import.meta.url)))
     .filter(file => file.endsWith('.sql'))
     .sort()
-  const expected = [...appliedMigrationFiles].sort()
+  const expected = [...appliedMigrationFiles,...pendingMigrationFiles].sort()
   const versionPrefixes = files.map(file => file.slice(0,14))
 
   assert.equal(new Set(versionPrefixes).size, versionPrefixes.length, 'migration version prefixes must be unique')
-  assert.deepEqual(files, expected, 'source migration files must exactly match BAOTRI Mini New applied history')
+  assert.deepEqual(files, expected, 'source migration files must equal applied history plus explicitly pending PR migrations')
 })

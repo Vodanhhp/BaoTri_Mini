@@ -37,14 +37,14 @@ test('Checklist records use organization scope and independent Dexie tables, not
 })
 
 test('Viewer can inspect configuration and reports but cannot configure or execute', () => {
-  assert.match(app, /canManage=\{localPreview\|\|Boolean\(currentOrganization\?\.isAdmin\)\}/)
-  assert.match(app, /canExecute=\{localPreview\|\|canMutate\}/)
+  assert.match(app, /canManage=\{localPreview\|\|canManageChecklist\}/)
+  assert.match(app, /canExecute=\{localPreview\|\|canExecuteChecklist\}/)
   assert.match(panel, /if\(!canManage\)return/)
-  assert.match(panel, /if\(!running\|\|!canExecute\)return/)
+  assert.match(panel, /if\(!running\|\|!canExecuteHere\)return/)
 })
 
 test('failed inspection cannot be recorded as pass and requires repair decision', () => {
-  assert.match(panel, /outcome:failed\?'Không đạt':'Đạt'/)
+  assert.match(panel, /outcome:failed\?'Không đạt':passed\?'Đạt':'Bỏ qua'/)
   assert.match(panel, /Có nội dung kiểm tra Không đạt/)
   assert.match(panel, /Lý do chưa tạo Phiếu yêu cầu/)
   assert.match(panel, /repairRequestCreated:failed&&repairCreated/)
@@ -155,11 +155,14 @@ test('Checklist group claims are atomic and ownership uses stable user IDs, not 
 })
 
 
-test('Checklist reports filter by local date range and Excel exports the filtered result set', () => {
-  assert.match(panel, /const \[reportFrom,setReportFrom\]=useState\(''\)/)
-  assert.match(panel, /const \[reportTo,setReportTo\]=useState\(''\)/)
+test('Checklist reports support day, week, month, quarter and year periods and export the filtered result set', () => {
+  assert.match(panel, /const \[reportPeriod,setReportPeriod\]=useState/)
+  assert.match(panel, /const \[reportAnchorDate,setReportAnchorDate\]=useState\(dateOnly\(\)\)/)
+  assert.match(panel, /const reportRange=useMemo\(/)
+  assert.match(panel, /const reportEndDate=useMemo\(/)
   assert.match(panel, /const reportRuns=useMemo\(/)
   assert.match(panel, /checklistLocalDateKey\(new Date\(item\.completedAt\)\)/)
+  assert.match(panel, /\{value:'year',label:'Năm'\}/)
   assert.match(panel, /\.\.\.reportRuns\.map\(row=>\(/)
   assert.match(panel, /reportRuns\.map\(row=>/)
 })
@@ -173,13 +176,13 @@ test('Checklist A4 print renders one selected result with answers and follow-up 
 })
 
 test('missed Checklist occurrences are red history records, not failed inspection results',()=>{assert.match(db,/'Không Checklist'/);assert.match(panel,/checklist-missed-history/);assert.match(panel,/Kết quả đã kiểm tra/);assert.match(panel,/Không thực hiện trong thời gian cho phép/);assert.match(panel,/reportMissedTasks/);assert.match(panel,/'Kết quả':'Không Checklist'/);assert.match(css,/checklist-missed-row/);assert.match(panel,/CHECKLIST_GRACE_PERIOD_MS/)})
-test('scheduled Checklist tasks are grouped into current day, week, month, and quarter tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
+test('scheduled Checklist tasks are grouped into current day, week, month, quarter, and year tabs from the start of each period',()=>{assert.match(panel,/checklistPeriodRange/);assert.match(panel,/const periodTasks=tasks\.filter/);assert.match(panel,/item\.dueDate>=periodRange\.start&&item\.dueDate<periodRange\.end/);assert.match(panel,/currentMs-new Date\(item\.dueAt\)\.getTime\(\)<CHECKLIST_GRACE_PERIOD_MS/);assert.match(panel,/workPeriod==='day'/);assert.match(panel,/workPeriod==='week'/);assert.match(panel,/workPeriod==='month'/);assert.match(panel,/workPeriod==='quarter'/);assert.match(panel,/workPeriod==='year'/);assert.doesNotMatch(panel,/Lịch sắp tới/);assert.doesNotMatch(panel,/upcomingTasks/)})
 
 test('period tabs only show tasks and missed counts for the matching Checklist cycle',()=>{
-  assert.match(panel,/periodFrequency:Record<typeof workPeriod,ChecklistFrequency>=\{day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý'\}/)
+  assert.match(panel,/periodFrequency:Record<typeof workPeriod,ChecklistFrequency>=\{day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý',year:'Hàng năm'\}/)
   assert.match(panel,/item\.frequency===selectedFrequency&&\(item\.status==='Chờ thực hiện'\|\|item\.status==='Đang thực hiện'\)/)
   assert.match(panel,/item\.frequency===selectedFrequency&&item\.status==='Không Checklist'/)
-  assert.match(panel,/Checklist Hàng năm xem trong Lịch sử và Báo cáo/)
+  assert.match(panel,/year:'Hàng năm'/)
 })
 
 
@@ -189,7 +192,7 @@ test('Disabling a Checklist removes all uncompleted tasks even when their due ti
 
 test('Checklist templates remain manageable when disabled and can be edited from the management tab',()=>{
   assert.ok(panel.includes('<h2>Quản lý mẫu Checklist</h2>'))
-  assert.match(panel,/definitions\.filter\(item=>!search\.trim\(\)/)
+  assert.match(panel,/visibleDefinitions=definitions\.filter\(item=>Boolean\(item\.archivedAt\)===showArchivedDefinitions/)
   assert.match(panel,/item\.enabled\?'Tạm ngừng lịch':'Tiếp tục lịch'/)
   assert.match(panel,/showBuilderForm&&<div className="checklist-modal-backdrop"/);assert.match(panel,/role="dialog" aria-modal="true"/)
   assert.match(panel,/Sửa nội dung Checklist/)
@@ -243,7 +246,7 @@ test('Checklist template editor opens in a separate accessible modal and explain
   assert.match(panel,/className="checklist-modal-backdrop"/)
   assert.match(panel,/className="checklist-editor-modal" role="dialog" aria-modal="true"/)
   assert.match(panel,/Trạng thái lịch là gì\?/)
-  assert.match(panel,/không sinh lượt mới từ mẫu này/)
+  assert.match(panel,/Mẫu lưu trữ không sinh lượt mới/)
   assert.match(panel,/Tạm ngừng lịch/)
   assert.match(panel,/Tiếp tục lịch/)
 })
@@ -252,7 +255,7 @@ test('Checklist template editor opens in a separate accessible modal and explain
 test('Checklist Excel export uses the shared BAOTRI report workbook format',()=>{
   assert.match(panel,/import \{ downloadExcelReport \} from '\.\/lib\/excelExport'/)
   assert.match(panel,/await downloadExcelReport\(rows,'bao-cao-checklist\.xlsx'/)
-  assert.match(panel,/BÁO CÁO KIỂM TRA ĐỊNH KỲ \(CHECKLIST\)/)
+  assert.match(panel,/BÁO CÁO CHECKLIST/)
   assert.match(panel,/organizationName\)/)
   assert.doesNotMatch(panel,/new ExcelJS\.Workbook/)
 })
@@ -321,4 +324,291 @@ test('Checklist print uses the equipment A4 print-sheet wrapper and full structu
  assert.ok(styles.includes('#root .app-shell .checklist-workspace>.checklist-print-sheet{display:block!important;visibility:visible!important'))
  assert.match(styles,/\.checklist-print-sheet \.checklist-print-table thead\{display:table-header-group\}/)
  assert.match(styles,/\.checklist-print-sheet \.checklist-print-table thead\{display:table-header-group\}/)
+})
+
+
+test('system Checklist starter templates have at least five meaningful criteria and a third Bỏ qua answer',()=>{
+  const categoryBlock=panel.split('const CATEGORIES:')[1]?.split('const CATEGORY_LABEL')[0]||''
+  for(const key of ["infrastructure","electrical","water","fire"]){
+    const entry=categoryBlock.split("key:'"+key+"'")[1]?.split("},")[0]||''
+    assert.ok((entry.match(/\?'/g)||[]).length>=5, key+' must have at least five criteria')
+  }
+  assert.match(panel,/Mẫu Checklist theo hệ thống phải có tối thiểu 5 tiêu chí kiểm tra/)
+  assert.match(panel,/\['Đạt','Không đạt','Bỏ qua'\]/)
+  assert.match(db,/'Bỏ qua'/)
+  assert.match(panel,/answer\.result==='Bỏ qua'\|\|answer\.result==='Không áp dụng'/)
+})
+
+test('Checklist execution is locked without Internet and on desktop while management remains available',()=>{
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
+  assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
+  assert.match(panel,/disabled=\{!canExecuteHere\}/)
+  assert.match(panel,/Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in/)
+  assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
+  assert.match(panel,/const runManagementAction=async/)
+  assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);setSavingRun\(false\);await refresh\(\);return/)
+})
+
+
+test('Admin is warned before legacy local Checklist data is hidden by the Cloud source switch',()=>{
+  assert.match(panel,/db\.checklistRuns\.where\('organizationId'\)\.equals\(organizationId\)\.count\(\)/)
+  assert.match(panel,/Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này/)
+  assert.match(panel,/chưa được chuyển lên Cloud/)
+  assert.match(panel,/Không xóa dữ liệu trình duyệt/)
+})
+
+test('Checklist Cloud is the live organization source and execution writes use server RPCs',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(panel,/loadChecklistCloud\(supabase,organizationId,canManage,ensureCloudSchedule\)/)
+  assert.match(panel,/saveChecklistDefinition\(supabase,organizationId/)
+  assert.match(panel,/completeChecklistTask\(supabase,organizationId/)
+  assert.match(panel,/completeChecklistManualRun\(supabase,organizationId/)
+  assert.match(cloud,/checklist_save_definition/)
+  assert.match(cloud,/checklist_ensure_occurrences/)
+  assert.match(cloud,/checklist_claim_task/)
+  assert.match(cloud,/checklist_complete_task/)
+  assert.match(cloud,/navigator\.onLine/ )
+  assert.match(cloud,/minimumDueAt,true/)
+  assert.match(cloud,/order\('id',\{ascending:true\}\)/)
+  assert.match(cloud,/range\(offset,offset\+PAGE_SIZE-1\)/)
+  assert.match(cloud,/Date\.now\(\)-366\*86400000/)
+})
+
+
+
+test('Cloud recurrence generation covers old daily, weekly, monthly, quarterly and yearly schedules within the supported window',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/function calendarDayDistance/)
+  assert.match(cloud,/const cutoff=new Date\(Date\.now\(\)-366\*86400000\)/)
+  assert.match(cloud,/calendarDayDistance\(first,cutoff\)/)
+  assert.match(cloud,/const monthDelta=\(cutoff\.getFullYear\(\)-anchor\.getFullYear\(\)\)\*12/)
+  assert.match(cloud,/Math\.floor\(monthDelta\/3\)-1/)
+  assert.match(cloud,/for\(let d=first;d<=end;index\+\+,d=addMonths\(anchor,index\*3,time\)\)/)
+})
+
+test('Equipment QR lookup uses the target identity captured by each task version',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
+  const db=await readFile(new URL('../src/db.ts',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../docs/drafts/20261126225000_checklist_task_snapshot_target_identity.sql',import.meta.url),'utf8')
+  assert.match(migration,/'targetAssetId',v_definition\.target_asset_id/)
+  assert.match(cloud,/targetAssetId:String\(snapshot\.targetAssetId\|\|snapshot\.target_asset_id\|\|definition\?\.targetAssetId\)/)
+  assert.match(panel,/task\.definitionSnapshot\.targetAssetId===asset\.id/)
+  assert.match(db,/targetAssetId\?: string/)
+})
+
+test('Manual Checklist saves are idempotent across a timed-out response and retry',async()=>{
+  const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../docs/drafts/20261126227000_checklist_manual_run_idempotency_persist_run_id.sql',import.meta.url),'utf8')
+  assert.match(panel,/run_id:runningRunId/)
+  assert.match(panel,/disabled=\{!canExecuteHere\|\|savingRun\}/)
+  assert.match(migration,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
+  assert.match(migration,/select \* into v_existing from public\.checklist_runs where id=v_run_id/)
+  assert.match(migration,/id,organization_id,definition_id,task_id/)
+  assert.match(migration,/v_run_id,p_organization_id,v_definition\.id,null/)
+})
+
+test('QR scanner stops camera streams and pending animation loops when restarted or closed',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  assert.match(scanner,/const activeRef=useRef\(false\)/)
+  assert.match(scanner,/activeRef\.current=false/)
+  assert.match(scanner,/streamRef\.current\?\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\)/)
+  assert.match(scanner,/if\(!activeRef\.current\)\{stream\.getTracks\(\)\.forEach\(track=>track\.stop\(\)\);return\}/)
+})
+
+test('Cloud template RPC refuses retired equipment as a target',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126230000_checklist_equipment_target_must_be_active.sql',import.meta.url),'utf8')
+  assert.match(migration,/a\.status<>'Thanh lý'/)
+  assert.match(panel,/neq\('status','Thanh lý'\)/)
+})
+
+test('Checklist templates can be archived and restored without deleting history',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126231000_checklist_template_soft_archive.sql',import.meta.url),'utf8')
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const types=await readFile(new URL('../src/db.ts',import.meta.url),'utf8')
+  assert.match(migration,/ADD COLUMN archived_at timestamptz/)
+  assert.match(migration,/ADD COLUMN cancelled_at timestamptz/)
+  assert.match(migration,/private\.archive_checklist_definition/)
+  assert.match(migration,/private\.restore_checklist_definition/)
+  assert.match(migration,/checklist_definition_versions/)
+  assert.match(migration,/status='Đang thực hiện'/)
+  assert.match(cloud,/checklist_archive_definition/)
+  assert.match(cloud,/checklist_restore_definition/)
+  assert.match(cloud,/!def\.archivedAt&&def\.enabled/)
+  assert.match(cloud,/minimumDueAt,true/)
+  assert.match(types,/archivedAt\?: string/)
+  assert.match(types,/cancelledAt\?: string/)
+  assert.match(panel,/Mẫu đã lưu trữ/)
+  assert.match(panel,/Lưu trữ mẫu/)
+  assert.match(panel,/Khôi phục mẫu/)
+  assert.match(panel,/Lịch sử và kết quả cũ vẫn được giữ/)
+})
+
+test('Cloud template RPC rejects malformed or duplicate Checklist question identities',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126229000_checklist_definition_question_validation.sql',import.meta.url),'utf8')
+  assert.match(migration,/jsonb_array_elements\(v_questions\)/)
+  assert.match(migration,/count\(distinct q->>'id'\)/)
+  assert.match(migration,/jsonb_typeof\(q->'required'\)<>'boolean'/)
+  assert.match(migration,/char_length\(q->>'label'\)>1000/)
+})
+
+test('Checklist equipment manual RPC is blocked and completed task history uses the immutable task snapshot',async()=>{
+  const migration=await readFile(new URL('../docs/drafts/20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql',import.meta.url),'utf8')
+  assert.match(migration,/v_definition\.target_kind='equipment'/)
+  assert.match(migration,/phải được mở từ lượt công việc sau khi quét QR/)
+  assert.match(migration,/v_task\.definition_snapshot->>'title'/)
+  assert.match(migration,/v_task\.definition_snapshot->'questions'/)
+  assert.doesNotMatch(migration,/coalesce\(p_payload->'checklist_snapshot'/)
+})
+
+test('Checklist execution is limited to phones and optional unanswered checks become Bỏ qua',async()=>{
+  const platform=await readFile(new URL('../src/lib/platform.ts',import.meta.url),'utf8')
+  assert.match(platform,/Android\.\*Mobile/)
+  assert.doesNotMatch(platform,/iPad|Tablet/)
+  assert.match(panel,/result:\(answers\[q\.id\]\?\.result\|\|'Bỏ qua'\)/)
+})
+
+test('equipment Checklist starts only from QR scan while system Checklist remains manual',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  assert.match(panel,/supabase\.from\('assets'\)\.select\('id,code,name'\)/)
+  assert.match(panel,/Boolean\(definition\?\.targetAssetId\)/)
+  assert.match(panel,/Thực hiện thủ công/)
+  assert.match(scanner,/getUserMedia/)
+  assert.match(scanner,/BarcodeDetector/)
+  assert.match(scanner,/onDetected\(manualCode\.trim\(\)\)/)
+})
+
+test('phase-one Checklist assignment remains Admin-only in UI and server RPC',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  const scannerPanel=panel
+  const guards=await readFile(new URL('../docs/drafts/20261126205000_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')
+  assert.match(guards,/not private\.has_org_role\(p_organization_id,'admin'\)/)
+  assert.match(guards,/assignee.*Admin/)
+  assert.match(scannerPanel,/value="Admin" readOnly/)
+  assert.match(scannerPanel,/assignee:organizationId==='local-preview'\?assignee:'Admin'/)
+  assert.match(cloud,/checklist_save_definition/)
+  assert.match(cloud,/checklist_claim_task/)
+})
+
+
+test('Checklist Không đạt creates a real linked Cloud maintenance request idempotently',async()=>{
+  const panel=await readFile(new URL('../src/ChecklistPanel.tsx',import.meta.url),'utf8')
+  const cloud=await readFile(new URL('../src/lib/maintenanceCloud.ts',import.meta.url),'utf8')
+  const migration=await readFile(new URL('../supabase/migrations/20261126162954_checklist_to_cloud_maintenance_requests.sql',import.meta.url),'utf8')
+  assert.match(panel,/createMaintenanceRequestFromChecklist\(supabase,organizationId,savedCloudRunId\)/)
+  assert.match(panel,/Tạo Phiếu yêu cầu từ Checklist này/)
+  assert.match(cloud,/maintenance_create_request_from_checklist/)
+  assert.match(migration,/maintenance_requests_checklist_run_unique/)
+  assert.match(migration,/maintenance_request_id=v_request\.id/)
+  assert.match(migration,/private\.has_org_permission\(p_organization_id,'maintenance\.create'\)/)
+})
+
+test('Cloud maintenance requests and scheduled tasks are tenant-scoped, audited and reported by period',async()=>{
+  const panel=await readFile(new URL('../src/MaintenancePanel.tsx',import.meta.url),'utf8')
+  const cloud=await readFile(new URL('../src/lib/maintenanceCloud.ts',import.meta.url),'utf8')
+  const report=await readFile(new URL('../src/ReportsPanel.tsx',import.meta.url),'utf8')
+  const tableMigration=await readFile(new URL('../supabase/migrations/20261126162954_checklist_to_cloud_maintenance_requests.sql',import.meta.url),'utf8')
+  const requestMigration=await readFile(new URL('../supabase/migrations/20261126163024_maintenance_request_cloud_rpcs.sql',import.meta.url),'utf8')
+  const scheduleMigration=await readFile(new URL('../supabase/migrations/20261126163513_maintenance_schedule_cloud_rpcs.sql',import.meta.url),'utf8')
+  assert.match(panel,/loadMaintenanceRequests\(supabaseClient,organizationId\)/)
+  assert.match(panel,/saveMaintenanceRequest\(supabaseClient,organizationId,value/)
+  assert.match(panel,/completeMaintenanceRequest\(supabaseClient,organizationId,row\.id/)
+  assert.match(cloud,/maintenance_request_events/)
+  assert.match(cloud,/maintenance_task_events/)
+  assert.match(tableMigration,/alter table public\.maintenance_requests enable row level security/)
+  assert.match(requestMigration,/maintenance_complete_request/)
+  assert.match(scheduleMigration,/maintenance_update_task_status/)
+  assert.match(report,/requestsCreatedInPeriod/)
+  assert.match(report,/requestsCompletedInPeriod/)
+  assert.match(report,/overdueMaintenanceRequests/)
+  assert.match(report,/scheduledTasksInPeriod/)
+})
+
+test('Checklist execution remains Admin-only in Phase 1 and follows the server permission guards',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261126150817_checklist_phase_one_admin_only_guards.sql',import.meta.url),'utf8')
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline&&!isPcPlatform\(\)/)
+  assert.match(app,/canManageChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.template\.manage'\)\)/)
+  assert.match(app,/canExecuteChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.result\.create'\)\)/)
+  assert.match(app,/canViewChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.view'\)\)/)
+  assert.match(migration,/private\.has_org_role\(p_organization_id,'admin'\)/)
+})
+test('Checklist repair-request controls require maintenance.create permission',()=>{
+  assert.match(app,/canCreateMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.create'\)\)/)
+  assert.match(app,/canCreateMaintenance=\{localPreview\|\|canCreateMaintenance\}/)
+  assert.match(panel,/if\(!canCreateMaintenance\|\|!supabase\|\|organizationId==='local-preview'/)
+  assert.match(panel,/Tài khoản chưa có quyền tạo Phiếu yêu cầu/)
+  assert.match(panel,/canCreateMaintenance&&!row\.maintenanceRequestId/)
+})
+test('Checklist missed-task reports load the selected historical period beyond the 366-day overview window',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/loadChecklistTasksForReport/)
+  assert.match(cloud,/maximumDueAt/)
+  assert.match(cloud,/new Date\(startDate\+'T00:00:00\+07:00'\)/)
+  assert.match(panel,/reportTasksLoading/)
+  assert.match(panel,/reportTasks\.filter\(item=>item\.status==='Không Checklist'/)
+  assert.match(panel,/loadChecklistTasksForReport\(supabase,organizationId,reportRange\.start,reportRange\.end\)/)
+})
+
+test('Cloud Checklist status reflects the 24-hour missed-task rule even without an Admin refresh',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/GRACE_MS/)
+  assert.match(cloud,/\['Chờ thực hiện','Đang thực hiện'\]\.includes\(String\(row\.status\)\)/)
+  assert.match(cloud,/\?\s*'Không Checklist':row\.status/)
+})
+
+
+test('Legacy Checklist discovery inventories every Local organization scope, including local-preview, without modifying records',()=>{
+  for(const table of ['checklistCategorySettings','checklistDefinitions','checklistRuns','checklistTasks']){
+    assert.match(panel,new RegExp(table+"\\.orderBy\\('organizationId'\\)\\.uniqueKeys\\(\\)"))
+    assert.match(panel,new RegExp(table+"\\.where\\('organizationId'\\)\\.equals\\(scope\\)\\.count\\(\\)"))
+  }
+  assert.match(panel,/legacyLocalScopes/)
+  assert.match(panel,/scope\.organizationId==='local-preview'/)
+  assert.match(panel,/chưa có dữ liệu nào được nhập, sửa hoặc xóa/)
+})
+
+test('Checklist release action is blocked on PC in both UI and handler',()=>{
+  assert.match(panel,/const releaseTask=async\(taskId:string\)=>\{\s*if\(!canExecuteHere\)return/)
+  assert.match(panel,/disabled=\{!canExecuteHere\} onClick=\{\(\)=>void releaseTask\(task\.id\)/)
+})
+
+test('QR scanner resets camera-ready UI when camera startup or detector initialization fails',async()=>{
+  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
+  const catchStart=scanner.indexOf('}catch(cause){')
+  assert.ok(catchStart>=0)
+  assert.ok(scanner.slice(catchStart).includes('setCameraReady(false)'))
+})
+
+test('Cloud recurrence uses the configured execution time instead of silently falling back to 09:00',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.ok(cloud.includes("match=/^(\\d{2}):(\\d{2})$/.exec(time)"))
+  assert.ok(!cloud.includes("match=/^(\\\\d{2}):(\\\\d{2})$/.exec(time)"))
+})
+
+test('Archived Checklist task rows survive schedule refresh and template edits while new active occurrences can reuse the same due date',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261127032548_checklist_preserve_archived_task_history.sql',import.meta.url),'utf8')
+  assert.match(migration,/create unique index if not exists checklist_tasks_active_definition_due_date_uidx[\s\S]*?where cancelled_at is null/i)
+  assert.match(migration,/on conflict\(organization_id,definition_id,due_date\) where cancelled_at is null do nothing/i)
+  assert.match(migration,/and t\.cancelled_at is null/)
+  assert.match(migration,/and cancelled_at is null/)
+  assert.match(migration,/a\.status<>'Thanh lý'/)
+})
+
+test('Scheduled Checklist completion reuses one stable run ID so a timed-out Cloud response can be retried safely',()=>{
+  assert.match(panel,/setRunningRunId\(uid\(\)\)/)
+  assert.match(panel,/run_id:runningRunId/)
+  const migration=readFile(new URL('../supabase/migrations/20261127032700_checklist_task_run_idempotency.sql',import.meta.url),'utf8')
+  return migration.then(sql=>{
+    assert.match(sql,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
+    assert.match(sql,/v_task\.run_id is distinct from v_run_id/)
+    assert.match(sql,/return jsonb_build_object\([\s\S]*?'run_id',v_existing\.id/)
+  })
+})
+
+test('Failed historical equipment Checklist retains its original asset target after the template is edited',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/function mapRun\(row: Row, organizationId: string, events: Row\[\], tasks: ChecklistTask\[\]\)/)
+  assert.match(cloud,/task\?\.definitionSnapshot\.targetAssetId\?\{targetAssetId:task\.definitionSnapshot\.targetAssetId\}/)
+  assert.match(panel,/Boolean\(row\.targetAssetId\)/)
+  assert.doesNotMatch(panel,/Boolean\(definitions\.find\(item=>item\.id===row\.checklistId\)\?\.targetAssetId\)/)
 })

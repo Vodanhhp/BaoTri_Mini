@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, Check, ClipboardList, Download, History, Plus, Printer, Wrench, X } from 'lucide-react'
 import { db, now, uid, type Asset, type MaintenanceRequest, type MaintenanceTask, type MaintenanceHistory } from './db'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadMaintenanceRequests, saveMaintenanceRequest, completeMaintenanceRequest, saveMaintenanceTask, updateMaintenanceTaskStatus, importLegacyMaintenanceData } from './lib/maintenanceCloud'
 
 type Props = {
   organizationId: string
@@ -9,7 +11,10 @@ type Props = {
   userId?: string
   userLabel: string
   canView: boolean
+  canCreate: boolean
+  canUpdate: boolean
   canManage: boolean
+  supabaseClient?: SupabaseClient | null
 }
 
 const today = () => { const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); const part=(type:string)=>parts.find(item=>item.type===type)?.value||''; return part('year')+'-'+part('month')+'-'+part('day') }
@@ -24,7 +29,7 @@ const emptyTask = (organizationId: string): MaintenanceTask => ({
   status: 'Chờ thực hiện', checklist: '', readings: '', notes: '', createdAt: now(), updatedAt: now()
 })
 
-export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canManage }: Props) {
+export default function MaintenancePanel({ organizationId, organizationName, assets, userId, userLabel, canView, canCreate, canUpdate, canManage, supabaseClient }: Props) {
   const [tab, setTab] = useState<'requests'|'schedule'>('requests')
   const [requests, setRequests] = useState<MaintenanceRequest[]>([])
   const [tasks, setTasks] = useState<MaintenanceTask[]>([])
@@ -34,9 +39,12 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   const [historyFor, setHistoryFor] = useState<string|null>(null)
   const [filter, setFilter] = useState<'all'|'open'|'done'>('all')
   const [error, setError] = useState('')
+  const [notice,setNotice]=useState('')
   const [busy, setBusy] = useState(false)
   const [printRequest, setPrintRequest] = useState<MaintenanceRequest|null>(null)
   const [completionEditor, setCompletionEditor] = useState<{row:MaintenanceRequest;performedBy:string;completionReadings:string;conditionAfterRepair:string;result:MaintenanceRequest['result']}|null>(null)
+  const [legacyLocalCounts,setLegacyLocalCounts]=useState<{requests:number;tasks:number;history:number}|null>(null)
+  const [importingLegacy,setImportingLegacy]=useState(false)
 
   useEffect(()=>{
     if(!printRequest)return
@@ -47,29 +55,76 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   },[printRequest])
 
   const reload = async (isCurrent: () => boolean = () => true) => {
+    if (!canView) { setRequests([]);setTasks([]);setHistory([]);setLegacyLocalCounts(null);return }
     if (!organizationId) {
-      if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]) }
+      if (isCurrent()) { setRequests([]); setTasks([]); setHistory([]);setLegacyLocalCounts(null) }
       return
     }
-    const [requestRows, taskRows, historyRows] = await Promise.all([
-      db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
-      db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
-      db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
-    ])
+    const cloudBundle=supabaseClient&&organizationId!=='local-preview'
+      ? await loadMaintenanceRequests(supabaseClient,organizationId) : null
+    let requestRows:MaintenanceRequest[]
+    let taskRows:MaintenanceTask[]
+    let historyRows:MaintenanceHistory[]
+    if(cloudBundle){
+      requestRows=cloudBundle.requests;taskRows=cloudBundle.tasks;historyRows=cloudBundle.history
+    }else{
+      [requestRows,taskRows,historyRows]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
+      ])
+    }
     // A previous organization's IndexedDB read may finish after the user switches tenants.
     // Never let that stale result replace the currently selected organization's view.
     if (!isCurrent()) return
     setRequests(requestRows.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)||b.updatedAt.localeCompare(a.updatedAt)))
     setTasks(taskRows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)))
     setHistory(historyRows.sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)))
+    if(cloudBundle){
+      const [localRequests,localTasks,localHistory]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray()
+      ])
+      if(!isCurrent())return
+      const cloudRequestIds=new Set(requestRows.map(row=>row.id)),cloudTaskIds=new Set(taskRows.map(row=>row.id)),cloudHistoryIds=new Set(historyRows.map(row=>row.id))
+      setLegacyLocalCounts({
+        requests:localRequests.filter(row=>!cloudRequestIds.has(row.id)).length,
+        tasks:localTasks.filter(row=>!cloudTaskIds.has(row.id)).length,
+        history:localHistory.filter(row=>!cloudHistoryIds.has(row.id)).length
+      })
+    }else setLegacyLocalCounts(null)
   }
   useEffect(()=>{
     let active=true
+    setRequests([]);setTasks([]);setHistory([]);setLegacyLocalCounts(null)
     const refresh=()=>{void reload(()=>active).catch(e=>{if(active)setError(e instanceof Error?e.message:String(e))})}
     refresh()
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
-  },[organizationId])
+  },[organizationId,supabaseClient,canView])
+
+  const importLegacyData=async()=>{
+    if(!supabaseClient||organizationId==='local-preview'||!canManage||importingLegacy)return
+    setImportingLegacy(true);setError('');setNotice('')
+    try{
+      const [localRequests,localTasks,localHistory,cloud]=await Promise.all([
+        db.maintenanceRequests.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceTasks.where('organizationId').equals(organizationId).toArray(),
+        db.maintenanceHistory.where('organizationId').equals(organizationId).toArray(),
+        loadMaintenanceRequests(supabaseClient,organizationId)
+      ])
+      const cloudRequestIds=new Set(cloud.requests.map(row=>row.id)),cloudTaskIds=new Set(cloud.tasks.map(row=>row.id)),cloudHistoryIds=new Set(cloud.history.map(row=>row.id))
+      const requestsToImport=localRequests.filter(row=>!cloudRequestIds.has(row.id))
+      const tasksToImport=localTasks.filter(row=>!cloudTaskIds.has(row.id))
+      const historyToImport=localHistory.filter(row=>!cloudHistoryIds.has(row.id))
+      const result=await importLegacyMaintenanceData(supabaseClient,organizationId,requestsToImport,tasksToImport,historyToImport,[...cloudRequestIds],[...cloudTaskIds])
+      setNotice('Đã chuyển lên Cloud: '+result.requestsImported+' Phiếu yêu cầu, '+result.tasksImported+' lịch bảo dưỡng và '+result.historyImported+' sự kiện lịch sử.')
+      if(result.errors.length)setError(result.errors.slice(0,4).join(' · ')+(result.errors.length>4?' · …':''))
+      await reload()
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
+    finally{setImportingLegacy(false)}
+  }
 
   const assetName = (id:string) => { const asset=assets.find(item=>item.id===id); return asset ? asset.code+' · '+asset.name : 'Thiết bị không còn trong danh sách' }
   const visibleRequests = useMemo(()=>requests.filter(row=>filter==='all'||(filter==='open'?row.status!=='Hoàn thành':row.status==='Hoàn thành')),[requests,filter])
@@ -87,42 +142,54 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   }
   const saveRequest = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!requestEditor||busy||!canManage)return
+    if(!requestEditor||busy)return
+    const existingRequest=requests.some(row=>row.id===requestEditor.id)
+    if(existingRequest?!canUpdate:!canCreate)return
     if(!requestEditor.assetId||!requestEditor.description.trim()||!requestEditor.requestedBy.trim()){setError('Chọn thiết bị, nhập nội dung và người yêu cầu.');return}
     setBusy(true);setError('')
     try{
-      const previous=await db.maintenanceRequests.get(requestEditor.id)
       const value:MaintenanceRequest={...requestEditor,organizationId,description:requestEditor.description.trim(),requestedBy:requestEditor.requestedBy.trim(),performedBy:requestEditor.performedBy.trim(),dueDate:requestEditor.dueDate||undefined,updatedAt:now()}
-      await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
-        await db.maintenanceRequests.put(value)
-        await addHistory('request',value.id,previous?(previous.status!==value.status?'status_changed':'updated'):'created',previous?'Cập nhật Phiếu YC Bảo dưỡng – Sửa chữa':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa',previous,value)
-      })
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await saveMaintenanceRequest(supabaseClient,organizationId,value,requests.some(row=>row.id===value.id))
+      }else{
+        const previous=await db.maintenanceRequests.get(requestEditor.id)
+        await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
+          await db.maintenanceRequests.put(value)
+          await addHistory('request',value.id,previous?(previous.status!==value.status?'status_changed':'updated'):'created',previous?'Cập nhật Phiếu YC Bảo dưỡng – Sửa chữa':'Tạo Phiếu YC Bảo dưỡng – Sửa chữa',previous,value)
+        })
+      }
       setRequestEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const saveTask = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!taskEditor||busy||!canManage)return
+    if(!taskEditor||busy)return
+    const existingTask=tasks.some(row=>row.id===taskEditor.id)
+    if(existingTask?!canUpdate:!canCreate)return
     if(!taskEditor.assetId||!taskEditor.title.trim()){setError('Chọn thiết bị và nhập nội dung công việc.');return}
     setBusy(true);setError('')
     try{
-      const previous=await db.maintenanceTasks.get(taskEditor.id)
+      const previous=tasks.find(row=>row.id===taskEditor.id)||await db.maintenanceTasks.get(taskEditor.id)
       const value:MaintenanceTask={...taskEditor,organizationId,title:taskEditor.title.trim(),updatedAt:now()}
-      await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
-        await db.maintenanceTasks.put(value)
-        await addHistory('task',value.id,previous?'updated':'created',previous?'Cập nhật lịch bảo dưỡng định kỳ':'Tạo lịch bảo dưỡng định kỳ',previous,value)
-      })
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await saveMaintenanceTask(supabaseClient,organizationId,value)
+      }else{
+        await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
+          await db.maintenanceTasks.put(value)
+          await addHistory('task',value.id,previous?'updated':'created',previous?'Cập nhật lịch bảo dưỡng định kỳ':'Tạo lịch bảo dưỡng định kỳ',previous,value)
+        })
+      }
       setTaskEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const completeRequest = (row:MaintenanceRequest) => {
-    if(!canManage||row.status==='Hoàn thành')return
+    if(!canUpdate||row.status==='Hoàn thành')return
     setError('')
     setCompletionEditor({row,performedBy:userLabel,completionReadings:row.completionReadings||'',conditionAfterRepair:row.conditionAfterRepair||'',result:row.result||'Đạt'})
   }
   const saveCompletion = async (event:FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if(!completionEditor||busy||!canManage)return
+    if(!completionEditor||busy||!canUpdate)return
     const performedBy=completionEditor.performedBy.trim()
     const completionReadings=completionEditor.completionReadings.trim()
     const conditionAfterRepair=completionEditor.conditionAfterRepair.trim()
@@ -134,21 +201,32 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     try{
       const row=completionEditor.row
       const value:MaintenanceRequest={...row,status:'Hoàn thành',result:completionEditor.result,performedBy,completionReadings,conditionAfterRepair,completedAt:now(),updatedAt:now()}
-      await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
-        await db.maintenanceRequests.put(value)
-        await addHistory('request',row.id,'completed','Hoàn thành Phiếu YC – đã ghi nhận thông số và tình trạng sau xử lý',row,value)
-      })
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await completeMaintenanceRequest(supabaseClient,organizationId,row.id,{performedBy,completionReadings,conditionAfterRepair,result:completionEditor.result})
+      }else{
+        await db.transaction('rw',[db.maintenanceRequests,db.maintenanceHistory],async()=>{
+          await db.maintenanceRequests.put(value)
+          await addHistory('request',row.id,'completed','Hoàn thành Phiếu YC – đã ghi nhận thông số và tình trạng sau xử lý',row,value)
+        })
+      }
       setCompletionEditor(null);await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
     }catch(e){setError(e instanceof Error?e.message:String(e))}finally{setBusy(false)}
   }
   const updateTaskStatus = async (row:MaintenanceTask,status:MaintenanceTask['status']) => {
-    if(!canManage)return
+    if(!canUpdate)return
     const value={...row,status,completedAt:status==='Hoàn thành'?now():undefined,updatedAt:now()}
-    await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
-      await db.maintenanceTasks.put(value)
-      await addHistory('task',row.id,'status_changed','Cập nhật trạng thái công việc: '+status,row,value)
-    })
-    await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
+    try{
+      setError('')
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await updateMaintenanceTaskStatus(supabaseClient,organizationId,row.id,status)
+      }else{
+        await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
+          await db.maintenanceTasks.put(value)
+          await addHistory('task',row.id,'status_changed','Cập nhật trạng thái công việc: '+status,row,value)
+        })
+      }
+      await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
   const exportTasks = async () => {
     if(!tasks.length){setError('Chưa có lịch bảo dưỡng để xuất Excel.');return}
@@ -173,7 +251,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 
   if(!canView)return <section className="panel"><h2>Không có quyền xem phân hệ Bảo dưỡng – Sửa chữa</h2></section>
   return <div className="maintenance-workspace">
-    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Dữ liệu hiện được lưu Local trên thiết bị này; đồng bộ Cloud chưa triển khai.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
+    <section className="welcome"><div><div className="eyebrow">BAOTRI MINI · BẢO TRÌ</div><h2>Bảo dưỡng – Sửa chữa</h2><p>Quản lý yêu cầu gắn với hồ sơ thiết bị và lịch bảo dưỡng định kỳ.</p><small className="maintenance-local-note">Phiếu yêu cầu và lịch bảo dưỡng định kỳ được lưu trên Cloud, dùng chung trong tổ chức.</small></div><div className="welcome-icon"><Wrench size={40}/></div></section>
     <div className="maintenance-alert-grid">
       <div className="stat-card"><div className="stat-icon red"><ClipboardList size={19}/></div><div><small>Phiếu chưa hoàn thành</small><strong>{openRequests.length}</strong><span>Luôn cần theo dõi đến khi xác nhận</span></div></div>
       <div className="stat-card"><div className="stat-icon orange"><CalendarDays size={19}/></div><div><small>Đến hạn hôm nay</small><strong>{dueToday.length}</strong><span>{dateLabel(today())}</span></div></div>
@@ -182,21 +260,28 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
     <div className="panel maintenance-panel">
       <div className="panel-head"><div><h2>{tab==='requests'?'Phiếu YC Bảo dưỡng – Sửa chữa':'Lịch bảo dưỡng định kỳ'}</h2><p>{tab==='requests'?'Mỗi phiếu được gắn với lý lịch thiết bị ngay khi lưu.':'Theo dõi công việc lặp lại và ngày đến hạn theo từng thiết bị.'}</p></div><div className="top-actions">
         <button type="button" className="soft-btn" onClick={()=>void (tab==='requests'?exportRequests():exportTasks())}><Download size={15}/> Xuất Excel</button>
-        {canManage&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
+        {canCreate&&<button type="button" className="primary-btn" onClick={()=>{setError('');tab==='requests'?setRequestEditor(emptyRequest(organizationId,userLabel)):setTaskEditor(emptyTask(organizationId))}}><Plus size={15}/> {tab==='requests'?'Tạo Phiếu YC':'Thêm lịch bảo dưỡng'}</button>}
       </div></div>
-      <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
+      {legacyLocalCounts&&(legacyLocalCounts.requests+legacyLocalCounts.tasks+legacyLocalCounts.history)>0&&<section className="panel maintenance-legacy-warning">
+      <b>Phát hiện dữ liệu bảo trì cũ chỉ lưu trên trình duyệt này</b>
+      <p>{legacyLocalCounts.requests} Phiếu yêu cầu · {legacyLocalCounts.tasks} lịch bảo dưỡng · {legacyLocalCounts.history} sự kiện lịch sử chưa có trên Cloud. Bản Local sẽ được giữ nguyên; không xóa dữ liệu trình duyệt cho đến khi đối chiếu xong.</p>
+      {canManage&&<button type="button" className="primary-btn" onClick={()=>void importLegacyData()} disabled={importingLegacy}>{importingLegacy?'Đang chuyển dữ liệu…':'Chuyển dữ liệu cũ lên Cloud'}</button>}
+    </section>}
+    {notice&&<div className="maintenance-success-notice">{notice}</div>}
+    <div className="maintenance-tabs"><button className={tab==='requests'?'active':''} onClick={()=>setTab('requests')}><ClipboardList size={15}/> Phiếu YC ({requests.length})</button><button className={tab==='schedule'?'active':''} onClick={()=>setTab('schedule')}><CalendarDays size={15}/> Lịch định kỳ ({tasks.length})</button></div>
       {tab==='requests'?<>
         <div className="maintenance-toolbar"><label>Trạng thái <select value={filter} onChange={event=>setFilter(event.target.value as typeof filter)}><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="done">Hoàn thành</option></select></label></div>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày YC</th><th>Hạn hoàn thành</th><th>Thiết bị</th><th>Loại</th><th>Nội dung yêu cầu</th><th>Trạng thái</th><th>Kết quả</th><th>Người yêu cầu</th><th>Người hoàn thành</th><th>Thao tác</th></tr></thead><tbody>
-          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}{row.conditionAfterRepair&&<small>{row.conditionAfterRepair}</small>}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canManage&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button>{row.status!=='Hoàn thành'&&<button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
+          {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}{row.conditionAfterRepair&&<small>{row.conditionAfterRepair}</small>}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canUpdate&&<>{row.status!=='Hoàn thành'&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button><button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button></>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {visibleRequests.length===0&&<tr><td colSpan={10}><div className="table-empty-state">Chưa có Phiếu YC phù hợp.</div></td></tr>}
         </tbody></table></div>
-        {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
+        {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordType==='request'&&item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordType==='request'&&item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
       </>:<>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày đến hạn</th><th>Thiết bị</th><th>Công việc</th><th>Chu kỳ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canManage&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}</td></tr>)}
+          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canUpdate&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {tasks.length===0&&<tr><td colSpan={6}><div className="table-empty-state">Chưa có lịch bảo dưỡng định kỳ.</div></td></tr>}
         </tbody></table></div>
+        {historyFor&&<section className="maintenance-history"><h3>Lịch sử lịch bảo dưỡng · {assetName(tasks.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordType==='task'&&item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordType==='task'&&item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
       </>}
       {error&&<div className="auth-error">{error}</div>}
       <div className="footnote"><History size={14}/> Mọi lần tạo, sửa và đổi trạng thái được ghi vào lịch sử riêng của phân hệ. Viewer chỉ được xem.</div>
@@ -248,17 +333,19 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
 }
 
 
-export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{organizationId:string;assets:Asset[];onOpen:()=>void}) {
+export function MaintenanceDashboardSummary({organizationId,assets,onOpen,supabaseClient}:{organizationId:string;assets:Asset[];onOpen:()=>void;supabaseClient?:SupabaseClient|null}) {
   const [pending,setPending]=useState<MaintenanceRequest[]>([])
   useEffect(()=>{
     let active=true
-    const load=()=>db.maintenanceRequests.where('organizationId').equals(organizationId).toArray()
+    const load=()=> (supabaseClient&&organizationId!=='local-preview'
+      ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests)
+      : db.maintenanceRequests.where('organizationId').equals(organizationId).toArray())
       .then(rows=>{if(active)setPending(rows.filter(row=>row.status!=='Hoàn thành').sort((a,b)=>(a.dueDate||'9999-12-31').localeCompare(b.dueDate||'9999-12-31')||a.requestDate.localeCompare(b.requestDate)))})
     void load()
     const refresh=()=>{void load()}
     window.addEventListener('baotri:maintenance-updated',refresh)
     return()=>{active=false;window.removeEventListener('baotri:maintenance-updated',refresh)}
-  },[organizationId])
+  },[organizationId,supabaseClient])
   const name=(id:string)=>{const asset=assets.find(row=>row.id===id);return asset?asset.code+' · '+asset.name:'Thiết bị'}
   return <section className="overview-section maintenance-dashboard-section">
     <div className="overview-section-head"><div><h2>Công việc hôm nay</h2><p>Phiếu Bảo dưỡng – Sửa chữa chưa xác nhận hoàn thành</p></div><button type="button" className="text-btn" onClick={onOpen}>Mở phân hệ →</button></div>
@@ -269,15 +356,17 @@ export function MaintenanceDashboardSummary({organizationId,assets,onOpen}:{orga
 }
 
 
-export function MaintenanceAssetHistory({organizationId,assetId}:{organizationId:string;assetId:string}) {
+export function MaintenanceAssetHistory({organizationId,assetId,supabaseClient}:{organizationId:string;assetId:string;supabaseClient?:SupabaseClient|null}) {
   const [rows,setRows]=useState<MaintenanceRequest[]>([])
   useEffect(()=>{
-    let active=true
-    db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray()
+    let active=true;
+    (supabaseClient&&organizationId!=='local-preview'
+      ? loadMaintenanceRequests(supabaseClient,organizationId).then(bundle=>bundle.requests.filter(row=>row.assetId===assetId))
+      : db.maintenanceRequests.where('[organizationId+assetId]').equals([organizationId,assetId]).toArray())
       .then(items=>{if(active)setRows(items.sort((a,b)=>b.requestDate.localeCompare(a.requestDate)))})
       .catch(()=>{if(active)setRows([])})
     return()=>{active=false}
-  },[organizationId,assetId])
+  },[organizationId,assetId,supabaseClient])
   return <section className="maintenance-asset-history">
     <h3>Lịch sử Bảo dưỡng – Sửa chữa ({rows.length})</h3>
     {rows.length===0?<p>Chưa có Phiếu YC Bảo dưỡng – Sửa chữa cho thiết bị này.</p>:<div className="maintenance-asset-history-list">

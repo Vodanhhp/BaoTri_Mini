@@ -1,0 +1,3 @@
+revoke all on public.checklist_category_settings,public.checklist_definitions,public.checklist_definition_versions,public.checklist_tasks,public.checklist_runs,public.checklist_task_events from anon;
+revoke insert,update,delete on public.checklist_definition_versions,public.checklist_tasks,public.checklist_runs,public.checklist_task_events from authenticated;
+grant select on public.checklist_definitions,public.checklist_definition_versions,public.checklist_tasks,public.checklist_runs,public.checklist_task_events to authenticated;

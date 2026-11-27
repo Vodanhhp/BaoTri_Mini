@@ -791,10 +791,269 @@ Người dùng thống nhất dùng nhánh `main` làm nhánh thử nghiệm ch�
 - Kiểm tra thêm bằng transaction có rollback trên Production: tạo và duyệt thử yêu cầu **Checklist-only** và **Inventory-only**. Cả hai RPC trả `status=executed` với đúng hai cờ còn lại `false`; transaction rollback nên không xóa dữ liệu doanh nghiệp. Phát hiện và sửa unique constraint cũ `(organization_id,generation)` trên reset history vì nó ngăn nhiều lần Reset vật tư/Checklist khi asset generation không đổi; thay bằng khóa idempotency `(organization_id,request_id)` hiện có.
 
 
-## 26/11/2026 — Sửa phụ thuộc khi xóa vĩnh viễn tổ chức
+## Cập nhật 26/11/2026 – bắt đầu Checklist Cloud và quy tắc Online-only
+
+Nhánh triển khai: `feature/checklist-cloud-online-qr`  
+PR nháp: https://github.com/Vodanhhp/BaoTri_Mini/pull/75
+
+### Yêu cầu nghiệp vụ đã chốt
+- Checklist thực hiện trên điện thoại; PC dành cho Admin quản lý mẫu, cấu hình, xem lịch sử, báo cáo và in.
+- Checklist thiết bị sẽ được mở bằng quét QR Code trên điện thoại.
+- Checklist theo hệ thống (hạ tầng, điện, nước, PCCC và các hệ thống khác) được chọn thủ công trên điện thoại, không bắt buộc QR.
+- Mất Internet: khóa thao tác thực hiện Checklist; không ghi nhận offline để đồng bộ sau.
+- Giai đoạn 1 mặc định Admin phụ trách; phân công KTV chi tiết để giai đoạn 2.
+- Mẫu Checklist theo hệ thống tối thiểu 5 tiêu chí; mỗi tiêu chí có Đạt / Không đạt / Bỏ qua. Bỏ qua không tính là Đạt hoặc Không đạt; nếu toàn bộ tiêu chí đều Bỏ qua thì kết quả tổng thể là Bỏ qua.
+
+### Đã thay đổi trên nhánh
+- Bốn nhóm mẫu gợi ý Cơ sở hạ tầng, Điện, Nước, PCCC được nâng lên 7 tiêu chí mỗi nhóm.
+- Builder từ chối lưu mẫu hệ thống có dưới 5 tiêu chí.
+- Thay lựa chọn mới thành Bỏ qua; giữ đọc được bản ghi cũ có kết quả Không áp dụng.
+- Bổ sung chặn thao tác thực hiện khi trình duyệt offline hoặc giao diện desktop; PC vẫn giữ các tab quản lý, lịch sử, báo cáo và in.
+- Bổ sung thông báo trạng thái kết nối và hướng dẫn sử dụng điện thoại.
+
+### Supabase Test
+- Đã áp dụng migration `20261126144630_checklist_cloud_online_foundation` trên Supabase Test `oyzhxgzltpdebpymuicb` (chỉ môi trường Test).
+- Tạo các bảng mới: `checklist_category_settings`, `checklist_definitions`, `checklist_definition_versions`, `checklist_tasks`, `checklist_runs`, `checklist_task_events`.
+- Các bảng mới đều bật RLS và có policy theo `checklist.view` / `checklist.template.manage`; task claim và complete đi qua RPC trong schema private, kiểm tra `checklist.result.create` và cập nhật atomic.
+- Smoke test trong transaction rollback: tạo mẫu hệ thống 5 tiêu chí thành công; mẫu 4 tiêu chí bị constraint từ chối; không giữ lại dữ liệu thử nghiệm.
+- Đã kiểm tra các bảng và policy sau migration. Security Advisor chỉ trả các cảnh báo hiện hữu của những bảng/hàm khác; không phát hiện bảng Checklist mới thiếu policy.
+
+### Chưa hoàn tất – không được coi là đã nghiệm thu
+- Kết nối giao diện Checklist với các bảng Cloud mới; hiện các luồng UI hiện hữu vẫn còn Local Dexie.
+- Tạo/sinh lịch công việc trên Cloud và đồng bộ snapshot/version.
+- Gắn luồng nhận việc/hoàn thành UI vào RPC atomic.
+- Quét QR Code thiết bị và kiểm tra quyền/trạng thái trên Cloud.
+- Chặn thực hiện Checklist trên PC cần được xác thực bằng kiểm thử giao diện thực tế; hiện mới có chặn theo viewport desktop.
+- Chạy CI/build/test sau các thay đổi; chưa kiểm thử trên điện thoại hoặc camera thực tế.
+- Chưa áp dụng bất kỳ migration nào lên Production; chưa merge PR #75.
+
+
+### Kiểm thử nhánh Checklist (26/11/2026)
+- CI `Build and test` run `45843259457`: **success**; các bước Unit tests và Build đều thành công.
+- CI `Validate BAOTRI Mini` run `45843259528`: **success**.
+- Đã sửa lỗi JSX trùng thuộc tính disabled và cập nhật các kiểm thử để phản ánh chính sách thực hiện Checklist trên điện thoại, online-only.
+- Migration đã áp dụng ở Supabase Test được lưu tại `docs/drafts/20261126144630_checklist_cloud_online_foundation.sql`, không nằm trong `supabase/migrations/` vì chưa áp dụng Production và bộ kiểm thử migration yêu cầu đồng bộ chính xác với lịch sử Production.
+- Trạng thái vẫn là PR Draft #75; không merge, không deploy Production.
+
+
+- Bổ sung migration Test `20261126145323_checklist_phase1_admin_only`: RPC nhận việc/hoàn thành kiểm tra role Admin khi task được giao `Admin`, phù hợp giai đoạn 1. Đã kiểm tra định nghĩa hai RPC sau cập nhật trên Supabase Test; file nguồn lưu tại `docs/drafts/20261126145323_checklist_phase1_admin_only.sql`.
+
+
+## Cập nhật tiếp tục Checklist Cloud – 26/11/2026
+
+### Đã triển khai trên nhánh PR #75
+- Thêm `src/lib/checklistCloud.ts`: tải cấu hình, mẫu, lịch công việc, kết quả và lịch sử sự kiện trực tiếp từ Supabase; không dùng Dexie làm nguồn chính cho tổ chức thật.
+- Admin lưu mẫu qua RPC Cloud; mỗi lần sửa mẫu tăng version và lưu snapshot ở `checklist_definition_versions`.
+- Cloud sinh lượt công việc từ lịch chu kỳ, giữ snapshot nội dung tại thời điểm sinh lượt; khi sửa mẫu, các lượt tương lai chưa nhận sẽ được tạo lại theo mẫu mới, còn lượt đang làm/đã hoàn thành giữ nguyên snapshot.
+- Nhận việc, trả việc và hoàn thành dùng RPC server-side; claim được khóa hàng trong PostgreSQL để tránh hai máy nhận cùng lượt.
+- Kết quả được ghi vào `checklist_runs`; kiểm tra server xác nhận đúng từng question ID/label, không nhận câu trả lời trùng hoặc thiếu.
+- Khi tất cả câu trả lời là Bỏ qua, kết quả tổng thể là Bỏ qua.
+- Thêm `ChecklistQrScanner.tsx`: camera QR dùng BarcodeDetector trên trình duyệt hỗ trợ, có ô nhập mã dự phòng. QR hiện có trên tem thiết bị đang mã hóa mã quản lý; luồng mới dùng mã đó tra thiết bị Cloud rồi tìm Checklist đến hạn.
+- Checklist thiết bị chỉ mở qua QR; Checklist hệ thống tiếp tục thực hiện thủ công trên điện thoại.
+- Giai đoạn 1 khóa người phụ trách ở Admin cả giao diện và server RPC; phân công KTV để giai đoạn 2.
+- PC nhận diện theo nền tảng/user-agent và không được thực hiện Checklist; quản lý mẫu, lịch sử, báo cáo, in vẫn giữ.
+- Offline: các thao tác thực hiện và quét QR bị khóa; không ghi Local rồi đồng bộ sau.
+
+### Supabase Test đã áp dụng
+Project `BAOTRI-Mini-Test` / `oyzhxgzltpdebpymuicb`:
+- `20261126144630 checklist_cloud_online_foundation`
+- `20261126145323 checklist_phase1_admin_only`
+- `20261126150046 checklist_cloud_management_and_schedule_rpcs`
+- `20261126150054 checklist_public_rpc_wrappers`
+- `20261126150203 checklist_task_snapshot_metadata`
+- `20261126150642 checklist_definition_edit_reschedules_pending_tasks`
+- `20261126150723 checklist_cloud_cleans_disabled_future_occurrences`
+- `20261126150817 checklist_phase_one_admin_only_guards`
+- `20261126150853 checklist_result_validates_question_identity`
+
+Kiểm tra:
+- 6 bảng Checklist mới bật RLS; mỗi bảng có policy phù hợp theo quyền xem/quản lý.
+- Public RPC wrapper chỉ cấp EXECUTE cho authenticated; anon không được gọi. Wrapper là SECURITY INVOKER, phần nghiệp vụ nhạy cảm nằm trong private SECURITY DEFINER đã kiểm tra quyền.
+- Smoke test chạy trong transaction rollback: tạo mẫu hệ thống 5 tiêu chí, sinh task, nhận task, hoàn thành với tất cả Bỏ qua và xác nhận outcome Bỏ qua; mẫu 4 tiêu chí và người phụ trách KTV bị từ chối. Không giữ dữ liệu thử nghiệm.
+- Security Advisor không báo thiếu policy ở 6 bảng Checklist mới; các cảnh báo hiện hữu khác thuộc những bảng/hàm ngoài phạm vi Checklist.
+
+### Kiểm thử và giới hạn
+- CI Build and test + Validate đã thành công ở các commit triển khai Cloud/QR gần nhất; cần chờ xác nhận cuối cùng cho commit hiện tại sau thay đổi mới nhất.
+- Chưa kiểm thử camera QR trên điện thoại vật lý; BarcodeDetector không có trên mọi trình duyệt, đã có nhập mã dự phòng.
+- Chưa kiểm thử E2E UI với tài khoản Admin thực tế trên trình duyệt.
+- Chưa áp dụng bất kỳ migration Checklist nào lên Production; PR #75 vẫn Draft, chưa merge.
+- Giao diện Cloud chưa được chạy trên môi trường preview gắn Supabase Test; CI build/test không thay thế kiểm thử vận hành.
+
+
+### Hoàn thiện kỹ thuật bổ sung – 26/11/2026
+- Cloud loader phân trang các bảng mẫu, công việc, kết quả và sự kiện; tránh giới hạn mặc định 1.000 dòng của PostgREST.
+- Chỉ tạo trước lịch công việc khi mở lần đầu hoặc sau khi Admin sửa mẫu/cấu hình. Làm mới định kỳ 60 giây chỉ cập nhật trạng thái quá hạn, không tạo lại cả năm công việc liên tục.
+- Giới hạn lịch được tải/tạo trong cửa sổ 366 ngày quá khứ và 1 năm tương lai để không gửi lịch cũ ngoài phạm vi RPC.
+- Server xóa các lượt tương lai chưa nhận khi mẫu tạm ngừng hoặc nhóm starter bị tắt; lượt đang thực hiện/đã hoàn thành giữ snapshot.
+- Giao diện đóng QR scanner khi mất kết nối hoặc thiết bị được nhận diện là PC. Sau khi RPC nhận việc thành công, mở phiếu ngay và làm mới danh sách nền.
+- Đã khóa quyền ghi trực tiếp vào `checklist_definitions`; mọi tạo/sửa mẫu phải đi qua RPC có version snapshot. Các bảng lịch sử/task chỉ còn SELECT cho authenticated; anon bị thu hồi quyền bảng.
+- Smoke test trong transaction rollback sau khi siết quyền: RPC lưu mẫu vẫn hoạt động với authenticated Admin; INSERT trực tiếp vào bảng definitions bị từ chối.
+- CI Build and test + Validate thành công tại commit code `20134a787bf2956bee783e4c2edb09d3e53d1870`. Các thay đổi sau đó chủ yếu là SQL migration source; run mới đang chờ hoàn tất.
+- Migration Test bổ sung: `20261126211000 checklist_definitions_write_only_through_versioned_rpc`, `20261126212000 checklist_cloud_minimum_table_privileges`.
+
+
+### Rà soát sau khi phiên triển khai bị ngắt – 26/11/2026
+- PR #75 hiện vẫn OPEN + DRAFT, base `main`, head `feature/checklist-cloud-online-qr`, head SHA `a1ace46aca6cb33d0db0584c45fa6d7bf671e30f`; chưa merge, Production không thay đổi.
+- CI tại đúng head SHA đã hoàn tất thành công:
+  - Build and test run `45846843476`: Unit tests + Build đều SUCCESS.
+  - Validate BAOTRI Mini run `45846843459`: npm ci + npm run build SUCCESS.
+- Supabase Test có đủ 11 migration Checklist:
+  `20261126144630`, `20261126145323`, `20261126150046`, `20261126150054`, `20261126150203`, `20261126150642`, `20261126150723`, `20261126150817`, `20261126150853`, `20261126151227`, `20261126151244`.
+  Public RPC wrappers của migration `20261126150054` hiện được ghi chung trong source draft `docs/drafts/20261126150000_checklist_cloud_management_and_schedule_rpcs.sql`; cần giữ rõ quan hệ này khi tách/chỉnh migration sau này.
+- Danh sách phần còn dở trước khi có thể xem là hoàn tất:
+  1. Chạy app trên Preview/nhánh thử nghiệm trỏ đúng Supabase Test; đăng nhập tài khoản Admin thật để kiểm thử CRUD mẫu, lịch, task, kết quả, lịch sử, báo cáo và in.
+  2. Kiểm thử điện thoại thật: quyền camera, QR tem đang dùng, quét đúng/sai mã, nhiều mẫu cùng thiết bị, không có task đến hạn, mất mạng giữa lúc quét/nhận/lưu, và trình duyệt không hỗ trợ BarcodeDetector.
+  3. Xác nhận nghiệp vụ nhập mã thiết bị thủ công dự phòng có được chấp nhận hay thiết bị bắt buộc quét QR bằng camera.
+  4. Rà soát nhận diện PC/mobile trên thiết bị lai (tablet, trình duyệt desktop giả lập mobile); hiện là kiểm soát phía giao diện, server RPC vẫn kiểm soát quyền Admin và trạng thái task nhưng không xác minh loại thiết bị.
+  5. Chưa triển khai migration lên Production; chỉ làm sau khi Preview/E2E được nghiệm thu và có xác nhận riêng.
+- Không được hiểu CI xanh là đã kiểm thử camera, giao diện thực tế hoặc Production.
+
+
+## Rà soát lỗi và sửa Checklist Cloud/QR – 26/11/2026
+
+### Các lỗi đã phát hiện và sửa
+1. **Lịch định kỳ cũ:** bộ sinh lịch trước đây chỉ xét 18 tháng cho chu kỳ tháng, 6 chu kỳ cho quý, 2 năm cho năm; mẫu tạo lâu hơn có thể không sinh lượt. Chu kỳ ngày/tuần cũng có thể gửi lịch quá cũ khiến RPC từ chối. Đã tính điểm bắt đầu trong cửa sổ 366 ngày quá khứ, giữ đúng ngày/tuần/tháng/quý/năm và grace period 24 giờ.
+2. **Checklist thiết bị đi vòng QR:** RPC lưu Checklist thủ công trước đây cho phép lưu mẫu thiết bị không qua task QR. Đã chặn đường manual RPC đối với `target_kind='equipment'`; thiết bị phải đi qua lượt task. UI chỉ tìm task theo mã thiết bị đã quét.
+3. **Sai thiết bị sau khi sửa mẫu:** task snapshot trước đây thiếu target asset ID/type, khiến task cũ có thể bị ghép theo thiết bị mới sau khi Admin sửa mẫu. Đã bổ sung `targetKind` và `targetAssetId` vào snapshot task, map vào model và dùng target ID snapshot khi tìm task từ QR.
+4. **Snapshot kết quả có thể bị client giả mạo:** RPC hoàn thành task trước đây nhận tiêu đề/đối tượng/snapshot từ payload client. Đã chuyển sang lấy toàn bộ metadata và danh sách câu hỏi từ `definition_snapshot` đã lưu trên Cloud.
+5. **Gửi trùng Checklist hệ thống:** lưu manual run trước đây tạo ID mới ở mỗi lần gọi, có thể sinh phiếu trùng khi mạng timeout rồi người dùng bấm lưu lại. Đã thêm idempotency key ổn định cho mỗi lượt mở form, lưu key làm primary key của run và trả lại kết quả cũ khi retry; UI khóa nút lưu trong lúc chờ và không cho đóng form khi đang lưu.
+6. **Camera QR rò stream:** bấm mở lại camera có thể để stream cũ chạy; callback detect có thể tiếp tục tạo animation frame sau khi đóng modal. Đã dừng stream/frame trước khi mở lại, dùng active ref và dừng cả luồng getUserMedia/play còn pending khi modal đóng.
+7. **Máy tính bảng bị coi là điện thoại:** bộ nhận diện trước đây cho phép tablet/iPad. Đã đổi sang chỉ cho phép user-agent điện thoại; tablet/iPad bị khóa. Đây vẫn là guard phía trình duyệt, không phải bằng chứng thiết bị an toàn phía server.
+8. **KTV có quyền execute tùy chỉnh:** UI trước đây dựa vào canExecute permission. Đã yêu cầu đồng thời canManage/Admin, phù hợp giai đoạn 1; RPC tiếp tục kiểm tra role Admin.
+9. **Tiêu chí tùy chọn bỏ trống:** UI cho phép bỏ trống tiêu chí optional nhưng gửi kết quả rỗng, khiến RPC từ chối. Đã chuẩn hóa câu optional chưa chọn thành Bỏ qua.
+10. **Lỗi RPC và trạng thái UI:** bổ sung xử lý lỗi và refresh lại dữ liệu sau các thao tác quản lý/nhận/trả/hoàn thành để tránh hiển thị trạng thái cũ khi phản hồi mạng không chắc chắn.
+11. **Phân trang Cloud:** bổ sung sắp xếp phụ theo ID để kết quả phân trang ổn định khi nhiều dòng trùng timestamp.
+
+### SQL/RLS đã cập nhật trên Supabase Test
+Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migration nền ban đầu và 9 migration rà soát/sửa lỗi tiếp theo). Các migration bổ sung:
+- `20261126222000_checklist_equipment_requires_qr_task_flow`
+- `20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot`
+- `20261126224000_checklist_policy_and_fk_index_review`
+- `20261126225000_checklist_task_snapshot_target_identity`
+- `20261126226000_checklist_manual_run_idempotency`
+- `20261126227000_checklist_manual_run_idempotency_persist_run_id`
+- `20261126228000_checklist_claim_owner_null_safe_checks`
+- `20261126229000_checklist_definition_question_validation`
+- `20261126230000_checklist_equipment_target_must_be_active`
+- Tách policy SELECT và policy ghi cho bảng cấu hình/mẫu; UPDATE có cả USING và WITH CHECK. Bổ sung index cho các foreign key Checklist.
+- Kiểm tra quyền sau migration: 6 bảng bật RLS; anon không có quyền đọc; authenticated chỉ đọc bảng lịch sử/task/version; bảng cấu hình cho phép ghi qua RLS; bảng definitions không cho ghi trực tiếp; public RPC wrappers là SECURITY INVOKER, anon không có EXECUTE, authenticated có EXECUTE.
+- Security Advisor không còn phát hiện vấn đề thuộc 6 bảng/RPC Checklist mới; không còn multiple permissive policies ở 2 bảng Checklist. Các cảnh báo definer/RLS còn lại thuộc các bảng/hàm cũ ngoài phạm vi này. Performance Advisor còn báo các index mới chưa được dùng do chưa có tải thực tế.
+
+### Kiểm thử bổ sung
+- SQL smoke test trong transaction rollback đã xác nhận: manual RPC từ chối mẫu thiết bị; task QR lưu đúng target asset snapshot; hoàn thành task lấy tiêu đề/đối tượng/câu hỏi từ snapshot Cloud dù payload client bị sửa; manual Checklist hệ thống với tất cả Bỏ qua trả outcome Bỏ qua; gọi lại cùng run ID trả đúng run cũ và chỉ có một bản ghi.
+- SQL smoke test trước đó xác nhận Admin-only, tối thiểu 5 tiêu chí hệ thống, từ chối KTV, atomic claim/complete và quyền ghi bảng.
+- Smoke test bổ sung xác nhận server từ chối question ID trùng, label rỗng, required flag sai kiểu; mẫu hợp lệ 5 tiêu chí vẫn được chấp nhận. Server cũng từ chối thiết bị Thanh lý làm target Checklist.
+- Không giữ lại dữ liệu smoke test vì tất cả chạy trong transaction rollback.
+- CI Build and test và Validate đều xanh tại head `3cc303baada7bcd163bd3adbd40968596e018dc4` (Build and test run `45852450473`, Validate run `45852450546`).
+
+### Việc vẫn chặn nghiệm thu/Production
+- **Dữ liệu Checklist Local cũ:** nhánh `main` hiện tại lưu cấu hình/mẫu/lượt/kết quả theo từng trình duyệt bằng Dexie. Nhánh Cloud không tự động nhập dữ liệu cũ. Đã thêm cảnh báo Admin nếu trình duyệt hiện tại còn dữ liệu local chưa chuyển Cloud; cảnh báo chỉ kiểm tra được thiết bị đang đăng nhập, không quét được các điện thoại/PC khác. Cần thống nhất phương án gom/chuyển dữ liệu cũ trước Production; tuyệt đối không tự động xóa Dexie.
+- Chưa chạy Preview thực tế kết nối Supabase Test với tài khoản Admin.
+- Chưa E2E trên điện thoại vật lý: camera permission, QR đúng/sai, task đang có người nhận, task hết hạn, nhiều Checklist cùng thiết bị, mất mạng giữa thao tác.
+- Trình duyệt không thể chứng minh tuyệt đối thiết bị là điện thoại; server bảo vệ role/quyền/task nhưng không thể xác minh vật lý camera đã quét.
+- Chưa áp dụng bất kỳ migration Checklist nào lên Production. PR #75 tiếp tục Draft, không merge.
+
+
+### Kiểm tra cuối bổ sung – 26/11/2026
+- Thêm server-side validation cho từng câu hỏi: object hợp lệ, ID không rỗng/không trùng, label không rỗng và tối đa 1.000 ký tự, ID tối đa 128 ký tự, required nếu có phải là boolean.
+- RPC lưu mẫu thiết bị chỉ chấp nhận thiết bị còn hoạt động, chưa archive/delete và trạng thái không phải Thanh lý.
+- Thêm cảnh báo Admin về dữ liệu Checklist Dexie cũ trên chính trình duyệt hiện tại; không tự nhập và không xóa dữ liệu.
+- Migration Checklist Test hiện có 20 bản ghi. CI đã xanh tại head hiện tại `3cc303baada7bcd163bd3adbd40968596e018dc4`.
+
+
+### Hai điểm nghiệp vụ cần chốt trước nghiệm thu – 26/11/2026
+- **Xóa/bớt mẫu:** UI hiện có Tạo mẫu, Sửa nội dung và Tạm ngừng/Tiếp tục lịch; chưa có thao tác xóa hoặc lưu trữ mẫu khỏi danh sách. Hard delete không phù hợp vì mẫu đang được lịch sử tham chiếu. Đề xuất dùng Lưu trữ mẫu (soft archive), giữ nguyên kết quả và phiên bản cũ; chờ xác nhận nghiệp vụ trước khi triển khai.
+- **Dữ liệu Dexie cũ:** cảnh báo đã được thêm, nhưng chưa có luồng import. Cần chọn một thiết bị/nguồn dữ liệu chuẩn và cách hợp nhất dữ liệu từ nhiều trình duyệt để tránh nhập trùng hoặc ghi đè mẫu.
+26/11/2026 — Sửa phụ thuộc khi xóa vĩnh viễn tổ chức
 
 - Điều tra lỗi PostgreSQL `23503` khi xóa tổ chức: `organization_equipment_catalog_history` có FK `ON DELETE RESTRICT` tới `organizations`, nhưng routine cũ chưa dọn bản ghi audit này. Đối chiếu Production còn phát hiện `private.platform_data_seed_runs` cũng cần được dọn trước khi xóa tổ chức.
 - Đã merge PR #76 vào `main` (squash commit `43cd748155d5cc93b5c9bae5d7fcf6cbd99370c0`); CI Validate và Build/Unit tests đều thành công.
 - Đã áp dụng migration Production `20261126160654_fix_platform_delete_catalog_history_dependencies` và lưu migration tương ứng tại `supabase/migrations/20261126160654_fix_platform_delete_catalog_history_dependencies.sql`.
 - Routine mới xóa catalog audit (có kiểm tra `to_regclass`) và seed-run metadata trước khi xóa tổ chức; cleanup giữ trong cùng transaction. Không xóa `auth.users` hoặc `profiles`.
 - Đã kiểm tra Production: migration có trong lịch sử, hàm đang chạy có cả hai bước cleanup; tổ chức `My Company` vẫn tồn tại (1 bản ghi). Chưa thực hiện thao tác xóa tổ chức thật; chưa kiểm chứng end-to-end qua giao diện.
+
+
+## 26/11/2026 — Checklist, Phiếu yêu cầu và báo cáo bảo trì Cloud (đang triển khai)
+
+- Bổ sung cấu trúc Cloud cho Phiếu yêu cầu bảo dưỡng/sửa chữa, liên kết với tổ chức và thiết bị; có lịch sử tạo, cập nhật, hoàn thành. RLS bật, đọc theo quyền `maintenance.view`; ghi dữ liệu qua RPC kiểm tra quyền `maintenance.create/update`.
+- Thêm RPC tạo Phiếu yêu cầu từ kết quả Checklist Không đạt. Phiếu lấy thiết bị, người kiểm tra và nội dung tiêu chí Không đạt; mỗi kết quả Checklist chỉ có tối đa một Phiếu liên kết. Lưu `maintenance_request_id` ngược lại trên kết quả Checklist.
+- Chuyển đọc/ghi Phiếu yêu cầu và lịch bảo dưỡng định kỳ của phân hệ Bảo dưỡng – Sửa chữa sang Cloud; lưu lịch sử thao tác, cập nhật trạng thái và kết quả hoàn thành.
+- Báo cáo bổ sung thống kê Phiếu phát sinh trong kỳ, Phiếu hoàn thành trong kỳ, Phiếu đang xử lý, Phiếu quá hạn và lịch bảo dưỡng định kỳ theo ngày/tuần/tháng/quý/năm. Báo cáo thiết bị giữ nguyên cách tính; báo cáo vật tư không thay đổi và vẫn lấy dữ liệu Local.
+- Đã thêm kỳ Năm vào bộ lọc công việc cần thực hiện của Checklist.
+- Đã áp dụng các migration bảo trì lên Supabase Test `oyzhxgzltpdebpymuicb`; SQL smoke tests chạy trong transaction rollback xác nhận tạo/cập nhật/hoàn thành Phiếu, lịch định kỳ, liên kết Checklist→Phiếu không trùng, và routine xóa tổ chức xử lý được các phụ thuộc mới. Sau rollback, tổ chức và dữ liệu Test vẫn nguyên vẹn.
+- Bổ sung cleanup cho Phiếu yêu cầu, lịch bảo dưỡng và Checklist vào routine xóa tổ chức; xử lý liên kết vòng giữa Checklist run và Phiếu yêu cầu trước khi xóa.
+- Đã bổ sung cảnh báo và nút chuyển dữ liệu bảo trì Local cũ trên từng trình duyệt lên Cloud; giữ nguyên bản Local, nhập theo ID để có thể chạy lại an toàn, nhập cả lịch sử và giữ thời điểm hoàn thành cũ. Các hồ sơ cũ thiếu thông tin hoàn thành được giữ ở trạng thái cần rà soát, không tự bịa dữ liệu.
+- Đã thêm bộ lọc báo cáo Checklist theo Ngày/Tuần/Tháng/Quý/Năm; thống kê Phiếu yêu cầu theo ngày phát sinh/ngày hoàn thành và trạng thái đang xử lý/quá hạn; báo cáo lịch bảo dưỡng định kỳ cũng tính công việc quá hạn và xuất chung Excel.
+- CI Build và Unit tests đã PASS trên commit `c334ea7e4ed71abc0c6235c1805adf21b2531af0`.
+- SQL smoke tests trên Supabase Test đã PASS trong transaction rollback: tạo/hoàn thành Phiếu; tạo/hoàn thành lịch; Checklist Không đạt tạo Phiếu có liên kết và retry không trùng; nhập dữ liệu Local idempotent; giữ ngày hoàn thành; xóa tổ chức xử lý các phụ thuộc và rollback xác nhận dữ liệu Test còn nguyên.
+- Chưa Preview/E2E giao diện thực tế và chưa kiểm thử trên điện thoại vật lý. Chưa áp dụng migration nào lên Production, chưa merge PR #75.
+- Đã đăng ký các migration Checklist và Cloud maintenance đã áp dụng trên Test vào `supabase/migrations` theo đúng version trong `supabase_migrations.schema_migrations`; bổ sung migration harden tạo phiếu từ Checklist (`20261126165000`).
+- Đã đồng bộ nhánh PR với `main` bằng merge commit; PR không còn behind.
+- Còn việc phải hoàn tất: có CI Build/Unit mới và kiểm tra TypeScript; kiểm tra Preview giao diện thực tế trên Supabase Test; kiểm thử E2E trên điện thoại vật lý; kiểm tra luồng tạo Phiếu yêu cầu từ Checklist trong UI.
+
+
+## 27/11/2026 — Rà soát toàn bộ Checklist / Bảo dưỡng Cloud / Báo cáo
+
+### Các lỗi đã xử lý
+- Quyền giao diện phân hệ Checklist, Bảo dưỡng và Báo cáo được tách theo quyền thực tế: `checklist.view`, `checklist.template.manage`, `checklist.result.create`, `maintenance.view/create/update`; không còn dùng chung quyền xem thiết bị để mở phân hệ khác.
+- Đối chiếu RPC xác nhận Checklist giai đoạn 1 vẫn Admin-only ở cả server. Giữ đúng giới hạn Phase 1; không mở quyền KTV trái với migration. Giao diện hiện khớp với kiểm tra quyền phía DB.
+- Phiếu yêu cầu và lịch bảo dưỡng Cloud được phân trang 500 bản ghi/lượt, tránh Supabase giới hạn mặc định làm mất dữ liệu khi tổ chức có trên 1.000 bản ghi.
+- Báo cáo bảo trì phân biệt dòng phát sinh/đến hạn/hoàn thành trong kỳ với KPI quá hạn hiện tại; không trộn công việc quá hạn ngoài kỳ vào danh sách của một kỳ lịch sử. Bảng bảo dưỡng có người thực hiện và kết quả/ghi chú.
+- Báo cáo Checklist tải riêng các lượt chưa thực hiện trong đúng khoảng ngày được chọn, kể cả dữ liệu cũ hơn 366 ngày; trạng thái quá hạn 24 giờ được tính đúng khi hiển thị, không phụ thuộc Admin vừa mở màn hình.
+- Bổ sung lịch sử thao tác cho từng lịch bảo dưỡng trên giao diện; lỗi cập nhật trạng thái được hiển thị thay vì để Promise bị từ chối không xử lý.
+- Xóa dữ liệu màn hình cũ khi đổi tổ chức để tránh hiển thị tạm dữ liệu của tổ chức trước.
+- Đối chiếu trực tiếp với `main`: logic tính toán Báo cáo vật tư và Báo cáo thiết bị không thay đổi.
+- Phát hiện `maintenance_tasks` cho phép DML trực tiếp, có thể bỏ qua lịch sử. Đã áp dụng migration Test `20261127025051_maintenance_tasks_write_only_via_rpc`: chỉ đọc trực tiếp, mọi ghi phải qua RPC đã kiểm tra quyền và ghi sự kiện.
+- Supabase Advisor phát hiện thiếu index cho 6 FK liên quan Checklist/bảng bảo trì cũ; đã bổ sung migration Test `20261127025535_checklist_maintenance_fk_covering_indexes`. Sau đó Advisor không còn báo FK thiếu index trên các bảng Checklist/Bảo dưỡng đang dùng.
+
+### Kiểm chứng
+- CI tại commit `49c449280a010af15ff578d2aa94ed46a066c04f`: **282/282 Unit tests PASS, Build PASS**.
+- SQL smoke test trong transaction rollback: KTV tạo và hoàn thành lịch qua RPC thành công, tạo đủ sự kiện lịch sử; ghi trực tiếp vào `maintenance_tasks` bị chặn; Viewer không tạo được lịch.
+- Checklist Phase 1 được kiểm tra ở cả quyền DB và giao diện: Admin thực hiện; KTV/Viewer không được thực hiện trong giai đoạn này.
+- Các bảng Phiếu yêu cầu, lịch bảo dưỡng và Checklist trên Test hiện 0 bản ghi sau các lần rollback. Migration inventory: 88/88 file khớp danh sách đã áp dụng + pending.
+- Production chưa áp dụng các migration Checklist/maintenance Cloud mới; migration Production mới nhất vẫn là `20261126160654_fix_platform_delete_catalog_history_dependencies`. Không thay đổi dữ liệu Production.
+
+### Các điểm chưa hoàn tất / cần chốt
+- Chưa có chức năng import dữ liệu Checklist Dexie/Local cũ lên Cloud. Dữ liệu Local vẫn nằm trên trình duyệt nguồn; không bị xóa nhưng chưa đồng bộ sang thiết bị khác. Luồng import bảo trì hiện chỉ phát hiện dữ liệu theo organizationId hiện tại, chưa tự nhận diện dữ liệu ở scope `local-preview`.
+- Lịch bảo dưỡng hiện lưu từng công việc và chu kỳ mô tả; chưa tự sinh lần bảo dưỡng kế tiếp khi hoàn thành. Cần chốt có muốn tự động tạo lượt tiếp theo hay không.
+- Chưa chạy Preview/E2E giao diện thật và chưa kiểm thử trên điện thoại vật lý.
+- Supabase Advisor Test còn cảnh báo tổng thể: 34 hàm SECURITY DEFINER có EXECUTE cho authenticated, 13 bảng nội bộ RLS không có policy, 22 FK khác chưa có index, 4 nhóm policy permissive và Auth chưa bật leaked-password protection. Các cảnh báo FK trên bảng Checklist/Bảo dưỡng đã xử lý; các cảnh báo còn lại thuộc phạm vi nền tảng/nhóm chức năng khác, chưa tự ý sửa.
+- PR #75 vẫn Draft, chưa merge; không triển khai Production khi chưa có xác nhận riêng.
+
+
+## 27/11/2026 — Lưu mốc tiếp tục sau rà soát Checklist / Bảo dưỡng Cloud
+
+- Nhánh làm việc tiếp tục: `feature/checklist-cloud-online-qr`; PR #75 vẫn OPEN/Draft, không merge nếu chưa có xác nhận riêng.
+- Mốc mã nguồn gần nhất đã ghi nhận: `b79213372feeabaa038138d0e9763eb6ab87bc76`. Phần code đã được kiểm thử ở commit `49c449280a010af15ff578d2aa94ed46a066c04f`: 282/282 Unit tests và Build PASS; commit `b792133...` chỉ cập nhật tài liệu TIENDO, chưa có kết quả CI riêng cho commit tài liệu này.
+- Không áp dụng migration Checklist/Bảo dưỡng mới lên Production. Supabase Test vẫn là `oyzhxgzltpdebpymuicb`; Production `dskeaiyvldiwlsfqkboq`; tuyệt đối không thao tác dự án Supabase cũ `ahacxsrriwlfzrobrbmc`.
+- Giữ nguyên quyết định Phase 1: chỉ Admin được thực hiện Checklist; không tự mở quyền KTV. Báo cáo vật tư và báo cáo thiết bị không chỉnh sửa logic tính toán.
+- Việc ưu tiên tiếp theo: khảo sát và thiết kế luồng nhập dữ liệu Checklist Local/Dexie lên Cloud. Phải đọc schema Dexie, các RPC/migration Checklist và cách gắn asset; nhập có kiểm tra trùng/idempotent, giữ nguyên dữ liệu Local, không ghi đè âm thầm. Cần xử lý cả dữ liệu theo organizationId và scope `local-preview`; tài sản không ghép được phải đưa ra danh sách rà soát, không tự ghép sai.
+- Trước khi triển khai import, xác định rõ nguồn Local và tổ chức Cloud đích; nếu có nhiều nguồn hoặc nhiều tổ chức thì hỏi người dùng xác nhận, không tự hợp nhất. Chỉ thử trên Supabase Test và rollback dữ liệu thử.
+- Các việc còn treo khác: import Local Preview của Bảo dưỡng chưa được nhận diện; lịch bảo dưỡng chưa tự sinh lượt tiếp theo sau khi hoàn thành (cần chốt nghiệp vụ); chưa Preview/E2E trên trình duyệt thật và chưa thử điện thoại vật lý.
+- Không tuyên bố nghiệm thu/Production-ready chỉ dựa trên CI. Không deploy, merge PR hoặc áp dụng Production migration nếu chưa có phê duyệt riêng.
+
+
+## 27/11/2026 — Rà soát sâu Checklist trước khi đưa lên main
+
+- Nhánh hiện tại: `feature/checklist-cloud-online-qr`; HEAD `606761e5d8c97704da0c73c5aecfcee23108fd5b`. PR #75 vẫn OPEN/Draft, chưa merge.
+- Đối chiếu GitHub: PR có 76 file thay đổi, khoảng 6.963 additions / 220 deletions; gồm Checklist Cloud/QR, Bảo dưỡng Cloud, Báo cáo và các migration liên quan, không chỉ riêng màn hình Checklist. Nhánh đang ahead 306 commits, behind 0 so với main; phải review phạm vi này trước khi merge.
+- Đã sửa các lỗi phát hiện trong rà soát:
+  1. Giờ thực hiện Checklist trước đây luôn rơi về 09:00 do regex parse giờ sai; đã sửa để dùng đúng execution_time.
+  2. Hành động Trả lại nhóm có guard PC chưa đồng nhất; đã chặn ở handler và nút UI.
+  3. QR scanner có thể giữ cameraReady=true khi khởi tạo detector thất bại; đã reset trạng thái trong catch.
+  4. Kết quả Checklist thiết bị phải giữ targetAssetId theo snapshot gốc, không phụ thuộc mẫu hiện tại sau khi chỉnh sửa.
+  5. Lượt hoàn thành Checklist theo lịch đã có run_id ổn định và RPC idempotent; retry sau timeout không tạo kết quả thứ hai.
+  6. Phát hiện migration lưu trữ mẫu đánh dấu cancelled_at nhưng hàm tạo lịch/chỉnh mẫu có thể xóa các lượt đã hủy; thêm partial unique index cho lượt chưa hủy và cập nhật RPC để giữ bản ghi cancelled. Đồng thời khôi phục kiểm tra không cho gắn mẫu với thiết bị Thanh lý (một migration trước đã bị migration sau ghi đè mất điều kiện).
+- Đã áp dụng hai migration mới CHỈ trên Supabase Test `BAOTRI-Mini-Test` (`oyzhxgzltpdebpymuicb`):
+  - `20261127032548_checklist_preserve_archived_task_history`
+  - `20261127032700_checklist_task_run_idempotency`
+- Smoke test SQL trong transaction rollback trên Test: xác nhận bản ghi cancelled được giữ lại, vẫn tạo được lượt active cùng ngày và không tạo trùng lượt active; xác nhận retry cùng run_id trả cùng một kết quả và chỉ có một checklist_run. Các bản ghi thử đã rollback, không để lại dữ liệu.
+- CI tại HEAD `606761e...`: **289/289 Unit tests PASS, Build PASS; Validate BAOTRI Mini PASS**.
+- Supabase Advisor Test: không phát hiện cảnh báo SECURITY DEFINER mới cho các RPC Checklist; còn 34 cảnh báo SECURITY DEFINER tổng thể, 13 bảng RLS không policy (nhóm bảng nội bộ), leaked-password protection và các cảnh báo index chưa dùng. Chưa tự ý thay đổi phạm vi nền tảng.
+- Vercel project `baotri-mini-new`: Production deployment gần nhất vẫn ở commit `d1c6dbf6...`; chưa có deployment cho main HEAD `e996850...`. Không tạo deployment hoặc promote Production trong lượt này.
+- Việc còn chặn nghiệm thu:
+  - Chưa có luồng import Checklist Dexie/Local cũ lên Cloud; dữ liệu Local vẫn được giữ nguyên.
+  - Chưa chạy Preview/E2E trên trình duyệt thật và điện thoại vật lý; camera QR cần kiểm tra trên thiết bị thật.
+  - Cần chốt có cho phép nhập mã thiết bị thủ công khi camera không hỗ trợ QR hay bắt buộc quét camera.
+  - PR #75 bao gồm cả thay đổi Bảo dưỡng/Báo cáo; cần quyết định có đưa toàn bộ phạm vi này vào main hay tách riêng.
+- Không merge PR #75, không deploy/promote Production, không áp dụng migration lên Production. Main đang là nhánh phát hành gắn với lịch sử Production; cần xác nhận rõ trước bước phát hành.
