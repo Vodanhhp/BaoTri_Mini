@@ -394,7 +394,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     const client=supabase
     let active=true
     setReportTasks([]);setReportTasksLoading(true)
-    void loadChecklistTasksForReport(client,organizationId,reportRange.start,reportRange.end)
+    void loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end)
       .then(rows=>{if(active)setReportTasks(rows)})
       .catch(cause=>{if(active){
         setReportTasks([])
