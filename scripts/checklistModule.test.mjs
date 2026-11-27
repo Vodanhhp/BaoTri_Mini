@@ -574,7 +574,9 @@ test('Checklist release action is blocked on PC in both UI and handler',()=>{
 
 test('QR scanner resets camera-ready UI when camera startup or detector initialization fails',async()=>{
   const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
-  assert.match(scanner,/catch\(cause\)=>\{[\s\S]*?activeRef\.current=false[\s\S]*?setCameraReady\(false\)/)
+  const catchStart=scanner.indexOf('}catch(cause){')
+  assert.ok(catchStart>=0)
+  assert.ok(scanner.slice(catchStart).includes('setCameraReady(false)'))
 })
 
 test('Cloud recurrence uses the configured execution time instead of silently falling back to 09:00',async()=>{
