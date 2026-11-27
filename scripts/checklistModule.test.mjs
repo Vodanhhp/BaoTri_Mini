@@ -566,3 +566,8 @@ test('Legacy Checklist discovery inventories every Local organization scope, inc
   assert.match(panel,/scope\.organizationId==='local-preview'/)
   assert.match(panel,/chưa có dữ liệu nào được nhập, sửa hoặc xóa/)
 })
+
+test('Checklist release action is blocked on PC in both UI and handler',()=>{
+  assert.match(panel,/const releaseTask=async\(taskId:string\)=>\{\s*if\(!canExecuteHere\)return/)
+  assert.match(panel,/disabled=\{!canExecuteHere\} onClick=\{\(\)=>void releaseTask\(task\.id\)/)
+})
