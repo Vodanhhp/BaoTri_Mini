@@ -6,7 +6,7 @@ import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERI
 import ChecklistQrScanner from './ChecklistQrScanner'
 import { supabase } from './lib/supabase'
 import { isPcPlatform } from './lib/platform'
-import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun } from './lib/checklistCloud'
+import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun, loadChecklistTasksForReport } from './lib/checklistCloud'
 import { createMaintenanceRequestFromChecklist } from './lib/maintenanceCloud'
 
 type Props = {
@@ -265,6 +265,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [showArchivedDefinitions,setShowArchivedDefinitions]=useState(false)
   const [reportPeriod,setReportPeriod]=useState<'day'|'week'|'month'|'quarter'|'year'>('month')
   const [reportAnchorDate,setReportAnchorDate]=useState(dateOnly())
+  const [reportTasks,setReportTasks]=useState<ChecklistTask[]>([])
+  const [reportTasksLoading,setReportTasksLoading]=useState(false)
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
   const [qrOpen,setQrOpen]=useState(false)
   const [qrSearching,setQrSearching]=useState(false)
@@ -338,8 +340,24 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const reportPeriodLabel:Record<typeof reportPeriod,string>={day:'Ngày',week:'Tuần',month:'Tháng',quarter:'Quý',year:'Năm'}
   const reportRange=useMemo(()=>checklistPeriodRange(reportPeriod,new Date(reportAnchorDate+'T00:00:00')),[reportPeriod,reportAnchorDate])
   const reportEndDate=useMemo(()=>{const end=new Date(reportRange.end+'T00:00:00');end.setDate(end.getDate()-1);return checklistLocalDateKey(end)},[reportRange.end])
+  useEffect(()=>{
+    if(tab!=='reports'||organizationId!=='local-preview')return
+    setReportTasks(tasks.filter(item=>item.dueDate>=reportRange.start&&item.dueDate<reportRange.end))
+    setReportTasksLoading(false)
+  },[tab,organizationId,reportRange.start,reportRange.end,tasks])
+  useEffect(()=>{
+    if(tab!=='reports'||organizationId==='local-preview')return
+    if(!supabase){setReportTasks([]);setReportTasksLoading(false);return}
+    let active=true
+    setReportTasks([]);setReportTasksLoading(true)
+    void loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end)
+      .then(rows=>{if(active)setReportTasks(rows)})
+      .catch(cause=>{if(active){setReportTasks([]);setError(cause instanceof Error?cause.message:String(cause))}})
+      .finally(()=>{if(active)setReportTasksLoading(false)})
+    return()=>{active=false}
+  },[tab,organizationId,reportRange.start,reportRange.end])
   const reportRuns=useMemo(()=>runs.filter(item=>{const day=checklistLocalDateKey(new Date(item.completedAt));return day>=reportRange.start&&day<=reportEndDate}),[runs,reportRange.start,reportEndDate])
-  const reportMissedTasks=useMemo(()=>tasks.filter(item=>item.status==='Không Checklist'&&item.dueDate>=reportRange.start&&item.dueDate<=reportEndDate),[tasks,reportRange.start,reportEndDate])
+  const reportMissedTasks=useMemo(()=>reportTasks.filter(item=>item.status==='Không Checklist'&&item.dueDate>=reportRange.start&&item.dueDate<=reportEndDate),[reportTasks,reportRange.start,reportEndDate])
   const currentMs=Date.now()
   const periodRange=checklistPeriodRange(workPeriod)
   const periodFrequency:Record<typeof workPeriod,ChecklistFrequency>={day:'Hàng ngày',week:'Hàng tuần',month:'Hàng tháng',quarter:'Hàng quý',year:'Hàng năm'}
@@ -695,7 +713,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
           <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị Checklist có chu kỳ tương ứng với kỳ đã chọn (Ngày: Hàng ngày, Tuần: Hàng tuần, Tháng: Hàng tháng, Quý: Hàng quý, Năm: Hàng năm). Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist.</p></div></div>
           <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button><button type="button" className={workPeriod==='year'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('year')}>Năm</button></div>
           {!isPcPlatform()&&<div className="checklist-qr-actions"><button type="button" className="primary-btn" onClick={()=>setQrOpen(true)} disabled={!canExecuteHere||qrSearching}><QrCode size={16}/> {qrSearching?'Đang tìm thiết bị…':'Quét QR thiết bị'}</button><small>Checklist thiết bị chỉ mở từ mã QR trên tem. Checklist hệ thống vẫn chọn thủ công bên dưới.</small></div>}
-          <div className="checklist-report-summary"><div><small>Công việc {selectedFrequency.toLocaleLowerCase('vi')} trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist trong kỳ</small><b>{missedTasks.length}</b></div></div>
+          {reportTasksLoading&&<div className="checklist-connectivity-notice">Đang tải lịch sử công việc trong kỳ báo cáo…</div>}
+         <div className="checklist-report-summary"><div><small>Công việc {selectedFrequency.toLocaleLowerCase('vi')} trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist trong kỳ</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
             {periodTasks.map(task=>{
               const definition=definitions.find(item=>item.id===task.checklistId)
@@ -780,7 +799,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         <h3 className="checklist-history-subtitle">Kết quả đã kiểm tra ({runs.length})</h3>
         <div className="checklist-history-list">{runs.map(row=><article className="checklist-history-row" key={row.id}><div><b>{row.checklistTitle}</b><small>{row.targetLabel} · {dateTime(row.completedAt)} · {row.inspector}</small><span className={row.outcome==='Không đạt'?'checklist-outcome fail':'checklist-outcome pass'}>{row.outcome}</span></div><details><summary>Xem nội dung</summary><ul>{row.answers.map(answer=><li key={answer.questionId}><b>{answer.result}</b> · {answer.question}{answer.note?' — '+answer.note:''}</li>)}</ul>{row.assignmentHistory&&row.assignmentHistory.length>0&&<><b>Lịch sử phân công</b><ul>{row.assignmentHistory.map((event,index)=><li key={index}>{event.action} · {event.actor} · {dateTime(event.at)}</li>)}</ul></>}{row.outcome==='Không đạt'&&<><p>{row.maintenanceRequestId?'Đã liên kết Phiếu yêu cầu: '+row.maintenanceRequestId:row.repairRequestCreated?'Đã yêu cầu tạo Phiếu nhưng chưa có liên kết Cloud.':'Chưa tạo Phiếu yêu cầu: '+row.noRepairReason}</p>{canCreateMaintenance&&!row.maintenanceRequestId&&Boolean(definitions.find(item=>item.id===row.checklistId)?.targetAssetId)&&<button type="button" className="soft-btn" onClick={()=>void createRequestFromSavedRun(row)}>Tạo Phiếu yêu cầu từ Checklist này</button>}</>}</details></article>)}{runs.length===0&&<div className="table-empty-state">Chưa có kết quả kiểm tra.</div>}</div>
       </section>}
-      {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và Phiếu yêu cầu theo ngày, tuần, tháng, quý hoặc năm.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={!reportRuns.length&&!reportMissedTasks.length}><Download size={15}/> Xuất Excel</button></div>
+      {tab==='reports'&&<section className="panel checklist-section"><div className="panel-head"><div><h2>Báo cáo Checklist</h2><p>Tổng hợp kết quả, người kiểm tra và Phiếu yêu cầu theo ngày, tuần, tháng, quý hoặc năm.</p></div><button className="primary-btn" onClick={()=>void exportExcel()} disabled={reportTasksLoading||(!reportRuns.length&&!reportMissedTasks.length)}><Download size={15}/> Xuất Excel</button></div>
         <div className="checklist-report-filters checklist-report-period-filters">
           <div className="checklist-period-tabs">{([{value:'day',label:'Ngày'},{value:'week',label:'Tuần'},{value:'month',label:'Tháng'},{value:'quarter',label:'Quý'},{value:'year',label:'Năm'}] as const).map(item=><button key={item.value} type="button" className={reportPeriod===item.value?'soft-btn active':'soft-btn'} onClick={()=>setReportPeriod(item.value)}>{item.label}</button>)}</div>
           <label>Chọn ngày trong kỳ<input type="date" value={reportAnchorDate} onChange={event=>setReportAnchorDate(event.target.value||dateOnly())}/></label>
