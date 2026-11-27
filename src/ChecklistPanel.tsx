@@ -238,6 +238,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [runningManualRunId,setRunningManualRunId]=useState<string|null>(null)
   const [savingRun,setSavingRun]=useState(false)
   const [legacyLocalCounts,setLegacyLocalCounts]=useState<{settings:number;definitions:number;runs:number;tasks:number}|null>(null)
+  const [legacyLocalScopes,setLegacyLocalScopes]=useState<Array<{organizationId:string;settings:number;definitions:number;runs:number;tasks:number}>>([])
   const [tab,setTab]=useState<'overview'|'builder'|'history'|'reports'>('overview')
   const [workPeriod,setWorkPeriod]=useState<'day'|'week'|'month'|'quarter'|'year'>('day')
   const [showSuggestions,setShowSuggestions]=useState(false)
@@ -322,6 +323,30 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       db.checklistTasks.where('organizationId').equals(organizationId).count()
     ]).then(([settings,definitions,runs,tasks])=>{if(active)setLegacyLocalCounts({settings,definitions,runs,tasks})})
       .catch(()=>{if(active)setLegacyLocalCounts({settings:0,definitions:0,runs:0,tasks:0})})
+    return()=>{active=false}
+  },[organizationId])
+  // Read-only inventory of every Checklist Local scope on this browser. This includes
+  // local-preview and other organization IDs that are hidden when the UI switches to Cloud.
+  useEffect(()=>{
+    let active=true
+    void Promise.all([
+      db.checklistCategorySettings.orderBy('organizationId').uniqueKeys(),
+      db.checklistDefinitions.orderBy('organizationId').uniqueKeys(),
+      db.checklistRuns.orderBy('organizationId').uniqueKeys(),
+      db.checklistTasks.orderBy('organizationId').uniqueKeys()
+    ]).then(async scopeKeys=>{
+      const scopes=[...new Set(scopeKeys.flat().map(String))].sort()
+      const counts=await Promise.all(scopes.map(async scope=>{
+        const [settings,definitions,runs,tasks]=await Promise.all([
+          db.checklistCategorySettings.where('organizationId').equals(scope).count(),
+          db.checklistDefinitions.where('organizationId').equals(scope).count(),
+          db.checklistRuns.where('organizationId').equals(scope).count(),
+          db.checklistTasks.where('organizationId').equals(scope).count()
+        ])
+        return {organizationId:scope,settings,definitions,runs,tasks}
+      }))
+      if(active)setLegacyLocalScopes(counts)
+    }).catch(()=>{if(active)setLegacyLocalScopes([])})
     return()=>{active=false}
   },[organizationId])
   useEffect(()=>{void refresh(true)},[organizationId,userId,canManage])
@@ -693,6 +718,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
     <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":isPcPlatform()?"Trên PC chỉ quản lý mẫu, xem lịch sử, báo cáo và in. Thực hiện Checklist bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
     {canManage&&legacyLocalCounts&&(legacyLocalCounts.settings+legacyLocalCounts.definitions+legacyLocalCounts.runs+legacyLocalCounts.tasks)>0&&<div className="checklist-connectivity-notice">Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này: {legacyLocalCounts.definitions} mẫu, {legacyLocalCounts.runs} kết quả, {legacyLocalCounts.tasks} lượt lịch và {legacyLocalCounts.settings} cấu hình. Dữ liệu này chưa được chuyển lên Cloud. Không xóa dữ liệu trình duyệt hoặc đổi thiết bị trước khi có phương án chuyển đổi.</div>}
+    {canManage&&legacyLocalScopes.some(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0)&&<div className="checklist-connectivity-notice"><b>Các nguồn Checklist Local khác trên trình duyệt này:</b>{legacyLocalScopes.filter(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0).map(scope=><div key={scope.organizationId}>{scope.organizationId==='local-preview'?'Local Preview':`Scope tổ chức ${scope.organizationId.slice(0,8)}…`} — {scope.definitions} mẫu, {scope.runs} kết quả, {scope.tasks} lượt lịch, {scope.settings} cấu hình</div>)}<small>Đây chỉ là thống kê đọc dữ liệu Local; chưa có dữ liệu nào được nhập, sửa hoặc xóa.</small></div>}
     <div className="checklist-tabs">
       <button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}><ClipboardCheck size={15}/> Tổng quan</button>
       <button className={tab==='builder'?'active':''} onClick={()=>setTab('builder')}><Settings2 size={15}/> Quản lý mẫu</button>
