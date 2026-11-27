@@ -150,3 +150,11 @@ test('maintenance panel clears old organization records before loading another o
   const panel=await read('../src/MaintenancePanel.tsx')
   assert.match(panel,/setRequests\(\[\]\);setTasks\(\[\]\);setHistory\(\[\]\);setLegacyLocalCounts\(null\)/)
 })
+test('maintenance task writes cannot bypass RPC audit history through direct table DML',async()=>{
+  const migration=await read('../supabase/migrations/20261127025051_maintenance_tasks_write_only_via_rpc.sql')
+  const cloud=await read('../src/lib/maintenanceCloud.ts')
+  assert.match(migration,/revoke insert, update, delete on table public\.maintenance_tasks from anon, authenticated/)
+  assert.match(migration,/grant select on table public\.maintenance_tasks to authenticated/)
+  assert.match(cloud,/maintenance_save_task/)
+  assert.match(cloud,/maintenance_update_task_status/)
+})
