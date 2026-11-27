@@ -550,7 +550,7 @@ test('Checklist missed-task reports load the selected historical period beyond t
 
 test('Cloud Checklist status reflects the 24-hour missed-task rule even without an Admin refresh',async()=>{
   const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
-  assert.match(cloud,/CHECKLIST_GRACE_PERIOD_MS/)
+  assert.match(cloud,/GRACE_MS/)
   assert.match(cloud,/\['Chờ thực hiện','Đang thực hiện'\]\.includes\(String\(row\.status\)\)/)
   assert.match(cloud,/\?\s*'Không Checklist':row\.status/)
 })
