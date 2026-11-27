@@ -391,16 +391,17 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   useEffect(()=>{
     if(tab!=='reports'||organizationId==='local-preview')return
     if(!supabase){setReportTasks([]);setReportTasksLoading(false);return}
+    const client=supabase
     let active=true
     setReportTasks([]);setReportTasksLoading(true)
-    void loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end)
+    void loadChecklistTasksForReport(client,organizationId,reportRange.start,reportRange.end)
       .then(rows=>{if(active)setReportTasks(rows)})
       .catch(cause=>{if(active){
         setReportTasks([])
         const detail=cause instanceof Error?cause.message:String(cause)
         if(onDataError)onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy thử tải lại dữ liệu.',detail,async()=>{
           setReportTasksLoading(true)
-          try{const rows=await loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end);setReportTasks(rows);onDataLoaded?.()}
+          try{const rows=await loadChecklistTasksForReport(client,organizationId,reportRange.start,reportRange.end);setReportTasks(rows);onDataLoaded?.()}
           catch(retryCause){const retryDetail=retryCause instanceof Error?retryCause.message:String(retryCause);onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy kiểm tra kết nối rồi thử lại.',retryDetail,async()=>{await refresh(true)})}
           finally{setReportTasksLoading(false)}
         })
