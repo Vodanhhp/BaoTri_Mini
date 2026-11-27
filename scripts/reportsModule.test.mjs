@@ -134,3 +134,6 @@ test('maintenance report reads only with maintenance.view and does not change ma
   assert.match(panel,/Báo cáo nhập – xuất vật tư/)
   assert.match(panel,/Tình trạng thiết bị/)
 })
+test('reports clear stale organization data before loading a new tenant',()=>{
+  assert.match(panel,/setInventory\(\[\]\);setMovements\(\[\]\);setRequests\(\[\]\);setTasks\(\[\]\);setMaintenanceHistory\(\[\]\)/)
+})
