@@ -158,3 +158,22 @@ test('maintenance task writes cannot bypass RPC audit history through direct tab
   assert.match(cloud,/maintenance_save_task/)
   assert.match(cloud,/maintenance_update_task_status/)
 })
+
+
+test('Checklist failures for system targets can create maintenance requests without an asset while preserving tenant scope and audit history', async()=>{
+  const migration=await read('../supabase/migrations/20261127070000_checklist_non_equipment_maintenance_requests.sql')
+  const cloud=await read('../src/lib/maintenanceCloud.ts')
+  const panel=await read('../src/MaintenancePanel.tsx')
+  const db=await read('../src/db.ts')
+  assert.match(migration,/alter column asset_id drop not null/)
+  assert.match(migration,/target_kind in \('equipment','system'\)/)
+  assert.match(migration,/v_target_kind='system'/)
+  assert.match(migration,/v_asset_id:=null/)
+  assert.match(migration,/checklist_run_id/)
+  assert.match(migration,/maintenance_request_events/)
+  assert.match(cloud,/targetKind:\(row\.target_kind/)
+  assert.match(cloud,/target_location:request\.targetLocation/)
+  assert.match(panel,/requestTargetName/)
+  assert.match(panel,/Hệ thống \/ hạ tầng \/ khu vực/)
+  assert.match(db,/targetKind\?: 'equipment' \| 'system'/)
+})
