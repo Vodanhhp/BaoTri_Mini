@@ -123,7 +123,5 @@ begin
 
   return jsonb_build_object('run_id',v_run_id,'outcome',v_outcome,'completed_at',clock_timestamp());
 end;
-$function$
-
-
+$function$;
 commit;
