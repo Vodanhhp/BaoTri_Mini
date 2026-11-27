@@ -91,7 +91,8 @@ const pendingMigrationFiles = [
   "20261126164704_expand_tenant_dependency_cleanup.sql",
   "20261126170029_harden_checklist_maintenance_request_creation.sql",
   "20261126170750_maintenance_legacy_local_import.sql",
-  "20261126170844_preserve_legacy_maintenance_timestamps.sql"
+  "20261126170844_preserve_legacy_maintenance_timestamps.sql",
+  "20261127025051_maintenance_tasks_write_only_via_rpc.sql"
 ]
 
 test('source migration inventory includes Production-applied history plus explicitly pending PR migrations', async () => {
