@@ -531,3 +531,10 @@ test('technicians with Checklist result permission can execute while template ma
   assert.match(app,/canExecuteChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.result\.create'\)\)/)
   assert.match(app,/canViewChecklist=Boolean\(currentOrganization\?\.permissions\.includes\('checklist\.view'\)\)/)
 })
+test('Checklist repair-request controls require maintenance.create permission',()=>{
+  assert.match(app,/canCreateMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.create'\)\)/)
+  assert.match(app,/canCreateMaintenance=\{localPreview\|\|canCreateMaintenance\}/)
+  assert.match(panel,/if\(!canCreateMaintenance\|\|!supabase\|\|organizationId==='local-preview'/)
+  assert.match(panel,/Tài khoản chưa có quyền tạo Phiếu yêu cầu/)
+  assert.match(panel,/canCreateMaintenance&&!row\.maintenanceRequestId/)
+})
