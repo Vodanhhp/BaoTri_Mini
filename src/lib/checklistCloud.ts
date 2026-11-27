@@ -132,17 +132,18 @@ function mapTask(row: Row, organizationId: string, events: Row[], definitions: C
     createdAt:String(row.created_at),updatedAt:String(row.updated_at)
   }
 }
-function mapRun(row: Row, organizationId: string, events: Row[]): ChecklistRun {
+function mapRun(row: Row, organizationId: string, events: Row[], tasks: ChecklistTask[]): ChecklistRun {
   if(String(row.organization_id)!==organizationId)throw new Error('Cloud trả lịch sử Checklist sai tổ chức.')
   const answers=asRows(row.answers).map(answer=>({
     questionId:String(answer.questionId||answer.question_id||''),question:String(answer.question||''),
     result:String(answer.result||'Bỏ qua') as ChecklistRun['answers'][number]['result'],note:String(answer.note||'')
   }))
+  const task=tasks.find(item=>item.id===String(row.task_id))
   const taskEvents=events.filter(event=>event.task_id===row.task_id).sort((a,b)=>String(a.occurred_at).localeCompare(String(b.occurred_at)))
   return {
     id:String(row.id),organizationId,checklistId:String(row.definition_id),checklistTitle:String(row.checklist_title),
     categoryLabel:CATEGORY_LABELS[String(row.category_label)]||String(row.category_label),
-    targetLabel:String(row.target_label),frequency:row.frequency as ChecklistFrequency,answers,
+    targetLabel:String(row.target_label),...(task?.definitionSnapshot.targetAssetId?{targetAssetId:task.definitionSnapshot.targetAssetId}:{}),frequency:row.frequency as ChecklistFrequency,answers,
     outcome:row.outcome as ChecklistRun['outcome'],inspector:String(row.inspector),completedAt:String(row.completed_at),
     repairRequestCreated:Boolean(row.repair_request_created),...(row.maintenance_request_id?{maintenanceRequestId:String(row.maintenance_request_id)}:{}),...(row.no_repair_reason?{noRepairReason:String(row.no_repair_reason)}:{}),
     assignmentHistory:taskEvents.filter(event=>event.event_type!=='Hoàn thành').map(event=>({
@@ -247,10 +248,10 @@ export async function loadChecklistCloud(
     fetchAllRows(client,'checklist_runs',organizationId,'completed_at',false),
     fetchAllRows(client,'checklist_task_events',organizationId,'occurred_at')
   ])
+  const tasks=taskRows.map(row=>mapTask(row,organizationId,events,definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
   return {
-    settings,definitions,
-    tasks:taskRows.map(row=>mapTask(row,organizationId,events,definitions)).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)),
-    runs:runRows.map(row=>mapRun(row,organizationId,events)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
+    settings,definitions,tasks,
+    runs:runRows.map(row=>mapRun(row,organizationId,events,tasks)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
   }
 }
 
