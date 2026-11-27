@@ -128,3 +128,21 @@ test('legacy Local maintenance records are detected and can be imported to Cloud
   assert.match(timestampMigration,/nullif\(p_payload->>'completed_at'/)
   assert.match(panel,/Bản Local sẽ được giữ nguyên/)
 })
+
+test('maintenance Cloud reads paginate beyond the Supabase default row limit',async()=>{
+  const cloud=await read('../src/lib/maintenanceCloud.ts')
+  assert.match(cloud,/MAINTENANCE_PAGE_SIZE=500/)
+  assert.match(cloud,/\.range\(offset,offset\+MAINTENANCE_PAGE_SIZE-1\)/)
+  assert.match(cloud,/fetchAllMaintenanceRows\(client,'maintenance_request_events'/)
+  assert.match(cloud,/fetchAllMaintenanceRows\(client,'maintenance_task_events'/)
+})
+test('maintenance controls follow explicit create and update permissions and expose task history',async()=>{
+  const app=await read('../src/App.tsx')
+  const panel=await read('../src/MaintenancePanel.tsx')
+  assert.match(app,/canCreateMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.create'\)\)/)
+  assert.match(app,/canUpdateMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.update'\)\)/)
+  assert.match(panel,/existingRequest\?!canUpdate:!canCreate/)
+  assert.match(panel,/existingTask\?!canUpdate:!canCreate/)
+  assert.match(panel,/history\.filter\(item=>item\.recordType==='task'&&item\.recordId===historyFor\)/)
+  assert.match(panel,/catch\(cause\)\{setError\(cause instanceof Error\?cause\.message:String\(cause\)\)\}/)
+})
