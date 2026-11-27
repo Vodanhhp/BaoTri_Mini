@@ -35,7 +35,7 @@ begin
   select * into v_definition from public.checklist_definitions
    where organization_id=p_organization_id and id=p_definition_id and enabled for share;
   if not found then raise exception 'Không tìm thấy mẫu Checklist đang hoạt động.' using errcode='P0002';end if;
-if jsonb_typeof(v_answers)<>'array'
+  if jsonb_typeof(v_answers)<>'array'
      or jsonb_array_length(v_answers)<>jsonb_array_length(v_definition.questions)
      or exists(select 1 from jsonb_array_elements(v_answers) a where coalesce(a->>'result','') not in ('Đạt','Không đạt','Bỏ qua'))
      or (select count(distinct a->>'questionId') from jsonb_array_elements(v_answers) a)<>jsonb_array_length(v_answers)
