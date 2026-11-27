@@ -1261,6 +1261,12 @@ export default function App() {
   const canImport=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.import'))
   const canUpdate=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.update'))
   const canView=Boolean(currentOrganization?.permissions.includes('assets.view'))
+  const canViewMaintenance=Boolean(currentOrganization?.permissions.includes('maintenance.view'))
+  const canCreateMaintenance=Boolean(currentOrganization?.permissions.includes('maintenance.create'))
+  const canUpdateMaintenance=Boolean(currentOrganization?.permissions.includes('maintenance.update'))
+  const canViewChecklist=Boolean(currentOrganization?.permissions.includes('checklist.view'))
+  const canManageChecklist=Boolean(currentOrganization?.permissions.includes('checklist.template.manage'))
+  const canExecuteChecklist=Boolean(currentOrganization?.permissions.includes('checklist.result.create'))
   const canCreate=Boolean(canMutate&&currentOrganization?.permissions.includes('assets.create'))
   const canDelete=Boolean(currentOrganization?.isAdmin)
   const canChangeStatus=Boolean(localPreview||(canMutate&&currentOrganization?.permissions.includes('assets.update')))
@@ -1282,9 +1288,9 @@ export default function App() {
       <button className={"nav-item"+(activeModule==='dashboard'?' active':'')} onClick={()=>{setActiveModule('dashboard');setMobileMenuOpen(false)}}><LayoutDashboard size={17}/><span>Trang tổng quan</span></button>
       <button className={'nav-item'+(activeModule==='assets'?' active':'')} onClick={()=>{setActiveModule('assets');setMobileMenuOpen(false)}}><Building2 size={17}/><span>Danh mục thiết bị</span></button>
       {session&&canInventoryView&&<button className={'nav-item'+(activeModule==='inventory'?' active':'')} onClick={()=>{setActiveModule('inventory');setMobileMenuOpen(false)}}><Package size={17}/><span>Kho vật tư</span></button>}
-      {(session||localPreview)&&(localPreview||canView)&&<button className={'nav-item'+(activeModule==='maintenance'?' active':'')} onClick={()=>{setActiveModule('maintenance');setMobileMenuOpen(false)}}><Wrench size={17}/><span>Bảo dưỡng – Sửa chữa</span></button>}
-      {(session||localPreview)&&(localPreview||canView)&&<button className={'nav-item'+(activeModule==='checklist'?' active':'')} onClick={()=>{setActiveModule('checklist');setMobileMenuOpen(false)}}><ClipboardCheck size={17}/><span>Kiểm tra định kỳ</span></button>}
-      {(session||localPreview)&&(localPreview||canView||canInventoryView)&&<button className={'nav-item'+(activeModule==='reports'?' active':'')} onClick={()=>{setActiveModule('reports');setMobileMenuOpen(false)}}><BarChart3 size={17}/><span>Báo cáo</span></button>}
+      {(session||localPreview)&&(localPreview||canViewMaintenance)&&<button className={'nav-item'+(activeModule==='maintenance'?' active':'')} onClick={()=>{setActiveModule('maintenance');setMobileMenuOpen(false)}}><Wrench size={17}/><span>Bảo dưỡng – Sửa chữa</span></button>}
+      {(session||localPreview)&&(localPreview||canViewChecklist)&&<button className={'nav-item'+(activeModule==='checklist'?' active':'')} onClick={()=>{setActiveModule('checklist');setMobileMenuOpen(false)}}><ClipboardCheck size={17}/><span>Kiểm tra định kỳ</span></button>}
+      {(session||localPreview)&&(localPreview||canView||canInventoryView||canViewMaintenance)&&<button className={'nav-item'+(activeModule==='reports'?' active':'')} onClick={()=>{setActiveModule('reports');setMobileMenuOpen(false)}}><BarChart3 size={17}/><span>Báo cáo</span></button>}
       {session&&<div className="sidebar-settings">
         <button className={'nav-item'+(settingsOpen?' active':'')} aria-expanded={settingsOpen} onClick={()=>setSettingsOpen(value=>!value)}><Settings size={17}/><span>Cài đặt</span><span className="nav-chevron">{settingsOpen?'−':'+'}</span></button>
         {settingsOpen&&<div className="sidebar-settings-submenu">
@@ -1304,11 +1310,11 @@ export default function App() {
       </header>
       <div className="content">
         {activeModule==='checklist'
-          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canView} canManage={localPreview||Boolean(currentOrganization?.isAdmin)} canExecute={localPreview||canMutate} assets={assets} initialAssetId={checklistInitialAssetId} onInitialAssetHandled={()=>setChecklistInitialAssetId(null)}/>
+          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canViewChecklist} canManage={localPreview||canManageChecklist} canExecute={localPreview||canExecuteChecklist} assets={assets} initialAssetId={checklistInitialAssetId} onInitialAssetHandled={()=>setChecklistInitialAssetId(null)}/>
           : activeModule==='reports'
-          ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewInventory={localPreview||canInventoryView} canExport={canExport} supabaseClient={supabase}/>
+          ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewMaintenance={localPreview||canViewMaintenance} canViewInventory={localPreview||canInventoryView} canExport={canExport} supabaseClient={supabase}/>
           : activeModule==='maintenance'
-          ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||''} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canView} canManage={localPreview||canMutate} supabaseClient={supabase}/>
+          ? <MaintenancePanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||''} assets={assets} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} canView={localPreview||canViewMaintenance} canCreate={localPreview||canCreateMaintenance} canUpdate={localPreview||canUpdateMaintenance} canManage={localPreview||(canCreateMaintenance&&canUpdateMaintenance)} supabaseClient={supabase}/>
           : activeModule==='inventory'
           ? <InventoryPanel organizationId={organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userId={session?.user.id} userLabel={profileDisplayName||session?.user.email||'Tài khoản'} userRoleLabel={currentOrganization?.roleCodes.map(role=>role==='admin'?'Admin':role==='technician'?'KTV':role==='viewer'?'Viewer':role).join(', ')||(currentOrganization?.isAdmin?'Admin':'KTV')} canView={canInventoryView} canCreate={canInventoryCreate} canUpdate={canInventoryUpdate} canAdjust={canInventoryAdjust} canDelete={canInventoryDelete} canExport={canExport} isAdmin={Boolean(currentOrganization?.isAdmin)} equipmentCatalog={equipmentCatalog} equipmentCatalogLoading={equipmentCatalogLoading} equipmentCatalogError={equipmentCatalogError}/>
           : activeModule==='dashboard'
