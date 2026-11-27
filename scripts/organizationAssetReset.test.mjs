@@ -253,3 +253,44 @@ test('selective reset migration keeps equipment, inventory and Checklist generat
  assert.match(sql,/to_regclass\('public\.checklist_templates'\)/)
  assert.match(sql,/acknowledged_checklist_generation/)
 })
+
+test('Cloud Checklist reset removes dependency rows in FK-safe order and preserves maintenance requests',async()=>{
+ const sql=await read('../supabase/migrations/20261127140000_fix_reset_checklist_cloud_dependencies.sql')
+ assert.match(sql,/checklist_definitions_deleted/)
+ assert.match(sql,/checklist_definition_versions_deleted/)
+ assert.match(sql,/checklist_runs_deleted/)
+ assert.match(sql,/checklist_tasks_deleted/)
+ assert.match(sql,/checklist_task_events_deleted/)
+ assert.match(sql,/update public\.checklist_runs set maintenance_request_id=null/)
+ assert.match(sql,/update public\.checklist_tasks set run_id=null/)
+ assert.match(sql,/update public\.checklist_runs set task_id=null/)
+ assert.ok(sql.indexOf('delete from public.checklist_task_events') < sql.indexOf('delete from public.checklist_tasks'))
+ assert.ok(sql.indexOf('delete from public.checklist_tasks') < sql.indexOf('delete from public.checklist_runs'))
+ assert.ok(sql.indexOf('delete from public.checklist_runs') < sql.indexOf('delete from public.checklist_definition_versions'))
+ assert.ok(sql.indexOf('delete from public.checklist_definition_versions') < sql.indexOf('delete from public.checklist_definitions'))
+ assert.match(sql,/update public\.maintenance_requests r[\s\S]*?asset_id=null[\s\S]*?target_kind='system'/)
+ assert.match(sql,/delete from public\.assets/)
+ assert.doesNotMatch(sql,/delete from public\.maintenance_requests/)
+})
+
+test('asset reset preflights linked Checklist definitions and scheduled maintenance tasks',async()=>{
+ const sql=await read('../supabase/migrations/20261127140000_fix_reset_checklist_cloud_dependencies.sql')
+ assert.match(sql,/if v_req\.reset_assets and not v_req\.reset_checklist then/)
+ assert.match(sql,/v_linked_definitions>0/)
+ assert.match(sql,/Hãy chọn thêm Reset Checklist/)
+ assert.match(sql,/v_blocking_tasks>0/)
+ assert.match(sql,/lịch bảo trì đang gắn thiết bị/)
+})
+
+test('Reset request and result counters use current Cloud Checklist tables, not legacy template/result tables',async()=>{
+ const sql=await read('../supabase/migrations/20261127140000_fix_reset_checklist_cloud_dependencies.sql')
+ for(const table of ['checklist_definitions','checklist_definition_versions','checklist_runs','checklist_tasks','checklist_task_events']){
+  assert.match(sql,new RegExp('from public\\.'+table))
+ }
+ assert.match(sql,/cloud_checklist_definitions_at_request/)
+ assert.match(sql,/cloud_checklist_runs_at_request/)
+ assert.match(sql,/cloud_checklist_tasks_at_request/)
+ assert.match(sql,/cloud_checklist_task_events_at_request/)
+ assert.match(sql,/checklist_definitions_deleted/)
+ assert.match(sql,/checklist_runs_deleted/)
+})
