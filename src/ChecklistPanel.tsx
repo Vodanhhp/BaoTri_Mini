@@ -247,6 +247,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [showStarterGroups,setShowStarterGroups]=useState(false)
   const [showBuilderForm,setShowBuilderForm]=useState(false)
   const [loading,setLoading]=useState(true)
+  const [loadFailed,setLoadFailed]=useState(false)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
   const [editing,setEditing]=useState<ChecklistDefinition|null>(null)
@@ -294,6 +295,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         const merged=CATEGORIES.map(item=>bundle.settings.find(row=>row.categoryKey===item.key)||blankSetting(organizationId,item.key))
         setSettings(merged);setDefinitions(bundle.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
         setRuns(bundle.runs);setTasks(bundle.tasks)
+        setLoadFailed(false)
         onDataLoaded?.()
       }else{
         await ensureChecklistOccurrences(organizationId)
@@ -309,6 +311,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         setTasks(taskRows.filter(row=>!row.cancelledAt).sort((a,b)=>a.dueAt.localeCompare(b.dueAt)))
       }
     }catch(cause){
+      setLoadFailed(true)
       const detail=cause instanceof Error?cause.message:String(cause)
       if(organizationId!=='local-preview'&&onDataError){
         const missingCategoryTable=/checklist_category_settings/i.test(detail)&&/(schema cache|could not find the table|does not exist)/i.test(detail)
@@ -395,7 +398,12 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       .catch(cause=>{if(active){
         setReportTasks([])
         const detail=cause instanceof Error?cause.message:String(cause)
-        if(onDataError)onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy thử tải lại dữ liệu.',detail,async()=>{await refresh(true)})
+        if(onDataError)onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy thử tải lại dữ liệu.',detail,async()=>{
+          setReportTasksLoading(true)
+          try{const rows=await loadChecklistTasksForReport(supabase,organizationId,reportRange.start,reportRange.end);setReportTasks(rows);onDataLoaded?.()}
+          catch(retryCause){const retryDetail=retryCause instanceof Error?retryCause.message:String(retryCause);onDataError('Không tải được dữ liệu báo cáo Checklist từ máy chủ. Hãy kiểm tra kết nối rồi thử lại.',retryDetail,async()=>{await refresh(true)})}
+          finally{setReportTasksLoading(false)}
+        })
         else setError(detail)
       }})
       .finally(()=>{if(active)setReportTasksLoading(false)})
@@ -748,7 +756,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     </div>
     {error&&<div className="checklist-alert error">{error}<button onClick={()=>setError('')}><X size={14}/></button></div>}
     {notice&&<div className="checklist-alert success">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
-    {loading?<div className="panel">Đang tải dữ liệu Checklist…</div>:<>
+    {loading?<div className="panel">Đang tải dữ liệu Checklist…</div>:loadFailed?<div className="checklist-load-placeholder">Chưa thể hiển thị dữ liệu Checklist vì máy chủ chưa tải dữ liệu thành công. Thông báo lỗi và hướng xử lý nằm phía trên trang.</div>:<>
       {tab==='overview'&&<>
         <div className="checklist-stat-grid">
           <div className="stat-card"><div><small>Nhóm khởi tạo đã bật</small><strong>{enabledCount}/4</strong><span>Admin tự chọn phạm vi</span></div></div>

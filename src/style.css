@@ -3401,3 +3401,5 @@ html,body,#root,.app-shell{
 #root .app-shell .system-notification-spin{animation:system-notification-rotate .9s linear infinite}
 @keyframes system-notification-rotate{to{transform:rotate(360deg)}}
 @media(max-width:600px){#root .app-shell .system-notification{grid-template-columns:22px minmax(0,1fr);gap:9px;padding:12px}#root .app-shell .system-notification-actions{grid-column:2;justify-content:flex-start}#root .app-shell .system-notification-content pre{max-height:110px}}
+
+#root .app-shell .checklist-load-placeholder{margin:0;padding:18px;border:1px dashed var(--border);border-radius:10px;background:var(--panel-alt);color:var(--muted);font-size:12px;line-height:1.6;text-align:center}
