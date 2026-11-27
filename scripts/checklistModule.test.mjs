@@ -453,32 +453,28 @@ test('Cloud template RPC rejects malformed or duplicate Checklist question ident
   assert.match(migration,/char_length\(q->>'label'\)>1000/)
 })
 
-test('Checklist equipment manual RPC is blocked and completed task history uses the immutable task snapshot',async()=>{
-  const migration=await readFile(new URL('../docs/drafts/20261126223000_checklist_enforce_equipment_qr_and_immutable_task_snapshot.sql',import.meta.url),'utf8')
-  assert.match(migration,/v_definition\.target_kind='equipment'/)
-  assert.match(migration,/phải được mở từ lượt công việc sau khi quét QR/)
-  assert.match(migration,/v_task\.definition_snapshot->>'title'/)
-  assert.match(migration,/v_task\.definition_snapshot->'questions'/)
-  assert.doesNotMatch(migration,/coalesce\(p_payload->'checklist_snapshot'/)
+test('Equipment Checklist manual RPC is enabled while completed task history uses the immutable task snapshot',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261127050000_checklist_allow_manual_equipment_execution.sql',import.meta.url),'utf8')
+  assert.doesNotMatch(migration,/v_definition\.target_kind='equipment'/)
+  assert.doesNotMatch(migration,/phải được mở từ lượt công việc sau khi quét QR/)
+  assert.match(migration,/v_definition\.questions/)
+  assert.match(migration,/v_run_id uuid:=coalesce\(nullif\(p_payload->>'run_id',''\)::uuid,gen_random_uuid\(\)\)/)
+  assert.match(migration,/v_definition\.id,null/)
 })
 
-test('Equipment QR entry remains phone-only while manual Checklist execution can run on PC',async()=>{
-  const platform=await readFile(new URL('../src/lib/platform.ts',import.meta.url),'utf8')
-  assert.match(platform,/Android\.\*Mobile/)
-  assert.doesNotMatch(platform,/iPad|Tablet/)
-  assert.match(panel,/\{!isPcPlatform\(\)&&<div className="checklist-qr-actions">/)
-  assert.match(panel,/Quét QR thiết bị/)
-  assert.match(panel,/result:\(answers\[q\.id\]\?\.result\|\|'Bỏ qua'\)/)
+test('Equipment Checklist can be executed manually on PC and mobile while QR scanning is temporarily disabled',async()=>{
+  assert.doesNotMatch(panel,/ChecklistQrScanner/)
+  assert.doesNotMatch(panel,/Quét QR thiết bị/)
+  assert.match(panel,/Checklist có thể thực hiện thủ công trên PC và điện thoại/)
+  assert.match(panel,/!groupTask&&directAllowed&&<button className="primary-btn"[^>]*>Thực hiện thủ công/)
+  assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline/)
 })
 
-test('equipment Checklist starts only from QR scan while system Checklist remains manual',async()=>{
-  const scanner=await readFile(new URL('../src/ChecklistQrScanner.tsx',import.meta.url),'utf8')
-  assert.match(panel,/supabase\.from\('assets'\)\.select\('id,code,name'\)/)
-  assert.match(panel,/Boolean\(definition\?\.targetAssetId\)/)
-  assert.match(panel,/Thực hiện thủ công/)
-  assert.match(scanner,/getUserMedia/)
-  assert.match(scanner,/BarcodeDetector/)
-  assert.match(scanner,/onDetected\(manualCode\.trim\(\)\)/)
+test('Equipment and system Checklist tasks both use the manual execution flow',async()=>{
+  assert.doesNotMatch(panel,/handleQrDetected/)
+  assert.doesNotMatch(panel,/ChecklistQrScanner/)
+  assert.match(panel,/!groupTask&&directAllowed&&<button className="primary-btn"[^>]*>Thực hiện thủ công/)
+  assert.match(panel,/const beginTask=async\(task:ChecklistTask,item:ChecklistDefinition\)/)
 })
 
 test('phase-one Checklist assignment remains Admin-only in UI and server RPC',async()=>{
