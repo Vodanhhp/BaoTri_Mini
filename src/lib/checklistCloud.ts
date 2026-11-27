@@ -157,12 +157,13 @@ function assertOnline(): void {
   if(typeof navigator!=='undefined'&&!navigator.onLine)throw new Error('Mất Internet. Checklist chỉ hoạt động khi có kết nối Cloud.')
 }
 async function fetchAllRows(
-  client:SupabaseClient,table:string,organizationId:string,orderColumn:string,ascending=true,minimumDueAt?:string,excludeCancelled=false
+  client:SupabaseClient,table:string,organizationId:string,orderColumn:string,ascending=true,minimumDueAt?:string,excludeCancelled=false,maximumDueAt?:string
 ):Promise<Row[]>{
   const rows:Row[]=[]
   for(let offset=0;;offset+=PAGE_SIZE){
     let query=client.from(table as any).select('*').eq('organization_id',organizationId)
     if(minimumDueAt)query=query.gte('due_at',minimumDueAt)
+    if(maximumDueAt)query=query.lt('due_at',maximumDueAt)
     if(excludeCancelled)query=query.is('cancelled_at',null)
     query=query.order(orderColumn,{ascending}).order('id',{ascending:true}).range(offset,offset+PAGE_SIZE-1)
     const {data,error}=await query
@@ -252,6 +253,15 @@ export async function loadChecklistCloud(
     runs:runRows.map(row=>mapRun(row,organizationId,events)).sort((a,b)=>b.completedAt.localeCompare(a.completedAt))
   }
 }
+
+export async function loadChecklistTasksForReport(client:SupabaseClient,organizationId:string,startDate:string,endDateExclusive:string):Promise<ChecklistTask[]>{
+  assertOnline()
+  const startIso=new Date(startDate+'T00:00:00+07:00').toISOString()
+  const endIso=new Date(endDateExclusive+'T00:00:00+07:00').toISOString()
+  const rows=await fetchAllRows(client,'checklist_tasks',organizationId,'due_at',true,startIso,true,endIso)
+  return rows.map(row=>mapTask(row,organizationId,[],[])).sort((a,b)=>a.dueAt.localeCompare(b.dueAt))
+}
+
 export async function claimChecklistTask(client:SupabaseClient,organizationId:string,taskId:string):Promise<void>{
   assertOnline()
   await checked(client.rpc('checklist_claim_task',{p_organization_id:organizationId,p_task_id:taskId}),'Nhận công việc Checklist')
