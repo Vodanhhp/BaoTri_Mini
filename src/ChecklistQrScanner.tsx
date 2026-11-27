@@ -58,7 +58,7 @@ export default function ChecklistQrScanner({onDetected,onClose}:Props){
       activeRef.current=false
       streamRef.current?.getTracks().forEach(track=>track.stop())
       streamRef.current=null
-      if(activeRef.current)setCameraReady(false)
+      setCameraReady(false)
     }
   }
   return <div className="checklist-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
