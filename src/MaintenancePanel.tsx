@@ -97,6 +97,7 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   }
   useEffect(()=>{
     let active=true
+    setRequests([]);setTasks([]);setHistory([]);setLegacyLocalCounts(null)
     const refresh=()=>{void reload(()=>active).catch(e=>{if(active)setError(e instanceof Error?e.message:String(e))})}
     refresh()
     window.addEventListener('baotri:maintenance-updated',refresh)
