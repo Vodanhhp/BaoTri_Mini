@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { BarChart3, Check, ClipboardCheck, Download, History, Plus, QrCode, Settings2, ShieldCheck, X } from 'lucide-react'
+import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
 import { downloadExcelReport } from './lib/excelExport'
 import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
 import { ensureChecklistOccurrences, checklistLocalDateKey, CHECKLIST_GRACE_PERIOD_MS } from './lib/checklistSchedule'
-import ChecklistQrScanner from './ChecklistQrScanner'
 import { supabase } from './lib/supabase'
 import { isPcPlatform } from './lib/platform'
 import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun, loadChecklistTasksForReport } from './lib/checklistCloud'
@@ -272,10 +271,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [reportTasks,setReportTasks]=useState<ChecklistTask[]>([])
   const [reportTasksLoading,setReportTasksLoading]=useState(false)
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
-  const [qrOpen,setQrOpen]=useState(false)
-  const [qrSearching,setQrSearching]=useState(false)
-  const [qrAssetLabel,setQrAssetLabel]=useState('')
-  const [qrCandidates,setQrCandidates]=useState<Array<{definition:ChecklistDefinition;task:ChecklistTask}>>([])
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
   const canExecuteHere=canExecute&&canManage&&isOnline
   useEffect(()=>{
@@ -283,8 +278,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
     return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
-
-  useEffect(()=>{if(!canExecuteHere)setQrOpen(false)},[canExecuteHere])
 
   const refresh=async(ensureCloudSchedule=false)=>{
     setLoading(true)
@@ -558,30 +551,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     setRunning(item);setRunningTaskId(taskId);setRunningRunId(uid());setAnswers(Object.fromEntries(item.questions.map(q=>[q.id,{result:'',note:''}])))
     setRepairCreated(false);setNoRepairReason('');setError('')
   }
-  const handleQrDetected=async(code:string)=>{
-    setQrOpen(false)
-    if(!canExecuteHere||!supabase||!navigator.onLine){setError('Cần điện thoại có Internet và tài khoản được quyền thực hiện Checklist.');return}
-    setQrSearching(true);setError('');setQrCandidates([])
-    try{
-      const {data:asset,error:assetError}=await supabase.from('assets').select('id,code,name').eq('organization_id',organizationId).eq('code',code.trim()).is('archived_at',null).is('deleted_at',null).neq('status','Thanh lý').maybeSingle()
-      if(assetError)throw assetError
-      if(!asset)throw new Error('Không tìm thấy thiết bị có mã QR '+code+'. Hãy kiểm tra đúng tổ chức hoặc tem QR.')
-      const latest=await loadChecklistCloud(supabase,organizationId,canManage,canManage)
-      setDefinitions(latest.definitions.sort((a,b)=>a.title.localeCompare(b.title,'vi')))
-      setTasks(latest.tasks)
-      const candidates=latest.tasks.filter(task=>{
-        const due=Date.parse(task.dueAt),nowMs=Date.now()
-        return task.definitionSnapshot.targetKind==='equipment'&&task.definitionSnapshot.targetAssetId===asset.id&&(task.status==='Chờ thực hiện'||task.status==='Đang thực hiện')&&due<=nowMs&&nowMs-due<CHECKLIST_GRACE_PERIOD_MS
-      }).flatMap(task=>{
-        const definition=latest.definitions.find(item=>item.id===task.checklistId)
-        if(!definition)return []
-        return [{definition:{...definition,title:task.title,targetLabel:task.targetLabel,frequency:task.frequency,assignee:task.assignee,categoryKey:task.definitionSnapshot.categoryKey,targetAssetId:task.definitionSnapshot.targetAssetId,questions:task.definitionSnapshot.questions},task}]
-      })
-      if(!candidates.length)throw new Error('Đã tìm thấy thiết bị '+asset.code+' – '+asset.name+', nhưng hiện không có Checklist thiết bị đến hạn để thực hiện.')
-      setQrAssetLabel(asset.code+' – '+asset.name);setQrCandidates(candidates)
-    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
-    finally{setQrSearching(false)}
-  }
   const isGroupAssignee=(value:string)=>value.trim().toLocaleLowerCase('vi').startsWith('nhóm')
   const claimTask=async(task:ChecklistTask)=>{
     if(!canExecuteHere||!userId||!isGroupAssignee(task.assignee))return
@@ -747,7 +716,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
     <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
-    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":isPcPlatform()?"Trên PC có thể quản lý mẫu, xem lịch sử, báo cáo, in và thực hiện Checklist thủ công. Quét QR thiết bị bằng điện thoại.":"Đang trực tuyến · Có thể thực hiện Checklist trên điện thoại."}</div>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":"Đang trực tuyến · Checklist có thể thực hiện thủ công trên PC và điện thoại; quét QR tạm thời chưa sử dụng."}</div>
     {canManage&&legacyLocalCounts&&(legacyLocalCounts.settings+legacyLocalCounts.definitions+legacyLocalCounts.runs+legacyLocalCounts.tasks)>0&&<div className="checklist-connectivity-notice">Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này: {legacyLocalCounts.definitions} mẫu, {legacyLocalCounts.runs} kết quả, {legacyLocalCounts.tasks} lượt lịch và {legacyLocalCounts.settings} cấu hình. Dữ liệu này chưa được chuyển lên Cloud. Không xóa dữ liệu trình duyệt hoặc đổi thiết bị trước khi có phương án chuyển đổi.</div>}
     {canManage&&legacyLocalScopes.some(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0)&&<div className="checklist-connectivity-notice"><b>Các nguồn Checklist Local khác trên trình duyệt này:</b>{legacyLocalScopes.filter(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0).map(scope=><div key={scope.organizationId}>{scope.organizationId==='local-preview'?'Local Preview':`Scope tổ chức ${scope.organizationId.slice(0,8)}…`} — {scope.definitions} mẫu, {scope.runs} kết quả, {scope.tasks} lượt lịch, {scope.settings} cấu hình</div>)}<small>Đây chỉ là thống kê đọc dữ liệu Local; chưa có dữ liệu nào được nhập, sửa hoặc xóa.</small></div>}
     <div className="checklist-tabs">
@@ -769,7 +738,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         <section className="panel checklist-section">
           <div className="panel-head"><div><h2>Công việc cần thực hiện</h2><p>Chỉ hiển thị Checklist có chu kỳ tương ứng với kỳ đã chọn (Ngày: Hàng ngày, Tuần: Hàng tuần, Tháng: Hàng tháng, Quý: Hàng quý, Năm: Hàng năm). Công việc hoàn thành sẽ ẩn khỏi danh sách; quá 24 giờ sau giờ đến hạn sẽ chuyển thành Không Checklist.</p></div></div>
           <div className="checklist-upcoming-filters checklist-period-tabs"><button type="button" className={workPeriod==='day'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('day')}>Ngày</button><button type="button" className={workPeriod==='week'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('week')}>Tuần</button><button type="button" className={workPeriod==='month'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('month')}>Tháng</button><button type="button" className={workPeriod==='quarter'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('quarter')}>Quý</button><button type="button" className={workPeriod==='year'?'soft-btn active':'soft-btn'} onClick={()=>setWorkPeriod('year')}>Năm</button></div>
-          {!isPcPlatform()&&<div className="checklist-qr-actions"><button type="button" className="primary-btn" onClick={()=>setQrOpen(true)} disabled={!canExecuteHere||qrSearching}><QrCode size={16}/> {qrSearching?'Đang tìm thiết bị…':'Quét QR thiết bị'}</button><small>Checklist thiết bị chỉ mở từ mã QR trên tem. Checklist hệ thống vẫn chọn thủ công bên dưới.</small></div>}
           {reportTasksLoading&&<div className="checklist-connectivity-notice">Đang tải lịch sử công việc trong kỳ báo cáo…</div>}
          <div className="checklist-report-summary"><div><small>Công việc {selectedFrequency.toLocaleLowerCase('vi')} trong kỳ</small><b>{periodTasks.length}</b></div><div><small>Không Checklist trong kỳ</small><b>{missedTasks.length}</b></div></div>
           <div className="checklist-definition-list">
@@ -787,9 +755,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
                   {groupTask&&task.status==='Chờ thực hiện'&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void claimTask(task)}>Nhận việc</button>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId===userId&&<><button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện</button><button className="soft-btn" disabled={!canExecuteHere} onClick={()=>void releaseTask(task.id).then(()=>refresh())}>Trả lại nhóm</button></>}
                   {groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy||'thành viên khác'}</small>}
-                  {!groupTask&&Boolean(definition?.targetAssetId)&&<small>Checklist thiết bị: quét mã QR trên tem để thực hiện</small>}
-                  {!groupTask&&!definition?.targetAssetId&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
-                  {!groupTask&&!definition?.targetAssetId&&!directAllowed&&<small>Chỉ người được giao hoặc Admin thực hiện</small>}
+                  {!groupTask&&directAllowed&&<button className="primary-btn" disabled={!canExecuteHere} onClick={()=>void beginTask(task,runnable)}>Thực hiện thủ công</button>}
+                  {!groupTask&&!directAllowed&&<small>Chỉ người được giao hoặc Admin thực hiện</small>}
                   {!groupTask&&task.status==='Đang thực hiện'&&task.claimedByUserId!==userId&&<small>Đang xử lý bởi {task.claimedBy}</small>}
                 </div>
               </article>
@@ -878,8 +845,6 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       {printingRun.outcome==='Không đạt'&&<><h3 className="equipment-print-section">III. XỬ LÝ NỘI DUNG KHÔNG ĐẠT</h3><div className="equipment-print-notes"><p>{printingRun.maintenanceRequestId?'Đã liên kết Phiếu yêu cầu: '+printingRun.maintenanceRequestId:'Chưa có Phiếu yêu cầu liên kết.'}</p>{printingRun.noRepairReason&&<p><b>Lý do chưa tạo phiếu:</b> {printingRun.noRepairReason}</p>}</div></>}
       <footer className="equipment-print-footer checklist-print-signatures"><span>Phiếu được lập từ kết quả Checklist đã lưu trên BAOTRI MINI. Các nội dung và kết quả là bản ghi tại thời điểm kiểm tra.</span><strong>Người kiểm tra: {printingRun.inspector}</strong><div className="checklist-print-signature-grid"><div>Người kiểm tra<br/><br/><br/><b>{printingRun.inspector}</b></div><div>Người xác nhận<br/><br/><br/><b>(Ký, ghi rõ họ tên)</b></div></div></footer>
     </div></div>}
-    {qrOpen&&<ChecklistQrScanner onDetected={handleQrDetected} onClose={()=>setQrOpen(false)}/>}
-    {qrCandidates.length>0&&<div className="checklist-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setQrCandidates([])}}><section className="checklist-editor-modal checklist-qr-results" role="dialog" aria-modal="true" aria-labelledby="checklist-qr-results-title"><div className="panel-head"><div><h2 id="checklist-qr-results-title">Checklist của thiết bị</h2><p>{qrAssetLabel}</p></div><button type="button" className="soft-btn" onClick={()=>setQrCandidates([])}>Đóng</button></div><div className="checklist-definition-list">{qrCandidates.map(({definition,task})=><article className="checklist-definition-row" key={task.id}><div><b>{definition.title}</b><small>{definition.frequency} · Hạn: {dateTime(task.dueAt)} · {task.status}</small><span>{definition.questions.length} tiêu chí kiểm tra</span></div><button type="button" className="primary-btn" disabled={!canExecuteHere||(task.status==='Đang thực hiện'&&task.claimedByUserId!==userId)} onClick={()=>{setQrCandidates([]);void beginTask(task,definition)}}>{task.status==='Đang thực hiện'?'Tiếp tục kiểm tra':'Thực hiện Checklist'}</button></article>)}</div></section></div>}
     {running&&<div className="modal-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!savingRun)void cancelRun()}}><section className="modal checklist-run-modal"><div className="modal-head"><div><div className="eyebrow">PHIẾU KIỂM TRA</div><h2>{running.title}</h2><p>{running.targetLabel}</p></div><button className="icon-btn" disabled={savingRun} onClick={()=>void cancelRun()}><X size={17}/></button></div>
       <form onSubmit={completeRun} className="checklist-run-form">
         {running.questions.map((question,index)=><div className="checklist-question" key={question.id}><b>{index+1}. {question.label}</b><div className="checklist-answer-options">{(['Đạt','Không đạt','Bỏ qua'] as const).map(value=><button type="button" className={(answers[question.id]?.result===value?'selected ':'')+(value==='Không đạt'?'bad':'')} key={value} disabled={!canExecuteHere} onClick={()=>setAnswers(current=>({...current,[question.id]:{...current[question.id],result:value}}))}>{value}</button>)}</div><input value={answers[question.id]?.note||''} disabled={!canExecuteHere} onChange={event=>setAnswers(current=>({...current,[question.id]:{...current[question.id],note:event.target.value}}))} placeholder="Ghi chú / thông số đo (nếu có)"/></div>)}
