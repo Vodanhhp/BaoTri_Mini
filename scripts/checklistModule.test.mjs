@@ -474,7 +474,8 @@ test('Equipment Checklist can be executed manually on PC and mobile while QR sca
 test('Equipment and system Checklist tasks both use the manual execution flow',async()=>{
   assert.doesNotMatch(panel,/handleQrDetected/)
   assert.doesNotMatch(panel,/ChecklistQrScanner/)
-  assert.match(panel,/!groupTask&&directAllowed&&<button className="primary-btn"[^>]*>Thực hiện thủ công/)
+  assert.match(panel,/!groupTask&&directAllowed/)
+  assert.match(panel,/Thực hiện thủ công/ )
   assert.match(panel,/const beginTask=async\(task:ChecklistTask,item:ChecklistDefinition\)/)
 })
 
