@@ -1329,7 +1329,7 @@ export default function App() {
                   </div>
                 </section>
                 {(localPreview||canViewMaintenance)&&<MaintenanceDashboardSummary organizationId={localPreview?'local-preview':organizationId} assets={assets} onOpen={()=>setActiveModule('maintenance')} supabaseClient={supabase}/>}
-                {(localPreview||canView)&&<ChecklistDashboardSummary organizationId={localPreview?'local-preview':organizationId} onOpen={()=>setActiveModule('checklist')}/>}
+                {(localPreview||canViewChecklist)&&<ChecklistDashboardSummary organizationId={localPreview?'local-preview':organizationId} onOpen={()=>setActiveModule('checklist')}/>}
                 {canInventoryView&&<section className="overview-section"><div className="overview-section-head"><div><h2>Kho vật tư</h2><p>Tồn kho và cảnh báo vật tư cần bổ sung</p></div><button type="button" className="text-btn" onClick={()=>setActiveModule('inventory')}>Mở kho vật tư →</button></div>
                   <div className="stat-grid">
                     <div className="stat-card"><div className="stat-icon blue"><Package size={20}/></div><div><small>Vật tư đang theo dõi</small><strong>{dashboardInventoryItems.filter(item=>!item.archivedAt).length}</strong><span>Danh mục vật tư hiện có</span></div></div>
