@@ -2202,3 +2202,32 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Rà soát Local-first và đồng bộ: offline/online, retry, tránh ghi trùng hoặc ghi đè; không tự ý thay đổi schema, migration, RLS, Auth hay dữ liệu Production khi chưa được người dùng phê duyệt.
 - Bổ sung regression tests cho các lỗi/điểm thiếu được phát hiện; chạy CI Build/Test và Validate. Chỉ ghi nhận kiểm thử browser/PC/mobile thực tế khi đã thực hiện thật.
 - Làm theo từng bước: khảo sát → thống nhất yêu cầu → triển khai nhánh riêng/PR → kiểm tra CI → trình người dùng duyệt. Không tự merge PR hoặc thay đổi dữ liệu Production khi chưa có chấp thuận rõ ràng.
+
+
+## 27/11/2026 — Hoàn tất triển khai sửa Reset tương thích Cloud Checklist (PR #85)
+
+### Mã nguồn và CI
+- PR #85 **Fix selective Reset for Cloud Checklist dependencies** đã được chuyển sang Ready và squash-merge vào `main`.
+- Merge commit: `b758304e1147b12bddb628529942f466bf169a3b`.
+- Các thay đổi: Reset đếm đúng các bảng Cloud Checklist hiện hành (Definitions, Definition Versions, Runs, Tasks, Task Events); xử lý liên kết vòng giữa Checklist Runs/Tasks và Phiếu yêu cầu; xóa theo thứ tự FK an toàn khi chọn Reset Checklist; giữ Phiếu yêu cầu và lịch sử bảo trì; khi Reset thiết bị thì chuyển yêu cầu đang gắn thiết bị sang đối tượng hệ thống có nhãn/vị trí để không mất lịch sử.
+- Có preflight chặn Reset thiết bị nếu còn mẫu Checklist gắn thiết bị mà người dùng không chọn Reset Checklist; chặn nếu còn lịch bảo trì `maintenance_tasks` gắn thiết bị. Trả lỗi tiếng Việt rõ ràng, không cố xóa cưỡng bức.
+- CI sau merge: Build and test run `45984496129` **SUCCESS**; GitHub Pages Deploy run `45984496321` **SUCCESS**. Đây là kết quả workflow của commit merge ở trên.
+- Vercel deployment context hiện không có Git-linked project cho repo này (`linkedProjects=[]`); không có Vercel deployment được tạo trong lượt triển khai này. Không tuyên bố Vercel đã deploy.
+
+### Supabase Production
+- Đã xác minh đúng project `BAOTRI-Mini-New`, project ID `dskeaiyvldiwlsfqkboq`, trạng thái `ACTIVE_HEALTHY`.
+- Đã áp dụng theo đúng thứ tự hai migration:
+  1. `20261127070000_checklist_non_equipment_maintenance_requests` — cho phép Phiếu yêu cầu có đối tượng hệ thống/khu vực, không cần thiết bị giả; vẫn giữ liên kết asset cho yêu cầu theo thiết bị.
+  2. `20261127140000_fix_reset_checklist_cloud_dependencies` — sửa RPC Reset và thống kê Cloud Checklist.
+- Supabase xác nhận cả hai migration áp dụng thành công; lịch sử migration hiện ghi nhận hai version tương ứng `20261127104402` và `20261127104407`.
+- Kiểm tra SQL read-only sau triển khai: RPC Reset và RPC review tồn tại; 3 cột target của Phiếu yêu cầu và 2 constraint đúng đã tồn tại.
+- Tổ chức `Bao Trì Test 03` (UUID `f11bb85f-0dbe-45f0-bffa-472e5f84f7bf`) vẫn nguyên dữ liệu sau triển khai: 30 assets, 7 Checklist Definitions, 5 Checklist Runs, 2.249 Checklist Tasks, 2 Maintenance Requests. Không thực hiện Reset, không xóa dữ liệu.
+- Security/Performance Advisor vẫn có các findings tổng thể tồn tại trước đó ở nhóm bảng private/RPC/index; chưa tự ý mở rộng xử lý ngoài phạm vi PR #85. Cần rà soát riêng khi quay lại nếu muốn xử lý các cảnh báo nền tảng.
+
+### Trạng thái và việc còn phải làm khi quay lại
+- Phần code đã merge, migration đã áp dụng Production, CI và GitHub Pages Deploy đều xanh.
+- **Chưa nghiệm thu chức năng Reset bằng thao tác thật trên giao diện.** Không retry yêu cầu Reset cũ đã failed. Khi quay lại, trước tiên kiểm tra giao diện/đếm số liệu; sau đó tạo yêu cầu Reset mới với phạm vi được cân nhắc kỹ và chỉ thực hiện khi người dùng chủ động xác nhận.
+- Kiểm thử tối thiểu: (1) Reset Checklist-only; (2) Reset Assets + Checklist; (3) thử Reset Assets-only khi còn Definition gắn asset để xác nhận preflight từ chối an toàn; (4) trường hợp còn maintenance_tasks gắn asset để xác nhận chặn; (5) kiểm tra Phiếu yêu cầu và audit history còn nguyên sau Reset Assets.
+- Không được tự động chạy Reset, không xóa dữ liệu tổ chức `Bao Trì Test 03` hoặc tổ chức thật.
+- Môi trường: Production `dskeaiyvldiwlsfqkboq`; Test `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác. Không thay đổi Production thêm nếu chưa có xác nhận rõ ràng cho phạm vi tiếp theo.
+- Có thể tạm dừng dự án tại checkpoint này và chuyển sang dự án khác; khi quay lại đọc cả `TIENDO.md` và `BAOTRI_TIENDO.md` trước khi tiếp tục.
