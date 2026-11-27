@@ -604,3 +604,11 @@ test('Scheduled Checklist completion reuses one stable run ID so a timed-out Clo
     assert.match(sql,/return jsonb_build_object\([\s\S]*?'run_id',v_existing\.id/)
   })
 })
+
+test('Failed historical equipment Checklist retains its original asset target after the template is edited',async()=>{
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
+  assert.match(cloud,/function mapRun\(row: Row, organizationId: string, events: Row\[\], tasks: ChecklistTask\[\]\)/)
+  assert.match(cloud,/task\?\.definitionSnapshot\.targetAssetId\?\{targetAssetId:task\.definitionSnapshot\.targetAssetId\}/)
+  assert.match(panel,/Boolean\(row\.targetAssetId\)/)
+  assert.doesNotMatch(panel,/Boolean\(definitions\.find\(item=>item\.id===row\.checklistId\)\?\.targetAssetId\)/)
+})
