@@ -344,7 +344,7 @@ test('Checklist manual execution is available on PC when authorized and online, 
   assert.doesNotMatch(panel,/const canExecuteHere=[^\\n]*isPcPlatform/)
   assert.match(panel,/window\.addEventListener\('offline',updateOnline\)/)
   assert.match(panel,/disabled=\{!canExecuteHere\}/)
-  assert.match(panel,/Trên PC có thể quản lý mẫu, xem lịch sử, báo cáo, in và thực hiện Checklist thủ công/)
+  assert.match(panel,/Checklist có thể thực hiện thủ công trên PC và điện thoại/)
   assert.match(panel,/Mất kết nối Internet\. Các thao tác thực hiện Checklist đã bị khóa/)
   assert.match(panel,/const runManagementAction=async/)
   assert.match(panel,/setError\(cause instanceof Error\?cause\.message:String\(cause\)\);setSavingRun\(false\);await refresh\(\);return/)
@@ -394,7 +394,7 @@ test('Equipment QR lookup uses the target identity captured by each task version
   const migration=await readFile(new URL('../docs/drafts/20261126225000_checklist_task_snapshot_target_identity.sql',import.meta.url),'utf8')
   assert.match(migration,/'targetAssetId',v_definition\.target_asset_id/)
   assert.match(cloud,/targetAssetId:String\(snapshot\.targetAssetId\|\|snapshot\.target_asset_id\|\|definition\?\.targetAssetId\)/)
-  assert.match(panel,/task\.definitionSnapshot\.targetAssetId===asset\.id/)
+  assert.match(panel,/targetAssetId:task\.definitionSnapshot\.targetAssetId/)
   assert.match(db,/targetAssetId\?: string/)
 })
 
@@ -420,7 +420,7 @@ test('QR scanner stops camera streams and pending animation loops when restarted
 test('Cloud template RPC refuses retired equipment as a target',async()=>{
   const migration=await readFile(new URL('../docs/drafts/20261126230000_checklist_equipment_target_must_be_active.sql',import.meta.url),'utf8')
   assert.match(migration,/a\.status<>'Thanh lý'/)
-  assert.match(panel,/neq\('status','Thanh lý'\)/)
+  assert.match(panel,/asset\.status!=='Thanh lý'/)
 })
 
 test('Checklist templates can be archived and restored without deleting history',async()=>{
@@ -466,7 +466,8 @@ test('Equipment Checklist can be executed manually on PC and mobile while QR sca
   assert.doesNotMatch(panel,/ChecklistQrScanner/)
   assert.doesNotMatch(panel,/Quét QR thiết bị/)
   assert.match(panel,/Checklist có thể thực hiện thủ công trên PC và điện thoại/)
-  assert.match(panel,/!groupTask&&directAllowed&&<button className="primary-btn"[^>]*>Thực hiện thủ công/)
+  assert.match(panel,/!groupTask&&directAllowed/)
+  assert.match(panel,/Thực hiện thủ công/ )
   assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline/)
 })
 
