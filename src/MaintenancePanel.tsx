@@ -214,15 +214,18 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
   const updateTaskStatus = async (row:MaintenanceTask,status:MaintenanceTask['status']) => {
     if(!canUpdate)return
     const value={...row,status,completedAt:status==='Hoàn thành'?now():undefined,updatedAt:now()}
-    if(supabaseClient&&organizationId!=='local-preview'){
-      await updateMaintenanceTaskStatus(supabaseClient,organizationId,row.id,status)
-    }else{
-      await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
-        await db.maintenanceTasks.put(value)
-        await addHistory('task',row.id,'status_changed','Cập nhật trạng thái công việc: '+status,row,value)
-      })
-    }
-    await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
+    try{
+      setError('')
+      if(supabaseClient&&organizationId!=='local-preview'){
+        await updateMaintenanceTaskStatus(supabaseClient,organizationId,row.id,status)
+      }else{
+        await db.transaction('rw',[db.maintenanceTasks,db.maintenanceHistory],async()=>{
+          await db.maintenanceTasks.put(value)
+          await addHistory('task',row.id,'status_changed','Cập nhật trạng thái công việc: '+status,row,value)
+        })
+      }
+      await reload();window.dispatchEvent(new Event('baotri:maintenance-updated'))
+    }catch(cause){setError(cause instanceof Error?cause.message:String(cause))}
   }
   const exportTasks = async () => {
     if(!tasks.length){setError('Chưa có lịch bảo dưỡng để xuất Excel.');return}
@@ -271,12 +274,13 @@ export default function MaintenancePanel({ organizationId, organizationName, ass
           {visibleRequests.map(row=><tr key={row.id} className={row.status!=='Hoàn thành'?'maintenance-open-row':''}><td>{dateLabel(row.requestDate)}</td><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.kind}</td><td>{row.description}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':'red')}>{row.status}</span></td><td>{row.result||'Đang chờ xử lý'}{row.conditionAfterRepair&&<small>{row.conditionAfterRepair}</small>}</td><td>{row.requestedBy}</td><td>{row.performedBy||'—'}{row.completedAt&&<small>{new Date(row.completedAt).toLocaleString('vi-VN')}</small>}</td><td className="actions"><button className="text-btn" onClick={()=>setPrintRequest(row)}><Printer size={13}/> In phiếu</button>{canUpdate&&<>{row.status!=='Hoàn thành'&&<><button className="text-btn" onClick={()=>setRequestEditor(row)}>Sửa</button><button className="text-btn success-text" onClick={()=>void completeRequest(row)}>Hoàn thành</button></>}</>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {visibleRequests.length===0&&<tr><td colSpan={10}><div className="table-empty-state">Chưa có Phiếu YC phù hợp.</div></td></tr>}
         </tbody></table></div>
-        {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
+        {historyFor&&<section className="maintenance-history"><h3>Lịch sử thao tác · {assetName(requests.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordType==='request'&&item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordType==='request'&&item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
       </>:<>
         <div className="table-wrap"><table className="table-standard maintenance-table"><thead><tr><th>Ngày đến hạn</th><th>Thiết bị</th><th>Công việc</th><th>Chu kỳ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canUpdate&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}</td></tr>)}
+          {tasks.map(row=><tr key={row.id}><td>{dateLabel(row.dueDate)}</td><td>{assetName(row.assetId)}</td><td>{row.title}</td><td>{row.frequency}</td><td><span className={'status '+(row.status==='Hoàn thành'?'green':row.status==='Quá hạn'?'red':'orange')}>{row.status}</span></td><td className="actions">{canUpdate&&<><button className="text-btn" onClick={()=>setTaskEditor(row)}>Sửa</button><select aria-label="Cập nhật trạng thái lịch bảo dưỡng" value={row.status} onChange={event=>void updateTaskStatus(row,event.target.value as MaintenanceTask['status'])}><option>Chờ thực hiện</option><option>Đang thực hiện</option><option>Hoàn thành</option><option>Quá hạn</option></select></>}<button className="text-btn" onClick={()=>setHistoryFor(historyFor===row.id?null:row.id)}><History size={13}/> Lịch sử</button></td></tr>)}
           {tasks.length===0&&<tr><td colSpan={6}><div className="table-empty-state">Chưa có lịch bảo dưỡng định kỳ.</div></td></tr>}
         </tbody></table></div>
+        {historyFor&&<section className="maintenance-history"><h3>Lịch sử lịch bảo dưỡng · {assetName(tasks.find(row=>row.id===historyFor)?.assetId||'')}</h3>{history.filter(item=>item.recordType==='task'&&item.recordId===historyFor).map(item=><div key={item.id}><b>{item.summary}</b><small>{item.actorLabel} · {new Date(item.occurredAt).toLocaleString('vi-VN')}</small></div>)}{history.filter(item=>item.recordType==='task'&&item.recordId===historyFor).length===0&&<p>Chưa có lịch sử.</p>}</section>}
       </>}
       {error&&<div className="auth-error">{error}</div>}
       <div className="footnote"><History size={14}/> Mọi lần tạo, sửa và đổi trạng thái được ghi vào lịch sử riêng của phân hệ. Viewer chỉ được xem.</div>
