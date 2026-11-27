@@ -35,4 +35,4 @@ begin
  update public.checklist_tasks t set status='Không Checklist',claimed_by_user_id=null,claimed_at=null,updated_at=clock_timestamp()
  where t.organization_id=p_organization_id and t.status in('Chờ thực hiện','Đang thực hiện') and t.due_at<=now()-interval '24 hours';
  return jsonb_build_object('occurrences_processed',v_count);
-end;$function$
+end;$function$;
