@@ -539,7 +539,7 @@ test('Checklist repair-request controls require maintenance.create permission',(
   assert.match(panel,/canCreateMaintenance&&!row\.maintenanceRequestId/)
 })
 test('Checklist missed-task reports load the selected historical period beyond the 366-day overview window',async()=>{
-  const cloud=await read('../src/lib/checklistCloud.ts')
+  const cloud=await readFile(new URL('../src/lib/checklistCloud.ts',import.meta.url),'utf8')
   assert.match(cloud,/loadChecklistTasksForReport/)
   assert.match(cloud,/maximumDueAt/)
   assert.match(cloud,/new Date\(startDate\+'T00:00:00\+07:00'\)/)
