@@ -120,3 +120,17 @@ test('maintenance Cloud loading failures do not blank the existing inventory rep
   assert.match(panel,/Không tải được dữ liệu báo cáo bảo trì/)
   assert.match(panel,/Phiếu yêu cầu và lịch bảo dưỡng lấy từ Cloud/)
 })
+
+test('maintenance report separates selected-period rows from current overdue totals',()=>{
+  assert.match(panel,/const dueInPeriod=Boolean\(row\.dueDate\)&&String\(row\.dueDate\)>=range\.startDate&&String\(row\.dueDate\)<=range\.endDate/)
+  assert.doesNotMatch(panel,/row\.status!=='Hoàn thành'&&row\.dueDate<todayKey\)\)\s*\.filter/)
+  assert.match(panel,/phiếu quá hạn hiện tại/)
+  assert.match(panel,/lịch bảo dưỡng quá hạn hiện tại/)
+})
+test('maintenance report reads only with maintenance.view and does not change material/device report calculations',()=>{
+  assert.match(panel,/if\(canViewMaintenance\)/)
+  assert.match(panel,/canViewMaintenance && <section className="panel report-data-panel">/)
+  assert.match(app,/canViewMaintenance=Boolean\(currentOrganization\?\.permissions\.includes\('maintenance\.view'\)\)/)
+  assert.match(panel,/Báo cáo nhập – xuất vật tư/)
+  assert.match(panel,/Tình trạng thiết bị/)
+})
