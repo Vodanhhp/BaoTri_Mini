@@ -30,21 +30,31 @@ function online(){if(typeof navigator!=='undefined'&&!navigator.onLine)throw new
 async function checked<T>(promise:PromiseLike<{data:T|null;error:any}>,label:string):Promise<T>{
  const {data,error}=await promise;if(error)throw new Error(label+': '+error.message);if(data==null)throw new Error(label+': Cloud không trả dữ liệu.');return data
 }
+const MAINTENANCE_PAGE_SIZE=500
+async function fetchAllMaintenanceRows(client:SupabaseClient,table:string,organizationId:string,orders:Array<[string,boolean]>,label:string):Promise<Row[]>{
+ const rows:Row[]=[]
+ for(let offset=0;;offset+=MAINTENANCE_PAGE_SIZE){
+  let query=client.from(table as any).select('*').eq('organization_id',organizationId)
+  for(const [column,ascending] of orders)query=query.order(column,{ascending})
+  query=query.order('id',{ascending:true}).range(offset,offset+MAINTENANCE_PAGE_SIZE-1)
+  const {data,error}=await query
+  if(error)throw new Error(label+': '+error.message)
+  const batch=asRows(data);rows.push(...batch)
+  if(batch.length<MAINTENANCE_PAGE_SIZE)break
+ }
+ return rows
+}
 export async function loadMaintenanceRequests(client:SupabaseClient,organizationId:string):Promise<{requests:MaintenanceRequest[];tasks:MaintenanceTask[];history:MaintenanceHistory[]}>{
  online()
- const [requests,events,tasks,taskEvents]=await Promise.all([
-  client.from('maintenance_requests').select('*').eq('organization_id',organizationId).order('request_date',{ascending:false}).order('created_at',{ascending:false}),
-  client.from('maintenance_request_events').select('*').eq('organization_id',organizationId).order('occurred_at',{ascending:false}),
-  client.from('maintenance_tasks').select('*').eq('organization_id',organizationId).order('due_date',{ascending:true}),
-  client.from('maintenance_task_events').select('*').eq('organization_id',organizationId).order('occurred_at',{ascending:false})
+ const [requestRows,requestEvents,taskRows,taskEvents]=await Promise.all([
+  fetchAllMaintenanceRows(client,'maintenance_requests',organizationId,[['request_date',false],['created_at',false]],'Tải Phiếu yêu cầu Cloud'),
+  fetchAllMaintenanceRows(client,'maintenance_request_events',organizationId,[['occurred_at',false]],'Tải lịch sử Phiếu yêu cầu Cloud'),
+  fetchAllMaintenanceRows(client,'maintenance_tasks',organizationId,[['due_date',true]],'Tải lịch bảo dưỡng Cloud'),
+  fetchAllMaintenanceRows(client,'maintenance_task_events',organizationId,[['occurred_at',false]],'Tải lịch sử bảo dưỡng Cloud')
  ])
- if(requests.error)throw new Error('Tải Phiếu yêu cầu Cloud: '+requests.error.message)
- if(events.error)throw new Error('Tải lịch sử Phiếu yêu cầu Cloud: '+events.error.message)
- if(tasks.error)throw new Error('Tải lịch bảo dưỡng Cloud: '+tasks.error.message)
- if(taskEvents.error)throw new Error('Tải lịch sử bảo dưỡng Cloud: '+taskEvents.error.message)
- const mappedTasks=asRows(tasks.data).map(row=>({id:String(row.id),organizationId,assetId:String(row.asset_id),title:String(row.title),dueDate:String(row.due_date),frequency:String(row.frequency),status:(row.status!=='Hoàn thành'&&String(row.due_date)<todayVietnam()?'Quá hạn':row.status) as MaintenanceTask['status'],checklist:String(row.checklist||''),readings:String(row.readings||''),notes:String(row.notes||''),...(row.completed_at?{completedAt:String(row.completed_at)}:{}),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}))
- const mappedTaskEvents=asRows(taskEvents.data).map(row=>({...mapEvent({...row,request_id:row.task_id},organizationId),recordType:'task' as const}))
- return {requests:asRows(requests.data).map(row=>mapRequest(row,organizationId)),tasks:mappedTasks,history:[...asRows(events.data).map(row=>mapEvent(row,organizationId)),...mappedTaskEvents]}
+ const mappedTasks=taskRows.map(row=>({id:String(row.id),organizationId,assetId:String(row.asset_id),title:String(row.title),dueDate:String(row.due_date),frequency:String(row.frequency),status:(row.status!=='Hoàn thành'&&String(row.due_date)<todayVietnam()?'Quá hạn':row.status) as MaintenanceTask['status'],checklist:String(row.checklist||''),readings:String(row.readings||''),notes:String(row.notes||''),...(row.completed_at?{completedAt:String(row.completed_at)}:{}),createdAt:String(row.created_at),updatedAt:String(row.updated_at)}))
+ const mappedTaskEvents=taskEvents.map(row=>({...mapEvent({...row,request_id:row.task_id},organizationId),recordType:'task' as const}))
+ return {requests:requestRows.map(row=>mapRequest(row,organizationId)),tasks:mappedTasks,history:[...requestEvents.map(row=>mapEvent(row,organizationId)),...mappedTaskEvents]}
 }
 export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest,isExisting=false):Promise<MaintenanceRequest>{
  online()
