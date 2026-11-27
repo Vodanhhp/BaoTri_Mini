@@ -8,6 +8,7 @@ import InventoryPanel from './InventoryPanel'
 import MaintenancePanel, { MaintenanceAssetHistory, MaintenanceDashboardSummary } from './MaintenancePanel'
 import ReportsPanel from './ReportsPanel'
 import ChecklistPanel, { ChecklistDashboardSummary } from './ChecklistPanel'
+import SystemNotification from './SystemNotification'
 import ImageLightbox from './ImageLightbox'
 import OrganizationMembersPanel from './OrganizationMembersPanel'
 import AccountProfilePanel from './AccountProfilePanel'
@@ -129,6 +130,7 @@ export default function App() {
   const [statusPickerOpen, setStatusPickerOpen] = useState(false)
   const [selectedAssetStatus, setSelectedAssetStatus] = useState<AssetStatus>('Đang hoạt động')
   const [toast, setToast] = useState('')
+  const [systemNotification,setSystemNotification]=useState<{title:string;message:string;detail?:string;onRetry?:()=>Promise<void>}|null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [reservationReleaseBusy,setReservationReleaseBusy]=useState(false)
@@ -1309,8 +1311,9 @@ export default function App() {
         <div className="top-actions">{activeModule==='assets'&&session&&organizationId&&(canView||canImport||canUpdate)&&<button className="soft-btn" onClick={()=>setCloudPanel(true)}>Local ↔ Cloud</button>}<span className="sync-status"><i/>Đang lưu Local</span><button type="button" className="profile-chip profile-chip-button" onClick={()=>setProfilePanel(true)} disabled={!canMutate} title="Chỉnh sửa hồ sơ cá nhân"><span className="avatar"><UserRound size={17}/></span><span className="profile-text"><b>{profileDisplayName || session?.user.email || 'Chế độ thử nghiệm Local'}</b><small>{localPreview ? 'Không kết nối Cloud' : (currentOrganization?.roleCodes.join(', ')||'Đã đăng nhập')}</small></span></button><button className="icon-btn" title="Đăng xuất" onClick={signOut}><LogOut size={17}/></button></div>
       </header>
       <div className="content">
+        {systemNotification&&<SystemNotification title={systemNotification.title} message={systemNotification.message} detail={systemNotification.detail} onRetry={systemNotification.onRetry} onDismiss={()=>setSystemNotification(null)}/>}
         {activeModule==='checklist'
-          ? <ChecklistPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canViewChecklist} canManage={localPreview||canManageChecklist} canExecute={localPreview||canExecuteChecklist} canCreateMaintenance={localPreview||canCreateMaintenance} assets={assets} initialAssetId={checklistInitialAssetId} onInitialAssetHandled={()=>setChecklistInitialAssetId(null)}/>
+          ? <ChecklistPanel onDataError={(message,detail,retry)=>setSystemNotification({title:"Không thể tải dữ liệu Checklist",message,detail,onRetry:retry})} onDataLoaded={()=>setSystemNotification(null)} organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} userLabel={profileDisplayName||session?.user.email||'Chế độ thử nghiệm Local'} userId={session?.user.id||'local-preview-user'} canView={localPreview||canViewChecklist} canManage={localPreview||canManageChecklist} canExecute={localPreview||canExecuteChecklist} canCreateMaintenance={localPreview||canCreateMaintenance} assets={assets} initialAssetId={checklistInitialAssetId} onInitialAssetHandled={()=>setChecklistInitialAssetId(null)}/>
           : activeModule==='reports'
           ? <ReportsPanel organizationId={localPreview?'local-preview':organizationId} organizationName={currentOrganization?.name||'Đơn vị sử dụng'} assets={assets} canViewAssets={localPreview||canView} canViewMaintenance={localPreview||canViewMaintenance} canViewInventory={localPreview||canInventoryView} canExport={canExport} supabaseClient={supabase}/>
           : activeModule==='maintenance'
