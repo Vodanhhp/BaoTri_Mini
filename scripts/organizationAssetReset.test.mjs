@@ -61,7 +61,7 @@ test('Local reset purge is tenant-scoped, atomic, keeps history, and acknowledge
   assert.match(source, /const purgeAssets = generation > knownAsset/)
   assert.match(source, /const purgeInventory = inventoryGeneration > knownInventory/)
   assert.match(source, /const purgeChecklist = checklistGeneration > knownChecklist/)
-  assert.match(source, /inventoryGeneration,checklistGeneration,appliedAt,deviceId/)
+  assert.match(source, /inventoryGeneration,checklistGeneration,maintenanceGeneration,appliedAt,deviceId/)
   assert.match(source, /p_inventory_generation:inventoryGeneration/)
   assert.match(source, /p_checklist_generation:checklistGeneration/)
   assert.doesNotMatch(source, /assetHistory\.where\('organizationId'\)\.equals\(organizationId\)\.delete/)
