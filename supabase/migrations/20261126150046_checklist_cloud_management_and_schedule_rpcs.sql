@@ -16,7 +16,7 @@ begin
  update public.checklist_tasks set status='Đang thực hiện',claimed_by_user_id=v_user,claimed_at=clock_timestamp(),updated_at=clock_timestamp() where organization_id=p_organization_id and id=p_task_id returning * into v_task;
  insert into public.checklist_task_events(organization_id,task_id,event_type,actor_user_id,actor_label) values(p_organization_id,p_task_id,'Nhận việc',v_user,coalesce((select display_name from public.profiles where id=v_user),'Admin'));
  return to_jsonb(v_task);
-end;$function$
+end;$function$;
 
 
 CREATE OR REPLACE FUNCTION private.complete_checklist_manual_run(p_organization_id uuid, p_definition_id uuid, p_payload jsonb)
@@ -70,9 +70,7 @@ begin
    where organization_id=p_organization_id and id=v_definition.id;
   return jsonb_build_object('run_id',v_run_id,'outcome',v_outcome,'completed_at',clock_timestamp());
 end;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION private.complete_checklist_task(p_organization_id uuid, p_task_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -99,7 +97,7 @@ begin
  update public.checklist_definitions set last_completed_at=clock_timestamp(),updated_at=clock_timestamp() where organization_id=p_organization_id and id=v_task.definition_id;
  insert into public.checklist_task_events(organization_id,task_id,event_type,actor_user_id,actor_label) values(p_organization_id,p_task_id,'Hoàn thành',v_user,v_inspector);
  return jsonb_build_object('run_id',v_run_id,'outcome',v_outcome,'completed_at',clock_timestamp());
-end;$function$
+end;$function$;
 
 
 CREATE OR REPLACE FUNCTION private.ensure_checklist_occurrences(p_organization_id uuid, p_occurrences jsonb)
@@ -130,7 +128,7 @@ begin
  update public.checklist_tasks t set status='Không Checklist',claimed_by_user_id=null,claimed_at=null,updated_at=clock_timestamp()
  where t.organization_id=p_organization_id and t.status in('Chờ thực hiện','Đang thực hiện') and t.due_at<=now()-interval '24 hours';
  return jsonb_build_object('occurrences_processed',v_count);
-end;$function$
+end;$function$;
 
 
 CREATE OR REPLACE FUNCTION private.release_checklist_task(p_organization_id uuid, p_task_id uuid)
@@ -161,9 +159,7 @@ begin
     jsonb_build_object('resulting_status',v_status));
   return to_jsonb(v_task);
 end;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION private.save_checklist_definition(p_organization_id uuid, p_definition_id uuid, p_payload jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -254,4 +250,4 @@ begin
   on conflict(organization_id,definition_id,version) do nothing;
   return to_jsonb(v_row);
 end;
-$function$
+$function$;

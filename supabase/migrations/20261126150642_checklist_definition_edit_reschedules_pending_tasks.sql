@@ -93,4 +93,4 @@ begin
   on conflict(organization_id,definition_id,version) do nothing;
   return to_jsonb(v_row);
 end;
-$function$
+$function$;
