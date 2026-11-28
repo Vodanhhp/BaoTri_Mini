@@ -37,7 +37,7 @@ create or replace function public.create_organization_asset_reset_request(
   p_reset_assets boolean default false,
   p_reset_inventory boolean default false,
   p_reset_checklist boolean default false,
-  p_reset_maintenance_requests boolean default false
+  p_reset_maintenance_requests boolean
 ) returns jsonb
 language plpgsql
 security definer
@@ -143,6 +143,8 @@ exception when unique_violation then
   raise exception 'Tổ chức đang có yêu cầu Reset chờ xử lý. Hãy chờ Superadmin duyệt hoặc từ chối.' using errcode='23505';
 end;
 $function$;
+revoke all on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) from public,anon,authenticated;
+grant execute on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) to service_role;
 
 create or replace function public.list_organization_asset_reset_requests(p_organization_id uuid)
 returns jsonb
@@ -156,7 +158,6 @@ as $function$
     'requester_email',u.email,'requester_note',r.requester_note,
     'reset_assets',r.reset_assets,'reset_inventory',r.reset_inventory,'reset_checklist',r.reset_checklist,
     'reset_maintenance_requests',r.reset_maintenance_requests,
-    'reset_maintenance_requests',r.reset_maintenance_requests,
     'cloud_assets_at_request',r.cloud_assets_at_request,
     'cloud_inventory_items_at_request',r.cloud_inventory_items_at_request,
     'cloud_inventory_movements_at_request',r.cloud_inventory_movements_at_request,
@@ -167,8 +168,6 @@ as $function$
     'cloud_checklist_runs_at_request',r.cloud_checklist_runs_at_request,
     'cloud_checklist_tasks_at_request',r.cloud_checklist_tasks_at_request,
     'cloud_checklist_task_events_at_request',r.cloud_checklist_task_events_at_request,
-    'cloud_maintenance_requests_at_request',r.cloud_maintenance_requests_at_request,
-    'cloud_maintenance_request_events_at_request',r.cloud_maintenance_request_events_at_request,
     'cloud_maintenance_requests_at_request',r.cloud_maintenance_requests_at_request,
     'cloud_maintenance_request_events_at_request',r.cloud_maintenance_request_events_at_request,
     'registered_devices_at_request',r.registered_devices_at_request,
@@ -205,6 +204,7 @@ as $function$
     'requester_user_id',r.requester_user_id,'requester_email',u.email,
     'requester_note',r.requester_note,
     'reset_assets',r.reset_assets,'reset_inventory',r.reset_inventory,'reset_checklist',r.reset_checklist,
+    'reset_maintenance_requests',r.reset_maintenance_requests,
     'cloud_assets_at_request',r.cloud_assets_at_request,
     'cloud_inventory_items_at_request',r.cloud_inventory_items_at_request,
     'cloud_inventory_movements_at_request',r.cloud_inventory_movements_at_request,
@@ -215,6 +215,8 @@ as $function$
     'cloud_checklist_runs_at_request',r.cloud_checklist_runs_at_request,
     'cloud_checklist_tasks_at_request',r.cloud_checklist_tasks_at_request,
     'cloud_checklist_task_events_at_request',r.cloud_checklist_task_events_at_request,
+    'cloud_maintenance_requests_at_request',r.cloud_maintenance_requests_at_request,
+    'cloud_maintenance_request_events_at_request',r.cloud_maintenance_request_events_at_request,
     'registered_devices_at_request',r.registered_devices_at_request,
     'status',r.status,'requested_at',r.requested_at,'reviewed_at',r.reviewed_at,
     'review_note',r.review_note,'executed_at',r.executed_at,
