@@ -469,7 +469,7 @@ test('Equipment Checklist supports QR and exact manual equipment lookup on PC an
   assert.match(panel,/asset\.code\|\|''\)\.trim\(\)\.toLocaleLowerCase\('vi'\)/)
   assert.match(panel,/asset\.id\.trim\(\)\.toLocaleLowerCase\('vi'\)/)
   assert.match(panel,/matches\.length!==1/)
-  assert.match(panel,/Không mở nhầm thiết bị/)
+  assert.match(panel,/không mở nhầm thiết bị/)
   assert.match(panel,/Checklist có thể thực hiện thủ công trên PC và điện thoại/)
   assert.match(panel,/!groupTask&&directAllowed/)
   assert.match(panel,/Thực hiện thủ công/ )
