@@ -300,7 +300,7 @@ test('Reset request and result counters use current Cloud Checklist tables, not 
 
 
 test('maintenance request Reset has its own generation, purges only request records locally, and preserves scheduled tasks', async () => {
- const sql=await read('../supabase/migrations/20261128180000_maintenance_request_reset_generation.sql')
+ const sql=await read('../supabase/migrations/20261128163856_maintenance_request_reset_generation.sql')
  const local=await read('../src/lib/assetReset.ts')
  const cloud=await read('../src/lib/maintenanceCloud.ts')
  assert.match(sql,/maintenance_generation bigint not null default 0/)
