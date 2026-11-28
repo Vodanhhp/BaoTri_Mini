@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { BarChart3, Check, ClipboardCheck, Download, History, Plus, Settings2, ShieldCheck, X } from 'lucide-react'
 import { downloadExcelReport } from './lib/excelExport'
 import { db, now, uid, type Asset, type ChecklistCategoryKey, type ChecklistCategorySetting, type ChecklistDefinition, type ChecklistFrequency, type ChecklistQuestion, type ChecklistRun, type ChecklistTask } from './db'
@@ -272,12 +272,31 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [reportTasksLoading,setReportTasksLoading]=useState(false)
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
+  const [showQrScanner,setShowQrScanner]=useState(false)
+  const [manualAssetCode,setManualAssetCode]=useState('')
+  const [cameraError,setCameraError]=useState('')
+  const [cameraActive,setCameraActive]=useState(false)
+  const videoRef=useRef<HTMLVideoElement|null>(null)
+  const cameraStreamRef=useRef<MediaStream|null>(null)
+  const cameraFrameRef=useRef<number|null>(null)
+  const qrDetectorRef=useRef<{detect:(source:HTMLVideoElement)=>Promise<Array<{rawValue:string}>>}|null>(null)
+  const scanBusyRef=useRef(false)
   const canExecuteHere=canExecute&&canManage&&isOnline
+  const stopQrCamera=()=>{
+    if(cameraFrameRef.current!==null){window.cancelAnimationFrame(cameraFrameRef.current);cameraFrameRef.current=null}
+    cameraStreamRef.current?.getTracks().forEach(track=>track.stop())
+    cameraStreamRef.current=null
+    qrDetectorRef.current=null
+    scanBusyRef.current=false
+    if(videoRef.current)videoRef.current.srcObject=null
+    setCameraActive(false)
+  }
   useEffect(()=>{
     const updateOnline=()=>setIsOnline(navigator.onLine)
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
     return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
+  useEffect(()=>()=>stopQrCamera(),[])
 
   const refresh=async(ensureCloudSchedule=false)=>{
     setLoading(true)
@@ -515,6 +534,69 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
 
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId||asset.code===editing?.targetAssetCode)
+  const openScannedAsset=(asset:Asset)=>{
+    stopQrCamera()
+    setShowQrScanner(false)
+    setManualAssetCode('')
+    setCameraError('')
+    openNew(asset)
+    setNotice('Đã nhận diện đúng thiết bị '+(asset.code||asset.name)+'. Bạn có thể tạo Checklist riêng cho thiết bị này.')
+  }
+  const findAssetByCode=(value:string)=>{
+    const normalized=value.trim().toLocaleLowerCase('vi')
+    if(!normalized)return undefined
+    return activeEquipment.find(asset=>
+      (asset.code||'').trim().toLocaleLowerCase('vi')===normalized||
+      asset.id.trim().toLocaleLowerCase('vi')===normalized
+    )
+  }
+  const submitManualAssetCode=(event:FormEvent)=>{
+    event.preventDefault()
+    const asset=findAssetByCode(manualAssetCode)
+    if(!asset){setCameraError('Không tìm thấy thiết bị đang được quản lý với mã hoặc ID này. Hãy kiểm tra lại mã.');return}
+    openScannedAsset(asset)
+  }
+  const startQrCamera=async()=>{
+    setCameraError('')
+    const Detector=(window as unknown as {BarcodeDetector?:new(options:{formats:string[]})=>{detect:(source:HTMLVideoElement)=>Promise<Array<{rawValue:string}>>}}).BarcodeDetector
+    if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){setCameraError('Trình duyệt cần được mở bằng HTTPS và được cấp quyền camera. Bạn vẫn có thể nhập mã thiết bị ở bên dưới.');return}
+    if(!Detector){setCameraError('Trình duyệt này chưa hỗ trợ giải mã QR trực tiếp. Hãy dùng Chrome/Edge mới hoặc nhập mã thiết bị thủ công.');return}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}})
+      cameraStreamRef.current=stream
+      if(!videoRef.current)throw new Error('Không tìm thấy vùng hiển thị camera.')
+      videoRef.current.srcObject=stream
+      await videoRef.current.play()
+      qrDetectorRef.current=new Detector({formats:['qr_code']})
+      setCameraActive(true)
+      const scan=async()=>{
+        const video=videoRef.current
+        const detector=qrDetectorRef.current
+        if(!video||!detector)return
+        if(video.readyState>=2&&!scanBusyRef.current){
+          scanBusyRef.current=true
+          try{
+            const codes=await detector.detect(video)
+            const raw=codes[0]?.rawValue?.trim()
+            if(raw){
+              const asset=findAssetByCode(raw)
+              if(asset){openScannedAsset(asset);return}
+              setCameraError('Mã QR đã đọc được nhưng không khớp mã/ID thiết bị đang quản lý. Không mở nhầm thiết bị.')
+              stopQrCamera()
+              return
+            }
+          }catch{ /* Tiếp tục quét ở khung hình kế tiếp. */ }
+          finally{scanBusyRef.current=false}
+        }
+        cameraFrameRef.current=window.requestAnimationFrame(()=>void scan())
+      }
+      cameraFrameRef.current=window.requestAnimationFrame(()=>void scan())
+    }catch(cause){
+      stopQrCamera()
+      const message=cause instanceof Error?cause.message:'Không thể bật camera.'
+      setCameraError(message.includes('Permission')||message.includes('NotAllowed')?'Bạn chưa cấp quyền camera. Hãy cho phép camera trong trình duyệt hoặc nhập mã thiết bị thủ công.':'Không thể khởi động camera. Hãy kiểm tra camera đang được sử dụng bởi ứng dụng khác hoặc nhập mã thiết bị thủ công.')
+    }
+  }
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
   const openNew=(asset?:Asset)=>{setEditing(null);setSelectedSuggestionLabels([]);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
@@ -715,8 +797,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
 
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
-    <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
-    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":"Đang trực tuyến · Checklist có thể thực hiện thủ công trên PC và điện thoại; quét QR tạm thời chưa sử dụng."}</div>
+    <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small><button type="button" className="primary-btn checklist-open-scanner" onClick={()=>{setCameraError('');setShowQrScanner(true)}}><ClipboardCheck size={15}/> Quét mã thiết bị</button></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":"Đang trực tuyến · Quét QR hoặc nhập mã thiết bị để mở đúng Checklist trên PC và điện thoại."}</div>
     {canManage&&legacyLocalCounts&&(legacyLocalCounts.settings+legacyLocalCounts.definitions+legacyLocalCounts.runs+legacyLocalCounts.tasks)>0&&<div className="checklist-connectivity-notice">Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này: {legacyLocalCounts.definitions} mẫu, {legacyLocalCounts.runs} kết quả, {legacyLocalCounts.tasks} lượt lịch và {legacyLocalCounts.settings} cấu hình. Dữ liệu này chưa được chuyển lên Cloud. Không xóa dữ liệu trình duyệt hoặc đổi thiết bị trước khi có phương án chuyển đổi.</div>}
     {canManage&&legacyLocalScopes.some(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0)&&<div className="checklist-connectivity-notice"><b>Các nguồn Checklist Local khác trên trình duyệt này:</b>{legacyLocalScopes.filter(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0).map(scope=><div key={scope.organizationId}>{scope.organizationId==='local-preview'?'Local Preview':`Scope tổ chức ${scope.organizationId.slice(0,8)}…`} — {scope.definitions} mẫu, {scope.runs} kết quả, {scope.tasks} lượt lịch, {scope.settings} cấu hình</div>)}<small>Đây chỉ là thống kê đọc dữ liệu Local; chưa có dữ liệu nào được nhập, sửa hoặc xóa.</small></div>}
     <div className="checklist-tabs">
@@ -835,6 +917,22 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         {reportMissedTasks.length>0&&<div className="checklist-report-table-wrap checklist-missed-report"><h3>Danh sách Không Checklist</h3><table className="table-standard"><thead><tr><th>Hạn thực hiện</th><th>Checklist</th><th>Đối tượng</th><th>Trạng thái</th><th>Phụ trách</th></tr></thead><tbody>{reportMissedTasks.map(row=><tr key={row.id}><td>{dateTime(row.dueAt)}</td><td>{row.title}</td><td>{row.targetLabel}</td><td className="danger">Không Checklist</td><td>{row.assignee}</td></tr>)}</tbody></table></div>}
       </section>}
     </>}
+    {showQrScanner&&<div className="modal-backdrop checklist-qr-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget){stopQrCamera();setShowQrScanner(false)}}}><section className="modal checklist-qr-modal" role="dialog" aria-modal="true" aria-labelledby="checklist-qr-title">
+      <div className="modal-head"><div><div className="eyebrow">BAOTRI MINI · CHECKLIST</div><h2 id="checklist-qr-title">Quét mã thiết bị</h2><p>Đưa mã QR trên tem thiết bị vào khung camera để mở đúng hồ sơ.</p></div><button type="button" className="icon-btn" aria-label="Đóng" onClick={()=>{stopQrCamera();setShowQrScanner(false)}}><X size={17}/></button></div>
+      <div className="checklist-qr-camera">
+        <video ref={videoRef} playsInline muted aria-label="Hình ảnh camera quét mã QR"/>
+        {!cameraActive&&<div className="checklist-qr-camera-placeholder"><div className="checklist-qr-frame"><span/><span/><span/><span/></div><ClipboardCheck size={30}/><b>Sẵn sàng quét mã QR</b><small>Camera chỉ bật khi bạn chọn nút bên dưới</small></div>}
+        {cameraActive&&<div className="checklist-qr-overlay"><div className="checklist-qr-frame"><span/><span/><span/><span/></div><small>Đưa mã QR vào giữa khung hình</small></div>}
+      </div>
+      <div className="checklist-qr-camera-actions"><button type="button" className="primary-btn" onClick={()=>void startQrCamera()} disabled={cameraActive}>{cameraActive?'Camera đang hoạt động':'Bật camera để quét'}</button>{cameraActive&&<button type="button" className="soft-btn" onClick={stopQrCamera}>Tắt camera</button>}<small>Trên PC cần camera được kết nối; trên điện thoại nên dùng camera sau.</small></div>
+      <div className="checklist-qr-divider"><span>HOẶC NHẬP MÃ THỦ CÔNG</span></div>
+      <form className="checklist-qr-manual" onSubmit={submitManualAssetCode}>
+        <label className="field">Mã thiết bị hoặc ID<input autoFocus={false} value={manualAssetCode} onChange={event=>{setManualAssetCode(event.target.value);setCameraError('')}} placeholder="Ví dụ: TB-001 hoặc dán ID thiết bị" autoComplete="off"/></label>
+        <button type="submit" className="primary-btn" disabled={!manualAssetCode.trim()}>Tìm thiết bị</button>
+      </form>
+      {cameraError&&<div className="checklist-qr-error" role="alert">{cameraError}</div>}
+      <div className="checklist-qr-help"><ShieldCheck size={16}/><span>Chỉ mở Checklist khi mã QR hoặc mã nhập vào khớp chính xác với thiết bị đang quản lý. Không tìm thấy thì hệ thống sẽ báo lỗi, không tự chọn thiết bị khác.</span></div>
+    </section></div>}
     {printingRun&&<div className="checklist-print-sheet"><div className="asset-print-report equipment-print-report checklist-print-report">
       <header className="equipment-print-org"><div className="equipment-print-org-name">{organizationName||'Đơn vị sử dụng'}</div><div className="equipment-print-brand">BAOTRI MINI · PHIẾU KIỂM TRA ĐỊNH KỲ</div></header>
       <div className="equipment-print-title-row"><div><h1 className="asset-print-form-title">PHIẾU KẾT QUẢ KIỂM TRA ĐỊNH KỲ</h1><h2 className="asset-print-device-name">{printingRun.checklistTitle}</h2><p className="equipment-print-code">Mã phiếu: <strong>{printingRun.id}</strong></p></div><div className="checklist-print-result-stamp">{printingRun.outcome.toLocaleUpperCase('vi')}</div></div>
