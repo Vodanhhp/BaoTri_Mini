@@ -16,6 +16,14 @@ export default function ChecklistQrScanner({onDetected,onClose,errorMessage=''}:
   const [cameraError,setCameraError]=useState('')
   const [cameraReady,setCameraReady]=useState(false)
   useEffect(()=>()=>{activeRef.current=false;if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null},[])
+  const stopCamera=()=>{
+    activeRef.current=false
+    if(frameRef.current!==null){cancelAnimationFrame(frameRef.current);frameRef.current=null}
+    streamRef.current?.getTracks().forEach(track=>track.stop())
+    streamRef.current=null
+    if(videoRef.current)videoRef.current.srcObject=null
+    setCameraReady(false)
+  }
   const startCamera=async()=>{
     activeRef.current=false
     if(frameRef.current!==null){cancelAnimationFrame(frameRef.current);frameRef.current=null}
@@ -47,7 +55,7 @@ export default function ChecklistQrScanner({onDetected,onClose,errorMessage=''}:
             const codes=await detector.detect(video)
             if(!activeRef.current)return
             const value=codes.find(code=>code.rawValue?.trim())?.rawValue?.trim()
-            if(value){activeRef.current=false;onDetected(value);return}
+            if(value){stopCamera();onDetected(value);return}
           }catch{if(activeRef.current)setCameraError('Không đọc được QR. Hãy giữ mã QR rõ nét trong khung hình hoặc nhập mã thủ công.')}
           finally{busy=false}
         }
@@ -72,7 +80,7 @@ export default function ChecklistQrScanner({onDetected,onClose,errorMessage=''}:
       </div>
       <div className="checklist-qr-camera-actions"><button type="button" className="primary-btn" onClick={()=>void startCamera()}><Camera size={16}/> {cameraReady?'Mở lại camera':'Bật camera để quét'}</button><small>PC cần có camera kết nối; điện thoại ưu tiên camera sau. Trình duyệt cần được cấp quyền camera.</small></div>
       <div className="checklist-qr-divider"><span>HOẶC NHẬP MÃ THỦ CÔNG</span></div>
-      <form className="checklist-qr-manual" onSubmit={event=>{event.preventDefault();if(manualCode.trim())onDetected(manualCode.trim())}}>
+      <form className="checklist-qr-manual" onSubmit={event=>{event.preventDefault();if(manualCode.trim()){stopCamera();onDetected(manualCode.trim())}}}>
         <label className="field"><span><Keyboard size={14}/> Mã thiết bị hoặc ID</span><input value={manualCode} onChange={event=>setManualCode(event.target.value)} placeholder="Ví dụ: TB-001 hoặc dán ID thiết bị" autoComplete="off"/></label>
         <button type="submit" className="primary-btn" disabled={!manualCode.trim()}>Tìm thiết bị</button>
       </form>
