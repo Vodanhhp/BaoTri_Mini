@@ -273,8 +273,8 @@ begin
     into v_definition;
   v_updated := regexp_replace(
     v_definition,
-    '(or d\\.acknowledged_checklist_generation\\s*<\\s*s\\.checklist_generation)',
-    '\\1 or d.acknowledged_maintenance_generation < s.maintenance_generation',
+    '(or d\.acknowledged_checklist_generation\s*<\s*s\.checklist_generation)',
+    '\1 or d.acknowledged_maintenance_generation < s.maintenance_generation',
     'g'
   );
   if v_updated = v_definition
