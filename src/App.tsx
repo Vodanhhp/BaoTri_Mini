@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { formatDateVN, formatDateTimeVN } from './lib/dateTime'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package, ClipboardCheck } from 'lucide-react'
+import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, Info, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package, ClipboardCheck } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
@@ -16,6 +16,7 @@ import PlatformAdminPanel from './PlatformAdminPanel'
 import { OrganizationPlanPanel } from './PlanChangePanels'
 import OrganizationPlanSummary from './OrganizationPlanSummary'
 import PasswordRecoveryScreen from './PasswordRecoveryScreen'
+import AboutContactPanel from './AboutContactPanel'
 import { db, now, uid, type Asset, type AssetDraft, type AssetStatus, type AssetMutationPayload, type AssetHistory, type InventoryItem, type MaintenanceRequest, type MaintenanceTask } from './db'
 import { loadOrganizationContext, type OrganizationContext } from './lib/organizationContext'
 import { acquireCloudAssetLock, applyCloudAssetMutation, heartbeatCloudAssetLock, releaseCloudAssetLock, listCloudAssets, syncCloudAssetsIncrementally, getLocalDeviceId, getDeviceLabel, retryCloudAssetMutation, syncPendingLocalAssetImports } from './lib/cloudAssets'
@@ -99,6 +100,7 @@ export default function App() {
   const [platformPanel,setPlatformPanel]=useState(false)
   const [organizationPlanPanel,setOrganizationPlanPanel]=useState(false)
   const [settingsOpen,setSettingsOpen]=useState(false)
+  const [aboutContactOpen,setAboutContactOpen]=useState(false)
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false)
   const [cloudLease,setCloudLease]=useState<ActiveCloudLease|null>(null)
   const [passwordRecovery,setPasswordRecovery]=useState(false)
@@ -1299,6 +1301,7 @@ export default function App() {
 {canMutate&&<button className="nav-subitem" onClick={()=>{setProfilePanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Hồ sơ cá nhân</span></button>}
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setOrganizationPlanPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><Building2 size={15}/><span>Gói dịch vụ</span></button>}
+          <button className="nav-subitem" onClick={()=>{setAboutContactOpen(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><Info size={15}/><span>Giới thiệu / Liên hệ</span></button>
           {platformAccess&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
         </div>}
       </div>}
@@ -1513,6 +1516,7 @@ export default function App() {
         <footer className="equipment-print-footer"><span>Phiếu được tạo từ hồ sơ thiết bị, lịch sử thay đổi và các Phiếu Bảo dưỡng – Sửa chữa đã ghi nhận trên BAOTRI MINI.</span><strong>Người yêu cầu in: {localPreview?'Local Preview':currentOrganization?.roleCodes.some(code=>['admin','administrator'].includes(code.toLowerCase()))?'Admin':currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase()))?'KTV':'Viewer'} — {profileDisplayName||session?.user.email||'Người dùng'}</strong></footer>
       </div>}
     </div>}
+    {aboutContactOpen&&<AboutContactPanel onClose={()=>setAboutContactOpen(false)}/>}
     {imageViewer&&<ImageLightbox images={imageViewer.images} initialIndex={imageViewer.index} onClose={()=>setImageViewer(null)} title="Ảnh thiết bị"/>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>

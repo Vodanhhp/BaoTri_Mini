@@ -3401,3 +3401,21 @@ html,body,#root,.app-shell{
 #root .app-shell .system-notification-spin{animation:system-notification-rotate .9s linear infinite}
 @keyframes system-notification-rotate{to{transform:rotate(360deg)}}
 @media(max-width:600px){#root .app-shell .system-notification{grid-template-columns:22px minmax(0,1fr);gap:9px;padding:12px}#root .app-shell .system-notification-actions{grid-column:2;justify-content:flex-start}#root .app-shell .system-notification-content pre{max-height:110px}}
+
+
+/* BAOTRI Mini — About and contact panel */
+#root .app-shell .about-contact-modal{width:min(620px,100%)}
+#root .app-shell .about-contact-hero{display:flex;align-items:flex-start;gap:14px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft,#f8fafc)}
+#root .app-shell .about-contact-brand-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:12px;background:var(--accent-soft,#e8f0ff);color:var(--accent,#2563eb)}
+#root .app-shell .about-contact-hero h3{margin:0 0 5px;font-size:17px}
+#root .app-shell .about-contact-hero p{margin:0;color:var(--muted);font-size:12px;line-height:1.65}
+#root .app-shell .about-contact-section{margin-top:18px}
+#root .app-shell .about-contact-section>h3{margin:0 0 10px;font-size:13px}
+#root .app-shell .about-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#root .app-shell .about-contact-card{display:flex;align-items:center;gap:11px;min-width:0;padding:13px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+#root .app-shell .about-contact-card-icon{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:9px;background:var(--surface-soft,#f1f5f9);color:var(--muted)}
+#root .app-shell .about-contact-card small{display:block;margin-bottom:3px;color:var(--muted);font-size:10px}
+#root .app-shell .about-contact-card a{display:block;min-width:0;color:var(--text);font-size:12px;font-weight:700;overflow-wrap:anywhere;text-decoration:none}
+#root .app-shell .about-contact-card a:hover{text-decoration:underline;color:var(--accent)}
+#root .app-shell .about-contact-footnote{margin:14px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
+@media(max-width:600px){#root .app-shell .about-contact-grid{grid-template-columns:1fr}#root .app-shell .about-contact-hero{padding:13px}}
