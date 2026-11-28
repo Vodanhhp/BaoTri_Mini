@@ -1262,3 +1262,11 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - PR #88: Draft / chưa merge. Main vẫn ở commit `367f1ab38a073b9dc55d08949f10b1af2b6f9787`.
 - Supabase Test đã có hai migration mới; Production chưa thay đổi.
 - Không chạy Reset, không xóa dữ liệu, không thay đổi R2, không thay đổi quyền/bảo mật Production trong lượt rà soát này.
+
+
+## Bổ sung giao diện Giới thiệu / Liên hệ — 29/11/2026
+
+- Đã thêm mục **Giới thiệu / Liên hệ** trong menu **Cài đặt** (dành cho tài khoản đã đăng nhập).
+- Nội dung giới thiệu ngắn BAOTRI MINI; số điện thoại liên hệ `0912 500 396` có liên kết gọi `tel:`, email `tuanluongpham@gmail.com` có liên kết `mailto:`.
+- Hạng mục được thêm trên nhánh `fix/maintenance-reset-generation`, cùng PR #88; chưa được đưa vào `main` và chưa lên website chính thức.
+- Cần xác nhận build/CI và kiểm tra giao diện desktop/mobile trước khi merge. Việc đưa mã Reset lên Production vẫn phụ thuộc các migration/Edge Function Production được phê duyệt và triển khai đúng thứ tự; không tự ý chạy Reset hoặc xóa dữ liệu.
