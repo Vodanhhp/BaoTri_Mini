@@ -78,7 +78,7 @@ export async function ensureOrganizationAssetResetApplied(client: SupabaseClient
       }
       if (purgeMaintenance) {
         await db.maintenanceRequests.where('organizationId').equals(organizationId).delete()
-        await db.maintenanceHistory.where('organizationId').equals(organizationId).delete()
+        await db.maintenanceHistory.where('organizationId').equals(organizationId).filter(event=>event.recordType==='request').delete()
       }
       const state: OrganizationAssetResetState = {organizationId,generation,inventoryGeneration,checklistGeneration,maintenanceGeneration,appliedAt,deviceId}
       await db.organizationAssetResetStates.put(state)
