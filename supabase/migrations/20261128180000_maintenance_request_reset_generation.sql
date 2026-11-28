@@ -261,4 +261,30 @@ begin
 end;
 $function$;
 
+
+-- Include maintenance devices in the existing reset pending-device count without
+-- copying/replacing the large reset transaction body.
+do $migration$
+declare
+  v_definition text;
+  v_updated text;
+begin
+  select pg_get_functiondef('public.platform_reset_organization_assets(uuid,uuid,uuid)'::regprocedure)
+    into v_definition;
+  v_updated := regexp_replace(
+    v_definition,
+    '(or d\\.acknowledged_checklist_generation\\s*<\\s*s\\.checklist_generation)',
+    '\\1 or d.acknowledged_maintenance_generation < s.maintenance_generation',
+    'g'
+  );
+  if v_updated = v_definition
+     and position('acknowledged_maintenance_generation' in v_definition) = 0 then
+    raise exception 'Could not extend the reset pending-device count with maintenance generation';
+  end if;
+  if v_updated <> v_definition then
+    execute v_updated;
+  end if;
+end;
+$migration$;
+
 commit;
