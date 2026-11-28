@@ -133,10 +133,12 @@ test('legacy direct reset endpoint is disabled and approval endpoint reauthentic
 test('reset is requested by organization Admin and reviewed in the Superadmin request queue', async () => {
   const tenant = await read('../src/PlanChangePanels.tsx')
   const ui = await read('../src/PlatformAdminPanel.tsx')
-  assert.match(tenant, /Yêu cầu Reset thiết bị, vật tư và Checklist/)
+  assert.match(tenant, /Yêu cầu Reset dữ liệu doanh nghiệp/)
   assert.match(tenant, /resetAssets/)
   assert.match(tenant, /resetInventory/)
   assert.match(tenant, /resetChecklist/)
+  assert.match(tenant, /resetMaintenanceRequests/)
+  assert.match(tenant, /reset_maintenance_requests/)
   assert.match(tenant, /Superadmin chỉ thực hiện đúng những mục được tích chọn/)
   assert.match(ui, /PlatformAssetResetRequestsPanel/)
   assert.doesNotMatch(ui, /beginManagement\(org,'reset'\)/)
@@ -218,10 +220,11 @@ test('reset barrier runs before both equipment and inventory sync, including inv
 
 test('reset request and Superadmin confirmation explicitly describe full inventory deletion', async () => {
  const ui = await read('../src/PlanChangePanels.tsx')
- assert.match(ui,/Yêu cầu Reset thiết bị, vật tư và Checklist/)
+ assert.match(ui,/Yêu cầu Reset dữ liệu doanh nghiệp/)
  assert.match(ui,/resetAssets/)
  assert.match(ui,/resetInventory/)
  assert.match(ui,/resetChecklist/)
+ assert.match(ui,/resetMaintenanceRequests/)
  assert.match(ui,/xóa đúng các mục đã chọn ở Cloud và áp dụng cùng phạm vi trên Local/)
  assert.doesNotMatch(ui,/xóa sạch toàn bộ thiết bị, vật tư Cloud\/Local và Checklist/)
 })

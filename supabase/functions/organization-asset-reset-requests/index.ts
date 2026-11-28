@@ -37,10 +37,12 @@ Deno.serve(async(req)=>{
   if(action==='submit'){
    const note=String(body.note??'').trim().slice(0,1000)
    const resetAssets=body.resetAssets===true, resetInventory=body.resetInventory===true, resetChecklist=body.resetChecklist===true
-   if(!resetAssets&&!resetInventory&&!resetChecklist)return response({error:'Phải chọn ít nhất một phạm vi Reset.'},400,origin)
+   const resetMaintenanceRequests=body.resetMaintenanceRequests===true
+   if(!resetAssets&&!resetInventory&&!resetChecklist&&!resetMaintenanceRequests)return response({error:'Phải chọn ít nhất một phạm vi Reset.'},400,origin)
    const {data,error}=await admin.rpc('create_organization_asset_reset_request',{
     p_organization_id:organizationId,p_requester_user_id:auth.user.id,p_request_note:note,
-    p_reset_assets:resetAssets,p_reset_inventory:resetInventory,p_reset_checklist:resetChecklist
+    p_reset_assets:resetAssets,p_reset_inventory:resetInventory,p_reset_checklist:resetChecklist,
+    p_reset_maintenance_requests:resetMaintenanceRequests
    })
    if(error)throw error
    return response({ok:true,request:data,message:'Đã gửi yêu cầu Reset theo phạm vi đã chọn. Dữ liệu chưa bị thay đổi; Superadmin sẽ xem xét và quyết định.'},200,origin)
