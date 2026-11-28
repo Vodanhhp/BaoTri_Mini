@@ -296,7 +296,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
     window.addEventListener('online',updateOnline);window.addEventListener('offline',updateOnline)
     return()=>{window.removeEventListener('online',updateOnline);window.removeEventListener('offline',updateOnline)}
   },[])
-  useEffect(()=>()=>stopQrCamera(),[])
+  useEffect(()=>()=>{if(cameraFrameRef.current!==null)window.cancelAnimationFrame(cameraFrameRef.current);cameraStreamRef.current?.getTracks().forEach(track=>track.stop());cameraStreamRef.current=null},[])
 
   const refresh=async(ensureCloudSchedule=false)=>{
     setLoading(true)
@@ -545,10 +545,13 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const findAssetByCode=(value:string)=>{
     const normalized=value.trim().toLocaleLowerCase('vi')
     if(!normalized)return undefined
-    return activeEquipment.find(asset=>
-      (asset.code||'').trim().toLocaleLowerCase('vi')===normalized||
-      asset.id.trim().toLocaleLowerCase('vi')===normalized
+    const matches=assets.filter(asset=>
+      !asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý'&&(
+        (asset.code||'').trim().toLocaleLowerCase('vi')===normalized||
+        asset.id.trim().toLocaleLowerCase('vi')===normalized
+      )
     )
+    return matches.length===1?matches[0]:undefined
   }
   const submitManualAssetCode=(event:FormEvent)=>{
     event.preventDefault()
