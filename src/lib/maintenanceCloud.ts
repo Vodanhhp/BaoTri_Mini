@@ -106,7 +106,8 @@ export async function importMaintenanceHistory(client:SupabaseClient,organizatio
   const payload=batch.map(event=>({id:event.id,record_type:event.recordType,record_id:event.recordId,event_type:event.eventType,
    summary:event.summary,actor_label:event.actorLabel,occurred_at:event.occurredAt,
    before_snapshot:event.beforeSnapshot||null,after_snapshot:event.afterSnapshot||null}))
-  imported+=await checked(client.rpc('maintenance_import_legacy_history',{p_organization_id:organizationId,p_events:payload}),'Nhập lịch sử bảo trì cũ')
+  const resetState=await db.organizationAssetResetStates.get(organizationId)
+  imported+=await checked(client.rpc('maintenance_import_legacy_history_v2',{p_organization_id:organizationId,p_events:payload,p_reset_generation:resetState?.maintenanceGeneration??0}),'Nhập lịch sử bảo trì cũ')
  }
  return imported
 }
