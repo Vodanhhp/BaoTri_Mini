@@ -1,35 +1,19 @@
--- Make selective Reset compatible with the Cloud Checklist data model.
--- Checklist and maintenance history are removed/detached only when their scope is selected.
+-- Add a separate selective Reset scope for maintenance requests and their event history.
+-- Scheduled maintenance tasks and Checklist records remain untouched by this scope.
 begin;
 
 alter table private.organization_asset_reset_requests
-  add column if not exists checklist_definitions_deleted bigint not null default 0,
-  add column if not exists checklist_runs_deleted bigint not null default 0,
-  add column if not exists checklist_tasks_deleted bigint not null default 0,
-  add column if not exists checklist_task_events_deleted bigint not null default 0,
-  add column if not exists checklist_definition_versions_deleted bigint not null default 0,
   add column if not exists maintenance_requests_deleted bigint not null default 0,
   add column if not exists maintenance_request_events_deleted bigint not null default 0;
 
 alter table private.organization_asset_reset_approval_requests
-  add column if not exists cloud_checklist_definitions_at_request bigint not null default 0,
-  add column if not exists cloud_checklist_definition_versions_at_request bigint not null default 0,
-  add column if not exists cloud_checklist_runs_at_request bigint not null default 0,
-  add column if not exists cloud_checklist_tasks_at_request bigint not null default 0,
-  add column if not exists cloud_checklist_task_events_at_request bigint not null default 0,
-  add column if not exists checklist_definitions_deleted bigint,
-  add column if not exists checklist_definition_versions_deleted bigint,
-  add column if not exists checklist_runs_deleted bigint,
-  add column if not exists checklist_tasks_deleted bigint,
-  add column if not exists checklist_task_events_deleted bigint,
   add column if not exists reset_maintenance_requests boolean not null default false,
   add column if not exists cloud_maintenance_requests_at_request bigint not null default 0,
   add column if not exists cloud_maintenance_request_events_at_request bigint not null default 0,
   add column if not exists maintenance_requests_deleted bigint,
   add column if not exists maintenance_request_events_deleted bigint;
 
--- The previous request counters are retained as compatibility aliases:
--- templates = definitions; results = completed Checklist runs.
+-- Replace the old six-argument RPC with its seven-argument version.
 drop function if exists public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean);
 
 create or replace function public.create_organization_asset_reset_request(
@@ -145,8 +129,6 @@ exception when unique_violation then
   raise exception 'Tổ chức đang có yêu cầu Reset chờ xử lý. Hãy chờ Superadmin duyệt hoặc từ chối.' using errcode='23505';
 end;
 $function$;
-revoke all on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) from public,anon,authenticated;
-grant execute on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) to service_role;
 
 create or replace function public.list_organization_asset_reset_requests(p_organization_id uuid)
 returns jsonb
@@ -517,5 +499,8 @@ begin
   end;
 end;
 $function$;
+
+revoke all on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) from public,anon,authenticated;
+grant execute on function public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean,boolean) to service_role;
 
 commit;
