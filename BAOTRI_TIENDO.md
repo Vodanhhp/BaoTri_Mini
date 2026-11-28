@@ -1191,3 +1191,16 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Main HEAD và CI/Pages status ở trên chỉ là mốc rà soát ngày 28/11; trước mỗi lần sửa phải kiểm tra HEAD/PR mới nhất.
 - Không merge PR, không chạy Reset, không xóa dữ liệu, không áp dụng migration hoặc thay đổi Supabase Production nếu chưa có phê duyệt rõ ràng.
 - Production `dskeaiyvldiwlsfqkboq`; Test `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác.
+
+
+## Cập nhật 28/11/2026 — Bổ sung Reset Phiếu yêu cầu bảo trì
+
+- Đã bổ sung phạm vi Reset thứ tư: **Phiếu yêu cầu bảo trì** (gồm phiếu Bảo dưỡng, Sửa chữa và lịch sử thao tác trong `maintenance_request_events`).
+- Phạm vi này độc lập với Reset Thiết bị, Vật tư và Checklist. Khi được duyệt, hệ thống gỡ liên kết ngược từ Checklist Run, xóa lịch sử thao tác trước rồi mới xóa Phiếu yêu cầu.
+- Không xóa lịch bảo trì định kỳ/công việc trong `maintenance_tasks`, không xóa Checklist Run/Definition nếu không chọn Reset Checklist. Nếu Reset Thiết bị riêng, các Phiếu yêu cầu vẫn được giữ theo cơ chế chuyển đích thiết bị thành hệ thống như logic hiện tại.
+- Đã cập nhật giao diện Admin doanh nghiệp, hàng đợi duyệt Superadmin, Edge Function nhận phạm vi mới, thống kê số phiếu/lịch sử trước khi gửi và số đã xóa sau khi thực hiện.
+- Đã thêm migration `20261128120000_reset_maintenance_requests_scope.sql` và test kiểm tra phạm vi xóa; cập nhật danh sách migration đang chờ áp dụng trong `scripts/supabaseMigrationInventory.test.mjs`.
+- Nhánh: `feature/reset-maintenance-requests`; PR **#87 OPEN / Draft**: https://github.com/Vodanhhp/BaoTri_Mini/pull/87.
+- CI tại commit `969bd941a0dd9477b9af7f0c508af6320930be0d`: Build and test **SUCCESS**; Validate BAOTRI Mini **SUCCESS**.
+- PR chưa merge. Migration chưa được áp dụng vào Supabase Test hoặc Production; Edge Function chưa deploy. Không có Reset nào được chạy và không có dữ liệu nào bị xóa.
+- Bước tiếp theo: review migration/PR; chỉ sau khi được duyệt mới áp dụng migration và deploy Edge Function lên **Supabase Test** để kiểm thử luồng tạo yêu cầu → Superadmin duyệt → thống kê xóa, đồng thời xác nhận lịch bảo trì và Checklist vẫn được giữ nguyên. Tuyệt đối không tác động Production nếu chưa có phê duyệt riêng.
