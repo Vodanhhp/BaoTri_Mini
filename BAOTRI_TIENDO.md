@@ -1217,3 +1217,17 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - Supabase Security/Performance Advisors trả về một số cảnh báo tồn tại từ cấu trúc hiện có (RLS enabled/no policy trong private tables, SECURITY DEFINER RPCs, unindexed FKs, unused indexes, multiple permissive policies); chưa có kết luận rằng các cảnh báo này phát sinh do migration mới. Không tự ý thay đổi phạm vi bảo mật ngoài yêu cầu.
 - **Chưa kiểm thử giao diện E2E** vì chưa gửi yêu cầu Reset hoặc duyệt thực thi. PR #87 vẫn OPEN / Draft, chưa merge. Production không bị tác động.
 - Bước tiếp theo: mở bản Preview từ PR #87, kiểm tra checkbox/phạm vi hiển thị và số lượng trước duyệt; sau đó chỉ tạo một yêu cầu thử nghiệm có xác nhận riêng và không nhấn duyệt thực thi cho đến khi đã rà soát chính xác phạm vi xóa. Vì Test hiện không có dữ liệu Phiếu yêu cầu, cần tạo dữ liệu thử nghiệm rõ ràng hoặc dùng tổ chức Test phù hợp trước khi xác minh số bản ghi xóa.
+
+
+## Checkpoint sửa lỗi Reset Phiếu yêu cầu — 28/11/2026
+
+- Rà soát sau khi người dùng thử Reset thành công phát hiện thiết bị/browser Local chưa có generation độc lập cho Phiếu yêu cầu; các bản ghi cũ trong IndexedDB có thể xuất hiện lại trong danh sách chuyển dữ liệu lên Cloud.
+- Branch `fix/maintenance-reset-generation`, PR **#88 OPEN / Draft**: https://github.com/Vodanhhp/BaoTri_Mini/pull/88.
+- Bổ sung `maintenance_generation` ở trạng thái tổ chức và `acknowledged_maintenance_generation` ở thiết bị; generation chỉ tăng sau khi giao dịch Reset Phiếu yêu cầu được ghi nhận thành công, dùng receipt idempotent.
+- Khi thiết bị nhận generation mới, Local chỉ xóa `maintenanceRequests` và `maintenanceHistory`; **không xóa `maintenanceTasks`** (lịch bảo trì định kỳ).
+- Client mới gửi generation khi lưu Phiếu yêu cầu qua RPC v2. RPC lưu cũ và RPC nhập lịch sử Local cũ bị chặn sau lần Reset đầu tiên để phiên bản cũ không thể phục hồi dữ liệu cũ; phiên bản cũ cần tải lại ứng dụng.
+- Pending-device count đã được mở rộng để tính generation Phiếu yêu cầu.
+- Migration `20261128163856_maintenance_request_reset_generation.sql` đã áp dụng thành công trên Supabase Test `oyzhxgzltpdebpymuicb`; kiểm tra xác nhận cột, trigger, RPC 6 tham số, quyền thực thi và pending-device predicate. Migration history Test có version khớp tên file.
+- Sau migration, kiểm tra read-only: `maintenance_requests=0`, `maintenance_request_events=0`, `maintenance_tasks=0`, `checklist_runs=0`. Không chạy Reset và không xóa dữ liệu trong bước triển khai này.
+- GitHub Actions Build and test và Validate BAOTRI Mini đã SUCCESS tại SHA `ed2e2542b12ca9851bcfa8b6783e7b181179acc4`; sau đó đổi tên migration để khớp version Test và cập nhật test inventory, cần chờ CI chạy lại trên HEAD mới.
+- **Production chưa thay đổi.** Chưa merge PR #88; chưa deploy mã giao diện mới lên Production. Cần phê duyệt riêng trước khi áp dụng migration và deploy Edge Function `organization-asset-reset-requests` lên Supabase Production. Không chạy Reset thử nghiệm khi chưa có xác nhận phạm vi dữ liệu.
