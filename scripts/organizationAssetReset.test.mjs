@@ -323,3 +323,16 @@ test('maintenance request Reset has its own generation, purges only request reco
  assert.match(cloud,/rpc\('maintenance_save_request_v2'/)
  assert.match(cloud,/p_reset_generation:resetState\?\.maintenanceGeneration\?\?0/)
 })
+
+
+test('maintenance request Reset preserves local scheduled-maintenance task history', async () => {
+ const local=await read('../src/lib/assetReset.ts')
+ const cloud=await read('../src/lib/maintenanceCloud.ts')
+ const sql=await read('../supabase/migrations/20261128170000_maintenance_history_reset_generation.sql')
+ assert.match(local,/maintenanceHistory\.where\('organizationId'\)\.equals\(organizationId\)\.filter\(event=>event\.recordType==='request'\)\.delete\(\)/)
+ assert.match(sql,/maintenance_import_legacy_history_v2/)
+ assert.match(sql,/p_reset_generation bigint/)
+ assert.match(sql,/assert_maintenance_reset_generation\(p_organization_id,p_reset_generation\)/)
+ assert.match(cloud,/maintenance_import_legacy_history_v2/)
+ assert.match(cloud,/p_reset_generation:resetState\?\.maintenanceGeneration\?\?0/)
+})
