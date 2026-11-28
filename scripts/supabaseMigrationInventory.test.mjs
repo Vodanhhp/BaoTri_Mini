@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 
 const appliedMigrationFiles = [
   "20261121022414_001_identity_and_organizations.sql",
@@ -100,7 +100,8 @@ const pendingMigrationFiles = [
   "20261127050000_checklist_allow_manual_equipment_execution.sql",
   "20261127060000_maintenance_tasks_cloud_schema.sql",
   "20261127070000_checklist_non_equipment_maintenance_requests.sql",
-  "20261127140000_fix_reset_checklist_cloud_dependencies.sql"
+  "20261127140000_fix_reset_checklist_cloud_dependencies.sql",
+  "20261128120000_reset_maintenance_requests_scope.sql"
 ]
 
 test('source migration inventory includes Production-applied history plus explicitly pending PR migrations', async () => {
@@ -112,4 +113,18 @@ test('source migration inventory includes Production-applied history plus explic
 
   assert.equal(new Set(versionPrefixes).size, versionPrefixes.length, 'migration version prefixes must be unique')
   assert.deepEqual(files, expected, 'source migration files must equal applied history plus explicitly pending PR migrations')
+})
+
+
+test('selective Reset can remove maintenance requests without deleting scheduled maintenance or Checklist history', async () => {
+  const migration = await readFile(new URL('../supabase/migrations/20261128120000_reset_maintenance_requests_scope.sql', import.meta.url), 'utf8')
+  const resetBlock = migration.slice(migration.indexOf('if v_req.reset_maintenance_requests then'), migration.indexOf('if v_req.reset_inventory then'))
+
+  assert.match(migration, /reset_maintenance_requests boolean not null default false/)
+  assert.match(resetBlock, /delete from public\\.maintenance_request_events/)
+  assert.match(resetBlock, /delete from public\\.maintenance_requests/)
+  assert.ok(resetBlock.indexOf('delete from public.maintenance_request_events') < resetBlock.indexOf('delete from public.maintenance_requests'))
+  assert.match(resetBlock, /update public\\.checklist_runs set maintenance_request_id=null/)
+  assert.doesNotMatch(resetBlock, /delete from public\\.maintenance_tasks/)
+  assert.doesNotMatch(resetBlock, /delete from public\\.checklist_runs/)
 })
