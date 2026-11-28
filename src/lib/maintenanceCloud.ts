@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { db } from '../db'
 import type { MaintenanceRequest, MaintenanceHistory, MaintenanceTask } from '../db'
 
 type Row=Record<string,any>
@@ -58,7 +59,8 @@ export async function loadMaintenanceRequests(client:SupabaseClient,organization
 }
 export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest,isExisting=false):Promise<MaintenanceRequest>{
  online()
- const row=await checked(client.rpc('maintenance_save_request',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_payload:{
+ const resetState=await db.organizationAssetResetStates.get(organizationId)
+ const row=await checked(client.rpc('maintenance_save_request_v2',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_reset_generation:resetState?.maintenanceGeneration??0,p_payload:{
   asset_id:request.assetId||null,target_kind:request.targetKind||(request.assetId?'equipment':'system'),target_label:request.targetLabel||'',target_location:request.targetLocation||'',request_date:request.requestDate,due_date:request.dueDate||null,kind:request.kind,
   description:request.description,parts:request.parts,readings:request.readings,requested_by:request.requestedBy
  }}),'Lưu Phiếu yêu cầu')
