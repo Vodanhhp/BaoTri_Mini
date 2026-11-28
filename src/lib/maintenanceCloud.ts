@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { db } from '../db'
 import type { MaintenanceRequest, MaintenanceHistory, MaintenanceTask } from '../db'
 
 type Row=Record<string,any>
@@ -58,7 +59,8 @@ export async function loadMaintenanceRequests(client:SupabaseClient,organization
 }
 export async function saveMaintenanceRequest(client:SupabaseClient,organizationId:string,request:MaintenanceRequest,isExisting=false):Promise<MaintenanceRequest>{
  online()
- const row=await checked(client.rpc('maintenance_save_request',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_payload:{
+ const resetState=await db.organizationAssetResetStates.get(organizationId)
+ const row=await checked(client.rpc('maintenance_save_request_v2',{p_organization_id:organizationId,p_request_id:isExisting?request.id:null,p_reset_generation:resetState?.maintenanceGeneration??0,p_payload:{
   asset_id:request.assetId||null,target_kind:request.targetKind||(request.assetId?'equipment':'system'),target_label:request.targetLabel||'',target_location:request.targetLocation||'',request_date:request.requestDate,due_date:request.dueDate||null,kind:request.kind,
   description:request.description,parts:request.parts,readings:request.readings,requested_by:request.requestedBy
  }}),'Lưu Phiếu yêu cầu')
@@ -104,7 +106,8 @@ export async function importMaintenanceHistory(client:SupabaseClient,organizatio
   const payload=batch.map(event=>({id:event.id,record_type:event.recordType,record_id:event.recordId,event_type:event.eventType,
    summary:event.summary,actor_label:event.actorLabel,occurred_at:event.occurredAt,
    before_snapshot:event.beforeSnapshot||null,after_snapshot:event.afterSnapshot||null}))
-  imported+=await checked(client.rpc('maintenance_import_legacy_history',{p_organization_id:organizationId,p_events:payload}),'Nhập lịch sử bảo trì cũ')
+  const resetState=await db.organizationAssetResetStates.get(organizationId)
+  imported+=await checked(client.rpc('maintenance_import_legacy_history_v2',{p_organization_id:organizationId,p_events:payload,p_reset_generation:resetState?.maintenanceGeneration??0}),'Nhập lịch sử bảo trì cũ')
  }
  return imported
 }

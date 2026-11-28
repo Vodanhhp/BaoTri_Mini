@@ -24,30 +24,34 @@ export async function ensureOrganizationAssetResetApplied(client: SupabaseClient
     p_platform_label: localDeviceLabel(), p_local_asset_count: localAssetCount
   })
   if (error) throw new Error('Không kiểm tra được trạng thái Reset của tổ chức: ' + error.message)
-  const row = data as {generation?:unknown;inventory_generation?:unknown;checklist_generation?:unknown}|null
+  const row = data as {generation?:unknown;inventory_generation?:unknown;checklist_generation?:unknown;maintenance_generation?:unknown}|null
   const generation = Number(row?.generation)
   const inventoryGeneration = Number(row?.inventory_generation ?? 0)
   const checklistGeneration = Number(row?.checklist_generation ?? 0)
-  if (![generation,inventoryGeneration,checklistGeneration].every(v=>Number.isSafeInteger(v)&&v>=0))
+  const maintenanceGeneration = Number(row?.maintenance_generation ?? 0)
+  if (![generation,inventoryGeneration,checklistGeneration,maintenanceGeneration].every(v=>Number.isSafeInteger(v)&&v>=0))
     throw new Error('Cloud trả về Reset generation không hợp lệ; đã dừng đồng bộ an toàn.')
 
   const saved = await db.organizationAssetResetStates.get(organizationId)
   const knownAsset = saved?.generation ?? 0
   const knownInventory = saved?.inventoryGeneration ?? 0
   const knownChecklist = saved?.checklistGeneration ?? 0
-  if (generation < knownAsset || inventoryGeneration < knownInventory || checklistGeneration < knownChecklist)
+  const knownMaintenance = saved?.maintenanceGeneration ?? 0
+  if (generation < knownAsset || inventoryGeneration < knownInventory || checklistGeneration < knownChecklist || maintenanceGeneration < knownMaintenance)
     throw new Error('Reset generation Local cao hơn Cloud. Đã khóa đồng bộ để tránh phục hồi dữ liệu cũ.')
 
   const installationChanged = Boolean(saved?.deviceId && saved.deviceId !== deviceId)
   const purgeAssets = generation > knownAsset || (installationChanged && generation > 0)
   const purgeInventory = inventoryGeneration > knownInventory || (installationChanged && inventoryGeneration > 0)
   const purgeChecklist = checklistGeneration > knownChecklist || (installationChanged && checklistGeneration > 0)
-  if (purgeAssets || purgeInventory || purgeChecklist) {
+  const purgeMaintenance = maintenanceGeneration > knownMaintenance || (installationChanged && maintenanceGeneration > 0)
+  if (purgeAssets || purgeInventory || purgeChecklist || purgeMaintenance) {
     const appliedAt = now()
     await db.transaction('rw', [
       db.assets,db.assetCloudLinks,db.assetMutations,db.assetDrafts,db.assetGroupChanges,db.assetHistory,db.assetImportQueue,
       db.organizationAssetResetStates,db.inventoryGroups,db.inventoryItems,db.inventoryMovements,db.inventoryMutations,
-      db.inventoryCloudLinks,db.inventorySyncCursors,db.checklistCategorySettings,db.checklistDefinitions,db.checklistRuns,db.checklistTasks
+      db.inventoryCloudLinks,db.inventorySyncCursors,db.checklistCategorySettings,db.checklistDefinitions,db.checklistRuns,db.checklistTasks,
+      db.maintenanceRequests,db.maintenanceHistory
     ], async () => {
       if (purgeAssets) {
         await db.assets.where('localScope').equals(organizationId).delete()
@@ -72,15 +76,19 @@ export async function ensureOrganizationAssetResetApplied(client: SupabaseClient
         await db.checklistRuns.where('organizationId').equals(organizationId).delete()
         await db.checklistTasks.where('organizationId').equals(organizationId).delete()
       }
-      const state: OrganizationAssetResetState = {organizationId,generation,inventoryGeneration,checklistGeneration,appliedAt,deviceId}
+      if (purgeMaintenance) {
+        await db.maintenanceRequests.where('organizationId').equals(organizationId).delete()
+        await db.maintenanceHistory.where('organizationId').equals(organizationId).filter(event=>event.recordType==='request').delete()
+      }
+      const state: OrganizationAssetResetState = {organizationId,generation,inventoryGeneration,checklistGeneration,maintenanceGeneration,appliedAt,deviceId}
       await db.organizationAssetResetStates.put(state)
     })
-  } else if (!saved || saved.deviceId !== deviceId || saved.inventoryGeneration===undefined || saved.checklistGeneration===undefined) {
-    await db.organizationAssetResetStates.put({organizationId,generation,inventoryGeneration,checklistGeneration,appliedAt:now(),deviceId})
+  } else if (!saved || saved.deviceId !== deviceId || saved.inventoryGeneration===undefined || saved.checklistGeneration===undefined || saved.maintenanceGeneration===undefined) {
+    await db.organizationAssetResetStates.put({organizationId,generation,inventoryGeneration,checklistGeneration,maintenanceGeneration,appliedAt:now(),deviceId})
   }
   const { error: acknowledgeError } = await client.rpc('acknowledge_organization_asset_reset', {
     p_organization_id:organizationId,p_device_id:deviceId,p_generation:generation,
-    p_inventory_generation:inventoryGeneration,p_checklist_generation:checklistGeneration
+    p_inventory_generation:inventoryGeneration,p_checklist_generation:checklistGeneration,p_maintenance_generation:maintenanceGeneration
   })
   if (acknowledgeError) throw new Error('Local đã áp dụng Reset nhưng chưa gửi được xác nhận lên Cloud: '+acknowledgeError.message)
   return generation
