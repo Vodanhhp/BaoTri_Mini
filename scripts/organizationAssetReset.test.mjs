@@ -317,7 +317,7 @@ test('maintenance request Reset has its own generation, purges only request reco
  assert.match(sql,/Could not extend the reset pending-device count/)
  assert.match(local,/const purgeMaintenance = maintenanceGeneration > knownMaintenance/)
  assert.match(local,/db\.maintenanceRequests\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
- assert.match(local,/db\.maintenanceHistory\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
+ assert.match(local,/db\.maintenanceHistory\.where\('organizationId'\)\.equals\(organizationId\)\.filter\(event=>event\.recordType==='request'\)\.delete\(\)/)
  assert.doesNotMatch(local,/db\.maintenanceTasks\.where\('organizationId'\)\.equals\(organizationId\)\.delete\(\)/)
  assert.match(local,/p_maintenance_generation:maintenanceGeneration/)
  assert.match(cloud,/rpc\('maintenance_save_request_v2'/)
