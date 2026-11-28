@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { formatDateVN, formatDateTimeVN } from './lib/dateTime'
 import type { Session } from '@supabase/supabase-js'
-import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package, ClipboardCheck } from 'lucide-react'
+import { Activity, Download, Archive, BarChart3, Building2, Check, Hash, LayoutDashboard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, Settings, UserRound, Wrench, X, RotateCcw, ImagePlus, Menu, Trash2, Package, ClipboardCheck, Phone, Mail, Info } from 'lucide-react'
 import AuthScreen from './AuthScreen'
 import CloudAssetsPanel from './CloudAssetsPanel'
 import InventoryPanel from './InventoryPanel'
@@ -99,6 +99,7 @@ export default function App() {
   const [platformPanel,setPlatformPanel]=useState(false)
   const [organizationPlanPanel,setOrganizationPlanPanel]=useState(false)
   const [settingsOpen,setSettingsOpen]=useState(false)
+  const [aboutContactOpen,setAboutContactOpen]=useState(false)
   const [mobileMenuOpen,setMobileMenuOpen]=useState(false)
   const [cloudLease,setCloudLease]=useState<ActiveCloudLease|null>(null)
   const [passwordRecovery,setPasswordRecovery]=useState(false)
@@ -1300,6 +1301,7 @@ export default function App() {
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setMembersPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><UserRound size={15}/><span>Quản lý tài khoản</span></button>}
           {currentOrganization?.isAdmin&&<button className="nav-subitem" onClick={()=>{setOrganizationPlanPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><Building2 size={15}/><span>Gói dịch vụ</span></button>}
           {platformAccess&&<button className="nav-subitem" onClick={()=>{setPlatformPanel(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><ShieldCheck size={15}/><span>Quản trị nền tảng</span></button>}
+          <button className="nav-subitem" onClick={()=>{setAboutContactOpen(true);setSettingsOpen(false);setMobileMenuOpen(false)}}><Info size={15}/><span>Giới thiệu / Liên hệ</span></button>
         </div>}
       </div>}
       <div className="sidebar-bottom"><ShieldCheck size={15}/> Dữ liệu thiết bị Local</div>
@@ -1513,6 +1515,7 @@ export default function App() {
         <footer className="equipment-print-footer"><span>Phiếu được tạo từ hồ sơ thiết bị, lịch sử thay đổi và các Phiếu Bảo dưỡng – Sửa chữa đã ghi nhận trên BAOTRI MINI.</span><strong>Người yêu cầu in: {localPreview?'Local Preview':currentOrganization?.roleCodes.some(code=>['admin','administrator'].includes(code.toLowerCase()))?'Admin':currentOrganization?.roleCodes.some(code=>['ktv','technician','maintenance_technician'].includes(code.toLowerCase()))?'KTV':'Viewer'} — {profileDisplayName||session?.user.email||'Người dùng'}</strong></footer>
       </div>}
     </div>}
+    {aboutContactOpen&&<div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setAboutContactOpen(false)}}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="about-contact-title" style={{width:'min(460px, calc(100vw - 32px))',padding:24}}><div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}><span className="brand-icon"><Wrench size={21}/></span><div><strong style={{fontSize:18}}>BAOTRI MINI</strong><div className="muted">Quản lý bảo trì và tài sản</div></div></div><h2 id="about-contact-title" style={{margin:'0 0 8px'}}>Giới thiệu / Liên hệ</h2><p style={{color:'var(--muted,#64748b)',lineHeight:1.6,margin:'0 0 18px'}}>BAOTRI MINI hỗ trợ doanh nghiệp quản lý thiết bị, vật tư, bảo dưỡng, sửa chữa và kiểm tra định kỳ trên cùng một nền tảng.</p><div style={{display:'grid',gap:12}}><a href="tel:0912500396" className="soft-btn" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none',justifyContent:'flex-start'}}><Phone size={18}/><span><small style={{display:'block',opacity:.7}}>Điện thoại</small><strong>0912 500 396</strong></span></a><a href="mailto:tuanluongpham@gmail.com" className="soft-btn" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none',justifyContent:'flex-start'}}><Mail size={18}/><span><small style={{display:'block',opacity:.7}}>Email</small><strong>tuanluongpham@gmail.com</strong></span></a></div><div className="modal-actions" style={{marginTop:22}}><button className="primary-btn" onClick={()=>setAboutContactOpen(false)}>Đóng</button></div></section></div>}
     {imageViewer&&<ImageLightbox images={imageViewer.images} initialIndex={imageViewer.index} onClose={()=>setImageViewer(null)} title="Ảnh thiết bị"/>}
     {toast&&<div className="toast"><Check size={16}/>{toast}</div>}
   </div>
