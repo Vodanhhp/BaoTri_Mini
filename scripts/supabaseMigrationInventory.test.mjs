@@ -101,7 +101,9 @@ const pendingMigrationFiles = [
   "20261127060000_maintenance_tasks_cloud_schema.sql",
   "20261127070000_checklist_non_equipment_maintenance_requests.sql",
   "20261127140000_fix_reset_checklist_cloud_dependencies.sql",
-  "20261128120000_reset_maintenance_requests_scope.sql"
+  "20261128120000_reset_maintenance_requests_scope.sql",
+  "20261128163856_maintenance_request_reset_generation.sql",
+  "20261128164529_maintenance_history_reset_generation.sql"
 ]
 
 test('source migration inventory includes Production-applied history plus explicitly pending PR migrations', async () => {

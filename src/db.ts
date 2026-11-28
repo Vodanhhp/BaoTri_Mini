@@ -198,6 +198,7 @@ export type OrganizationAssetResetState = {
   generation: number
   inventoryGeneration?: number
   checklistGeneration?: number
+  maintenanceGeneration?: number
   appliedAt: string
   /** Local installation identity paired with the acknowledged generation. */
   deviceId?: string

@@ -2362,3 +2362,48 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Supabase Security/Performance Advisors trả về một số cảnh báo tồn tại từ cấu trúc hiện có (RLS enabled/no policy trong private tables, SECURITY DEFINER RPCs, unindexed FKs, unused indexes, multiple permissive policies); chưa có kết luận rằng các cảnh báo này phát sinh do migration mới. Không tự ý thay đổi phạm vi bảo mật ngoài yêu cầu.
 - **Chưa kiểm thử giao diện E2E** vì chưa gửi yêu cầu Reset hoặc duyệt thực thi. PR #87 vẫn OPEN / Draft, chưa merge. Production không bị tác động.
 - Bước tiếp theo: mở bản Preview từ PR #87, kiểm tra checkbox/phạm vi hiển thị và số lượng trước duyệt; sau đó chỉ tạo một yêu cầu thử nghiệm có xác nhận riêng và không nhấn duyệt thực thi cho đến khi đã rà soát chính xác phạm vi xóa. Vì Test hiện không có dữ liệu Phiếu yêu cầu, cần tạo dữ liệu thử nghiệm rõ ràng hoặc dùng tổ chức Test phù hợp trước khi xác minh số bản ghi xóa.
+
+
+## Checkpoint sửa lỗi Reset Phiếu yêu cầu — 28/11/2026
+
+- Rà soát sau khi người dùng thử Reset thành công phát hiện thiết bị/browser Local chưa có generation độc lập cho Phiếu yêu cầu; các bản ghi cũ trong IndexedDB có thể xuất hiện lại trong danh sách chuyển dữ liệu lên Cloud.
+- Branch `fix/maintenance-reset-generation`, PR **#88 OPEN / Draft**: https://github.com/Vodanhhp/BaoTri_Mini/pull/88.
+- Bổ sung `maintenance_generation` ở trạng thái tổ chức và `acknowledged_maintenance_generation` ở thiết bị; generation chỉ tăng sau khi giao dịch Reset Phiếu yêu cầu được ghi nhận thành công, dùng receipt idempotent.
+- Khi thiết bị nhận generation mới, Local chỉ xóa `maintenanceRequests` và `maintenanceHistory`; **không xóa `maintenanceTasks`** (lịch bảo trì định kỳ).
+- Client mới gửi generation khi lưu Phiếu yêu cầu qua RPC v2. RPC lưu cũ và RPC nhập lịch sử Local cũ bị chặn sau lần Reset đầu tiên để phiên bản cũ không thể phục hồi dữ liệu cũ; phiên bản cũ cần tải lại ứng dụng.
+- Pending-device count đã được mở rộng để tính generation Phiếu yêu cầu.
+- Migration `20261128163856_maintenance_request_reset_generation.sql` đã áp dụng thành công trên Supabase Test `oyzhxgzltpdebpymuicb`; kiểm tra xác nhận cột, trigger, RPC 6 tham số, quyền thực thi và pending-device predicate. Migration history Test có version khớp tên file.
+- Sau migration, kiểm tra read-only: `maintenance_requests=0`, `maintenance_request_events=0`, `maintenance_tasks=0`, `checklist_runs=0`. Không chạy Reset và không xóa dữ liệu trong bước triển khai này.
+- GitHub Actions Build and test và Validate BAOTRI Mini đã SUCCESS tại SHA `ed2e2542b12ca9851bcfa8b6783e7b181179acc4`; sau đó đổi tên migration để khớp version Test và cập nhật test inventory, cần chờ CI chạy lại trên HEAD mới.
+- **Production chưa thay đổi.** Chưa merge PR #88; chưa deploy mã giao diện mới lên Production. Cần phê duyệt riêng trước khi áp dụng migration và deploy Edge Function `organization-asset-reset-requests` lên Supabase Production. Không chạy Reset thử nghiệm khi chưa có xác nhận phạm vi dữ liệu.
+
+
+## Rà soát toàn app và bổ sung sửa Reset Phiếu yêu cầu — 28/11/2026
+
+### Phạm vi đã rà soát bằng mã nguồn và test
+- Phân quyền Admin/KTV/Viewer; thiết bị (trạng thái, Lưu kho, lịch sử, xóa mềm/khôi phục); kho vật tư Local/Cloud, hàng đợi và đồng bộ; phân trang Cloud; Checklist (mẫu, lịch, thao tác PC/mobile theo hợp đồng mã); Phiếu yêu cầu và lịch bảo dưỡng; Reset theo từng phạm vi; UI/CSS, xuất Excel và các test hồi quy.
+- Trên nhánh sửa, GitHub Actions **297/297 unit tests PASS**, Build PASS. Đây là kiểm tra tự động/mã nguồn, không thay thế kiểm thử thao tác thực tế trên trình duyệt PC và điện thoại.
+- Rà soát trước đó đã sửa ghi chú số lượng quyền trong `TIENDO.md` từ 26 thành 27; bổ sung xuất Excel cho thiết bị/vật tư theo bộ lọc hiện tại, không xuất ảnh và Viewer không có quyền xuất.
+
+### Lỗi mới phát hiện và đã sửa trong PR #88
+- Khi thiết bị nhận Reset Phiếu yêu cầu, Local trước đây xóa toàn bộ `maintenanceHistory`, làm mất cả lịch sử của lịch bảo dưỡng định kỳ dù lịch vẫn còn.
+- Đã đổi thành chỉ xóa `recordType='request'`; lịch sử `recordType='task'` được giữ nguyên.
+- Vì vậy, đường nhập lịch sử cũ cũng được nâng lên RPC có kiểm tra generation hiện tại. Lịch sử lịch bảo dưỡng hợp lệ còn thiếu trên Cloud vẫn có thể nhập; phiên bản cũ không thể nhập lại lịch sử Phiếu yêu cầu sau Reset.
+- Test hồi quy mới kiểm tra giữ lịch sử lịch bảo dưỡng. PR #88 hiện Draft, chưa merge: https://github.com/Vodanhhp/BaoTri_Mini/pull/88.
+- Supabase Test `oyzhxgzltpdebpymuicb` đã áp dụng migration `20261128163856_maintenance_request_reset_generation` và `20261128164529_maintenance_history_reset_generation`; RPC mới có quyền authenticated, không có quyền anon. Không thực hiện Reset và không xóa dữ liệu.
+
+### Những việc còn thiếu / chưa xác nhận — cần ghi nhận
+1. **E2E trình duyệt PC và điện thoại:** chưa có lượt kiểm thử đầy đủ các luồng tạo/sửa/hoàn thành phiếu, lịch bảo dưỡng, Checklist, vật tư, phân quyền Viewer và xung đột nhiều tab/thiết bị trên bản Preview/Production. Cần kiểm tra sau khi PR được triển khai đúng môi trường.
+2. **Reset đa thiết bị:** người dùng đã xác nhận thao tác Reset hiện tại trả số lượng về 0; vẫn cần kiểm tra riêng thiết bị/trình duyệt khác đang mở hoặc offline, sau đó online lại, xác nhận không phục hồi dữ liệu cũ và không xóa lịch sử lịch bảo dưỡng.
+3. **Checklist Local cũ → Cloud:** giao diện hiện có thống kê các scope/dữ liệu Checklist Local, nhưng chưa xác nhận có quy trình nhập/chuyển dữ liệu Checklist Local cũ lên Cloud an toàn tương tự Phiếu yêu cầu. Cần quyết định/thiết kế riêng; không tự xóa Local.
+4. **Lịch bảo dưỡng định kỳ:** Cloud đang lưu `frequency` và từng lịch bảo dưỡng; chưa xác nhận có cơ chế tự sinh lịch kỳ tiếp theo sau khi hoàn thành. Cần chốt nghiệp vụ trước khi triển khai, không tự tạo bản ghi lịch mới.
+5. **Local Preview:** đã có nhánh xử lý riêng `local-preview`; cần E2E xác nhận chuyển giữa Preview và tổ chức Cloud không lẫn dữ liệu, đặc biệt khi đổi tổ chức/tài khoản.
+6. **Bảo mật Production theo Supabase Advisors (đọc tại 28/11/2026):** 15 bảng schema `private` bật RLS nhưng không có policy (INFO; cần xác nhận tiếp tục giữ private-schema-only access); 28 hàm `SECURITY DEFINER` callable bởi authenticated (WARN; không tự động là lỗ hổng, cần rà từng hàm/điều kiện membership); Leaked Password Protection đang tắt (WARN). Chưa thay đổi cấu hình hay quyền Production.
+7. **Hiệu năng Production theo Advisors:** 43 foreign key chưa có covering index, 14 index chưa được dùng, và 1 cảnh báo nhiều SELECT policy trên `public.profiles`. Đây là cảnh báo cần đo tải/đối chiếu truy vấn trước khi thay đổi, không tự ý thêm/xóa index hoặc policy.
+8. **Triển khai Production Reset Phiếu yêu cầu:** Production migration history hiện mới tới `20261127104407`; chưa có migration Reset Phiếu yêu cầu `20261128120000`, hai migration generation trong PR #88, và chưa triển khai các thay đổi Edge Function tương ứng. Chỉ triển khai sau phê duyệt riêng; thứ tự migration phải là scope Reset (#87), generation (#88), history generation (#88), sau đó deploy Edge Functions và giao diện.
+9. **Kiểm thử dữ liệu Reset có số lượng khác 0:** Supabase Test hiện không có dữ liệu Phiếu yêu cầu/lịch sử/lịch bảo dưỡng/Checklist để xác minh số đếm xóa và các liên kết được giữ. Chưa tạo dữ liệu thử và chưa chạy Reset; cần bộ dữ liệu test riêng có phạm vi được xác nhận.
+
+### Trạng thái an toàn
+- PR #88: Draft / chưa merge. Main vẫn ở commit `367f1ab38a073b9dc55d08949f10b1af2b6f9787`.
+- Supabase Test đã có hai migration mới; Production chưa thay đổi.
+- Không chạy Reset, không xóa dữ liệu, không thay đổi R2, không thay đổi quyền/bảo mật Production trong lượt rà soát này.
