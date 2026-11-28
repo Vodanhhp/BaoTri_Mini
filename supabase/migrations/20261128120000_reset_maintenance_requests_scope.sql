@@ -30,6 +30,8 @@ alter table private.organization_asset_reset_approval_requests
 
 -- The previous request counters are retained as compatibility aliases:
 -- templates = definitions; results = completed Checklist runs.
+drop function if exists public.create_organization_asset_reset_request(uuid,uuid,text,boolean,boolean,boolean);
+
 create or replace function public.create_organization_asset_reset_request(
   p_organization_id uuid,
   p_requester_user_id uuid,
@@ -37,7 +39,7 @@ create or replace function public.create_organization_asset_reset_request(
   p_reset_assets boolean default false,
   p_reset_inventory boolean default false,
   p_reset_checklist boolean default false,
-  p_reset_maintenance_requests boolean
+  p_reset_maintenance_requests boolean default false
 ) returns jsonb
 language plpgsql
 security definer
