@@ -1204,3 +1204,16 @@ Project `oyzhxgzltpdebpymuicb` có tổng cộng 20 migration Checklist (11 migr
 - CI tại commit `969bd941a0dd9477b9af7f0c508af6320930be0d`: Build and test **SUCCESS**; Validate BAOTRI Mini **SUCCESS**.
 - PR chưa merge. Migration chưa được áp dụng vào Supabase Test hoặc Production; Edge Function chưa deploy. Không có Reset nào được chạy và không có dữ liệu nào bị xóa.
 - Bước tiếp theo: review migration/PR; chỉ sau khi được duyệt mới áp dụng migration và deploy Edge Function lên **Supabase Test** để kiểm thử luồng tạo yêu cầu → Superadmin duyệt → thống kê xóa, đồng thời xác nhận lịch bảo trì và Checklist vẫn được giữ nguyên. Tuyệt đối không tác động Production nếu chưa có phê duyệt riêng.
+
+
+## Bổ sung trạng thái triển khai Test — 28/11/2026
+
+- Đã phát hiện Supabase Test còn thiếu migration nền `20261127140000_fix_reset_checklist_cloud_dependencies`; đã áp dụng migration nền này trước.
+- Đã tách và sửa migration `20261128120000_reset_maintenance_requests_scope` thành migration tăng cường độc lập (không lặp lại toàn bộ migration nền), sau đó áp dụng thành công vào **Supabase Test** `oyzhxgzltpdebpymuicb`.
+- Đã deploy Edge Function `organization-asset-reset-requests` lên Test: trạng thái ACTIVE, version 2, JWT verification bật.
+- Kiểm tra SQL sau triển khai: RPC 7 tham số tồn tại; RPC 6 tham số cũ đã được gỡ; chỉ `service_role` được EXECUTE RPC tạo yêu cầu (authenticated/anon không được phép); các cột phạm vi và audit mới đã tồn tại.
+- Kiểm tra dữ liệu Test sau migration: `maintenance_requests=0`, `maintenance_request_events=0`, `maintenance_tasks=0`, `checklist_runs=0`, hai bảng yêu cầu Reset đều 0. Không có thao tác Reset nào được chạy; migration chỉ thay đổi schema/function.
+- Build and test và Validate BAOTRI Mini đều SUCCESS tại commit migration tăng cường `829ef3ce4d960f471bec97774ced38131b123862`.
+- Supabase Security/Performance Advisors trả về một số cảnh báo tồn tại từ cấu trúc hiện có (RLS enabled/no policy trong private tables, SECURITY DEFINER RPCs, unindexed FKs, unused indexes, multiple permissive policies); chưa có kết luận rằng các cảnh báo này phát sinh do migration mới. Không tự ý thay đổi phạm vi bảo mật ngoài yêu cầu.
+- **Chưa kiểm thử giao diện E2E** vì chưa gửi yêu cầu Reset hoặc duyệt thực thi. PR #87 vẫn OPEN / Draft, chưa merge. Production không bị tác động.
+- Bước tiếp theo: mở bản Preview từ PR #87, kiểm tra checkbox/phạm vi hiển thị và số lượng trước duyệt; sau đó chỉ tạo một yêu cầu thử nghiệm có xác nhận riêng và không nhấn duyệt thực thi cho đến khi đã rà soát chính xác phạm vi xóa. Vì Test hiện không có dữ liệu Phiếu yêu cầu, cần tạo dữ liệu thử nghiệm rõ ràng hoặc dùng tổ chức Test phù hợp trước khi xác minh số bản ghi xóa.
