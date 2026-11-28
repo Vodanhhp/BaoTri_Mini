@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase'
 import { isPcPlatform } from './lib/platform'
 import { loadChecklistCloud, saveChecklistCategorySetting, saveChecklistDefinition, archiveChecklistDefinition, restoreChecklistDefinition, claimChecklistTask, releaseChecklistTask, completeChecklistTask, completeChecklistManualRun, loadChecklistTasksForReport } from './lib/checklistCloud'
 import { createMaintenanceRequestFromChecklist } from './lib/maintenanceCloud'
+import ChecklistQrScanner from './ChecklistQrScanner'
 
 type Props = {
   organizationId: string
@@ -272,6 +273,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   const [reportTasksLoading,setReportTasksLoading]=useState(false)
   const [printingRun,setPrintingRun]=useState<ChecklistRun|null>(null)
   const [isOnline,setIsOnline]=useState(()=>typeof navigator==='undefined'?false:navigator.onLine)
+  const [showQrScanner,setShowQrScanner]=useState(false)
+  const [scannerError,setScannerError]=useState('')
   const canExecuteHere=canExecute&&canManage&&isOnline
   useEffect(()=>{
     const updateOnline=()=>setIsOnline(navigator.onLine)
@@ -515,6 +518,24 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
   }
 
   const activeEquipment=assets.filter(asset=>(!asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý')||asset.id===editing?.targetAssetId||asset.code===editing?.targetAssetCode)
+  const handleQrDetected=(value:string)=>{
+    const normalized=value.trim().toLocaleLowerCase('vi')
+    const matches=assets.filter(asset=>
+      !asset.archivedAt&&!asset.deletedAt&&asset.status!=='Thanh lý'&&(
+        (asset.code||'').trim().toLocaleLowerCase('vi')===normalized||
+        asset.id.trim().toLocaleLowerCase('vi')===normalized
+      )
+    )
+    if(matches.length!==1){
+      setScannerError(matches.length===0?'Không tìm thấy thiết bị đang được quản lý với mã/ID này. Hãy kiểm tra lại tem hoặc nhập mã chính xác; không mở nhầm thiết bị.':'Mã này khớp nhiều thiết bị. Hệ thống không thể tự chọn; hãy kiểm tra lại mã quản lý.')
+      return
+    }
+    const asset=matches[0]
+    setScannerError('')
+    setShowQrScanner(false)
+    openNew(asset)
+    setNotice('Đã nhận diện đúng thiết bị '+(asset.code||asset.name)+'. Bạn có thể tạo Checklist riêng cho thiết bị này.')
+  }
   const assetTargetLabel=(asset:Asset)=>[asset.name,asset.code?`(${asset.code})`: '',asset.location?`– ${asset.location}`:''].filter(Boolean).join(' ')
   const openNew=(asset?:Asset)=>{setEditing(null);setSelectedSuggestionLabels([]);setTargetKind('equipment');setTargetAssetId(asset?.id||'');setTitle(asset?`Kiểm tra ${asset.name}`:'');setTarget(asset?assetTargetLabel(asset):'');setCategory('equipment');setFrequency('Hàng tháng');setExecutionTime('09:00');setAssignee('Admin');setQuestionText('');setShowBuilderForm(true);setTab('builder')}
   const openEdit=(item:ChecklistDefinition)=>{
@@ -715,8 +736,8 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
 
   if(!canView)return <div className="panel"><p>Tài khoản chưa được cấp quyền xem Checklist.</p></div>
   return <div className="checklist-workspace">
-    <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
-    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":"Đang trực tuyến · Checklist có thể thực hiện thủ công trên PC và điện thoại; quét QR tạm thời chưa sử dụng."}</div>
+    <section className="welcome checklist-welcome"><div><div className="eyebrow">BAOTRI MINI · KIỂM TRA ĐỊNH KỲ</div><h2>Checklist</h2><p>Thiết lập nội dung kiểm tra và lưu kết quả độc lập với lịch sử thiết bị.</p><small>{organizationName}</small><button type="button" className="primary-btn checklist-open-scanner" onClick={()=>{setScannerError('');setShowQrScanner(true)}}><ClipboardCheck size={15}/> Quét mã thiết bị</button></div><div className="welcome-icon"><ClipboardCheck size={40}/></div></section>
+    <div className="checklist-connectivity-notice" data-online-guard={!isOnline?"offline":isPcPlatform()?"desktop":"online"}>{!isOnline?"Mất kết nối Internet. Các thao tác thực hiện Checklist đã bị khóa.":"Đang trực tuyến · Checklist có thể thực hiện thủ công trên PC và điện thoại; quét QR hoặc nhập mã thiết bị để mở đúng Checklist."}</div>
     {canManage&&legacyLocalCounts&&(legacyLocalCounts.settings+legacyLocalCounts.definitions+legacyLocalCounts.runs+legacyLocalCounts.tasks)>0&&<div className="checklist-connectivity-notice">Phát hiện dữ liệu Checklist cũ chỉ lưu trên trình duyệt này: {legacyLocalCounts.definitions} mẫu, {legacyLocalCounts.runs} kết quả, {legacyLocalCounts.tasks} lượt lịch và {legacyLocalCounts.settings} cấu hình. Dữ liệu này chưa được chuyển lên Cloud. Không xóa dữ liệu trình duyệt hoặc đổi thiết bị trước khi có phương án chuyển đổi.</div>}
     {canManage&&legacyLocalScopes.some(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0)&&<div className="checklist-connectivity-notice"><b>Các nguồn Checklist Local khác trên trình duyệt này:</b>{legacyLocalScopes.filter(scope=>scope.organizationId!==organizationId&&(scope.settings+scope.definitions+scope.runs+scope.tasks)>0).map(scope=><div key={scope.organizationId}>{scope.organizationId==='local-preview'?'Local Preview':`Scope tổ chức ${scope.organizationId.slice(0,8)}…`} — {scope.definitions} mẫu, {scope.runs} kết quả, {scope.tasks} lượt lịch, {scope.settings} cấu hình</div>)}<small>Đây chỉ là thống kê đọc dữ liệu Local; chưa có dữ liệu nào được nhập, sửa hoặc xóa.</small></div>}
     <div className="checklist-tabs">
@@ -835,6 +856,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
         {reportMissedTasks.length>0&&<div className="checklist-report-table-wrap checklist-missed-report"><h3>Danh sách Không Checklist</h3><table className="table-standard"><thead><tr><th>Hạn thực hiện</th><th>Checklist</th><th>Đối tượng</th><th>Trạng thái</th><th>Phụ trách</th></tr></thead><tbody>{reportMissedTasks.map(row=><tr key={row.id}><td>{dateTime(row.dueAt)}</td><td>{row.title}</td><td>{row.targetLabel}</td><td className="danger">Không Checklist</td><td>{row.assignee}</td></tr>)}</tbody></table></div>}
       </section>}
     </>}
+    {showQrScanner&&<ChecklistQrScanner onDetected={handleQrDetected} onClose={()=>{setShowQrScanner(false);setScannerError('')}} errorMessage={scannerError}/>}
     {printingRun&&<div className="checklist-print-sheet"><div className="asset-print-report equipment-print-report checklist-print-report">
       <header className="equipment-print-org"><div className="equipment-print-org-name">{organizationName||'Đơn vị sử dụng'}</div><div className="equipment-print-brand">BAOTRI MINI · PHIẾU KIỂM TRA ĐỊNH KỲ</div></header>
       <div className="equipment-print-title-row"><div><h1 className="asset-print-form-title">PHIẾU KẾT QUẢ KIỂM TRA ĐỊNH KỲ</h1><h2 className="asset-print-device-name">{printingRun.checklistTitle}</h2><p className="equipment-print-code">Mã phiếu: <strong>{printingRun.id}</strong></p></div><div className="checklist-print-result-stamp">{printingRun.outcome.toLocaleUpperCase('vi')}</div></div>
