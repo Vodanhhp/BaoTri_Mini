@@ -2298,3 +2298,41 @@ Ví dụ: tổ chức đang có 420 thiết bị ở Plan B (500), chuyển xu�
 - Làm từng phần nhỏ, khảo sát → thống nhất yêu cầu → triển khai nhánh/PR → CI → kiểm thử Test/UI → xin duyệt.
 - Tuyệt đối không tự merge PR, không chạy Reset/xóa dữ liệu, không áp dụng migration hoặc thay đổi Supabase Production, không tạo bucket/cấu hình kho ảnh nếu chưa có phê duyệt rõ ràng.
 - Supabase Production: `dskeaiyvldiwlsfqkboq`; Test: `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác.
+
+
+## 28/11/2026 — Tiếp tục dự án: rà soát trạng thái GitHub và hiện trạng QR/ảnh
+
+### Trạng thái repository
+- Đã đọc lại cả `TIENDO.md` và `BAOTRI_TIENDO.md` trên `main` trước khi tiếp tục.
+- HEAD `main` tại thời điểm rà soát: `274cf76067438ba575485f6510c7ffd1b75b1dd3` (commit cập nhật tiến độ ngày 27/11).
+- CI trên HEAD này: Build and test run `45987674476` **SUCCESS**; GitHub Pages Deploy run `45987674579` **SUCCESS**.
+- Đính chính checkpoint trước: PR #75 **đã đóng do MERGED**, không còn OPEN/Draft. Merge commit `f6235c6c3b41addda1cf7593722a74a313e07f97` (27/11/2026). PR #75 triển khai Checklist Cloud/QR và các thay đổi liên quan; không cần triển khai lại từ đầu.
+- Các PR vẫn OPEN tại thời điểm kiểm tra: #78 (sửa statement terminators cho Checklist migration source), #49 (tài liệu chuẩn UI), #29 (đối chiếu migration history/source), #28 (trạng thái Lưu kho trên Cloud), #27 (khôi phục migration source Cloud asset), #19 (Cloud asset lock helper), #15 (bố cục bảng — Draft), #14 (quản lý tài khoản), #13 (smart equipment ID). Chưa merge PR nào trong lượt rà soát này; cần review trạng thái/độ lệch với main trước khi quyết định xử lý. Không coi các PR cũ là đã tích hợp chỉ vì main đang chạy tốt.
+- Không thay đổi code, không merge/đóng PR, không chạy migration hay thao tác dữ liệu Supabase trong lượt rà soát này.
+
+### Hiện trạng QR và Checklist
+- Mã nguồn `main` đã có `src/ChecklistQrScanner.tsx`: camera quét QR bằng BarcodeDetector nếu trình duyệt hỗ trợ; đồng thời đã có ô nhập mã thiết bị thủ công và nút tìm Checklist. Khi camera không hỗ trợ/không truy cập được, giao diện có thông báo hướng dẫn nhập mã.
+- `src/ChecklistPanel.tsx` đã tích hợp luồng Checklist Cloud và gọi `createMaintenanceRequestFromChecklist` khi tạo Phiếu yêu cầu từ kết quả Checklist.
+- Vì vậy QR + nhập mã thủ công **đã có implementation trên main**; việc còn lại là kiểm thử E2E thực tế trên điện thoại/trình duyệt, xác nhận quyền, mã sai/trùng, thiết bị/khu vực và luồng mở đúng Checklist. Không tạo scanner thứ hai hoặc viết lại từ đầu.
+- PR #75 đã merge nên trạng thái “QR chưa có” trong một số checkpoint cũ đã lỗi thời. Giữ lưu ý giới hạn/điều kiện Phase 1 theo mô tả PR và kiểm tra quyền thực tế trước khi mở rộng vai trò.
+
+### Hiện trạng ảnh thiết bị và bằng chứng
+- `src/db.ts` định nghĩa `Asset.images: string[]`; `src/App.tsx` có xử lý ảnh: chỉ nhận ảnh, chuyển đổi/nén thành JPEG data URL (quality 0.78), giới hạn tối đa 8 ảnh/thiết bị; đã có giao diện thêm, xem phóng to và xóa ảnh.
+- UI hiện ghi rõ ảnh được thu nhỏ và lưu trong trình duyệt hiện tại, **chưa đồng bộ Cloud**.
+- `src/lib/cloudAssets.ts` khi ánh xạ Cloud asset đang đặt `images: []`; điều này xác nhận ảnh chưa được đưa vào luồng Cloud asset hiện tại.
+- `src/ImageLightbox.tsx` hiện chỉ đảm nhiệm xem ảnh phóng to; chưa phải kho lưu trữ.
+- Chưa thấy luồng ảnh bằng chứng gắn với từng Checklist Run/tiêu chí Không đạt hoặc Phiếu yêu cầu/công việc sửa chữa. Cần khảo sát schema và luồng lưu kết quả trước khi thiết kế bảng metadata/quan hệ ảnh.
+- Kết luận: không viết lại UI ảnh thiết bị hiện có. Ưu tiên thiết kế kho ảnh dùng chung và cách chuyển ảnh Local hiện tại sang Cloud an toàn, sau đó mở rộng sang ảnh bằng chứng Checklist và sửa chữa.
+
+### Hướng công việc tiếp theo
+1. Review an toàn các PR cũ đang OPEN, xác định PR nào còn cần thiết, PR nào đã lỗi thời/trùng hoặc đã được main thay thế; không merge/đóng nếu chưa có quyết định riêng.
+2. Thiết kế kiến trúc kho ảnh dùng chung (tiếp tục đánh giá Cloudflare R2): metadata trong DB, object key theo tổ chức/đối tượng, upload qua backend xác thực, quyền xem/xóa, giới hạn kích thước, nén, retry và xử lý orphan object. Chưa tạo bucket hoặc cấu hình R2 khi chưa được duyệt.
+3. Thiết kế tương thích ngược với ảnh Local hiện có: không xóa data URL trong IndexedDB; có quy trình chuyển ảnh lên Cloud có kiểm tra và retry idempotent, chỉ đánh dấu đồng bộ sau khi xác nhận thành công.
+4. Sau khi chốt kiến trúc mới triển khai ảnh Cloud cho hồ sơ thiết bị; tiếp đó gắn ảnh hiện trạng vào Checklist và ảnh trước/trong/sau sửa vào Phiếu yêu cầu/công việc sửa chữa.
+5. Kiểm thử QR + nhập mã thủ công trên điện thoại thật song song, không xây lại tính năng đã có.
+6. Sau cùng khảo sát và thiết kế riêng module Kế hoạch bảo trì, tránh trùng chức năng với lịch bảo dưỡng/Checklist hiện hữu.
+
+### An toàn
+- Main HEAD và CI/Pages status ở trên chỉ là mốc rà soát ngày 28/11; trước mỗi lần sửa phải kiểm tra HEAD/PR mới nhất.
+- Không merge PR, không chạy Reset, không xóa dữ liệu, không áp dụng migration hoặc thay đổi Supabase Production nếu chưa có phê duyệt rõ ràng.
+- Production `dskeaiyvldiwlsfqkboq`; Test `oyzhxgzltpdebpymuicb`; project cũ `ahacxsrriwlfzrobrbmc` tuyệt đối không thao tác.
