@@ -527,7 +527,7 @@ export default function ChecklistPanel({organizationId,organizationName,userLabe
       )
     )
     if(matches.length!==1){
-      setScannerError(matches.length===0?'Không tìm thấy thiết bị đang được quản lý với mã/ID này. Hãy kiểm tra lại tem hoặc nhập mã chính xác.':'Mã này khớp nhiều thiết bị. Hệ thống không thể tự chọn; hãy kiểm tra lại mã quản lý.')
+      setScannerError(matches.length===0?'Không tìm thấy thiết bị đang được quản lý với mã/ID này. Hãy kiểm tra lại tem hoặc nhập mã chính xác; không mở nhầm thiết bị.':'Mã này khớp nhiều thiết bị. Hệ thống không thể tự chọn; hãy kiểm tra lại mã quản lý.')
       return
     }
     const asset=matches[0]
