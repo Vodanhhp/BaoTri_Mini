@@ -462,18 +462,23 @@ test('Equipment Checklist manual RPC is enabled while completed task history use
   assert.match(migration,/v_definition\.id,null/)
 })
 
-test('Equipment Checklist can be executed manually on PC and mobile while QR scanning is temporarily disabled',async()=>{
-  assert.doesNotMatch(panel,/ChecklistQrScanner/)
-  assert.doesNotMatch(panel,/Quét QR thiết bị/)
+test('Equipment Checklist supports QR and exact manual equipment lookup on PC and mobile',async()=>{
+  assert.match(panel,/import ChecklistQrScanner from '\.\/ChecklistQrScanner'/)
+  assert.match(panel,/Quét mã thiết bị/)
+  assert.match(panel,/const handleQrDetected=/)
+  assert.match(panel,/asset\.code\|\|''\)\.trim\(\)\.toLocaleLowerCase\('vi'\)/)
+  assert.match(panel,/asset\.id\.trim\(\)\.toLocaleLowerCase\('vi'\)/)
+  assert.match(panel,/matches\.length!==1/)
+  assert.match(panel,/Không mở nhầm thiết bị/)
   assert.match(panel,/Checklist có thể thực hiện thủ công trên PC và điện thoại/)
   assert.match(panel,/!groupTask&&directAllowed/)
   assert.match(panel,/Thực hiện thủ công/ )
   assert.match(panel,/const canExecuteHere=canExecute&&canManage&&isOnline/)
 })
 
-test('Equipment and system Checklist tasks both use the manual execution flow',async()=>{
-  assert.doesNotMatch(panel,/handleQrDetected/)
-  assert.doesNotMatch(panel,/ChecklistQrScanner/)
+test('QR equipment lookup stays separate from the shared manual task execution flow',async()=>{
+  assert.match(panel,/handleQrDetected/)
+  assert.match(panel,/ChecklistQrScanner/)
   assert.match(panel,/!groupTask&&directAllowed/)
   assert.match(panel,/Thực hiện thủ công/ )
   assert.match(panel,/const beginTask=async\(task:ChecklistTask,item:ChecklistDefinition\)/)
